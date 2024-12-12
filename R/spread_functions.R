@@ -123,6 +123,7 @@ weighted_spread <- function(values, weights, value_cols = NULL,
 #'        probability-based catchment area
 #' @param ratio_cols Character vector of column names if ratios is a data.frame
 #' @param full_output Logical; whether to return intermediate calculations (default FALSE)
+#' @param plot_prefix Character string to prepend to output names (default NULL)
 #' @param parallel Logical; whether to use parallel processing (default FALSE)
 #' @param n_cores Integer; number of cores for parallel processing (default NULL)
 #' @return If full_output = TRUE, returns list containing:
@@ -131,7 +132,7 @@ weighted_spread <- function(values, weights, value_cols = NULL,
 #'         If full_output = FALSE, returns only access_scores SpatRaster
 #' @export
 spread_access <- function(ratios, weights, ratio_cols = NULL,
-                          full_output = FALSE,
+                          full_output = FALSE, plot_prefix = NULL,
                           parallel = FALSE, n_cores = NULL) {
   result <- weighted_spread(
     values = ratios,
@@ -143,7 +144,7 @@ spread_access <- function(ratios, weights, ratio_cols = NULL,
   )
 
   if (full_output) {
-    names(result$total_distribution) <- paste0("accessibility_", names(result$total_distribution))
+    names(result$total_distribution) <- paste0(plot_prefix, names(result$total_distribution))
     return(list(
       access_scores = result$total_distribution,
       site_specific = result$unit_distribution

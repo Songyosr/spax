@@ -9,6 +9,7 @@ spread_access(
   weights,
   ratio_cols = NULL,
   full_output = FALSE,
+  plot_prefix = NULL,
   parallel = FALSE,
   n_cores = NULL
 )
@@ -25,6 +26,8 @@ probability-based catchment area}
 \item{ratio_cols}{Character vector of column names if ratios is a data.frame}
 
 \item{full_output}{Logical; whether to return intermediate calculations (default FALSE)}
+
+\item{plot_prefix}{Character string to prepend to output names (default NULL)}
 
 \item{parallel}{Logical; whether to use parallel processing (default FALSE)}
 
