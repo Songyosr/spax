@@ -150,7 +150,7 @@ spread_access <- function(ratios, weights, ratio_cols = NULL,
       site_specific = result$unit_distribution
     ))
   } else {
-    names(result) <- paste0("accessibility_", names(result))
+    names(result) <- paste0(plot_prefix, names(result))
     return(result)
   }
 }

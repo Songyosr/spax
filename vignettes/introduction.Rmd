@@ -373,8 +373,21 @@ plot(vect(mask), add = TRUE)
 
 
 # For multiple indicators - alter
-spread_access(supply_demand_ratio, Wr, 
+spread_access(supply_demand_ratio, Wr, plot_prefix = 'access_',
               ratio_cols = c("r_doctors", "r_nurses", "r_rounds", "r_active_hd")) |>
   plot()
   
 ```
+
+Or we can use the `measure_access()` function to calculate accessibility scores directly:
+
+```{r}
+# access_scores <- measure_access(demand = dialysis_density, 
+#                                 supply = hd, 
+#                                 demand_weights = Wd, 
+#                                 access_weights = Wr,
+#                                 id_col = 'location_id',
+#                                 supply_cols = c('s_total_doctors', 's_total_nurses', 's_rounds_per_week', 's_chronic_hd_machines'))
+```
+
+
