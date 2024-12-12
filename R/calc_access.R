@@ -4,7 +4,10 @@
 #' Not exported - used by calc_accessibility().
 #'
 #' @param ratios Numeric vector of supply-to-demand ratios
-#' @param weights Multi-layer SpatRaster of pre-computed weights
+#' @param weights Multi-layer SpatRaster where:
+#'        - Each layer represents one service site
+#'        - Values are probability weights (0-1) from distance decay
+#'        - Layer names should match site IDs
 #' @param full_output Logical; whether to return full results or just total accessibility
 #' @return If full_output = TRUE, returns list with:
 #'         - access_total: Single-layer SpatRaster of total accessibility
