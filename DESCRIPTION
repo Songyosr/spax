@@ -1,18 +1,29 @@
-Package: spatAccess
+Package: spax
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Spatial Accessibility Analysis with Monte Carlo Simulation
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: MIT + file LICENSE
-Encoding: UTF-8
-LazyData: true
-Suggests: 
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
 Authors@R: 
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
+Description: A comprehensive toolkit for analyzing spatial accessibility to healthcare 
+    facilities using enhanced two-step floating catchment area (2SFCA) methods. 
+    The package provides functions for calculating catchment areas, processing 
+    population demand, and evaluating healthcare facility accessibility. Key features 
+    include Monte Carlo simulation for uncertainty analysis, flexible distance decay 
+    functions, parallel processing capabilities, and support for multiple supply-side 
+    indicators. Designed for healthcare planning and spatial equity analysis, 
+    but applicable to other spatial accessibility contexts.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    terra,
+    rlist,
+    parallel,
+    sf
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 RoxygenNote: 7.3.1
+URL: https://github.com/songyos/spax
+BugReports: https://github.com/songyos/spax/issues

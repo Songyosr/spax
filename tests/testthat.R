@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(spatAccess)
+library(spax)
 
-test_check("spatAccess")
+test_check("spax")
