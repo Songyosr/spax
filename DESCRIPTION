@@ -1,6 +1,6 @@
 Package: spax
 Type: Package
-Title: Spatial Accessibility Analysis with Monte Carlo Simulation
+Title: An R Package for Modularized (Hopefully) Spatial Accessibility Analysis
 Version: 0.1.0
 Authors@R: 
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
