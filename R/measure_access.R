@@ -133,7 +133,6 @@ measure_access <- function(demand, supply, demand_weights, access_weights,
 #'   demand_normalize = "identity",
 #'   id_col = "location_id"
 #' )
-#'
 #' @export
 compute_2sfca <- function(demand, supply, distance,
                           decay_params = list(method = "gaussian", sigma = 30),
