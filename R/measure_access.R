@@ -103,7 +103,6 @@ measure_access <- function(demand, supply, demand_weights, access_weights,
 #' @param demand_normalize Character specifying normalization method: "identity", "standard", or "semi"
 #' @return SpatRaster of 2SFCA accessibility scores or list with full results
 #' @examples
-#' @examples
 #' # Create sample data
 #' library(terra)
 #'
