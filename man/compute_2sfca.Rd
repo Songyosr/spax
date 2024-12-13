@@ -12,30 +12,28 @@ compute_2sfca(
   demand_normalize = "identity",
   id_col = NULL,
   supply_cols = NULL,
+  indicator_names = NULL,
   full_output = FALSE
 )
 }
 \arguments{
 \item{demand}{SpatRaster representing spatial distribution of demand}
 
-\item{supply}{vector, matrix, or data.frame containing supply capacity values}
+\item{supply}{vector, matrix, or data.frame containing supply capacity values.
+If using an sf object, please use st_drop_geometry() first.}
 
 \item{distance}{SpatRaster stack of travel times/distances to facilities}
 
-\item{decay_params}{List of parameters passed directly to compute_weights():
-- method: Decay function type
-- sigma: Decay parameter value
-- Additional parameters as needed}
+\item{decay_params}{List of parameters for decay function}
 
-\item{demand_normalize}{Character or function specifying demand normalization method:
-- "identity": No normalization (default)
-- "standard": Full normalization to sum to 1
-- "semi": Semi-normalization (only if sum > 1)
-- Function: Custom normalization function}
+\item{demand_normalize}{Character specifying normalization method: "identity", "standard", or "semi"}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 
 \item{supply_cols}{Character vector; names of supply columns if supply is a data.frame}
+
+\item{indicator_names}{Character vector; custom names for output accessibility layers.
+If NULL, will use "A_" prefix with supply column names.}
 
 \item{full_output}{Logical; whether to return intermediate calculations}
 }
@@ -43,36 +41,16 @@ compute_2sfca(
 SpatRaster of 2SFCA accessibility scores or list with full results
 }
 \description{
-Specialized implementation of spatial accessibility calculation using the
-Two-Step Floating Catchment Area method. Handles multiple supply indicators
-and supports enhanced distance decay functions.
+Calculate Two-Step Floating Catchment Area (2SFCA) accessibility scores
 }
 \examples{
-# Basic usage with default parameters
-result <- compute_2sfca(demand, supply, distance)
+# Basic usage
+compute_2sfca(demand, supply, distance,
+              supply_cols = c("doctors", "nurses"))
 
-# Custom decay parameters
-decay_params <- list(
-  method = "gaussian",
-  sigma = 45,
-  max_distance = 120
-)
-result <- compute_2sfca(demand, supply, distance,
-                       decay_params = decay_params)
-
-# Using semi-normalization for demand weights
-result <- compute_2sfca(demand, supply, distance,
-                       demand_normalize = "semi")
-
-# Custom normalization function
-custom_norm <- function(x) {
-  normalize_weights(x, method = "competing")
-}
-result <- compute_2sfca(demand, supply, distance,
-                       demand_normalize = custom_norm)
-}
-\seealso{
-\code{\link{measure_access}} for general accessibility calculation
-\code{\link{compute_weights}} for distance decay options
-\code{\link{normalize_weights}} for normalization methods
+# With custom indicator names and decay parameters
+compute_2sfca(demand, supply, distance,
+              supply_cols = c("doctors", "nurses"),
+              indicator_names = c("physician_access", "nurse_access"),
+              decay_params = list(method = "gaussian", sigma = 45))
 }
