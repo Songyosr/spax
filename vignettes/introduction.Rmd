@@ -382,12 +382,30 @@ spread_access(supply_demand_ratio, Wr, plot_prefix = 'access_',
 Or we can use the `measure_access()` function to calculate accessibility scores directly:
 
 ```{r}
-# access_scores <- measure_access(demand = dialysis_density, 
-#                                 supply = hd, 
-#                                 demand_weights = Wd, 
-#                                 access_weights = Wr,
-#                                 id_col = 'location_id',
-#                                 supply_cols = c('s_total_doctors', 's_total_nurses', 's_rounds_per_week', 's_chronic_hd_machines'))
+supply_mat <- hd[,c("s_total_doctors", "s_total_doctors")] |> st_drop_geometry() |> as.matrix()
+
+access_scores <- measure_access(demand = dialysis_density,
+                                supply = hd |> st_drop_geometry(),
+                                demand_weights = Wd,
+                                access_weights = Wr,
+                                id_col = 'location_id',
+                                supply_cols = c("s_total_doctors", "s_total_nurses")
+                              )
+plot(access_scores)
+
+hd |> st_drop_geometry() |> data.table::data.table() |> class()
+access_scores_2 <- compute_2sfca(demand = dialysis_density,
+                                supply = hd |> st_drop_geometry() |> data.table::data.table() ,
+                                distance = distance_raster,
+                                decay_params = list(method = "gaussian", sigma = 30),
+                                demand_normalize = "identity",
+                                id_col = 'location_id',
+                                supply_cols = c("s_total_doctors", "s_total_nurses")
+                              )
+plot(access_scores_2)
+
+access_scores_2
+
 ```
 
 

@@ -6,11 +6,14 @@
 #' supply measures and flexible weight specifications.
 #'
 #' @param demand SpatRaster representing spatial distribution of demand
-#' @param supply vector, matrix, or data.frame containing supply capacity values
+#' @param supply vector, matrix, or data.frame containing supply capacity values.
+#'        If using an sf object, please use st_drop_geometry() first.
 #' @param demand_weights Multi-layer SpatRaster of demand-side weights
 #' @param access_weights Multi-layer SpatRaster of accessibility-side weights
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
+#' @param indicator_names Character vector; custom names for output accessibility layers.
+#'        If NULL, will use "A_" prefix with supply column names.
 #' @param full_output Logical; whether to return intermediate calculations
 #' @return SpatRaster of accessibility scores or list with full results if full_output=TRUE
 #' @seealso
@@ -18,9 +21,19 @@
 #' \code{\link{compute_weights}} for generating weight surfaces
 #' \code{\link{gather_demand}} for demand calculation
 #' \code{\link{spread_access}} for accessibility distribution
+#' @examples
+#' # Basic usage with supply columns
+#' measure_access(demand, supply, weights,
+#'               supply_cols = c("doctors", "nurses"))
+#'
+#' # With custom indicator names
+#' measure_access(demand, supply, weights,
+#'               supply_cols = c("doctors", "nurses"),
+#'               indicator_names = c("physician_access", "nurse_access"))
 #' @export
 measure_access <- function(demand, supply, demand_weights, access_weights,
                            id_col = NULL, supply_cols = NULL,
+                           indicator_names = NULL,
                            full_output = FALSE) {
 
   # Input validation
@@ -30,104 +43,95 @@ measure_access <- function(demand, supply, demand_weights, access_weights,
     stop("demand and weight arguments must be SpatRaster objects")
   }
 
-  # Calculate demand by site using weighted_gather/gather_demand
+  # Check for sf object
+  if (inherits(supply, "sf")) {
+    stop("Supply data is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
+  }
+
+  # Calculate demand by site using gather_demand
   demand_by_site <- gather_demand(demand, demand_weights)
 
-  # Process supply data
+  # Process supply data if it's a data.frame
   if (is.data.frame(supply)) {
     if (is.null(id_col) || is.null(supply_cols)) {
       stop("id_col and supply_cols must be specified for data.frame input")
     }
-    if (!id_col %in% names(supply) || !all(supply_cols %in% names(supply))) {
-      stop("Specified columns not found in supply data.frame")
-    }
 
     # Match and reorder to weight layers
     weight_ids <- names(demand_weights)
-    if (!all(weight_ids %in% supply[[id_col]])) {
-      stop("Some weight layer names not found in supply ID column")
-    }
-
     supply <- supply[match(weight_ids, supply[[id_col]]), supply_cols]
   }
 
   # Calculate ratios
   ratios <- sweep(as.matrix(supply), 1, demand_by_site$potential_demand, "/")
 
-  # Calculate and return accessibility scores
-  return(spread_access(ratios, access_weights, full_output = full_output))
+  # Determine layer names
+  if (is.null(indicator_names)) {
+    if (!is.null(supply_cols)) {
+      indicator_names <- paste0("A_", supply_cols)
+      message("Using supply column names as accessibility indicators: ",
+              paste(indicator_names, collapse = ", "))
+    }
+  } else {
+    if (length(indicator_names) != ncol(ratios)) {
+      stop("Length of indicator_names must match number of supply measures")
+    }
+  }
+
+  # Calculate accessibility scores
+  result <- spread_access(ratios, access_weights, full_output = full_output)
+
+  # Apply names if they exist
+  if (!is.null(indicator_names)) {
+    if (full_output) {
+      names(result$access_scores) <- indicator_names
+    } else {
+      names(result) <- indicator_names
+    }
+  }
+
+  return(result)
 }
 
 #' Calculate Two-Step Floating Catchment Area (2SFCA) accessibility scores
 #'
-#' @description
-#' Specialized implementation of spatial accessibility calculation using the
-#' Two-Step Floating Catchment Area method. Handles multiple supply indicators
-#' and supports enhanced distance decay functions.
-#'
 #' @inheritParams measure_access
 #' @param distance SpatRaster stack of travel times/distances to facilities
-#' @param decay_params List of parameters passed directly to compute_weights():
-#'        - method: Decay function type
-#'        - sigma: Decay parameter value
-#'        - Additional parameters as needed
-#' @param demand_normalize Character or function specifying demand normalization method:
-#'        - "identity": No normalization (default)
-#'        - "standard": Full normalization to sum to 1
-#'        - "semi": Semi-normalization (only if sum > 1)
-#'        - Function: Custom normalization function
+#' @param decay_params List of parameters for decay function
+#' @param demand_normalize Character specifying normalization method: "identity", "standard", or "semi"
 #' @return SpatRaster of 2SFCA accessibility scores or list with full results
-#' @seealso
-#' \code{\link{measure_access}} for general accessibility calculation
-#' \code{\link{compute_weights}} for distance decay options
-#' \code{\link{normalize_weights}} for normalization methods
 #' @examples
-#' # Basic usage with default parameters
-#' result <- compute_2sfca(demand, supply, distance)
+#' # Basic usage
+#' compute_2sfca(demand, supply, distance,
+#'               supply_cols = c("doctors", "nurses"))
 #'
-#' # Custom decay parameters
-#' decay_params <- list(
-#'   method = "gaussian",
-#'   sigma = 45,
-#'   max_distance = 120
-#' )
-#' result <- compute_2sfca(demand, supply, distance,
-#'                        decay_params = decay_params)
-#'
-#' # Using semi-normalization for demand weights
-#' result <- compute_2sfca(demand, supply, distance,
-#'                        demand_normalize = "semi")
-#'
-#' # Custom normalization function
-#' custom_norm <- function(x) {
-#'   normalize_weights(x, method = "competing")
-#' }
-#' result <- compute_2sfca(demand, supply, distance,
-#'                        demand_normalize = custom_norm)
+#' # With custom indicator names and decay parameters
+#' compute_2sfca(demand, supply, distance,
+#'               supply_cols = c("doctors", "nurses"),
+#'               indicator_names = c("physician_access", "nurse_access"),
+#'               decay_params = list(method = "gaussian", sigma = 45))
 #' @export
 compute_2sfca <- function(demand, supply, distance,
                           decay_params = list(method = "gaussian", sigma = 30),
                           demand_normalize = "identity",
                           id_col = NULL, supply_cols = NULL,
+                          indicator_names = NULL,
                           full_output = FALSE) {
 
-  # Compute weights using all provided decay parameters
+  # Check for sf object
+  if (inherits(supply, "sf")) {
+    stop("Supply data is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
+  }
+
+  # Compute weights
   weights <- do.call(compute_weights, c(list(distance = distance), decay_params))
 
   # Process demand weights based on normalization method
-  demand_weights <- if (is.function(demand_normalize)) {
-    # Use custom normalization function
-    demand_normalize(weights)
-  } else {
-    # Use built-in normalization methods
-    method <- match.arg(demand_normalize,
-                        c("identity", "standard", "semi"))
-
-    switch(method,
-           "identity" = weights,
-           "standard" = normalize_weights(weights, method = "standard"),
-           "semi" = normalize_weights(weights, method = "semi"))
-  }
+  demand_weights <- switch(demand_normalize,
+                           "identity" = weights,
+                           "standard" = normalize_weights(weights, method = "normalize"),
+                           "semi" = normalize_weights(weights, method = "semi_normalize"),
+                           stop("Invalid demand_normalize method. Use 'identity', 'standard', or 'semi'"))
 
   # Access weights remain unnormalized
   access_weights <- weights
@@ -139,5 +143,6 @@ compute_2sfca <- function(demand, supply, distance,
                         access_weights = access_weights,
                         id_col = id_col,
                         supply_cols = supply_cols,
+                        indicator_names = indicator_names,
                         full_output = full_output))
 }
