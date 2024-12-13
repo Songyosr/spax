@@ -44,13 +44,34 @@ SpatRaster of 2SFCA accessibility scores or list with full results
 Calculate Two-Step Floating Catchment Area (2SFCA) accessibility scores
 }
 \examples{
-# Basic usage
-compute_2sfca(demand, supply, distance,
-              supply_cols = c("doctors", "nurses"))
+# Create sample data
+library(terra)
 
-# With custom indicator names and decay parameters
-compute_2sfca(demand, supply, distance,
-              supply_cols = c("doctors", "nurses"),
-              indicator_names = c("physician_access", "nurse_access"),
-              decay_params = list(method = "gaussian", sigma = 45))
+# Create a simple demand raster
+r <- rast(nrows=10, ncols=10, xmin=0, xmax=10, ymin=0, ymax=10)
+values(r) <- runif(ncell(r)) * 100  # Random population values
+demand <- r
+
+# Create sample supply data
+supply <- data.frame(
+  location_id = c("A", "B", "C"),
+  doctors = c(10, 15, 20),
+  nurses = c(20, 25, 30)
+)
+
+# Create distance raster stack
+distance <- rast(replicate(3, r))  # 3 layers for 3 facilities
+values(distance) <- runif(ncell(distance) * nlyr(distance)) * 10  # Random distances
+names(distance) <- supply$location_id
+
+# Calculate accessibility
+result <- compute_2sfca(
+  demand = demand,
+  supply = supply,
+  distance = distance,
+  supply_cols = c("doctors", "nurses"),
+  decay_params = list(method = "gaussian", sigma = 30),
+  demand_normalize = "identity",
+  id_col = "location_id"
+)
 }
