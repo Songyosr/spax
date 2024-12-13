@@ -1,0 +1,410 @@
+---
+title: "Spatial Accessibility with spax: A Beginner Guide"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Spatial Accessibility with spax: A Beginner Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/OneDrive-JohnsHopkins/Education/thesis/R/ESRD")
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8, fig.height = 4.5,
+  dpi = 100
+)
+```
+# Overview
+
+The `spax` package provides tools for analyzing spatial accessibility to services using a raster-based approach. This vignette demonstrates the package's functionality using a real-world case study analyzing access to dialysis care in Thailand's Health Region 2.
+
+## Implementation Approach
+
+`spax` is specifically designed to work with raster-based spatial analysis, utilizing the `terra` package's `SpatRaster` class as its primary data structure. This approach offers (hopefully) several advantages:
+
+-   Efficient handling of continuous spatial phenomena
+
+-   Consistent resolution across analysis layers
+
+-   Vectorized operations for improved performance
+
+-   Memory-efficient processing of large spatial datasets
+
+The inclusion of Vector will be implement later when i have time
+
+## Pre-requisites
+
+The package works with several spatial data formats and relies on a few key R packages:
+
+```{r}
+# Install spax if needed
+# install.packages("pak")
+# pak::pak("Songyosr/spax")
+```
+
+```{r}
+# Load required libraries
+library(raster)     # For legacy raster support
+library(terra)      # For modern raster operations
+library(tidyverse)  # For data manipulation
+library(sf)         # For vector spatial data
+library(spax)       # For spatial accessibility analysis
+```
+
+# Conceptual Framework
+
+The spatial accessibility index calculation in `spax` follows an enhanced 2SFCA approach:
+
+1.  **Supply-to-Demand Ratio (R):** For each service location j: Rj = Sj / Σ(Pi × Wd(dij)) where:
+    -   Sj is the service capacity at location j
+    -   Pi is the population demand at location i
+    -   Wd(dij) is the demand-side distance decay weight
+2.  **Accessibility Score (A):** For each location k: Ak = Σ(Rj × Wr(dkj)) where:
+    -   Rj is the supply-to-demand ratio at service location j
+    -   Wr(dkj) is the accessibility-side distance decay weight
+
+The package implements this framework using raster operations for improved computational efficiency.
+
+# Data Preparation
+
+Q: how do you set a working directory in a vignette?
+A: You can set the working directory in the setup chunk at the beginning of the vignette. For example:
+
+
+
+## Import
+
+```{r}
+# Mask
+mask <- readRDS('data/r2/r2_mask.rds')
+
+# Healthcare facility information (supply side)
+hd <- readRDS('data/hd/vect/hd_info.rds')         
+hd_iso <- readRDS('data/hd/vect/hd_isochrones_det4.rds') # Isochrones
+#hd_iso$location_id <- factor(hd_iso$location_id, levels = unique(hd_iso$location_id))
+
+# Population density (demand side)
+pop_density <- readRDS('data/pop_dens/pop_cropped_10.rds')
+```
+
+```{r}
+# Create a smaller version of the population density raster
+tiny_pop_density <- (pop_density) |> 
+  aggregate(fact = 5, fun = "sum", na.rm=TRUE, #method="simple", 
+            progress = "text",# window=w,
+            cores = 8) |> 
+  terra::crop(vect(mask), mask = TRUE) 
+```
+
+## 1. Supply-Side Data
+
+Supply locations (in our case, dialysis centers) include:
+
+-   Geographic coordinates: used to create the traveling time isochrones or distance
+
+-   Capacity indicators such as: Number of dialysis machines, Staff availability
+
+```{r}
+hd <- hd |> 
+  select(location_id, 
+         starts_with('s_'),  # Select columns starting with 's_' - supply indicators
+         starts_with('hd_')) # Select columns starting with 'hd_' - Realized demand indicators
+
+hd |> head()
+```
+
+## 2. Distance/Catchment Areas
+
+The package requires a measure of spatial separation between supply and demand locations. This can be: Travel times, Network distances, Euclidean distances, or Custom distance metrics.
+
+In our example, we use:
+
+-   Pre-computed travel time isochrones (15-minute intervals) around each dialysis center
+
+-   Generated using the OSRM routing engine
+
+```{r}
+# Example
+hd_iso |> 
+  filter(location_id == 'c1') |>
+  ggplot() +
+  geom_sf(aes(fill = iso_mean), col = NA) +
+  geom_sf(data = mask, fill = NA, color = 'black', lwd = 2) +
+  geom_sf(data = hd |> filter(location_id == 'c1'), col = 'red', size = 3) +
+  labs(title = 'Isochrone for Facility C1',
+       fill = 'Traveling time (mins)' ) +
+  scale_fill_viridis_c(option = 'plasma') +
+  theme_minimal()
+```
+
+```{r}
+# Converted to a raster format for analysis
+distance_raster <- fasterize::fasterize(hd_iso, 
+                  tiny_pop_density|> raster(),   # Use the dialysis_density raster as a template
+                  field = "iso_mean", # Fill the raster with the iso_mean values
+                  background = NA,
+                  fun = "sum",
+                  #na.rm = TRUE,
+                  by = "location_id") |> rast() |>
+  terra::crop(vect(mask), mask = TRUE)
+```
+
+```{r}
+# Reorder - ensure order
+# distance_raster <- distance_raster[[hd$location_id]]
+
+# Check
+names(distance_raster)
+plot(distance_raster[[1]], main = 'Distance raster for Facility C1')
+plot(vect(mask), add = TRUE)
+```
+
+```{r eval=FALSE, include=TRUE}
+# Dont know why this is not working - the terra:rasterize seems to corrupt the layer name
+distance_raster <- terra::rasterize(vect(hd_iso), 
+                  tiny_pop_density,   # Use the dialysis_density raster as a template
+                  field = "iso_mean", # Fill the raster with the iso_mean values
+                  background = NA,
+                  fun = "sum",
+                  #na.rm = TRUE,
+                  by = "location_id") |>
+  terra::crop(vect(mask), mask = TRUE)
+
+
+```
+
+## 3. Demand-Side Data
+
+Demand can be represented either as point locations (e.g., population centroids) or a continuous surface (e.g., population density raster). Like previously, we need to convert the demand data to a SpatRaster format.
+
+In our example, we use a population density raster from Meta High Resolution Population Density Maps (2020), aggregated to a manageable resolution while preserving total population counts.
+
+Since our data represents population density rather than actual dialysis cases, we need to make assumptions about the spatial distribution of potential demand. The core assumption is that the distribution of dialysis cases follows that of the general population - in other words, areas with higher population density will have proportionally more dialysis cases.
+
+Under this assumption, we can approach demand modeling in two ways:
+
+1.  Deterministic Approach:
+
+-   Using Thailand's national hemodialysis prevalence rate of 2,448 cases per million population
+
+-   Directly multiply the population density raster by the prevalence rate (2,448/1,000,000)
+
+-   Results in an expected spatial distribution of dialysis cases across the region
+
+-   Provides a single, fixed representation of potential demand
+
+2.  Probabilistic Approach (`sample_pmf` function):
+
+-   Incorporates uncertainty in disease occurrence
+
+-   Uses population density as a probability mass function (PMF)
+
+-   Samples a number of cases based on: Total population, Prevalence rate, Chosen probability distribution (e.g., Poisson, Binomial)
+
+-   Enables Monte Carlo simulation to generate demand distributions
+
+-   Provides insight into potential variability in accessibility scores
+
+For simplicity in this initial example, we'll use the deterministic approach. The probabilistic approach and Monte Carlo simulation capabilities will be covered in later sections.
+
+```{r}
+# Convert the population density to expected dialysis density
+dialysis_density <- tiny_pop_density * 2448 / 1000000 # 2448 dialysis patients per million populations
+
+# Plot
+plot(dialysis_density, main = 'Expected Dialysis Density')
+mtext("Resolution:  1224.476 x 1224.476  m", side = 3, line = 1, cex = 0.8)
+plot(vect(mask), add = TRUE)
+```
+
+# Accessibility Analysis
+
+## Step 0: Distance Decay and Weight Preparation
+
+The package implements a flexible system for spatial interaction modeling through distance decay functions and weight normalization.
+
+1.  **Demand-side Weights (Wd):**
+
+    -   Controls how population demand is allocated to facilities
+
+    -   Can be normalized to prevent demand double-counting
+
+    -   Used in calculating potential demand per facility
+
+2.  **Accessibility-side Weights (Wr):**
+
+    -   Controls how service availability diminishes with distance
+
+    -   Generally left unnormalized to allow cumulative effects
+
+    -   Used in final accessibility calculation
+
+### Decay Functions
+
+The package offers several built-in decay functions through `compute_weights()`:
+
+-   **Gaussian:** $W(d) = exp(-d^2 / (2σ^2))$
+
+-   **Exponential:** $W(d) = exp(-dσ))$
+
+-   **Power:** $W(d) = d^{-\sigma})$
+
+-   **Binary:** $W(d) = 1 if d ≤ sigma, 0 otherwise$
+
+where: - d is the distance/time - σ (sigma) controls the rate of decay
+
+Users can also define custom decay functions by passing a function to calc_decay(). This enables implementation of domain-specific decay behaviors or novel distance-interaction models.
+
+### Weight Normalization
+
+To handle overlapping service areas, `normalize_weights()` provides several options:
+
+-   **Standard normalization:** Weights sum to 1 at each location ()
+
+-   **Semi-normalization**: Only normalizes when sum \> 1
+
+-   **Custom normalization**: User-defined normalization functions
+
+In this example, we use:
+
+-   Gaussian decay (σ = 60 minutes) for both Wd and Wr
+
+-   Semi-normalization for Wd to prevent demand double-counting
+
+-   No normalization for Wr to allow cumulative accessibility effects
+
+```{r}
+# Compute the decayed weight raster for demand - Wd
+# Gaussian decay function with sigma = 60
+# semi-normalized - help reduce double counting of demand
+Wd <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60) |>
+  normalize_weights(method = 'semi')
+
+# Compute the decayed weight raster for accessibility ratio - Wr
+# Gaussian decay function with sigma = 60, no normalization
+Wr <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60)
+
+# Plot
+par(mfrow = c(1, 2))
+plot(Wd[[1]], main = 'Demand Decay Wt (Wd)')
+plot(Wr[[1]], main = 'Accessibility Ratio Decay Wt (Wr)')
+```
+
+## Step 1. Calculate the Supply-Demand Ratio for each health facility
+
+### 1.1 Calculate the total demand for each facility
+
+The calculation of potential demand involves the Hadamard product (element-wise multiplication) between the weight raster stack and the demand raster. For each facility j, we compute:
+
+$$D_j = \sum(W^d_j \odot P)$$
+
+where: - $D_j$ is the potential demand for facility j - $Wd_j$ is the distance decay weight raster for facility j (for the demand) - $P$ is the population/demand raster - $\odot$ denotes the Hadamard product (element-wise multiplication) - $Σ$ represents the sum over all cells
+
+In raster terms, this means: 1. Each cell in the weight raster is multiplied by the corresponding cell in the demand raster 2. These products are then summed to get the total weighted demand for that facility
+
+```{r}
+demand_by_site <- gather_demand(dialysis_density, Wd)
+head(demand_by_site)
+```
+
+### 1.2 Calculate the supply to demand ratio
+
+Now we can calculate the supply-to-demand ratio for each facility. This involves dividing the supply indicators by the potential demand:
+
+$$R_j = S_j/Dj$$
+
+where: 
+
+- $R_j$ is the supply-to-demand ratio for facility j 
+
+- $S_j$ is the supply indicator for facility j 
+
+- $D_j$ is the total potential demand for facility j
+
+```{r}
+# merge the supply and demand data
+supply_demand_ratio <- hd |>
+  st_drop_geometry() |>   # we don't need the geometry column 
+ 
+  merge(demand_by_site, by = 'location_id') |> 
+  mutate(
+    r_doctors     = s_total_doctors / potential_demand,
+    r_nurses      = s_total_nurses / potential_demand,
+    r_rounds      = s_rounds_per_week / potential_demand,
+    r_active_hd   = s_chronic_hd_machines / potential_demand
+  ) |>
+  select(location_id, starts_with("r_"))
+
+# Ensure the order
+supply_demand_ratio <- supply_demand_ratio |>
+  mutate(location_id = factor(location_id, levels = hd$location_id)) |>
+  arrange(location_id)
+
+# Check
+head(supply_demand_ratio)
+```
+
+## Step 2. Calculate Accessibility
+
+Finally, we can calculate the accessibility score for each location. This involves multiplying the supply-to-demand ratio by the accessibility decay weight and summing the results. For each location k, we compute:
+
+$$A_k = \sum(R_j \odot W^r_{kj})$$ 
+
+where: 
+
+- $A_k$ is the accessibility score for location k 
+
+- $R_j$ is the supply-to-demand ratio at facility j 
+
+- $W^r_{kj}$ is the accessibility decay weight from facility j to location k
+
+
+```{r}
+# Calculate accessibility using the supply-demand ratio and Wr
+
+# For one indicator
+spread_access(supply_demand_ratio, Wr, 
+              ratio_cols = "r_doctors") |> plot()
+plot(vect(mask), add = TRUE)
+
+
+# For multiple indicators - alter
+spread_access(supply_demand_ratio, Wr, plot_prefix = 'access_',
+              ratio_cols = c("r_doctors", "r_nurses", "r_rounds", "r_active_hd")) |>
+  plot()
+  
+```
+
+Or we can use the `measure_access()` function to calculate accessibility scores directly:
+
+```{r}
+supply_mat <- hd[,c("s_total_doctors", "s_total_doctors")] |> st_drop_geometry() |> as.matrix()
+
+access_scores <- measure_access(demand = dialysis_density,
+                                supply = hd |> st_drop_geometry(),
+                                demand_weights = Wd,
+                                access_weights = Wr,
+                                id_col = 'location_id',
+                                supply_cols = c("s_total_doctors", "s_total_nurses")
+                              )
+plot(access_scores)
+
+hd |> st_drop_geometry() |> data.table::data.table() |> class()
+access_scores_2 <- compute_2sfca(demand = dialysis_density,
+                                supply = hd |> st_drop_geometry() |> data.table::data.table() ,
+                                distance = distance_raster,
+                                decay_params = list(method = "gaussian", sigma = 30),
+                                demand_normalize = "identity",
+                                id_col = 'location_id',
+                                supply_cols = c("s_total_doctors", "s_total_nurses")
+                              )
+plot(access_scores_2)
+
+access_scores_2
+
+```
+
+

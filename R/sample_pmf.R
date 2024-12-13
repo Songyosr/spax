@@ -76,7 +76,7 @@ sample_pmf <- function(x,
   sum_check <- global(x, "sum", na.rm = TRUE)$sum
   if (abs(sum_check - 1) > 1e-10) {
     # Convert to PMF and get total population
-    pmf_result <- calc_pmf(x, return_total = TRUE)
+    pmf_result <- compute_pmf(x, return_total = TRUE)
     x <- pmf_result$pmf
     if (is.null(size)) {
       size <- pmf_result$total_pop
