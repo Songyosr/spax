@@ -7,16 +7,15 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
+knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/OneDrive-JohnsHopkins/Education/thesis/R/ESRD")
+
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 8, fig.height = 4.5,
+  dpi = 100
 )
-```
-
-```{r setup}
-knitr::opts_chunk$set(include = FALSE)
-knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/OneDrive-JohnsHopkins/Education/thesis/R/ESRD")
 ```
 # Overview
 
