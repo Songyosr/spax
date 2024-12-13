@@ -51,6 +51,7 @@ library(raster)     # For legacy raster support
 library(terra)      # For modern raster operations
 library(tidyverse)  # For data manipulation
 library(sf)         # For vector spatial data
+library(sp)         # For vector spatial data
 library(spax)       # For spatial accessibility analysis
 ```
 

@@ -22,6 +22,7 @@ Imports:
     parallel,
     sf
 Suggests: 
+    sp,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
