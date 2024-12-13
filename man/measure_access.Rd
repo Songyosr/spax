@@ -11,13 +11,15 @@ measure_access(
   access_weights,
   id_col = NULL,
   supply_cols = NULL,
+  indicator_names = NULL,
   full_output = FALSE
 )
 }
 \arguments{
 \item{demand}{SpatRaster representing spatial distribution of demand}
 
-\item{supply}{vector, matrix, or data.frame containing supply capacity values}
+\item{supply}{vector, matrix, or data.frame containing supply capacity values.
+If using an sf object, please use st_drop_geometry() first.}
 
 \item{demand_weights}{Multi-layer SpatRaster of demand-side weights}
 
@@ -26,6 +28,9 @@ measure_access(
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 
 \item{supply_cols}{Character vector; names of supply columns if supply is a data.frame}
+
+\item{indicator_names}{Character vector; custom names for output accessibility layers.
+If NULL, will use "A_" prefix with supply column names.}
 
 \item{full_output}{Logical; whether to return intermediate calculations}
 }
@@ -36,6 +41,16 @@ SpatRaster of accessibility scores or list with full results if full_output=TRUE
 General-purpose function to calculate spatial accessibility by combining
 demand-side and supply-side weighted distributions. Supports multiple
 supply measures and flexible weight specifications.
+}
+\examples{
+# Basic usage with supply columns
+measure_access(demand, supply, weights,
+              supply_cols = c("doctors", "nurses"))
+
+# With custom indicator names
+measure_access(demand, supply, weights,
+              supply_cols = c("doctors", "nurses"),
+              indicator_names = c("physician_access", "nurse_access"))
 }
 \seealso{
 \code{\link{compute_2sfca}} for specific two-step floating catchment area implementation
