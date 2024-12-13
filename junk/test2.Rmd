@@ -1,0 +1,250 @@
+---
+title: "Test"
+author: "Songyos Rajborirug (Tony)"
+date: "2024-12-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/OneDrive-JohnsHopkins/Education/thesis/R/ESRD")
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8, fig.height = 4.5,
+  dpi = 100
+)
+```
+
+# Lib
+
+```{r}
+# Load required libraries
+library(raster)     # For legacy raster support
+library(terra)      # For modern raster operations
+library(tidyverse)  # For data manipulation
+library(sf)         # For vector spatial data
+library(sp)         # For vector spatial data
+library(spax)       # For spatial accessibility analysis
+library(foreach)
+library(doParallel)
+```
+
+
+## Import
+
+```{r}
+# Mask
+mask <- readRDS('data/r2/r2_mask.rds')
+
+# Healthcare facility information (supply side)
+hd <- readRDS('data/hd/vect/hd_info.rds')         
+hd_iso <- readRDS('data/hd/vect/hd_isochrones_det4.rds') # Isochrones
+#hd_iso$location_id <- factor(hd_iso$location_id, levels = unique(hd_iso$location_id))
+
+# Population density (demand side)
+pop_density <- readRDS('data/pop_dens/pop_cropped_10.rds')
+```
+
+```{r}
+# Create a smaller version of the population density raster
+tiny_pop_density <- (pop_density) |> 
+  aggregate(fact = 5, fun = "sum", na.rm=TRUE, #method="simple", 
+            progress = "text",# window=w,
+            cores = 8) |> 
+  terra::crop(vect(mask), mask = TRUE) 
+
+# Convert the population density to expected dialysis density
+dialysis_density <- tiny_pop_density * 2448 / 1000000 # 2448 dialysis patients per million populations
+```
+
+## 1. Supply-Side Data
+
+Supply locations (in our case, dialysis centers) include:
+
+-   Geographic coordinates: used to create the traveling time isochrones or distance
+
+-   Capacity indicators such as: Number of dialysis machines, Staff availability
+
+```{r}
+hd <- hd |> 
+  st_drop_geometry() |>
+  select(location_id, 
+         starts_with('s_'),  # Select columns starting with 's_' - supply indicators
+         starts_with('hd_')) # Select columns starting with 'hd_' - Realized demand indicators
+
+hd |> head()
+```
+
+```{r}
+# Converted to a raster format for analysis
+distance_raster <- fasterize::fasterize(hd_iso, 
+                  tiny_pop_density|> raster(),   # Use the dialysis_density raster as a template
+                  field = "iso_mean", # Fill the raster with the iso_mean values
+                  background = NA,
+                  fun = "sum",
+                  #na.rm = TRUE,
+                  by = "location_id") |> rast() |>
+  terra::crop(vect(mask), mask = TRUE)
+```
+
+```{r}
+# system.time({
+# tuning_results <- tune_decay_params(
+#   distance_raster = distance_raster,
+#   demand_raster = dialysis_density,
+#   supply = hd$s_rounds_per_week,
+#   observed = hd$hd_patients_total,
+#   sigma_range = seq(5, 10, by = 1),
+#   a0_range = seq(0.005, 0.007, by = 0.0001),
+#   debug = T
+# )
+# })
+```
+
+
+```{r}
+system.time({
+tuning_results <- tune_decay_params(
+  distance_raster = distance_raster,
+  demand_raster = dialysis_density,
+  supply = hd$s_rounds_per_week,
+  observed = hd$hd_patients_total,
+  sigma_range = seq(7, 8, by = 0.1),
+  a0_range = seq(0.007, 0.021, by = 0.001),
+  debug = F
+)
+})
+# Plot results
+```
+
+
+```{r}
+ybar <- hd$hd_patients_total 
+
+p2 <- ggplot(tuning_results$results, aes(x = sigma, y = a0)) +
+    geom_tile(aes(
+      fill = rmse#log(rmse/ybar)
+      )) +
+    scale_fill_viridis_c(option = "plasma") +
+    labs(title = "Parameter Space",
+         x = "Sigma (Distance Decay)",
+         y = "A0 (No-Care Threshold)") +
+    theme_minimal()
+
+p2
+#p1
+```
+
+
+```{r}
+best_rmse <- min(tuning_results$results$rmse)
+
+best_correlation <- max(tuning_results$results$correlation)
+
+filtered_results <- tuning_results$results |> 
+  filter( correlation == best_correlation | rmse == best_rmse) |> 
+  select(sigma, a0, rmse, correlation)
+
+filtered_results
+
+```
+
+
+```{r}
+# best_idx <- which.max(results$results$rmse)
+  # best_params <- results$results[best_idx,]
+  # best_pred <- results$predictions[best_idx,]
+  # 
+  # p2 <- ggplot(data.frame(Observed = observed, Predicted = best_pred),
+  #              aes(x = Observed, y = Predicted)) +
+  #   geom_point() +
+  #   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  #   labs(title = sprintf("Best Fit\nσ=%.1f, A0=%.2f",
+  #                        best_params$sigma,
+  #                        best_params$a0)) +
+  #   theme_minimal()
+  # 
+  # gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+```{r}
+test_fit <- calc_params_fit(
+  sigma = 7.5,
+  a0 = 0.005,
+  distance_raster = distance_raster,
+  demand_raster = dialysis_density, 
+  supply = hd$s_rounds_per_week,
+  observed = hd$hd_patients_total,
+  debug = TRUE
+)
+
+test_fit$compare
+
+with(test_fit$compare, {
+  sum(dpois(observed, predicted, log = TRUE))
+})
+
+#sum(dpois(observed, predicted, log = TRUE)
+# 
+# 
+# res(distance_raster)
+# res(dialysis_density)
+```
+
+```{r}
+# Run parallel optimization with multiple starting points
+system.time({
+  optim_results <- tune_decay_params_optim_parallel(
+    distance_raster = distance_raster,
+    demand_raster = dialysis_density,
+    supply = hd$s_rounds_per_week,
+    observed = hd$hd_patients_total,
+    lower = c(sigma = 1, a0 = 0.001),
+    upper = c(sigma = 30, a0 = 0.010),
+    n_starts = 8,  # Number of random starting points
+    debug = TRUE
+  )
+})
+
+# Look at results
+print("Best parameters found:")
+print(optim_results$best_fit$parameters)
+print("\nSummary of all optimization runs:")
+print(summary(optim_results$all_results))
+
+# Plot results
+plot_optim_results(optim_results)
+
+optim_results$best_fit
+plot(optim_results$best_fit$predicted, observed,
+       xlab = "Predicted", ylab = "Observed",
+       main = paste("Best Fit\nR =",
+                    round(results$best_fit$correlation, 3)))
+  abline(0, 1, col = "red", lty = 2)
+
+?plot_optim_results
+
+```
+
+# Junp here
+
+```{r}
+optim_results <- tune_decay_params_optim(
+  distance_raster = distance_raster,
+  demand_raster = dialysis_density,
+  supply = hd$s_rounds_per_week,
+  observed = hd$hd_patients_total,
+  init_params = c(sigma = 10, a0 = 0.01),  # Start with small a0
+  lower = c(sigma = 1, a0 = 0.001),       # Much smaller lower bound for a0
+  upper = c(sigma = 50, a0 = 0.1),        # Much smaller upper bound for a0
+  debug = TRUE
+)
+
+optim_results
+
+
+```
+

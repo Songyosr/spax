@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
   dpi = 100
 )
 ```
+
 # Overview
 
 The `spax` package provides tools for analyzing spatial accessibility to services using a raster-based approach. This vignette demonstrates the package's functionality using a real-world case study analyzing access to dialysis care in Thailand's Health Region 2.
@@ -379,7 +380,7 @@ spread_access(supply_demand_ratio, Wr, plot_prefix = 'access_',
   
 ```
 
-Or we can use the `measure_access()` function to calculate accessibility scores directly:
+Or we can use the `measure_access()` or `compute_2sfca()` function to calculate accessibility scores directly:
 
 ```{r}
 supply_mat <- hd[,c("s_total_doctors", "s_total_doctors")] |> st_drop_geometry() |> as.matrix()
