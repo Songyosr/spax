@@ -1,0 +1,280 @@
+---
+title: "Spatial Accessibility with spax: Probabilistic Demand Analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Spatial Accessibility with spax: Probabilistic Demand Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8, fig.height = 4.5,
+  dpi = 100
+)
+knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/OneDrive-JohnsHopkins/Education/thesis/R/ESRD")
+```
+
+# Overview
+
+The `spax` package provides two approaches to analyzing spatial accessibility: deterministic and probabilistic. While the deterministic approach (covered in the previous vignette) assumes fixed demand patterns, the probabilistic approach accounts for uncertainty in demand distribution. This vignette demonstrates the package's probabilistic analysis capabilities, which are particularly useful when:
+
+- The exact locations of demand are unknown
+
+- You need to account for uncertainty in accessibility estimates
+
+
+## Implementation Approach
+
+The probabilistic analysis in `spax` follows these key principles:
+
+1. **Probability-Based Sampling**: Uses disease density as a probability mass function (PMF) to generate realistic spatial distributions of demand
+
+2. **Monte Carlo Simulation**: Generates multiple demand scenarios to understand variability in accessibility
+
+3. **Statistical Analysis**: Provides tools for analyzing uncertainty and spatial patterns in accessibility scores
+
+## Load Required Libraries
+
+```{r}
+library(raster)     # For legacy raster support
+library(terra)      # For modern raster operations
+library(tidyverse)  # For data manipulation
+library(sf)         # For vector spatial data
+library(spax)       # For spatial accessibility analysis
+```
+
+# Conceptual Framework
+
+The probabilistic demand analysis in `spax` involves three main steps:
+
+1. Demand Generation:
+
+- Convert population density to PMF: P(x,y) = D(x,y) / ∑D
+
+- Sample N points based on disease prevalence: N ~ Poisson(λ = population × prevalence) [or other distributions]
+
+- Distribute points according to PMF
+
+
+2. Monte Carlo Simulation:
+
+- Generate multiple demand realizations
+
+- Calculate accessibility for each realization
+
+- Analyze distribution of results
+
+3. Summarization and Visualization
+
+
+# Data Import
+
+```{r}
+# Import the same data as previous example
+# Mask
+mask <- readRDS('data/r2/r2_mask.rds')
+
+# Healthcare facility information (supply side)
+hd <- readRDS('data/hd/vect/hd_info.rds') |> st_drop_geometry()        
+hd_iso <- readRDS('data/hd/vect/hd_isochrones_det4.rds')
+
+# Population density (demand side)
+pop_density <- readRDS('data/pop_dens/pop_cropped_10.rds')
+
+# Create working version of population density
+tiny_pop_density <- pop_density |> 
+  aggregate(fact = 5, fun = "sum", na.rm=TRUE, cores = 8) |> 
+  terra::crop(vect(mask), mask = TRUE) 
+
+# Convert isochrones to distance raster
+distance_raster <- fasterize::fasterize(
+  hd_iso, 
+  tiny_pop_density |> raster(),
+  field = "iso_mean",
+  background = NA,
+  fun = "sum",
+  by = "location_id"
+) |> 
+  rast() |>
+  terra::crop(vect(mask), mask = TRUE)
+```
+
+
+
+
+
+# Probabilistic Demand Analysis
+
+## 1. Computing the PMF
+
+First, we convert population density to a probability mass function:
+
+```{r}
+# Convert density to PMF for spatial sampling
+pmf_result <- compute_pmf(tiny_pop_density, return_total = TRUE)
+pop_pmf <- pmf_result$pmf
+total_pop <- pmf_result$total
+
+# Verify PMF properties
+global(pop_pmf, "sum", na.rm = TRUE)  # Should be approximately 1
+```
+
+## 2. Single Demand Sample
+
+Let's generate a single sample of dialysis patients.
+
+In this example, we assume a prevalence rate of 2,448 per million population, which is considered low. We will use a Poisson distribution for this simulation.
+
+It’s important to note that we are sampling based on the population density raster. By doing this, we are assuming that dialysis patients are distributed according to the population density. It's crucial to remember that this assumption may not hold true in all cases, so please be ready to adjust the sampling method based on your specific context or data requirements.
+
+```{r}
+# Set parameters
+prevalence_rate <- 2448 / 1e6  # 2,448 per million
+(expected_cases <- total_pop * prevalence_rate) 
+
+# Generate one sample
+set.seed(123)  # For reproducibility
+sample_result <- sample_pmf(
+  pop_pmf,
+  method = "poisson",
+  prob = prevalence_rate,
+  size = total_pop,
+  output = "raster"
+)
+
+# Plot
+plot(sample_result, main = "Single Sample of Dialysis Patients")
+plot(vect(mask), add = TRUE)
+
+# Check
+global(sample_result, "sum", na.rm = TRUE)  # Should be close to expected_cases
+```
+
+## 3. Monte Carlo Simulation
+
+Now let's run multiple simulations to understand uncertainty:
+
+```{r}
+# First calculate weights once instead of in each iteration
+Wd <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60) |>
+  normalize_weights(method = "semi")
+
+Wr <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60)
+
+
+
+# Function to run one iteration
+run_iteration <- function(seed) {
+  # Generate demand sample
+  demand_sample <- sample_pmf(
+    pop_pmf,
+    method = "poisson",
+    prob = prevalence_rate,
+    size = total_pop,
+    seed = seed
+  )
+  
+  # Compute accessibility
+  # Use measure_access with pre-computed weights instead of compute_2sfca
+  measure_access(
+    demand = demand_sample,
+    supply = hd,
+    demand_weights = Wd,
+    access_weights = Wr,
+    id_col = "location_id",
+    supply_cols = c("s_total_doctors", "s_total_nurses")
+  )
+}
+```
+
+
+```{r message=FALSE}
+# Run Monte Carlo simulation
+n_sims <- 10
+results <- lapply(1:n_sims, run_iteration)
+
+# Convert to multi-layer SpatRaster
+result_stack <- rast(results) |>
+  split(rep(1:2, n_sims)) # Split into stacks by indicator
+
+# Split into stacks by indicator
+doc_stack <- result_stack[[1]]
+nur_stack <- result_stack[[2]]
+
+```
+
+## 4. Analyzing Results
+
+```{r}
+# Calculate summary statistics
+summary_stats <- list(
+  mean = app(doc_stack, fun = mean, na.rm = TRUE),
+  sd = app(doc_stack, fun = sd, na.rm = TRUE)
+)
+
+# Plot results
+par(mfrow = c(1,2))
+plot(summary_stats$mean, main = "Mean Accessibility")
+plot(summary_stats$sd, main = "Standard Deviation")
+
+```
+
+```{r}
+# 1. Log transformation analysis
+log_results <- log1p(nur_stack)  # log1p to handle zeros
+log_summary <- list(
+  mean = app(log_results, fun = mean, na.rm = TRUE),
+  sd = app(log_results, fun = sd, na.rm = TRUE)
+)
+
+# 2. Ratio to mean analysis
+mean_access <- global(nur_stack, "mean", na.rm = TRUE)[,1] |> mean()
+ratio_stack <- nur_stack / mean_access
+ratio_summary <- list(
+  mean = app(ratio_stack, fun = mean, na.rm = TRUE),
+  sd = app(ratio_stack, fun = sd, na.rm = TRUE)
+)
+
+# 3. Coefficient of Variation (CV)
+mean_sf <- app(nur_stack, fun = function(x) mean(x, na.rm=TRUE))
+cv <- app(nur_stack, fun = function(x) sd(x, na.rm=TRUE) / mean(x, na.rm=TRUE))
+
+# Plot all results
+par(mfrow=c(2,3))
+
+# Log transformation results
+plot(log_summary$mean, main="Mean of Log Access")
+plot(vect(mask), add=TRUE)
+
+plot(log_summary$sd, main="SD of Log Access")
+plot(vect(mask), add=TRUE)
+
+# Ratio results
+plot(ratio_summary$mean, main="Mean of Access Ratio")
+plot(vect(mask), add=TRUE)
+
+plot(ratio_summary$sd, main="SD of Access Ratio")
+plot(vect(mask), add=TRUE)
+
+# Original mean and CV
+plot(mean_sf, main="Mean Access")
+plot(vect(mask), add=TRUE)
+
+plot(cv, main="Coefficient of Variation")
+plot(vect(mask), add=TRUE)
+```
+
+
+# Next Steps
+
+Consider exploring:
+
+1. Different probability distributions for demand sampling
+
+2. Sensitivity analysis of decay parameters
+
+
+

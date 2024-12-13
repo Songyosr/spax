@@ -18,11 +18,12 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     terra,
-    rlist,
     parallel,
     sf,
     stats,
-    dplyr
+    dplyr,
+    purrr,
+    tibble
 Suggests:
     sp,
     knitr,
@@ -31,7 +32,7 @@ Suggests:
     data.table,
     fasterize,
     raster,
-    tidyverse
+    tidyverse 
 Config/testthat/edition: 3
 RoxygenNote: 7.3.2
 URL: https://github.com/songyos/spax

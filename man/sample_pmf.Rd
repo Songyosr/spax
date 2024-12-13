@@ -10,10 +10,9 @@ sample_pmf(
   size = NULL,
   prob = NULL,
   method = "binomial",
-  method_args = list(),
-  as_raster = TRUE,
-  as_points = FALSE,
-  as_df = FALSE,
+  iterations = 1,
+  output = "raster",
+  names = NULL,
   seed = NULL,
   ...
 )
@@ -38,27 +37,30 @@ detection probability).}
 - "nbinom": Random size from negative binomial(size, prob)
 - custom function: Must return single numeric value}
 
-\item{method_args}{List of additional parameters for sampling method}
+\item{iterations}{Integer. Number of samples to generate (default = 1)}
 
-\item{as_raster}{Logical. If TRUE, returns a SpatRaster (default)}
+\item{output}{Character. Output format, one of:
+- "raster": Returns a SpatRaster stack with counts (default)
+- "points": Returns a list of SpatVectors
+- "matrix": Returns a list of coordinate matrices
+- "dataframe": Returns a list of data.frames}
 
-\item{as_points}{Logical. If TRUE, returns a SpatVector of points}
-
-\item{as_df}{Logical. If TRUE, returns a data.frame}
+\item{names}{Character vector of names for output layers (optional)}
 
 \item{seed}{Integer for random seed (optional)}
 
 \item{...}{Additional arguments passed to spatSample()}
 }
 \value{
-Depending on output flags:
-        - SpatRaster if as_raster = TRUE
-        - SpatVector if as_points = TRUE
-        - data.frame if as_df = TRUE
-        - matrix if all are FALSE
+Depending on output format:
+        - "raster": Multi-layer SpatRaster with one layer per iteration
+        - "points": List of SpatVector objects
+        - "matrix": List of coordinate matrices
+        - "dataframe": List of data.frames
 }
 \description{
-A wrapper function around terra::spatSample() that implements a two-step sampling process:
+A wrapper function around terra::spatSample() that implements a two-step sampling process
+with support for multiple iterations:
 
 1. Sample Size Determination:
    - Deterministic: Specify exact number of samples via n parameter
@@ -70,21 +72,43 @@ A wrapper function around terra::spatSample() that implements a two-step samplin
    - Uses terra::spatSample() to generate spatially distributed points
    - Sampling probability proportional to PMF values
    - Automatically converts density data to PMF if needed
+   - Supports multiple iterations for Monte Carlo simulation
 }
 \examples{
-# Example 1: Deterministic sampling - exactly 100 points
-samples1 <- sample_pmf(pop_density, n = 100)
+\dontrun{
+# Create sample data
+r <- terra::rast(nrows=10, ncols=10)
+terra::values(r) <- runif(100) * 100  # Random population values
 
-# Example 2: Disease case simulation using population size
-# Total population from density data, with disease prevalence
-disease_cases <- sample_pmf(pop_density,
-                           prob = 0.001,  # disease prevalence
-                           method = "binomial")  # size calculated from data
+# Example 1: Multiple samples with fixed size
+# Returns a 10-layer SpatRaster of point distributions
+s1 <- sample_pmf(r, n = 50, iterations = 10)
 
-# Example 3: Species observation with pre-computed habitat PMF
-# Note: habitat_pmf is already a probability mass function (sums to 1)
-observations <- sample_pmf(habitat_pmf,
-                          size = 1000,    # number of trials
-                          prob = 0.3,     # success probability
-                          method = "nbinom")
+# Example 2: Disease case simulation with multiple scenarios
+# Using Poisson distribution for case counts
+s2 <- sample_pmf(r,
+                 prob = 0.001,     # disease prevalence
+                 method = "poisson",
+                 iterations = 100,  # 100 Monte Carlo iterations
+                 names = paste0("sim_", 1:100))
+
+# Example 3: Multiple samples with custom naming
+# First convert to PMF
+pmf <- compute_pmf(r)
+s3 <- sample_pmf(pmf,
+                 size = 1000,      # population size
+                 prob = 0.05,      # occurrence probability
+                 method = "binomial",
+                 iterations = 50,
+                 output = "points") # return as list of point vectors
+
+# Analyze results (if raster output)
+if(inherits(s3, "SpatRaster")) {
+  # Calculate summary statistics
+  mean_cases <- terra::app(s3, fun = mean)
+  sd_cases <- terra::app(s3, fun = sd)
+  quantiles <- terra::app(s3, fun = quantile,
+                         probs = c(0.025, 0.5, 0.975))
+}
+}
 }

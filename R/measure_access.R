@@ -150,11 +150,12 @@ compute_2sfca <- function(demand, supply, distance,
   weights <- do.call(compute_weights, c(list(distance = distance), decay_params))
 
   # Process demand weights based on normalization method
-  demand_weights <- switch(demand_normalize,
-                           "identity" = weights,
-                           "standard" = normalize_weights(weights, method = "normalize"),
-                           "semi" = normalize_weights(weights, method = "semi_normalize"),
-                           stop("Invalid demand_normalize method. Use 'identity', 'standard', or 'semi'"))
+  demand_weights <- normalize_weights(weights, method = demand_normalize)
+    # switch(demand_normalize,
+    #                        "identity" = weights,
+    #                        "standard" = normalize_weights(weights, method = "normalize"),
+    #                        "semi" = normalize_weights(weights, method = "semi"),
+    #                        stop("Invalid demand_normalize method. Use 'identity', 'standard', or 'semi'"))
 
   # Access weights remain unnormalized
   access_weights <- weights

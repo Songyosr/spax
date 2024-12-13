@@ -1,5 +1,6 @@
 exportPattern("^[[:alpha:]]+")
-#' @importFrom terra ifel nlyr rast values global spatSample res ext
-#' @importFrom stats rbinom rnbinom rpois
-#' @importFrom dplyr rename rownames_to_column
-#' @importFrom rlist pluck
+importFrom("stats", "rbinom", "rnbinom", "rpois")
+importFrom("dplyr", "rename")
+importFrom("tibble", "rownames_to_column")
+importFrom("purrr", "pluck")
+importFrom("terra", "ifel", "nlyr", "rast", "values", "global", "spatSample", "res", "ext")

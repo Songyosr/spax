@@ -43,6 +43,7 @@ demand-side and supply-side weighted distributions. Supports multiple
 supply measures and flexible weight specifications.
 }
 \examples{
+\dontrun{
 # Basic usage with supply columns
 measure_access(demand, supply, weights,
               supply_cols = c("doctors", "nurses"))
@@ -51,6 +52,7 @@ measure_access(demand, supply, weights,
 measure_access(demand, supply, weights,
               supply_cols = c("doctors", "nurses"),
               indicator_names = c("physician_access", "nurse_access"))
+}
 }
 \seealso{
 \code{\link{compute_2sfca}} for specific two-step floating catchment area implementation
