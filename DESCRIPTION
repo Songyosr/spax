@@ -18,13 +18,15 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     terra,
-    rlist,
     parallel,
     sf,
     stats,
-    dplyr
+    dplyr,
+    purrr,
+    tibble
 Suggests:
     sp,
+
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
