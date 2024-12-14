@@ -4,7 +4,14 @@
 \alias{compute_weights}
 \title{Compute Spatial Distance Decay Weights}
 \usage{
-compute_weights(distance, method = "gaussian", sigma = NULL, ...)
+compute_weights(
+  distance,
+  method = "gaussian",
+  sigma = NULL,
+  attractiveness = NULL,
+  alpha = 1,
+  ...
+)
 }
 \arguments{
 \item{distance}{Numeric vector, matrix, or SpatRaster of distances}
@@ -14,12 +21,16 @@ compute_weights(distance, method = "gaussian", sigma = NULL, ...)
 
 \item{sigma}{Parameter controlling the rate of decay}
 
+\item{attractiveness}{Numeric vector of attractiveness values, length must match number of layers}
+
+\item{alpha}{Numeric parameter controlling attractiveness sensitivity (default = 1)}
+
 \item{...}{Additional parameters passed to custom decay functions}
 }
 \value{
 Object of the same class as input containing decay weights
 }
 \description{
-Computes weights using different spatial decay functions or a custom function.
+Computes weights using different spatial decay functions with optional attractiveness scaling.
 Supports built-in methods and custom decay functions.
 }

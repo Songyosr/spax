@@ -1,0 +1,218 @@
+---
+title: "Math"
+author: "Songyos Rajborirug (Tony)"
+date: "2024-12-14"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Iterative Spatial Accessibility Model with Parameter Optimization
+
+## 1. Preliminaries
+
+Let:
+
+\- $I$ be the set of demand points (locations)
+
+\- $J$ be the set of facilities -
+
+$d_{ij}$ be the distance/travel time between point $i$ and facility $j$
+
+\- $S_j$ be the service capacity at facility $j$
+
+\- $P_i$ be the population at demand point $i$
+
+\- $O_j$ be the observed utilization at facility $j$
+
+## 2. Model Parameters
+
+-   $\sigma$: distance decay parameter
+-   $a_0$: baseline accessibility parameter (outside option)
+
+## 3. Distance Decay Function
+
+Define the distance decay function $f(d_{ij}; \sigma)$ as:
+
+$$f(d_{ij}; \sigma) = \exp(-\frac{d_{ij}^2}{2\sigma^2})$$
+
+## 4. Iterative Process
+
+### Round 0 (Initialization)
+
+1.  Initial attractiveness: $A_{ij}^{(0)} = S_j f(d_{ij}; \sigma)$
+
+2.  Choice probability:
+    $P(i \rightarrow j)^{(0)} = \frac{A_{ij}^{(0)}}{\sum_{k \in J} A_{ik}^{(0)} + a_0}$
+
+3.  Expected demand:
+    $E[T_j^{(0)}] = \sum_{i \in I} P_i P(i \rightarrow j)^{(0)}$
+
+### Round t (t ≥ 1)
+
+1.  Accessibility calculation:
+
+    -   Step 1:
+        $R_j^{(t)} = \frac{S_j}{\sum_{i \in I} P_i f(d_{ij}; \sigma) P(i \rightarrow j)^{(t-1)}}$
+    -   Step 2: $Access_{ij}^{(t)} = R_j^{(t)} f(d_{ij}; \sigma)$
+
+2.  Updated choice probability:
+    $P(i \rightarrow j)^{(t)} = \frac{Access_{ij}^{(t)}}{\sum_{k \in J} Access_{ik}^{(t)} + a_0}$
+
+3.  Expected demand:
+    $E[T_j^{(t)}] = \sum_{i \in I} P_i P(i \rightarrow j)^{(t)}$
+
+## 5. Parameter Optimization
+
+### Likelihood Function
+
+For observed utilization $O_j$:
+
+$L(\sigma, a_0) = \sum_{j \in J} \log P(O_j | E[T_j^{(t)}])$
+
+where $P(O_j | E[T_j^{(t)}])$ is the Poisson probability mass function:
+
+$P(O_j | E[T_j^{(t)}]) = \frac{(E[T_j^{(t)}])^{O_j} e^{-E[T_j^{(t)}]}}{O_j!}$
+
+### Parameter Updates
+
+For iteration k:
+
+$\sigma_{k+1} = \sigma_k + \eta_\sigma \frac{\partial L}{\partial \sigma}|_{\sigma_k, a_{0k}}$
+
+$a_{0,k+1} = a_{0k} + \eta_{a_0} \frac{\partial L}{\partial a_0}|_{\sigma_k, a_{0k}}$
+
+where $\eta_\sigma$ and $\eta_{a_0}$ are learning rates.
+
+## 6. Convergence Criteria
+
+Define convergence when both conditions are met:
+
+1\. Parameter stability: $|\sigma_{k+1} - \sigma_k| < \epsilon_\sigma$
+and $|a_{0,k+1} - a_{0k}| < \epsilon_{a_0}$
+
+2\. Prediction stability: $|E[T_j^{(t+1)}] - E[T_j^{(t)}]| < \epsilon_T$
+for all $j \in J$
+
+## 7. Multiple Chain Implementation
+
+Run M parallel chains with different initial values
+$(\sigma_0^m, a_0^m)$ for $m = 1,\ldots,M$.
+
+Assess convergence using:
+
+1\. Within-chain variance $W$
+
+2\. Between-chain variance $B$
+
+3\. Potential scale reduction factor
+$\hat{R} = \sqrt{\frac{N-1}{N} + \frac{B}{W}}$
+
+------------------------------------------------------------------------
+
+# Idea 2 Two-Level Iteration Framework
+
+#### Notation Recap
+
+-   $I$: set of demand points\
+-   $J$: set of facilities\
+-   $P_i$: population at demand point $i$\
+-   $S_j$: service capacity of facility $j$\
+-   $d_{ij}$: distance between $i$ and $j$\
+-   $f(d_{ij}; \sigma)$: distance decay function\
+-   $a_0$: baseline accessibility (outside option)\
+-   $O_j$: observed utilization at facility $j$
+
+------------------------------------------------------------------------
+
+### Outer Loop (Parameter Optimization)
+
+**Goal:** Find $\sigma$ and $a_0$ that maximize the likelihood of
+observed data.
+
+1.  **Initialize parameters:**\
+    Initialize $\sigma^{(0)}$ and $a_0^{(0)}$.
+
+2.  **Repeat until parameter convergence:**
+
+    a.  **Inner Loop (Equilibrium):** Given $\sigma^{(k)}, a_0^{(k)}$,
+        run the inner equilibrium loop (described below) to find stable
+        probabilities $P(i \to j)$ and expected demands $E[T_j]$.
+
+    b.  **Compute the likelihood:**\
+        After the inner loop converges, compute: $$
+        L(\sigma^{(k)}, a_0^{(k)}) = \sum_{j \in J} \log P(O_j | E[T_j])
+        $$ For example, using a Poisson model: $$
+        P(O_j | E[T_j]) = \frac{(E[T_j])^{O_j} e^{-E[T_j]}}{O_j!}.
+        $$
+
+    c.  **Update parameters:**\
+        Estimate $\frac{\partial L}{\partial \sigma}$ and
+        $\frac{\partial L}{\partial a_0}$, then update: $$
+        \sigma^{(k+1)} = \sigma^{(k)} + \eta_\sigma \frac{\partial L}{\partial \sigma}, \quad
+        a_0^{(k+1)} = a_0^{(k)} + \eta_{a_0} \frac{\partial L}{\partial a_0}.
+        $$
+
+    d.  **Check outer convergence:**\
+        If $|\sigma^{(k+1)} - \sigma^{(k)}| < \epsilon_\sigma$ and
+        $|a_0^{(k+1)} - a_0^{(k)}| < \epsilon_{a_0}$, stop; otherwise,
+        repeat another outer iteration.
+
+------------------------------------------------------------------------
+
+### Inner Loop (Equilibrium Computation)
+
+**Goal:** For fixed $\sigma$ and $a_0$, find stable $P(i \to j)$ and
+$E[T_j]$.
+
+1.  **Initialize probabilities:** For each $i,j$: $$
+    P(i \to j)^{(0)} = \frac{S_j f(d_{ij}; \sigma)}{\sum_{k \in J} S_k f(d_{ik}; \sigma) + a_0}.
+    $$
+
+2.  **Iterative updating:** For $t = 1, 2, \ldots$:
+
+    -   Compute expected demands: $$
+        E[T_j]^{(t-1)} = \sum_{i \in I} P_i P(i \to j)^{(t-1)}.
+        $$
+
+    -   Update scaling factors: $$
+        R_j^{(t)} = \frac{S_j}{\sum_{i \in I} P_i f(d_{ij}; \sigma) P(i \to j)^{(t-1)}}.
+        $$
+
+    -   Compute new accessibility: $$
+        Access_{ij}^{(t)} = R_j^{(t)} f(d_{ij}; \sigma).
+        $$
+
+    -   Update choice probabilities: $$
+        P(i \to j)^{(t)} = \frac{Access_{ij}^{(t)}}{\sum_{k \in J} Access_{ik}^{(t)} + a_0}.
+        $$
+
+3.  **Check inner convergence:** If $$
+    \max_j |E[T_j]^{(t)} - E[T_j]^{(t-1)}| < \epsilon_T,
+    $$ then stop and return $P(i \to j), E[T_j]$ to the outer loop.
+    Otherwise, continue iterating.
+
+------------------------------------------------------------------------
+
+### Summary of the Full Algorithm
+
+1.  **Outer Initialization:**\
+    Set $\sigma^{(0)}, a_0^{(0)}$.
+
+2.  **Outer Loop:**
+
+    -   Run the inner loop with $\sigma^{(k)}, a_0^{(k)}$ until inner
+        equilibrium.
+    -   Compute likelihood and gradients.
+    -   Update $\sigma$ and $a_0$.
+    -   Check convergence; repeat if needed.
+
+**End Result:**\
+At convergence, you have $\sigma, a_0$ and equilibrium $P(i \to j)$ that
+best align expected utilization with observed data under the chosen
+modeling assumptions.

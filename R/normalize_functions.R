@@ -1,65 +1,60 @@
 #' Normalize Spatial Weights
 #'
 #' @description
-#' Normalizes weights using different methods. Supports numeric vectors, matrices,
-#' and SpatRaster inputs with vectorized operations.
+#' Normalizes weights using different methods with support for outside options.
 #'
 #' @param x Numeric vector, matrix, or SpatRaster of weights
 #' @param method Character string specifying normalization method:
-#'        - "standard": Divide by sum (default)
-#'        - "semi": Normalize only if sum > 1
-#'        - "reference": Normalize by reference value (default is max)
+#'
+#'        - "standard": Divide by sum + a0 (default)
+#'
+#'        - "semi": Normalize only if sum + a0 > 1
+#'
+#'        - "reference": Normalize by reference value
+#'
 #'        - "identity": Return unchanged
+#'
 #'        - Or a custom function(x, ...)
+#'
 #' @param ref_value Optional reference value for "reference" method
+#' @param a0 Non-negative numeric value representing outside option weight (default = 0) *Now working for only standard and semi method
 #' @param ... Additional arguments passed to custom normalization function
 #' @return Object of the same class as input containing normalized weights
-#' @examples
-#' # Standard normalization
-#' w <- c(0.5, 1.0, 1.5, 2.0)
-#' normalize_weights(w)
-#'
-#' # Semi-normalization
-#' normalize_weights(w, method = "semi")
-#'
-#' # Reference normalization
-#' normalize_weights(w, method = "reference", ref_value = 2)
-#'
-#' # With SpatRaster
-#' r <- terra::rast(nrows=10, ncols=10)
-#' terra::values(r) <- runif(100)
-#' normalize_weights(r)
 #' @export
-normalize_weights <- function(x, method = "standard", ref_value = NULL, ...) {
+normalize_weights <- function(x, method = "standard", ref_value = NULL,
+                              a0 = 0, ...) {
   # Input validation
   if (length(x) == 0) {
     stop("Input weights cannot be empty")
   }
+  if (!is.numeric(a0) || length(a0) != 1 || a0 < 0) {
+    stop("a0 must be a non-negative numeric value")
+  }
 
   # Handle custom function
   if (is.function(method)) {
-    return(method(x, ...))
+    return(method(x, a0 = a0, ...))
   }
 
-  # Use predefined methods
+  # Use predefined methods with a0
   switch(method,
          "identity" = x,
-         "standard" = .standard_normalize(x),
-         "semi" = .semi_normalize(x),
+         "standard" = .standard_normalize(x, a0),
+         "semi" = .semi_normalize(x, a0),
          "reference" = .reference_normalize(x, ref_value),
          stop("Invalid normalization method specified")
   )
 }
 
 #' @keywords internal
-.standard_normalize <- function(x) {
+.standard_normalize <- function(x, a0 = 0) {
   if (inherits(x, "SpatRaster")) {
     x_sum <- sum(x, na.rm = TRUE)
-    return(ifel(x_sum > 0, x / x_sum, 0))
+    return(ifel(x_sum + a0 > 0, x / (x_sum + a0), 0))
   } else {
     x_sum <- sum(x, na.rm = TRUE)
-    if (x_sum > 0) {
-      return(x / x_sum)
+    if (x_sum + a0 > 0) {
+      return(x / (x_sum + a0))
     } else {
       return(x * 0)
     }
@@ -67,14 +62,14 @@ normalize_weights <- function(x, method = "standard", ref_value = NULL, ...) {
 }
 
 #' @keywords internal
-.semi_normalize <- function(x) {
+.semi_normalize <- function(x, a0 = 0) {
   if (inherits(x, "SpatRaster")) {
     x_sum <- sum(x, na.rm = TRUE)
-    return(ifel(x_sum > 1, x / x_sum, x))
+    return(ifel(x_sum + a0 > 1, x / (x_sum + a0), x))
   } else {
     x_sum <- sum(x, na.rm = TRUE)
-    if (x_sum > 1) {
-      return(x / x_sum)
+    if (x_sum + a0 > 1) {
+      return(x / (x_sum + a0))
     } else {
       return(x)
     }

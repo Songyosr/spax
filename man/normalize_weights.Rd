@@ -4,19 +4,26 @@
 \alias{normalize_weights}
 \title{Normalize Spatial Weights}
 \usage{
-normalize_weights(x, method = "standard", ref_value = NULL, ...)
+normalize_weights(x, method = "standard", ref_value = NULL, a0 = 0, ...)
 }
 \arguments{
 \item{x}{Numeric vector, matrix, or SpatRaster of weights}
 
 \item{method}{Character string specifying normalization method:
-- "standard": Divide by sum (default)
-- "semi": Normalize only if sum > 1
-- "reference": Normalize by reference value (default is max)
-- "identity": Return unchanged
-- Or a custom function(x, ...)}
+
+       - "standard": Divide by sum + a0 (default)
+
+       - "semi": Normalize only if sum + a0 > 1
+
+       - "reference": Normalize by reference value
+
+       - "identity": Return unchanged
+
+       - Or a custom function(x, ...)}
 
 \item{ref_value}{Optional reference value for "reference" method}
+
+\item{a0}{Non-negative numeric value representing outside option weight (default = 0) *Now working for only standard and semi method}
 
 \item{...}{Additional arguments passed to custom normalization function}
 }
@@ -24,22 +31,5 @@ normalize_weights(x, method = "standard", ref_value = NULL, ...)
 Object of the same class as input containing normalized weights
 }
 \description{
-Normalizes weights using different methods. Supports numeric vectors, matrices,
-and SpatRaster inputs with vectorized operations.
-}
-\examples{
-# Standard normalization
-w <- c(0.5, 1.0, 1.5, 2.0)
-normalize_weights(w)
-
-# Semi-normalization
-normalize_weights(w, method = "semi")
-
-# Reference normalization
-normalize_weights(w, method = "reference", ref_value = 2)
-
-# With SpatRaster
-r <- terra::rast(nrows=10, ncols=10)
-terra::values(r) <- runif(100)
-normalize_weights(r)
+Normalizes weights using different methods with support for outside options.
 }
