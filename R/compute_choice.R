@@ -1,3 +1,12 @@
+#' Internal function for core choice computation
+#' @keywords internal
+.compute_choice_core <- function(weights, attractiveness, alpha, a0, snap) {
+  if (!is.null(attractiveness)) {
+    weights <- weights * (attractiveness^alpha)
+  }
+  return(normalize_weights(weights, method = "standard", a0 = a0, snap = snap))
+}
+
 #' Compute Spatial Choice Probabilities
 #'
 #' @description
@@ -9,6 +18,7 @@
 #' @param attractiveness Optional numeric vector of facility attractiveness values
 #' @param alpha Numeric parameter for attractiveness sensitivity (default = 1)
 #' @param a0 Non-negative numeric value representing outside option weight (default = 0)
+#' @param snap Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples
 #' \dontrun{
@@ -26,11 +36,18 @@
 #' p3 <- compute_choice(w, attractiveness = attr, a0 = 0.1)
 #' }
 #' @export
-compute_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
-  # Input validation
+compute_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE) {
+  # Fast path for internal use
+  if (snap) {
+    return(.compute_choice_core(weights, attractiveness, alpha, a0, snap))
+  }
+
+  # Regular path with validation
   if (!inherits(weights, "SpatRaster")) {
     stop("weights must be a SpatRaster object")
   }
+
+  # Validate attractiveness if provided
   if (!is.null(attractiveness)) {
     if (!is.numeric(attractiveness) || any(attractiveness < 0, na.rm = TRUE)) {
       stop("attractiveness must be a non-negative numeric vector")
@@ -38,14 +55,12 @@ compute_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
     if (length(attractiveness) != nlyr(weights)) {
       stop("Length of attractiveness must match number of weight layers")
     }
-    # Scale weights by attractiveness
-    weights <- weights * (attractiveness^alpha)
   }
 
-  # Normalize to get probabilities (sum to 1 at each location)
-  probs <- normalize_weights(weights, method = "standard", a0 = a0)
+  # Use same core computation
+  probs <- .compute_choice_core(weights, attractiveness, alpha, a0)
 
-  # Add names if not present
+  # Add names for user-facing results
   if (is.null(names(probs))) {
     names(probs) <- paste0("facility_", seq_len(nlyr(probs)))
   }

@@ -9,37 +9,43 @@
 #'        - Each layer represents one aggregation unit
 #'        - Values are weights (typically 0-1) for aggregation
 #'        - Layer names should match unit IDs
+#' @param snap Logical; if TRUE, avoid input validation and return a vector of weighted sums instead of a data.frame. PS. snap is a performance optimization for internal use
 #' @return data.frame with:
 #'         - unit_id: identifier matching weight layer names
 #'         - weighted_sum: aggregated value for each unit
 #' @export
-weighted_gather <- function(values, weights) {
-  # Input validation
-  if (!inherits(values, "SpatRaster")) {
-    stop("values must be a SpatRaster object")
-  }
-  if (!inherits(weights, "SpatRaster")) {
-    stop("weights must be a SpatRaster object")
+weighted_gather <- function(values, weights, snap = FALSE, na.rm = TRUE) {
+  if (!snap) {
+    # Original input validation
+    if (!inherits(values, "SpatRaster")) {
+      stop("values must be a SpatRaster object")
+    }
+    if (!inherits(weights, "SpatRaster")) {
+      stop("weights must be a SpatRaster object")
+    }
+
+    # Check resolution compatibility
+    if (!all(res(values) == res(weights))) {
+      stop("values and weights must have the same resolution")
+    }
+
+    # Check extent compatibility
+    if (!all(ext(values) == ext(weights))) {
+      stop("values and weights must have the same extent")
+    }
+
+    # Original output format
+    weighted_sums <- global(weights, 'sum',
+                            weights = values,
+                            na.rm = na.rm) |>
+      rownames_to_column(var = "unit_id") |>
+      rename('weighted_sum' = weighted_sum)
+
+    return(weighted_sums)
   }
 
-  # Check resolution compatibility
-  if (!all(res(values) == res(weights))) {
-    stop("values and weights must have the same resolution")
-  }
-
-  # Check extent compatibility
-  if (!all(ext(values) == ext(weights))) {
-    stop("values and weights must have the same extent")
-  }
-
-  # Calculate weighted sums
-  weighted_sums <- global(weights, 'sum',
-                          weights = values,
-                          na.rm = TRUE) |>
-    rownames_to_column(var = "unit_id") |>
-    rename('weighted_sum' = weighted_sum)
-
-  return(weighted_sums)
+  # Fast mode - skip checks and return vector
+  return(global(weights, 'sum', weights = values, na.rm = na.rm)$weighted_sum)
 }
 
 #' Calculate demand captured by each service site

@@ -13,7 +13,8 @@
 #' @param value_cols Character vector of column names if values is a data.frame
 #' @param full_output Logical; whether to return intermediate calculations (default FALSE)
 #' @param parallel Logical; whether to use parallel processing (default FALSE)
-#' @param n_cores Integer; number of cores for parallel processing (default NULL)
+#' @param n_cores Integer; number of cores for parallel processing (default NULL
+#' @param snap Logical; if TRUE, avoid input validation PS. To be implement
 #' @return If full_output = TRUE, returns list containing:
 #'         - total_distribution: SpatRaster stack of total distribution per measure
 #'         - unit_distribution: List of unit-specific distribution SpatRasters
@@ -21,7 +22,8 @@
 #' @export
 weighted_spread <- function(values, weights, value_cols = NULL,
                             full_output = FALSE,
-                            parallel = FALSE, n_cores = NULL) {
+                            parallel = FALSE, n_cores = NULL,
+                            snap = FALSE) {
   # Handle vector input directly
   if (is.vector(values)) {
     return(.spread_single(values, weights, full_output))
