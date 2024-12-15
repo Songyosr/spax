@@ -1,0 +1,277 @@
+---
+title: "An Iterative Spatial Accessibility Model with Parameter Estimation"
+author: "Songyos Rajborirug"
+date: "2024-12-14"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+------------------------------------------------------------------------
+
+# Abstract
+
+This paper introduces an iterative spatial accessibility model for
+health services planning, inspired by the Enhanced Three-Step Floating
+Catchment Area (E3SFCA) model. By integrating features from E2SFCA and
+Huff modeling for demand selection, the model estimates a single
+distance decay parameter ($\sigma$) from observed utilization data. This
+approach combines stochastic demand allocation with iterative
+rebalancing of supply and demand to achieve equilibrium in accessibility
+patterns. We employ a Poisson log-likelihood optimization framework for
+parameter estimation and discuss its implications for localized and
+regional planning. The proposed method bridges theoretical advancements
+and practical applications in spatial accessibility analysis.
+
+# Introduction
+
+Spatial accessibility measures are essential tools in health services
+research, urban planning, and transportation studies. They provide
+insights into how easily populations can access facilities and services,
+which is critical for effective resource allocation and planning.
+However, these measures often rely on parameters such as distance decay
+that are difficult to determine and heavily influence the outcomes.
+
+Traditional models, such as the Two-Step Floating Catchment Area (2SFCA)
+and its enhanced versions like the E2SFCA and E3SFCA (Luo et al., 2014),
+attempt to address these challenges but often depend on assumptions that
+may not hold across different contexts. In particular, selecting and
+calibrating the distance decay function remains a recurring issue, as it
+governs how accessibility diminishes with increasing distance.
+
+This paper presents a novel iterative spatial accessibility model that
+extends the E3SFCA framework by incorporating probabilistic demand
+allocation through Huff modeling. The model introduces a single distance
+decay parameter ($\sigma$) and employs a Poisson log-likelihood
+optimization to estimate it from observed utilization data. By
+iteratively balancing demand and supply, the model aims to achieve a
+stable equilibrium that reflects real-world accessibility patterns more
+accurately. This approach not only advances the theoretical foundation
+of spatial accessibility but also provides practical tools for
+policymakers and researchers.
+
+# Model Framework
+
+# Model Framework
+
+may - be discuss abit on the E3SFCA and discuss how does it works before
+goin into our framework
+
+## Notation and Definitions
+
+-   $I$: Set of demand points (e.g., patient residences)
+-   $J$: Set of facilities (e.g., health centers)
+-   $D_i$: Population (or total demand) at location $i \in I$
+-   $S_j$: Service capacity at facility $j \in J$
+-   $d_{ij}$: Distance (or travel time) between location $i$ and
+    facility $j$
+-   $Huff_{ij}$: choice probability of demand point $i$ choosing
+    facility $j$, if they were to visit a facility
+-   $f(d_{ij}; \sigma)$: A distance decay function parameterized by
+    $\sigma$. The function $f$ can be any monotonically decreasing
+    function with respect to distance, such as an exponential or
+    Gaussian form: $$
+    f(d_{ij}; \sigma) = \exp\left(-\frac{d_{ij}}{\sigma}\right)
+    \quad \text{or} \quad
+    f(d_{ij}; \sigma) = \exp\left(-\frac{d_{ij}^2}{2\sigma^2}\right),
+    $$ depending on modeling preferences.
+-   $O_j$: Observed utilization at facility $j$. This could be the
+    number of patients who actually visited the facility from all demand
+    points.
+-   $U_j$: Predicted utilization at facility $j$ based on the model
+    parameters and demand distribution
+
+## Conceptual Approach
+
+Instead of looking at the spatial access problem as a static snapshot,
+we consider it as an stochastic process in which demand chooses supply
+based on a perceived available capacity and distance decay at that time,
+which in turn affects the actual utilization. The model is an iterative
+process that converges to a stable set of choice probabilities and
+expected demands.
+
+The process involves two nested loops:
+
+1.  **Huff-Based Relative Preferences**:\
+    For each demand location $i$, we first consider how it would
+    allocate its population $P_i$ among the facilities if all of them
+    were equally and fully available. We use a Huff model to determine a
+    baseline "choice" distribution: $$
+    Huff_{ij} = \frac{Attr_j f(d_{ij}; \sigma)}{\sum_{k \in J} Attr_k f(d_{ik}; \sigma)},
+    $$
+
+    where $Attr_j$ is an initial attractiveness of facility $j$. This
+    Huff probabilities satisfy:
+
+    $$
+    \sum_{j \in J} Huff_{ij} = 1 \quad \forall i \in I.
+    $$
+
+    Intuitively, $Huff_{ij}$ represents the probability that individuals
+    at $i$ would choose facility $j$ ***if*** they were to visit a
+    facility.
+
+2.  **Distance Decay Realization**:\
+    The Huff probabilities describe relative choice, but not all
+    "intended" demand may actually realize into visits due to friction
+    or other factors. The distance decay function $f(d_{ij}; \sigma)$ is
+    already included in the Huff model, reducing the relative share of
+    distant facilities. If we think of the Huff model as giving a
+    "normalized" preference, the real challenge is to find an
+    equilibrium where facility capacity and actual utilization match.
+
+3.  **Iterative Equilibrium Computation (Inner Loop)**:\
+    Given a fixed $\sigma$, we find a stable set of choice probabilities
+    $P(i \to j)$ and expected utilization $E[U_j]$ that are consistent
+    with both the capacity constraints and the observed spatial
+    patterns. We do this by iterative scaling:
+
+    **3.1 Initialization (**$t = 0$):
+
+    $$
+    (1)\qquad   Attr_j^{(0)} = S_j \qquad 
+    $$
+
+    At the starting point, we make a simple assumption that the
+    facility's attractiveness is proportional to its full capacity, yet
+    to be utilized. This means that if any potential demand from $i$
+    were to visit a facility, they would access to all service available
+    at that facility.
+
+    From that, we can derived the initial choice probabilities:
+
+    $$ 
+    (2)\qquad Huff_{ij}^{(0)} = \frac{S_j f(d_{ij}; \sigma)}{\sum_{k \in J} S_k f(d_{ik}; \sigma)} 
+    $$
+
+    Combining (2) with a distance decay function, we can get the
+    probability of demand $i$ ***utilizing*** facility $j$ at time
+    $t = 0$:
+
+    $$
+    (3)\qquad P(i \to j)^{(0)} = Huff_{ij}^{(0)} \cdot f(d_{ij}; \sigma)
+    $$
+
+    And, by summing over all demand points, we can get the initial
+    expected demand at facility $j$ - this set up is similar to the
+    E3SFCA model (Luo et al., 2017):
+
+    $$
+    (4)\qquad E[U_j]^{(0)} = \sum_{i \in I} D_i P(i \to j)^{(0)}
+    $$
+
+    **3.2 Iterative Steps** (for $t = 1,2,\ldots$):
+
+    a.  **Update the supply availability**: Given the expected demand
+        $E[U_j]^{(t-1)}$, we can now adjust the effective supply of each
+        facility $j$ to reflect whether it was over- or under-selected
+        in the previous iteration:
+
+        $$
+        R_j^{(t)} = \frac{S_j}{E[U_j]^{(t-1)}}
+        $$
+
+    b.  **Update Accessibility**: Like in normal a 2sfca-family method,
+        we calculate the accessibility for each location $k$ to each
+        center $j$ by multiplying the distance decay function with the
+        adjusted supply:
+
+        $$
+        A_{kj}^{(t)} = R_j^{(t)} f(d_{kj}; \sigma).
+        $$
+
+        and that the total access for location $k$ is:
+
+        $$
+        A_k^{(t)} = \sum_{j \in J} A_{kj}^{(t)} = \sum_{j \in J} R_j^{(t)} f(d_{kj}; \sigma)
+        $$
+
+    c.  **Update Choice and Utilizeing Probabilities**: As shown above,
+        if we treat $R_{j}$ as the effective supply at facility $j$, we
+        can update the choice probabilities as a function of
+        accessibility:
+
+        $$
+        Huff_{ij}^{(t)} = \frac{A_{ij}^{(t)}}{\sum_{k \in J} A_{ik}^{(t)}} \newline
+        P(i \to j)^{(t)} = Huff_{ij}^{(t)} \cdot f(d_{kj}; \sigma)
+        $$
+
+    d.  **recompute Expected Utilization**: We can now update the
+        expected utilization at each facility:
+
+        $$
+        E[U_j]^{(t)} = \sum_{i \in I} D_i P(i \to j)^{(t)}
+        $$
+
+    e.  **Convergence Check**: Repeat until: $$
+        \max_j |E[U_j]^{(t)} - E[U_j]^{(t-1)}| < \epsilon_T.
+        $$ Once converged, we have a stable set of $P(i \to j)$ and
+        $E[U_j]$ for the given $\sigma$.
+
+## Parameter Estimation (Outer Loop)
+
+We seek the $\sigma$ that best matches observed utilization $O_j$. Let
+$E[U_j](\sigma)$ be the equilibrium expected utilization at facility $j$
+for a given $\sigma$. We assume $O_j$ are observed counts, and model
+them using a Poisson distribution: $$
+P(O_j | E[U_j](\sigma)) = \frac{(E[U_j](\sigma))^{O_j} e^{-E[U_j](\sigma)}}{O_j!}.
+$$
+
+The log-likelihood is: $$
+L(\sigma) = \sum_{j \in J} \log P(O_j | E[U_j](\sigma)) = \sum_{j \in J} \left[
+O_j \log(E[U_j](\sigma)) - E[U_j](\sigma) - \log(O_j!) \right].
+$$
+
+We find $\sigma$ that maximizes $L(\sigma)$.
+
+**Procedure**:
+
+1.  **Initialize** $\sigma^{(0)}$.
+
+2.  **At Iteration** $k$:
+
+    -   Run the inner loop to find $E[U_j](\sigma^{(k)})$ at
+        equilibrium.
+    -   Compute $L(\sigma^{(k)})$.
+    -   Estimate $\frac{\partial L}{\partial \sigma}$ using analytic or
+        numerical methods. For example: $$
+        \frac{\partial L}{\partial \sigma} = \sum_{j \in J} \left[
+        \frac{O_j - E[U_j](\sigma)}{E[U_j](\sigma)} \right]
+        \frac{\partial E[U_j](\sigma)}{\partial \sigma}.
+        $$
+
+3.  **Update** $\sigma$: $$
+    \sigma^{(k+1)} = \sigma^{(k)} + \eta_\sigma \frac{\partial L}{\partial \sigma}(\sigma^{(k)}),
+    $$ where $\eta_\sigma$ is a step size or use a more sophisticated
+    optimizer like Newton-Raphson or BFGS.
+
+4.  **Convergence**: If
+    $|\sigma^{(k+1)} - \sigma^{(k)}| < \epsilon_\sigma$, stop.
+    Otherwise, repeat until convergence.
+
+## Interpretations
+
+-   $\sigma$: The decay parameter $\sigma$ determines how quickly
+    accessibility falls off with distance. A small $\sigma$ implies a
+    steep decay—demand is strongly deterred by distance, leading to
+    highly localized utilization patterns. A large $\sigma$ implies a
+    gentler decay, allowing facilities to draw patients from farther
+    away.
+
+-   **No Outside Option**: Unlike models that rely on a baseline $a_0$
+    to allow for unserved demand, this approach naturally produces
+    unserved demand. If the distance decay is sufficiently strong, not
+    all $P_i$ will manifest as utilization $O_j$. The equilibrium
+    probabilities reflect this shortfall without needing an extra
+    parameter.
+
+## Pseudocode Summary
+
+{add them}
+
+## Pseudocode Summary
