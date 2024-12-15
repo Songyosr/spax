@@ -9,7 +9,7 @@
 #'        - Each layer represents one aggregation unit
 #'        - Values are weights (typically 0-1) for aggregation
 #'        - Layer names should match unit IDs
-#' @param snap Logical; if TRUE, avoid input validation and return a vector of weighted sums instead of a data.frame. PS. snap is a performance optimization for internal use
+#' @param snap Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use
 #' @return data.frame with:
 #'         - unit_id: identifier matching weight layer names
 #'         - weighted_sum: aggregated value for each unit
@@ -44,8 +44,8 @@ weighted_gather <- function(values, weights, snap = FALSE, na.rm = TRUE) {
     return(weighted_sums)
   }
 
-  # Fast mode - skip checks and return vector
-  return(global(weights, 'sum', weights = values, na.rm = na.rm)$weighted_sum)
+  # Fast mode - skip checks
+  return(global(weights, 'sum', weights = values, na.rm = na.rm))
 }
 
 #' Calculate demand captured by each service site

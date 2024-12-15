@@ -4,7 +4,7 @@
 \alias{compute_choice}
 \title{Compute Spatial Choice Probabilities}
 \usage{
-compute_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0)
+compute_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 }
 \arguments{
 \item{weights}{Multi-layer SpatRaster of spatial weights (e.g., from compute_weights)}
@@ -14,6 +14,8 @@ compute_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0)
 \item{alpha}{Numeric parameter for attractiveness sensitivity (default = 1)}
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0)}
+
+\item{snap}{Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use}
 }
 \value{
 SpatRaster stack of choice probabilities (layers sum to 1 at each location)

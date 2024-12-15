@@ -49,7 +49,7 @@ pop_density <- readRDS('data/pop_dens/pop_cropped_10.rds')
 ```{r}
 # Create a smaller version of the population density raster
 tiny_pop_density <- (pop_density) |> 
-  aggregate(fact = 10, fun = "sum", na.rm=TRUE, #method="simple", 
+  aggregate(fact = 5, fun = "sum", na.rm=TRUE, #method="simple", 
             progress = "text",# window=w,
             cores = 8) |> 
   terra::crop(vect(mask), mask = TRUE) 
@@ -82,36 +82,20 @@ distance_raster <- fasterize::fasterize(hd_iso,
 #plot(distance_raster)
 ```
 
-
 # Analysis
 ```{r}
-# run inner loop
-#hd$s_chronic_hd_machines
+results <- run_access_chain(
+  distance_raster = distance_raster, 
+  demand = dialysis_density, 
+  supply = hd$s_rounds_per_week, 
+  sigma = 90,
+  convergence_type = 'ratio',
+  max_iter = 100, tolerance = 1e-3, 
+  lambda = 0.7, debug = T) 
 
-system.time({
-  tmp <- run_accessibility_model(distance_raster, dialysis_density, 
-                        supply = hd$s_rounds_per_week, 
-                        sigma = 30, max_iter = 300, tolerance = 20, debug = F) 
-})
-```
-```{r}
-# Analyze convergence patterns
-analysis <- analyze_convergence(tmp$differences, threshold = 0.1)
-
-analysis
-
-# Print summary of problematic facilities
-print(analysis$diagnostics[analysis$problematic_facilities,])
-
-# Plot with highlighted problems
-plot_convergence_diagnosis(tmp$differences, analysis)
 ```
 
 ```{r}
-tmp$differences
-
-# Plot summary statistics
-plot_convergence(tmp$differences)
-plot_convergence_summary(tmp$differences)
+results$accessibility |> plot()
 ```
 
