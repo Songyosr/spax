@@ -1,0 +1,117 @@
+---
+title: "Experiment I: Inner loop"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Experiment I: Inner loop}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/OneDrive-JohnsHopkins/Education/thesis/R/ESRD")
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8, fig.height = 4.5,
+  dpi = 100
+)
+```
+
+```{r}
+library(spax)
+# Load required libraries
+library(raster)     # For legacy raster support
+library(terra)      # For modern raster operations
+library(tidyverse)  # For data manipulation
+library(sf)         # For vector spatial data
+library(sp)         # For vector spatial data
+library(spax)       # For spatial accessibility analysis
+library(foreach)
+library(doParallel)
+```
+## Import
+
+```{r}
+# Mask
+mask <- readRDS('data/r2/r2_mask.rds')
+
+# Healthcare facility information (supply side)
+hd <- readRDS('data/hd/vect/hd_info.rds')         
+hd_iso <- readRDS('data/hd/vect/hd_isochrones_det4.rds') # Isochrones
+#hd_iso$location_id <- factor(hd_iso$location_id, levels = unique(hd_iso$location_id))
+
+# Population density (demand side)
+pop_density <- readRDS('data/pop_dens/pop_cropped_10.rds')
+```
+
+```{r}
+# Create a smaller version of the population density raster
+tiny_pop_density <- (pop_density) |> 
+  aggregate(fact = 10, fun = "sum", na.rm=TRUE, #method="simple", 
+            progress = "text",# window=w,
+            cores = 8) |> 
+  terra::crop(vect(mask), mask = TRUE) 
+
+# Convert the population density to expected dialysis density
+dialysis_density <- tiny_pop_density * 2448 / 1000000 # 2448 dialysis patients per million populations
+```
+
+
+```{r}
+hd <- hd |> 
+  st_drop_geometry() |>
+  select(location_id, 
+         starts_with('s_'),  # Select columns starting with 's_' - supply indicators
+         starts_with('hd_')) # Select columns starting with 'hd_' - Realized demand indicators
+
+hd |> head()
+```
+
+```{r}
+# Converted to a raster format for analysis
+distance_raster <- fasterize::fasterize(hd_iso, 
+                  tiny_pop_density|> raster(),   # Use the dialysis_density raster as a template
+                  field = "iso_mean", # Fill the raster with the iso_mean values
+                  background = NA,
+                  fun = "sum",
+                  #na.rm = TRUE,
+                  by = "location_id") |> rast() |>
+  terra::crop(vect(mask), mask = TRUE)
+#plot(distance_raster)
+```
+
+
+# Analysis
+```{r}
+# run inner loop
+#hd$s_chronic_hd_machines
+
+system.time({
+  tmp <- run_accessibility_model(distance_raster, dialysis_density, 
+                        supply = hd$s_rounds_per_week, 
+                        sigma = 30, max_iter = 300, tolerance = 20, debug = F) 
+})
+```
+```{r}
+# Analyze convergence patterns
+analysis <- analyze_convergence(tmp$differences, threshold = 0.1)
+
+analysis
+
+# Print summary of problematic facilities
+print(analysis$diagnostics[analysis$problematic_facilities,])
+
+# Plot with highlighted problems
+plot_convergence_diagnosis(tmp$differences, analysis)
+```
+
+```{r}
+tmp$differences
+
+# Plot summary statistics
+plot_convergence(tmp$differences)
+plot_convergence_summary(tmp$differences)
+```
+

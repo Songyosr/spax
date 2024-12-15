@@ -191,24 +191,39 @@ The process involves two nested loops:
         A_k^{(t)} = \sum_{j \in J} A_{kj}^{(t)} = \sum_{j \in J} R_j^{(t)} f(d_{kj}; \sigma)
         $$
 
-    c.  **Update Choice and Utilizeing Probabilities**: As shown above,
-        if we treat $R_{j}$ as the effective supply at facility $j$, we
-        can update the choice probabilities as a function of
-        accessibility:
+    c.  **Update Attractiveness**: Now, we can treat $R_{j}^{(t)}$ as
+        the new attractiveness factor of each facility. But to prevent
+        the risk of oscillating demand when two or more centers keep
+        "stealing" demand from each other, we add a learning rate,
+        $\lambda$, which represents a fraction of the change in the
+        attractiveness from the previous iteration. So the new
+        attractiveness is:
 
         $$
-        Huff_{ij}^{(t)} = \frac{A_{ij}^{(t)}}{\sum_{k \in J} A_{ik}^{(t)}} \newline
+        Attr_j^{(t)} = (1 - \lambda) Attr_j^{(t-1)} + \lambda R_j^{(t)}
+        $$
+
+        which can also represent a delay in the demand realization of
+        change in supply.
+
+    d.  **Update Choice Utilizing Probabilities**: we can then update
+        the choice probabilities as a function of the new attractiveness
+        and the distance decay function:
+
+        $$
+        Huff_{ij}^{(t)} = \frac{Attr_{ij}^{(t)}}{\sum_{k \in J} Attr_{ik}^{(t)}} 
+        \newline
         P(i \to j)^{(t)} = Huff_{ij}^{(t)} \cdot f(d_{kj}; \sigma)
         $$
 
-    d.  **recompute Expected Utilization**: We can now update the
+    e.  **recompute Expected Utilization**: We can now update the
         expected utilization at each facility:
 
         $$
         E[U_j]^{(t)} = \sum_{i \in I} D_i P(i \to j)^{(t)}
         $$
 
-    e.  **Convergence Check**: Repeat until: $$
+    f.  **Convergence Check**: Repeat until: $$
         \max_j |E[U_j]^{(t)} - E[U_j]^{(t-1)}| < \epsilon_T.
         $$ Once converged, we have a stable set of $P(i \to j)$ and
         $E[U_j]$ for the given $\sigma$.
