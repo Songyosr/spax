@@ -2,19 +2,18 @@
 % Please edit documentation in R/sample_pmf.R
 \name{sample_pmf}
 \alias{sample_pmf}
-\title{Sample Points from Probability Surface}
+\title{Sample Points from Probability Surface with Multiple Realizations (Allowing Double Counting)}
 \usage{
 sample_pmf(
   x,
   n = NULL,
   size = NULL,
   prob = NULL,
-  method = "binomial",
+  method = "poisson",
+  ...,
   iterations = 1,
-  output = "raster",
-  names = NULL,
   seed = NULL,
-  ...
+  snap = FALSE
 )
 }
 \arguments{
@@ -24,91 +23,28 @@ sample_pmf(
 If specified, overrides probabilistic sampling parameters.}
 
 \item{size}{Integer or NULL. Population size parameter for probability distributions.
-If NULL and input is density, will be calculated automatically from the data.}
+If NULL and input is density, will be calculated from data.}
 
-\item{prob}{Numeric between 0 and 1. Probability parameter for sampling methods.
-Represents rate or probability of occurrence (e.g., disease prevalence,
-detection probability).}
+\item{prob}{Numeric between 0 and 1. Probability parameter (e.g., disease prevalence)}
 
-\item{method}{Character string or function specifying how sample size is determined:
-- NULL: Uses fixed n parameter
+\item{method}{Character string specifying built-in method or custom function:
 - "poisson": Random size with mean = size * prob
 - "binomial": Random size from binomial(size, prob)
 - "nbinom": Random size from negative binomial(size, prob)
-- custom function: Must return single numeric value}
+- custom function: Must return vector of length iterations}
 
-\item{iterations}{Integer. Number of samples to generate (default = 1)}
+\item{...}{Additional arguments passed to custom sampling function}
 
-\item{output}{Character. Output format, one of:
-- "raster": Returns a SpatRaster stack with counts (default)
-- "points": Returns a list of SpatVectors
-- "matrix": Returns a list of coordinate matrices
-- "dataframe": Returns a list of data.frames}
-
-\item{names}{Character vector of names for output layers (optional)}
+\item{iterations}{Integer. Number of realizations to generate}
 
 \item{seed}{Integer for random seed (optional)}
 
-\item{...}{Additional arguments passed to spatSample()}
+\item{snap}{Logical. If TRUE, enters fast mode with minimal validation (default FALSE)}
 }
 \value{
-Depending on output format:
-        - "raster": Multi-layer SpatRaster with one layer per iteration
-        - "points": List of SpatVector objects
-        - "matrix": List of coordinate matrices
-        - "dataframe": List of data.frames
+SpatRaster with one layer per realization, containing counts of samples per cell
 }
 \description{
-A wrapper function around terra::spatSample() that implements a two-step sampling process
-with support for multiple iterations:
-
-1. Sample Size Determination:
-   - Deterministic: Specify exact number of samples via n parameter
-   - Probabilistic: Generate random sample size using probability distributions
-     and population parameters (size, prob). Useful for Monte Carlo simulations
-     modeling variability in occurrence rates (e.g., disease cases, species observations)
-
-2. Spatial Sampling:
-   - Uses terra::spatSample() to generate spatially distributed points
-   - Sampling probability proportional to PMF values
-   - Automatically converts density data to PMF if needed
-   - Supports multiple iterations for Monte Carlo simulation
-}
-\examples{
-\dontrun{
-# Create sample data
-r <- terra::rast(nrows=10, ncols=10)
-terra::values(r) <- runif(100) * 100  # Random population values
-
-# Example 1: Multiple samples with fixed size
-# Returns a 10-layer SpatRaster of point distributions
-s1 <- sample_pmf(r, n = 50, iterations = 10)
-
-# Example 2: Disease case simulation with multiple scenarios
-# Using Poisson distribution for case counts
-s2 <- sample_pmf(r,
-                 prob = 0.001,     # disease prevalence
-                 method = "poisson",
-                 iterations = 100,  # 100 Monte Carlo iterations
-                 names = paste0("sim_", 1:100))
-
-# Example 3: Multiple samples with custom naming
-# First convert to PMF
-pmf <- compute_pmf(r)
-s3 <- sample_pmf(pmf,
-                 size = 1000,      # population size
-                 prob = 0.05,      # occurrence probability
-                 method = "binomial",
-                 iterations = 50,
-                 output = "points") # return as list of point vectors
-
-# Analyze results (if raster output)
-if(inherits(s3, "SpatRaster")) {
-  # Calculate summary statistics
-  mean_cases <- terra::app(s3, fun = mean)
-  sd_cases <- terra::app(s3, fun = sd)
-  quantiles <- terra::app(s3, fun = quantile,
-                         probs = c(0.025, 0.5, 0.975))
-}
-}
+Efficiently generates multiple realizations of point patterns from a probability
+mass function (PMF) surface using a vectorized approach. Allows multiple samples per cell.
 }
