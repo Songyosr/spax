@@ -23,7 +23,8 @@ Imports:
     stats,
     dplyr,
     purrr,
-    tibble
+    tibble,
+    withr,
 Suggests:
     sp,
     knitr,
