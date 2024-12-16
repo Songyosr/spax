@@ -18,7 +18,7 @@
 #' @param ... Additional arguments passed to custom sampling function
 #' @param iterations Integer. Number of realizations to generate
 #' @param seed Integer for random seed (optional)
-#' @parem replace_0 Logical. If TRUE, replaces zero values with NA before sampling (default TRUE)
+#' @parm replace_0 Logical. If TRUE, replaces zero values with NA before sampling (default TRUE)
 #' @param snap Logical. If TRUE, enters fast mode with minimal validation (default FALSE)
 #' @return SpatRaster with one layer per realization, containing counts of samples per cell
 #' @export

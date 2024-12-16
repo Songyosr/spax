@@ -13,6 +13,7 @@ sample_pmf(
   ...,
   iterations = 1,
   seed = NULL,
+  replace_0 = TRUE,
   snap = FALSE
 )
 }

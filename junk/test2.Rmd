@@ -103,6 +103,10 @@ distance_raster <- fasterize::fasterize(hd_iso,
 # })
 ```
 
+```{r}
+
+```
+
 
 ```{r}
 system.time({
@@ -232,19 +236,305 @@ plot(optim_results$best_fit$predicted, observed,
 # Junp here
 
 ```{r}
-optim_results <- tune_decay_params_optim(
-  distance_raster = distance_raster,
-  demand_raster = dialysis_density,
-  supply = hd$s_rounds_per_week,
-  observed = hd$hd_patients_total,
-  init_params = c(sigma = 10, a0 = 0.01),  # Start with small a0
-  lower = c(sigma = 1, a0 = 0.001),       # Much smaller lower bound for a0
-  upper = c(sigma = 50, a0 = 0.1),        # Much smaller upper bound for a0
-  debug = TRUE
-)
+# optim_results <- tune_decay_params_optim(
+#   distance_raster = distance_raster,
+#   demand_raster = dialysis_density,
+#   supply = hd$s_rounds_per_week,
+#   observed = hd$hd_patients_total,
+#   init_params = c(sigma = 10, a0 = 0.01),  # Start with small a0
+#   lower = c(sigma = 1, a0 = 0.001),       # Much smaller lower bound for a0
+#   upper = c(sigma = 50, a0 = 0.1),        # Much smaller upper bound for a0
+#   debug = TRUE
+# )
+# 
+# optim_results
 
-optim_results
+
+```
 
 
+# test 
+
+
+```{r}
+# Benchmarking different approaches to PMF sampling
+# Requires: terra, microbenchmark, tidyverse
+
+library(terra)
+library(microbenchmark)
+library(tidyverse)
+
+# Helper functions for the two approaches
+sample_pmf_rasterize <- function(x, n_samples, template) {
+    points <- spatSample(x, size = n_samples, method = "weights", as.points = TRUE)
+    rasterize(points, template, fun = "count")
+}
+
+sample_pmf_direct <- function(x, n_samples, template) {
+    r <- rast(template)
+    values(r) <- 0  # Initialize empty raster
+    # Get cell numbers directly
+    sampled_cells <- spatSample(x, size = n_samples, 
+                               method = "weights", 
+                               cells = TRUE)$cell
+    # Increment the counts
+    values(r)[sampled_cells] <- values(r)[sampled_cells] + 1
+    r
+}
+
+# # sample_pmf_direct(tiny_pop_density, 15, tiny_pop_density)
+# # spatSample(x, size = n_samples, method = "weights")
+# testt <- spatSample(tiny_pop_density, size = 15, 
+#                     method = "weights",
+#                     cell = T,
+#                     values = F)
+```
+
+
+```{r}
+testt
+#values(tiny_pop_density)
+```
+
+
+```{r}
+# # Create test data of different sizes
+# create_test_raster <- function(size) {
+#     r <- rast(nrows = size, ncols = size)
+#     values(r) <- runif(ncell(r))
+#     r <- r / global(r, "sum", na.rm = TRUE)$sum  # Convert to PMF
+#     return(r)
+# }
+# 
+# # Benchmark parameters
+# raster_sizes <- c(100, 500, 1000)  # Different raster dimensions
+# sample_sizes <- c(100, 1000, 10000)  # Different numbers of points to sample
+```
+
+```{r}
+# Create test raster function
+create_test_raster <- function(size) {
+    r <- rast(nrows = size, ncols = size)
+    values(r) <- runif(ncell(r))
+    r <- r / global(r, "sum", na.rm = TRUE)$sum  # Convert to PMF
+    return(r)
+}
+
+# Create test scenarios
+scenarios <- expand_grid(
+    raster_size = c(300,700, 1500),
+    sample_size = c(800, 8000)
+) |>
+    mutate(
+        test_raster = map(raster_size, create_test_raster)
+    )
+
+```
+
+# Run benc
+```{r}
+# Run benchmarks
+benchmark_results <- scenarios %>%
+    mutate(
+        benchmark = pmap(list(test_raster, sample_size, test_raster), 
+            function(rast, size, template) {
+                microbenchmark(
+                    rasterize = sample_pmf_rasterize(rast, size, template),
+                    direct = sample_pmf_direct(rast, size, template),
+                    times = 10
+                )
+            })
+    ) %>%
+    select(-test_raster) %>%  # Remove the raster objects
+    unnest(benchmark) %>%
+    mutate(time = time / 1e9)  # Convert to seconds
+```
+
+#summ
+```{r}
+# Summarize results
+summary_stats <- benchmark_results %>%
+    group_by(raster_size, sample_size, expr) %>%
+    summarise(
+        mean_time = mean(time),
+        sd_time = sd(time),
+        median_time = median(time),
+        .groups = 'drop'
+    )
+
+# Plot results
+ggplot(summary_stats, 
+       aes(x = factor(sample_size), y = mean_time, 
+           fill = expr, group = expr)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = mean_time - sd_time, 
+                     ymax = mean_time + sd_time),
+                 position = position_dodge(0.9), width = 0.25) +
+    facet_wrap(~raster_size, scales = "free_y",
+              labeller = labeller(raster_size = 
+                                  function(x) paste0("Raster: ", x, "x", x))) +
+    labs(x = "Sample Size",
+         y = "Time (seconds)",
+         title = "Performance Comparison of PMF Sampling Methods",
+         subtitle = "Error bars show ±1 SD") +
+    theme_minimal()
+
+# Print detailed summary
+print(summary_stats %>%
+        arrange(raster_size, sample_size, expr))
+```
+
+```{r}
+sample_pmf_optimized2 <- function(x, iterations, lambda, template) {
+    # 1. Get sample sizes for all iterations at once
+    n_samples <- rpois(iterations, lambda)
+    total_n <- sum(n_samples)
+    
+    # 2. Create empty multi-layer template 
+    result <- rast(template, nlyrs = iterations)
+    values(result) <- 0
+    
+    # 3. Do one large sampling
+    cells <- spatSample(x, size = total_n, method = "weights", cells = TRUE)$cell
+    
+    # 4. Create layer indices based on sample sizes
+    layer_indices <- rep(1:iterations, times = n_samples)
+    
+    # 5. Create indexing matrix for all points at once
+    idx <- cbind(cells, layer_indices)
+    
+    # 6. Fill all values in one operation
+    values(result)[idx] <- 1
+    
+    return(result)
+}
+```
+
+# TEst for best repeat sample
+```{r}
+# Benchmark different approaches to PMF sampling
+library(terra)
+library(microbenchmark)
+library(tidyverse)
+
+# Original approach - separate sampling for each realization
+sample_pmf_original <- function(x, iterations, lambda, template) {
+    replicate(iterations, {
+        n <- rpois(1, lambda)
+        cells <- spatSample(x, size = n, method = "weights", cells = TRUE)$cell
+        r <- rast(template)
+        values(r) <- 0
+        values(r)[cells] <- 1
+        r
+    }, simplify = FALSE) |>
+    rast()
+}
+
+# Optimized - one large sampling, split into layers with loop
+sample_pmf_opt1 <- function(x, iterations, lambda, template) {
+    n_samples <- rpois(iterations, lambda)
+    total_n <- sum(n_samples)
+    
+    result <- rast(template, nlyrs = iterations)
+    values(result) <- 0
+    
+    cells <- spatSample(x, size = total_n, method = "weights", cells = TRUE)$cell
+    layer_indices <- rep(1:iterations, times = n_samples)
+    
+    # Use sapply instead of for loop
+    sapply(1:iterations, function(i) {
+        layer_cells <- cells[layer_indices == i]
+        values(result)[cbind(layer_cells, rep(i, length(layer_cells)))] <- 1
+    })
+    
+    result
+}
+
+# Fully vectorized - one large sampling, one assignment
+sample_pmf_opt2 <- function(x, iterations, lambda, template) {
+    n_samples <- rpois(iterations, lambda)
+    total_n <- sum(n_samples)
+    
+    result <- rast(template, nlyrs = iterations)
+    values(result) <- 0
+    
+    cells <- spatSample(x, size = total_n, method = "weights", cells = TRUE)$cell
+    layer_indices <- rep(1:iterations, times = n_samples)
+    
+    idx <- cbind(cells, layer_indices)
+    values(result)[idx] <- 1
+    
+    result
+}
+```
+
+
+```{r}
+# Create test data
+create_test_pmf <- function(size) {
+    r <- rast(nrows = size, ncols = size)
+    values(r) <- runif(ncell(r))
+    r <- r / global(r, "sum", na.rm = TRUE)$sum
+    return(r)
+}
+
+# Test scenarios
+scenarios <- expand_grid(
+    raster_size = c(100, 300),  # Raster dimensions
+    iterations = c(10, 50),     # Number of realizations
+    lambda = c(100, 500)        # Expected number of points per realization
+) |>
+    mutate(
+        test_raster = map(raster_size, create_test_pmf)
+    )
+
+# Run benchmarks
+benchmark_results <- scenarios |>
+    mutate(
+        benchmark = pmap(list(test_raster, iterations, lambda, test_raster), 
+            function(rast, iter, lam, template) {
+                microbenchmark(
+                    original = sample_pmf_original(rast, iter, lam, template),
+                    optimized_1 = sample_pmf_opt1(rast, iter, lam, template),
+                    optimized_2 = sample_pmf_opt2(rast, iter, lam, template),
+                    times = 5
+                )
+            })
+    ) |>
+    select(-test_raster) |>
+    unnest(benchmark) |>
+    mutate(time = time / 1e9)  # Convert to seconds
+
+# Summarize results
+summary_stats <- benchmark_results |>
+    group_by(raster_size, iterations, lambda, expr) |>
+    summarise(
+        mean_time = mean(time),
+        sd_time = sd(time),
+        median_time = median(time),
+        .groups = 'drop'
+    )
+
+# Plot results
+ggplot(summary_stats, 
+       aes(x = interaction(iterations, lambda), y = mean_time, 
+           fill = expr, group = expr)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = mean_time - sd_time, 
+                     ymax = mean_time + sd_time),
+                 position = position_dodge(0.9), width = 0.25) +
+    facet_wrap(~raster_size, scales = "free_y",
+              labeller = labeller(raster_size = 
+                                  function(x) paste0("Raster: ", x, "x", x))) +
+    labs(x = "Iterations x Lambda",
+         y = "Time (seconds)",
+         title = "Performance Comparison of PMF Sampling Methods",
+         subtitle = "Error bars show ±1 SD") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Print detailed summary
+print(summary_stats |>
+        arrange(raster_size, iterations, lambda, expr))
 ```
 
