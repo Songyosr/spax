@@ -87,15 +87,32 @@ distance_raster <- fasterize::fasterize(hd_iso,
 results <- run_access_chain(
   distance_raster = distance_raster, 
   demand = dialysis_density, 
-  supply = hd$s_total_doctors, 
+  supply = hd$s_rounds_per_week, 
   sigma = 60,
   convergence_type = 'utilization',
+  window_size = 5,
+  track_history  = T,
   max_iter = 100, tolerance = 1, 
-  lambda = 0.7, debug = T) 
+  lambda = 0.3, debug = T) 
 
+results
+```
+
+
+```{r}
+results <- run_access_chain(
+  distance_raster = distance_raster, 
+  demand = dialysis_density, 
+  supply = hd$s_rounds_per_week, 
+  sigma = 40,
+  snap = T
+ ) 
+
+results
 ```
 
 ```{r}
-results$accessibility |> plot()
+results$accessibility |> plot(main = "Accessibility to Dialysis Centers")
+results
 ```
 

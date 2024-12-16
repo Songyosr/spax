@@ -32,7 +32,7 @@ validate_access_chain_inputs <- function(distance_raster, demand, supply,
   }
 }
 
-#' Iterative Spatial Accessibility Chain Algorithm
+#' Iterative Spatial Accessibility Chain Algorithm with Zero-Supply Handling
 #'
 #' @description
 #' Implements an iterative spatial accessibility model that finds equilibrium between
@@ -40,23 +40,29 @@ validate_access_chain_inputs <- function(distance_raster, demand, supply,
 #' choice probabilities with distance decay to simulate how demand is distributed across
 #' facilities, using a learning rate to dampen oscillations and achieve stable convergence.
 #'
-#' The algorithm follows these steps in each iteration:
-#' 1. Compute choice probabilities based on facility attractiveness
-#' 2. Calculate expected utilization at each facility
-#' 3. Update supply-demand ratios
-#' 4. Adjust facility attractiveness using learning rate
-#' 5. Check for convergence
+#' Key features of this implementation:
+#' - Properly handles facilities with zero supply by temporarily excluding them from calculations
+#'   while maintaining their positions in the final output
+#' - Offers two computation modes: full analysis with detailed outputs (default) and
+#'   fast mode for utilization-only calculations
+#' - Implements convergence monitoring through a rolling window approach
+#' - Supports multiple distance decay functions and custom decay methods
 #'
-#' The function implements two convergence criteria:
-#' - "utilization": Checks for stability in facility utilization
-#' - "ratio": Checks for stability in supply-demand ratios
+#' The algorithm follows these steps:
+#' 1. Preprocess and validate inputs, handling zero-supply facilities
+#' 2. Compute initial choice probabilities based on facility attractiveness
+#' 3. Calculate expected utilization at each facility
+#' 4. Update supply-demand ratios
+#' 5. Adjust facility attractiveness using learning rate
+#' 6. Check for convergence using rolling window
+#' 7. Reintegrate zero-supply facilities in final output
 #'
 #' @param distance_raster Multi-layer SpatRaster where each layer represents distances
 #'        to one facility. All layers must share the same extent and resolution.
 #' @param demand SpatRaster of demand distribution (e.g., population density).
 #'        Must have same extent and resolution as distance_raster.
 #' @param supply Numeric vector of facility capacities. Length must match number
-#'        of layers in distance_raster.
+#'        of layers in distance_raster. Zero values are allowed and handled appropriately.
 #' @param sigma Distance decay parameter controlling spatial interaction strength.
 #'        Interpretation depends on chosen decay function.
 #' @param lambda Learning rate between 0 and 1 controlling convergence speed.
@@ -70,11 +76,19 @@ validate_access_chain_inputs <- function(distance_raster, demand, supply,
 #'        "utilization" (default) or "ratio"
 #' @param max_iter Maximum number of iterations (default 100)
 #' @param tolerance Convergence tolerance (default 1e-6)
-#' @param snap Logical; if TRUE skips input validation for faster execution
+#' @param window_size Size of rolling window for convergence checking (default 5)
+#' @param track_history Logical; if TRUE records iteration history (default TRUE)
+#' @param snap Logical; if TRUE enables fast mode, returning only utilization vector
 #' @param internal_snap Logical; if TRUE passes snap=TRUE to internal functions
 #' @param debug Logical; if TRUE provides detailed convergence information
 #'
-#' @return A list containing:
+#' @return
+#' If snap = TRUE:
+#'   Numeric vector of predicted utilization for all facilities (including zeros for
+#'   zero-supply facilities)
+#'
+#' If snap = FALSE:
+#'   A list containing:
 #'   \item{utilization}{Matrix [iterations x facilities] of utilization history}
 #'   \item{attractiveness}{Vector of final attractiveness values for each facility}
 #'   \item{ratios}{Vector of final supply-demand ratios}
@@ -86,34 +100,47 @@ validate_access_chain_inputs <- function(distance_raster, demand, supply,
 #'       \item differences: Matrix of differences across iterations
 #'       \item ratios: Matrix of supply-demand ratios across iterations
 #'       \item type: Convergence check method used
+#'       \item rolling_average: Final rolling average of differences
+#'       \item window_size: Size of rolling window used
 #'     }
 #'   }
 #'
+#' @note
+#' Facilities with zero supply are handled specially:
+#' 1. They are temporarily removed from calculations to improve efficiency
+#' 2. Their positions are tracked throughout the process
+#' 3. They are reinserted with zero values in all results
+#' 4. Original facility ordering is preserved in all outputs
+#'
+#' The snap parameter enables a fast computation mode that:
+#' 1. Skips input validation
+#' 2. Omits history tracking and detailed outputs
+#' 3. Returns only the final utilization vector
+#' 4. Maintains correct handling of zero-supply facilities
+#'
 #' @examples
 #' \dontrun{
-#' # Basic usage with Gaussian decay
+#' # Basic usage including zero-supply facilities
 #' result <- run_access_chain(
 #'   distance_raster = dist_rast,
 #'   demand = pop_rast,
-#'   supply = facility_capacity,
+#'   supply = c(100, 0, 50, 75),  # Second facility has zero supply
 #'   sigma = 30,
 #'   method = "gaussian"
 #' )
 #'
-#' # Using custom decay function
-#' custom_decay <- function(distance, sigma, k) {
-#'   1 / (1 + (distance/(sigma*k))^2)
-#' }
-#' result <- run_access_chain(
+#' # Fast mode for optimization
+#' util <- run_access_chain(
 #'   distance_raster = dist_rast,
 #'   demand = pop_rast,
 #'   supply = facility_capacity,
 #'   sigma = 30,
-#'   method = custom_decay,
-#'   decay_params = list(k = 0.5)
+#'   method = "gaussian",
+#'   snap = TRUE
 #' )
 #' }
 #'
+
 #' @export
 run_access_chain <- function(distance_raster, demand, supply, sigma,
                              lambda = 0.5,
@@ -128,23 +155,17 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
                              internal_snap = TRUE,
                              debug = FALSE) {
 
-  # Only do this if not in snap mode
+  # Only validate if not in snap mode
   if (!snap) {
-    # Validate inputs
     validate_access_chain_inputs(
       distance_raster = distance_raster,
       demand = demand, supply = supply,
       lambda = lambda, sigma = sigma, method = method)
-    # Validate max_iter and tolerance
-    if (!(max_iter > 0 && is.numeric(max_iter) && max_iter == floor(max_iter)))
-      stop("max_iter must be a positive integer")
-
-    if (!(tolerance > 0 && is.numeric(tolerance)))
-      stop("tolerance must be positive")
   }
 
   convergence_type <- match.arg(convergence_type)
 
+  # Debug output if needed
   if (debug) {
     cat("Configuration:\n")
     cat("- Number of facilities:", length(supply), "\n")
@@ -162,12 +183,20 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
     cat("- Internal snap mode:", internal_snap, "\n")
   }
 
-  # Guard against zero supply (keep even in snap mode for safety)
-  if (any(supply == 0)) {
-    warning("Zero supply facilities detected - removing from analysis")
-    valid_facilities <- supply > 0
-    supply <- supply[valid_facilities]
-    distance_raster <- distance_raster[[valid_facilities]]
+  # Store original facility indices and identify zero-supply facilities
+  n_total_facilities <- length(supply)
+  facility_indices <- seq_len(n_total_facilities)
+  zero_supply <- supply == 0
+
+  # Remove zero-supply facilities from analysis
+  if (any(zero_supply)) {
+    if (!snap) warning("Zero supply facilities detected - temporarily removing from analysis")
+    valid_facilities <- !zero_supply
+    supply_valid <- supply[valid_facilities]
+    distance_raster_valid <- distance_raster[[valid_facilities]]
+  } else {
+    supply_valid <- supply
+    distance_raster_valid <- distance_raster
   }
 
   # Get facility names
@@ -175,94 +204,96 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
   if (is.null(facility_names) && !is.null(names(supply))) {
     facility_names <- names(supply)
   }
-  n_facilities <- length(supply)
   if (is.null(facility_names)) {
-    facility_names <- paste0("facility_", seq_len(n_facilities))
+    facility_names <- paste0("facility_", facility_indices)
   }
 
-  # Initial setup
-  if (debug) cat("\nInitializing model components...\n")
+  # Set up computation mode
+  compute_mode <- if(snap) "fast" else "full"
 
-  # Pass decay_params to compute_weights if using custom method
+  # Initialize state variables
+  n_valid_facilities <- length(supply_valid)
+  current_attractiveness <- setNames(supply_valid, facility_names[!zero_supply])
+  current_util <- setNames(numeric(n_valid_facilities), facility_names[!zero_supply])
+  current_ratio <- setNames(supply_valid, facility_names[!zero_supply])
+
+  # Compute weights only for valid facilities
   weights <- do.call(compute_weights,
-                     c(list(distance = distance_raster,
+                     c(list(distance = distance_raster_valid,
                             method = method,
                             sigma = sigma,
                             snap = internal_snap),
                        decay_params))
 
-
-  # Initialize history matrices if tracking enabled
-  if (track_history) {
+  # Initialize history matrices if tracking enabled and in full mode
+  if (track_history && compute_mode == "full") {
     iter_names <- paste0("iter_", seq_len(max_iter))
-    util_matrix <- matrix(NA_real_, nrow = max_iter, ncol = n_facilities,
+    util_matrix <- matrix(NA_real_, nrow = max_iter, ncol = n_total_facilities,
                           dimnames = list(iter_names, facility_names))
-    diff_matrix <- matrix(NA_real_, nrow = max_iter, ncol = n_facilities,
+    diff_matrix <- matrix(NA_real_, nrow = max_iter, ncol = n_total_facilities,
                           dimnames = list(iter_names, facility_names))
-    ratio_matrix <- matrix(NA_real_, nrow = max_iter, ncol = n_facilities,
+    ratio_matrix <- matrix(NA_real_, nrow = max_iter, ncol = n_total_facilities,
                            dimnames = list(iter_names, facility_names))
   } else {
     util_matrix <- diff_matrix <- ratio_matrix <- NULL
   }
 
-  # Initialize state variables
-  current_attractiveness <- setNames(supply, facility_names)
-  current_util <- setNames(numeric(n_facilities), facility_names)
-  current_ratio <- setNames(supply, facility_names)
-
-  # Initialize loop control variables
+  # Initialize convergence control
   iter <- 0
-  max_diff <- Inf
-
-  # Initialize rolling window buffer
   diff_window <- numeric(window_size)
   window_idx <- 1
   window_filled <- FALSE
 
-  if (debug) cat("Starting main iteration loop...\n")
-
-  while (iter < max_iter && max_diff > tolerance) {
+  # Main iteration loop
+  while (iter < max_iter && (!window_filled || mean(diff_window) > tolerance)) {
     iter <- iter + 1
     if (debug) cat("\nIteration:", iter, "\n")
 
-    # Step 1: Compute choice probabilities
+    # Compute choice probabilities
     huff_probs <- compute_choice(weights,
                                  attractiveness = current_attractiveness,
                                  snap = internal_snap)
 
-    # Step 2: Calculate utilization
+    # Calculate utilization
     util_probs <- huff_probs * weights
     new_util <- weighted_gather(demand, util_probs,
-                              snap = internal_snap)$weighted_sum
+                                snap = internal_snap)$weighted_sum
 
-    # Step 3: Compute supply-demand ratios
-    new_ratio <- ifelse(new_util > 0, supply / new_util, 0)
+    # Compute supply-demand ratios
+    new_ratio <- ifelse(new_util > 0, supply_valid / new_util, 0)
 
-    # Step 4: Update attractiveness with learning rate
+    # Update attractiveness with learning rate
     new_attractiveness <- (1 - lambda) * current_attractiveness +
-      lambda * (new_ratio)
+      lambda * new_ratio
 
-    # Update history if tracking enabled
-    if (track_history) {
-      util_matrix[iter, ] <- new_util
-      ratio_matrix[iter, ] <- new_ratio
+    # Track history if needed
+    if (track_history && compute_mode == "full") {
+      # Create full-size vectors including zeros for excluded facilities
+      full_util <- numeric(n_total_facilities)
+      full_ratio <- numeric(n_total_facilities)
+      full_util[!zero_supply] <- new_util
+      full_ratio[!zero_supply] <- new_ratio
+
+      util_matrix[iter, ] <- full_util
+      ratio_matrix[iter, ] <- full_ratio
+
       if (iter > 1) {
         diff_matrix[iter,] <- if (convergence_type == "utilization") {
-          abs(new_util - current_util)
+          abs(full_util - util_matrix[iter-1,])
         } else {
-          abs(new_ratio - current_ratio)
+          abs(full_ratio - ratio_matrix[iter-1,])
         }
       }
     }
 
-    # Calculate max difference for convergence
+    # Update convergence check
     if (iter > 1) {
-      max_diff <- if (convergence_type == "utilization") {
+      current_diff <- if (convergence_type == "utilization") {
         max(abs(new_util - current_util), na.rm = TRUE)
       } else {
         max(abs(new_ratio - current_ratio), na.rm = TRUE)
       }
-      # Update rolling window
+
       diff_window[window_idx] <- current_diff
       window_idx <- (window_idx %% window_size) + 1
       if (iter >= window_size) window_filled <- TRUE
@@ -270,15 +301,10 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
       if (debug) {
         cat("- Current difference:", round(current_diff, 6), "\n")
         cat("- Rolling average:", round(mean(diff_window), 6), "\n")
+        cat("- Mean utilization:", round(mean(new_util), 2), "\n")
+        cat("- Supply/demand ratios range:",
+            round(range(new_ratio[new_ratio > 0], na.rm = TRUE), 3), "\n")
       }
-    }
-
-
-    if (debug) {
-      cat("- Max difference:", round(max_diff, 6), "\n")
-      cat("- Mean utilization:", round(mean(new_util), 2), "\n")
-      cat("- Supply/demand ratios range:",
-          round(range(new_ratio[new_ratio > 0], na.rm = TRUE), 3), "\n")
     }
 
     # Update current values
@@ -287,9 +313,23 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
     current_ratio <- new_ratio
   }
 
-  # Compute final accessibility surface
+  # If in fast mode (snap=TRUE), return only the utilization vector
+  if (compute_mode == "fast") {
+    # Create full-size vector including zeros for excluded facilities
+    result <- numeric(n_total_facilities)
+    result[!zero_supply] <- current_util
+    return(result)
+  }
+
+  # For full mode, compute final accessibility and prepare complete results
   accessibility <- weighted_spread(current_ratio, weights,
-                                 snap = internal_snap)
+                                   snap = internal_snap)
+
+  # Create full-size vectors for final results
+  final_attractiveness <- numeric(n_total_facilities)
+  final_ratio <- numeric(n_total_facilities)
+  final_attractiveness[!zero_supply] <- current_attractiveness
+  final_ratio[!zero_supply] <- current_ratio
 
   # Trim matrices to actual iterations if tracking enabled
   if (track_history) {
@@ -301,23 +341,23 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
   if (debug) {
     cat("\nAlgorithm completed:\n")
     cat("- Total iterations:", iter, "\n")
-    cat("- Final max difference:", round(max_diff, 6), "\n")
-    cat("- Converged:", max_diff <= tolerance, "\n")
+    cat("- Final rolling average:", round(mean(diff_window), 6), "\n")
+    cat("- Converged:", window_filled && mean(diff_window) <= tolerance, "\n")
   }
 
-  # Return results with preserved names
+  # Return complete results
   list(
     utilization = if(track_history) util_matrix else NULL,
-    attractiveness = current_attractiveness,
-    ratios = current_ratio,
+    attractiveness = final_attractiveness,
+    ratios = final_ratio,
     accessibility = accessibility,
     convergence = list(
       iterations = iter,
-      converged = max_diff <= tolerance,
+      converged = window_filled && mean(diff_window) <= tolerance,
       differences = if(track_history) diff_matrix else NULL,
       ratios = if(track_history) ratio_matrix else NULL,
       type = convergence_type,
-      rolling_average = mean(diff_window),  # Add final rolling average
+      rolling_average = mean(diff_window),
       window_size = window_size
     )
   )
