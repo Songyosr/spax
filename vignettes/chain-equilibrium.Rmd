@@ -87,10 +87,10 @@ distance_raster <- fasterize::fasterize(hd_iso,
 results <- run_access_chain(
   distance_raster = distance_raster, 
   demand = dialysis_density, 
-  supply = hd$s_rounds_per_week, 
-  sigma = 90,
-  convergence_type = 'ratio',
-  max_iter = 100, tolerance = 1e-3, 
+  supply = hd$s_total_doctors, 
+  sigma = 60,
+  convergence_type = 'utilization',
+  max_iter = 100, tolerance = 1, 
   lambda = 0.7, debug = T) 
 
 ```

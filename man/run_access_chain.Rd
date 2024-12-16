@@ -2,7 +2,7 @@
 % Please edit documentation in R/access_chain.R
 \name{run_access_chain}
 \alias{run_access_chain}
-\title{Iterative Spatial Accessibility Chain Algorithm}
+\title{Iterative Spatial Accessibility Chain Algorithm with Zero-Supply Handling}
 \usage{
 run_access_chain(
   distance_raster,
@@ -15,6 +15,7 @@ run_access_chain(
   convergence_type = c("utilization", "ratio"),
   max_iter = 100,
   tolerance = 1e-06,
+  window_size = 5,
   track_history = TRUE,
   snap = FALSE,
   internal_snap = TRUE,
@@ -29,7 +30,7 @@ to one facility. All layers must share the same extent and resolution.}
 Must have same extent and resolution as distance_raster.}
 
 \item{supply}{Numeric vector of facility capacities. Length must match number
-of layers in distance_raster.}
+of layers in distance_raster. Zero values are allowed and handled appropriately.}
 
 \item{sigma}{Distance decay parameter controlling spatial interaction strength.
 Interpretation depends on chosen decay function.}
@@ -51,14 +52,23 @@ Ignored when using built-in decay methods.}
 
 \item{tolerance}{Convergence tolerance (default 1e-6)}
 
-\item{snap}{Logical; if TRUE skips input validation for faster execution}
+\item{window_size}{Size of rolling window for convergence checking (default 5)}
+
+\item{track_history}{Logical; if TRUE records iteration history (default TRUE)}
+
+\item{snap}{Logical; if TRUE enables fast mode, returning only utilization vector}
 
 \item{internal_snap}{Logical; if TRUE passes snap=TRUE to internal functions}
 
 \item{debug}{Logical; if TRUE provides detailed convergence information}
 }
 \value{
-A list containing:
+If snap = TRUE:
+  Numeric vector of predicted utilization for all facilities (including zeros for
+  zero-supply facilities)
+
+If snap = FALSE:
+  A list containing:
   \item{utilization}{Matrix [iterations x facilities] of utilization history}
   \item{attractiveness}{Vector of final attractiveness values for each facility}
   \item{ratios}{Vector of final supply-demand ratios}
@@ -70,6 +80,8 @@ A list containing:
       \item differences: Matrix of differences across iterations
       \item ratios: Matrix of supply-demand ratios across iterations
       \item type: Convergence check method used
+      \item rolling_average: Final rolling average of differences
+      \item window_size: Size of rolling window used
     }
   }
 }
@@ -79,39 +91,55 @@ supply and demand through a chain of facility choices. The model combines Huff-b
 choice probabilities with distance decay to simulate how demand is distributed across
 facilities, using a learning rate to dampen oscillations and achieve stable convergence.
 
-The algorithm follows these steps in each iteration:
-1. Compute choice probabilities based on facility attractiveness
-2. Calculate expected utilization at each facility
-3. Update supply-demand ratios
-4. Adjust facility attractiveness using learning rate
-5. Check for convergence
+Key features of this implementation:
+- Properly handles facilities with zero supply by temporarily excluding them from calculations
+  while maintaining their positions in the final output
+- Offers two computation modes: full analysis with detailed outputs (default) and
+  fast mode for utilization-only calculations
+- Implements convergence monitoring through a rolling window approach
+- Supports multiple distance decay functions and custom decay methods
 
-The function implements two convergence criteria:
-- "utilization": Checks for stability in facility utilization
-- "ratio": Checks for stability in supply-demand ratios
+The algorithm follows these steps:
+1. Preprocess and validate inputs, handling zero-supply facilities
+2. Compute initial choice probabilities based on facility attractiveness
+3. Calculate expected utilization at each facility
+4. Update supply-demand ratios
+5. Adjust facility attractiveness using learning rate
+6. Check for convergence using rolling window
+7. Reintegrate zero-supply facilities in final output
+}
+\note{
+Facilities with zero supply are handled specially:
+1. They are temporarily removed from calculations to improve efficiency
+2. Their positions are tracked throughout the process
+3. They are reinserted with zero values in all results
+4. Original facility ordering is preserved in all outputs
+
+The snap parameter enables a fast computation mode that:
+1. Skips input validation
+2. Omits history tracking and detailed outputs
+3. Returns only the final utilization vector
+4. Maintains correct handling of zero-supply facilities
 }
 \examples{
 \dontrun{
-# Basic usage with Gaussian decay
+# Basic usage including zero-supply facilities
 result <- run_access_chain(
   distance_raster = dist_rast,
   demand = pop_rast,
-  supply = facility_capacity,
+  supply = c(100, 0, 50, 75),  # Second facility has zero supply
   sigma = 30,
   method = "gaussian"
 )
 
-# Using custom decay function
-custom_decay <- function(distance, sigma, k) {
-  1 / (1 + (distance/(sigma*k))^2)
-}
-result <- run_access_chain(
+# Fast mode for optimization
+util <- run_access_chain(
   distance_raster = dist_rast,
   demand = pop_rast,
   supply = facility_capacity,
   sigma = 30,
-  method = custom_decay,
-  decay_params = list(k = 0.5)
+  method = "gaussian",
+  snap = TRUE
 )
 }
 

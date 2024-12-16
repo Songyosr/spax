@@ -122,7 +122,8 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
                              convergence_type = c("utilization", "ratio"),
                              max_iter = 100,
                              tolerance = 1e-6,
-                             track_history = TRUE,  # New parameter
+                             window_size = 5,
+                             track_history = TRUE,
                              snap = FALSE,
                              internal_snap = TRUE,
                              debug = FALSE) {
@@ -213,6 +214,11 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
   iter <- 0
   max_diff <- Inf
 
+  # Initialize rolling window buffer
+  diff_window <- numeric(window_size)
+  window_idx <- 1
+  window_filled <- FALSE
+
   if (debug) cat("Starting main iteration loop...\n")
 
   while (iter < max_iter && max_diff > tolerance) {
@@ -255,6 +261,15 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
         max(abs(new_util - current_util), na.rm = TRUE)
       } else {
         max(abs(new_ratio - current_ratio), na.rm = TRUE)
+      }
+      # Update rolling window
+      diff_window[window_idx] <- current_diff
+      window_idx <- (window_idx %% window_size) + 1
+      if (iter >= window_size) window_filled <- TRUE
+
+      if (debug) {
+        cat("- Current difference:", round(current_diff, 6), "\n")
+        cat("- Rolling average:", round(mean(diff_window), 6), "\n")
       }
     }
 
@@ -301,7 +316,9 @@ run_access_chain <- function(distance_raster, demand, supply, sigma,
       converged = max_diff <= tolerance,
       differences = if(track_history) diff_matrix else NULL,
       ratios = if(track_history) ratio_matrix else NULL,
-      type = convergence_type
+      type = convergence_type,
+      rolling_average = mean(diff_window),  # Add final rolling average
+      window_size = window_size
     )
   )
 }
