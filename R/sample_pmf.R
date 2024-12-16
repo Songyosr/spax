@@ -1,39 +1,133 @@
-#' Sample Points from Probability Surface with Multiple Realizations (Allowing Double Counting)
+#' Sample Points from Probability Surface with Multiple Realizations
 #'
 #' @description
-#' Efficiently generates multiple realizations of point patterns from a probability
-#' mass function (PMF) surface using a vectorized approach. Allows multiple samples per cell.
+#' Generates multiple realizations of point patterns from a probability mass function (PMF)
+#' surface using a vectorized approach. The function supports both deterministic sampling
+#' with fixed sample sizes and probabilistic sampling based on population parameters.
 #'
-#' @param x SpatRaster representing spatial distribution (PMF or raw density values)
+#' @param x SpatRaster representing spatial distribution. Can be either:
+#'   - A PMF where values sum to 1
+#'   - Raw density values that will be converted to PMF (except in snap mode)
 #' @param n Integer or NULL. Fixed number of samples for deterministic sampling.
 #'        If specified, overrides probabilistic sampling parameters.
 #' @param size Integer or NULL. Population size parameter for probability distributions.
-#'        If NULL and input is density, will be calculated from data.
-#' @param prob Numeric between 0 and 1. Probability parameter (e.g., disease prevalence)
-#' @param method Character string specifying built-in method or custom function:
-#'        - "poisson": Random size with mean = size * prob
-#'        - "binomial": Random size from binomial(size, prob)
-#'        - "nbinom": Random size from negative binomial(size, prob)
-#'        - custom function: Must return vector of length iterations
+#'        If NULL and input is density (not PMF), will be calculated from data.
+#' @param prob Numeric between 0 and 1. Probability parameter for sampling methods
+#'        (e.g., disease prevalence, detection probability).
+#' @param method Character string or function specifying sampling method:
+#'   - "poisson": Random size with mean = size * prob
+#'   - "binomial": Random size from binomial(size, prob)
+#'   - "nbinom": Random size from negative binomial(size, prob)
+#'   - custom function: Must return vector of length 'iterations'
+#' @param iterations Integer. Number of realizations to generate (default = 1)
+#' @param seed Integer or NULL. Random seed for reproducibility
+#' @param replace_0 Logical. If TRUE, replaces zero values with NA (default = TRUE)
+#' @param snap Logical. If TRUE, enters fast mode with:
+#'   - Minimal input validation
+#'   - Requires input to already be PMF
+#'   - Skips automatic PMF conversion
+#'   - No layer naming
+#'   Use for performance in iteration-heavy applications.
 #' @param ... Additional arguments passed to custom sampling function
-#' @param iterations Integer. Number of realizations to generate
-#' @param seed Integer for random seed (optional)
-#' @parm replace_0 Logical. If TRUE, replaces zero values with NA before sampling (default TRUE)
-#' @param snap Logical. If TRUE, enters fast mode with minimal validation (default FALSE)
-#' @return SpatRaster with one layer per realization, containing counts of samples per cell
+#'
+#' @return SpatRaster with one layer per realization, containing counts of samples per cell.
+#'         If replace_0 = TRUE, cells with zero counts contain NA.
+#'
+#' @details
+#' The function supports two main sampling approaches:
+#' 1. Deterministic: Specify exact number of samples via 'n'
+#' 2. Probabilistic: Generate random sample sizes using built-in or custom distributions
+#'
+#' In snap mode, the function assumes inputs are valid and skips certain checks for
+#' performance. The input must already be a proper PMF in this mode.
+#'
+#' @examples
+#' \dontrun{
+#' # Create sample population density
+#' r <- terra::rast(nrows=10, ncols=10)
+#' terra::values(r) <- runif(100) * 100
+#'
+#' # Example 1: Fixed sample size
+#' samples1 <- sample_pmf(r, n = 50, iterations = 5)
+#'
+#' # Example 2: Disease case simulation
+#' samples2 <- sample_pmf(r,
+#'                       size = 10000,     # population size
+#'                       prob = 0.001,     # disease prevalence
+#'                       method = "poisson",
+#'                       iterations = 100)  # Monte Carlo iterations
+#'
+#' # Example 3: Using snap mode with pre-computed PMF
+#' pmf <- compute_pmf(r)
+#' samples3 <- sample_pmf(pmf,
+#'                       n = 1000,
+#'                       iterations = 50,
+#'                       snap = TRUE)
+#' }
+#'
+#' @seealso
+#' \code{\link{compute_pmf}} for converting density to PMF
+#'
 #' @export
 sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
-                       method = "poisson", ..., iterations = 1,
+                       method = "poisson", iterations = 1,
                        seed = NULL, replace_0 = TRUE,
-                       snap = FALSE) {
-  # Essential input validation (always performed)
+                       snap = FALSE, ...) {
+
+  # Input validation
+  .validate_sample_pmf_inputs(x, n, size, prob, method, iterations, snap)
+
+  # PMF checking and size determination
+  if (!snap) {
+    pmf_result <- .check_and_convert_pmf(x)
+    x <- pmf_result$pmf
+    if (is.null(size)) {
+      size <- pmf_result$total
+      message("Using total population ", round(size), " as size parameter")
+    }
+  } else {
+    # Quick check in snap mode
+    sum_check <- global(x, "sum", na.rm = TRUE)$sum
+    if (abs(sum_check - 1) > 1e-10) {
+      message("Input must be PMF in snap mode")
+    }
+  }
+
+  # Generate samples with seed handling
+  withr::with_seed(
+    seed = seed,
+    code = {
+      # Compute sample sizes
+      n_samples <- .compute_sample_sizes(n = n, size = size, prob = prob,
+                                         method = method, iterations = iterations, ...)
+
+      # Generate spatial samples
+      result <- .generate_spatial_samples(x = x, n_samples = n_samples,
+                                          iterations = iterations,
+                                          replace_0 = replace_0,
+                                          snap = snap)
+    }
+  )
+
+  return(result)
+}
+#' Validate inputs for sample_pmf
+#'
+#' @param x SpatRaster input
+#' @param n Sample size
+#' @param size Population size
+#' @param prob Probability parameter
+#' @param method Sampling method
+#' @param iterations Number of iterations
+#' @param snap Logical for snap mode
+#' @keywords internal
+.validate_sample_pmf_inputs <- function(x, n, size, prob, method, iterations, snap) {
+  # Essential validation (always run)
   if (!inherits(x, "SpatRaster")) {
     stop("Input 'x' must be a SpatRaster object")
   }
 
-  if (!is.null(seed)) set.seed(seed)
-
-  # Extended validation (skipped if snap = TRUE)
+  # Extended validation (skip if snap=TRUE)
   if (!snap) {
     if (iterations < 1 || !is.numeric(iterations) || iterations != as.integer(iterations)) {
       stop("iterations must be a positive integer")
@@ -51,26 +145,50 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
       stop("Unknown method string. Use 'poisson', 'binomial', 'nbinom', or provide a function")
     }
   }
+}
 
-  # Check if input is PMF, convert if needed
+#' Check and convert input to PMF
+#'
+#' @param x SpatRaster input
+#' @return List with PMF raster and total population
+#' @keywords internal
+.check_and_convert_pmf <- function(x) {
+  # Check if input is PMF
   sum_check <- global(x, "sum", na.rm = TRUE)$sum
-  if (abs(sum_check - 1) > 1e-10) {
-    pmf_result <- compute_pmf(x, return_total = TRUE)
-    x <- pmf_result$pmf
-    if (is.null(size)) {
-      size <- pmf_result$total
-      if (!snap) message("Using total population ", round(size), " as size parameter")
-    }
-  }
 
-  # Determine sample sizes for all iterations
-  n_samples <- if (!is.null(n)) {
+  if (abs(sum_check - 1) > 1e-10) {
+    # Not a PMF, need to convert
+    pmf_result <- compute_pmf(x, return_total = TRUE)
+    return(pmf_result)  # Returns list with $pmf and $total
+  } else {
+    # Already a PMF, return as is with NULL total
+    return(list(
+      pmf = x,
+      total = NULL
+    ))
+  }
+}
+
+#' Compute sample sizes for each iteration
+#'
+#' @param n Fixed sample size
+#' @param size Population size
+#' @param prob Probability parameter
+#' @param method Sampling method
+#' @param iterations Number of iterations
+#' @param ... Additional arguments for custom methods
+#' @return Vector of sample sizes
+#' @keywords internal
+.compute_sample_sizes <- function(n = NULL, size = NULL, prob = NULL,
+                                  method = "poisson", iterations = 1, ...) {
+  if (!is.null(n)) {
     if (!is.numeric(n) || any(n < 0) || any(n != as.integer(n))) {
       stop("n must be a non-negative integer")
     }
-    rep(n, iterations)
-  } else if (is.function(method)) {
-    # Call custom sampling function with provided arguments
+    return(rep(n, iterations))
+  }
+
+  if (is.function(method)) {
     result <- do.call(method, list(...))
     if (!is.numeric(result)) {
       stop("Custom method must return numeric values")
@@ -81,33 +199,28 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     if (any(result < 0) || any(result != as.integer(result))) {
       stop("Custom method must return non-negative integer values")
     }
-    result
-  } else {
-    # Built-in methods
-    switch(method,
-           "poisson" = {
-             if (is.null(size)) stop("size must be specified for poisson method")
-             rpois(iterations, lambda = size * prob)
-           },
-           "binomial" = {
-             if (is.null(size)) stop("size must be specified for binomial method")
-             rbinom(iterations, size = size, prob = prob)
-           },
-           "nbinom" = {
-             if (is.null(size)) stop("size must be specified for nbinom method")
-             rnbinom(iterations, size = size, prob = prob)
-           }
-    )
+    return(result)
   }
 
-  # Validate sample sizes
-  if (any(n_samples < 0)) {
-    stop("Sample sizes must be non-negative")
-  }
+  # Built-in methods
+  switch(method,
+         "poisson" = rpois(iterations, lambda = size * prob),
+         "binomial" = rbinom(iterations, size = size, prob = prob),
+         "nbinom" = rnbinom(iterations, size = size, prob = prob))
+}
 
+#' Generate spatial samples
+#'
+#' @param x PMF raster
+#' @param n_samples Vector of sample sizes
+#' @param iterations Number of iterations
+#' @param replace_0 Logical for NA replacement
+#' @param snap Logical for snap mode
+#' @return Multi-layer SpatRaster of samples
+#' @keywords internal
+.generate_spatial_samples <- function(x, n_samples, iterations, replace_0 = TRUE, snap = FALSE) {
   # Create empty multi-layer template for results
   result <- rast(x, nlyrs = iterations)
-  # Initialize all values to zero
   values(result) <- 0
 
   # Total number of samples across all iterations
