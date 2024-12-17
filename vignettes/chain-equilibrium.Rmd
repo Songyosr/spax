@@ -49,7 +49,7 @@ pop_density <- readRDS('data/pop_dens/pop_cropped_10.rds')
 ```{r}
 # Create a smaller version of the population density raster
 tiny_pop_density <- (pop_density) |> 
-  aggregate(fact = 5, fun = "sum", na.rm=TRUE, #method="simple", 
+  aggregate(fact = 3, fun = "sum", na.rm=TRUE, #method="simple", 
             progress = "text",# window=w,
             cores = 8) |> 
   terra::crop(vect(mask), mask = TRUE) 
@@ -83,6 +83,36 @@ distance_raster <- fasterize::fasterize(hd_iso,
 ```
 
 # Analysis
+```{r}
+results <- spax_ifca(
+  distance_raster = distance_raster, 
+  demand = dialysis_density, 
+  supply = hd$s_rounds_per_week, 
+  sigma = 15,
+  convergence_type = 'utilization',
+  window_size = 3,
+  max_iter = 20, tolerance = 1, 
+  lambda = 0.3, debug = T)
+
+```
+
+```{r}
+#plot
+plot(results$accessibility, main = "Accessibility to Dialysis Centers")
+plot(results$util_prob_surface, main = "Utilization Probability Surface")
+```
+
+```{r}
+Wr <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 45)
+spread_access(
+  ratios = results$ratios,
+  weights = Wr
+) |> plot()
+?spread_access
+
+
+```
+
 ```{r}
 results <- run_access_chain(
   distance_raster = distance_raster, 
