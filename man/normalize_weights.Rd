@@ -4,7 +4,14 @@
 \alias{normalize_weights}
 \title{Normalize Spatial Weights}
 \usage{
-normalize_weights(x, method = "standard", ref_value = NULL, a0 = 0, ...)
+normalize_weights(
+  x,
+  method = "standard",
+  ref_value = NULL,
+  a0 = 0,
+  snap = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{Numeric vector, matrix, or SpatRaster of weights}
@@ -24,6 +31,8 @@ normalize_weights(x, method = "standard", ref_value = NULL, a0 = 0, ...)
 \item{ref_value}{Optional reference value for "reference" method}
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0) *Now working for only standard and semi method}
+
+\item{snap}{Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use}
 
 \item{...}{Additional arguments passed to custom normalization function}
 }

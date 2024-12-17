@@ -10,7 +10,8 @@ weighted_spread(
   value_cols = NULL,
   full_output = FALSE,
   parallel = FALSE,
-  n_cores = NULL
+  n_cores = NULL,
+  snap = FALSE
 )
 }
 \arguments{
@@ -28,7 +29,9 @@ weighted distribution surface}
 
 \item{parallel}{Logical; whether to use parallel processing (default FALSE)}
 
-\item{n_cores}{Integer; number of cores for parallel processing (default NULL)}
+\item{n_cores}{Integer; number of cores for parallel processing (default NULL}
+
+\item{snap}{Logical; if TRUE, avoid input validation PS. To be implement}
 }
 \value{
 If full_output = TRUE, returns list containing:

@@ -4,7 +4,7 @@
 \alias{weighted_gather}
 \title{Aggregate weighted values from a raster}
 \usage{
-weighted_gather(values, weights)
+weighted_gather(values, weights, snap = FALSE, na.rm = TRUE)
 }
 \arguments{
 \item{values}{SpatRaster representing values to be aggregated}
@@ -13,6 +13,8 @@ weighted_gather(values, weights)
 - Each layer represents one aggregation unit
 - Values are weights (typically 0-1) for aggregation
 - Layer names should match unit IDs}
+
+\item{snap}{Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use}
 }
 \value{
 data.frame with:
