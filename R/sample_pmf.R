@@ -262,3 +262,102 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   return(result)
 }
+
+#' Estimate new sample
+#' @keywords internal
+est_new_samples <- function(input_vector, evolve_prop) {
+  # Round retained samples from previous iteration
+  retained <- round(c(0, head(input_vector, -1)) * (1 - evolve_prop))
+
+  # New samples needed = target - retained
+  new_n <- pmax(input_vector - retained, 0)
+
+  # Old samples to keep = target - new samples
+  old_n <- input_vector - new_n
+
+  list(new_n = new_n, old_n = old_n)
+}
+
+#' Generate evolving spatial samples across iterations
+#' @keywords internal
+.generate_evolve_samples <- function(x, n_samples, iterations,
+                                     evolve_prop = 0.1,
+                                     replace_0 = TRUE, snap = FALSE) {
+  # Create empty multi-layer template for results
+  result <- rast(x, nlyrs = iterations)
+  values(result) <- 0
+
+  # Early return if no samples needed
+  if (sum(n_samples) == 0) {
+    if (!snap && is.null(names(result))) {
+      names(result) <- paste0("sim_", 1:iterations)
+    }
+    return(result)
+  }
+
+  # Calculate new and retained sample counts
+  sample_est <- est_new_samples(n_samples, evolve_prop)
+  new_n <- sample_est$new_n
+  old_n <- sample_est$old_n
+
+  total_new_n <- sum(new_n)
+  total_n <- sum(n_samples)
+
+  # Initialize storage for all cell indices
+  all_cells <- rep(NA_real_, total_n)
+
+  # Sample new points according to weights
+  if (total_new_n > 0) {
+    sampled_cells <- spatSample(x, size = total_new_n,
+                                method = "weights",
+                                cells = TRUE,
+                                replace = TRUE)$cell
+    # Assign new samples
+    all_cells[1:total_new_n] <- sampled_cells
+  }
+
+  # 1. Indices for new samples
+  layer_indices_1 <- rep(1:iterations, times = new_n)
+
+  # 2. Indices for old (retained) samples
+  layer_indices_2 <- rep(1:iterations, times = old_n)
+
+  # Combine the two sets of indices
+  layer_indices <- c(layer_indices_1, layer_indices_2)
+  # Handle sample retention for iterations > 1
+  if (iterations > 1) {
+    for (i in 2:iterations) {
+      # Identify unfilled positions for current iteration
+      idx_current <- which(layer_indices == i & is.na(all_cells))
+      if (length(idx_current) > 0) {
+        # Get samples from previous iteration
+        idx_previous <- which(layer_indices == (i - 1))
+        retained_cells <- sample(all_cells[idx_previous],
+                                 size = length(idx_current),
+                                 replace = FALSE)
+        all_cells[idx_current] <- retained_cells
+      }
+    }
+  }
+
+  # Compute linear indices and counts in one pass
+  ncells <- ncell(x)
+  linear_index <- all_cells + (layer_indices - 1) * ncells
+  counts <- tabulate(linear_index, nbins = ncells * iterations)
+  dim(counts) <- c(ncells, iterations)
+
+  # Replace zeros with NA if requested
+  if (replace_0) {
+    counts[counts == 0] <- NA
+  }
+
+  # Assign counts to result raster
+  values(result) <- counts
+
+  # Assign layer names if not in snap mode
+  if (!snap && is.null(names(result))) {
+    names(result) <- paste0("sim_", 1:iterations)
+  }
+
+  return(result)
+}
