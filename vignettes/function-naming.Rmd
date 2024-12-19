@@ -293,18 +293,18 @@ When adding or modifying functions: 1. Update relevant vignettes 2. Update READM
 
 ## Missing Functions (Suggested Additions)
 
-+-----------------------------+------------+-------------+------------------------------+
-| Function Name               | Level      | Subcategory | Purpose                      |
-+=============================+============+=============+==============================+
-| `spax_2sfca()`              | High       | Main        | Complete 2SFCA workflow      |
-+-----------------------------+------------+-------------+------------------------------+
-| `spax_montecarlo()`         | High       | Main        | Monte Carlo analysis         |
-+-----------------------------+------------+-------------+------------------------------+
-| `summarize_accessibility()` | Middle     | Summarize   | Accessibility statistics     |
-+-----------------------------+------------+-------------+------------------------------+
-| `validate_inputs_check()`   | Low        | Check       | General input validation     |
-+-----------------------------+------------+-------------+------------------------------+
-| `plot_accessibility()`      | Middle     | Visualize   | Standard accessibility plots |
-+-----------------------------+------------+-------------+------------------------------+
++-----------------------------+-------------+-------------+------------------------------+
+| Function Name               | Level       | Subcategory | Purpose                      |
++=============================+=============+=============+==============================+
+| `spax_2sfca()`              | High        | Main        | Complete 2SFCA workflow      |
++-----------------------------+-------------+-------------+------------------------------+
+| `spax_montecarlo()`         | High        | Main        | Monte Carlo analysis         |
++-----------------------------+-------------+-------------+------------------------------+
+| `summarize_accessibility()` | Middle      | Summarize   | Accessibility statistics     |
++-----------------------------+-------------+-------------+------------------------------+
+| `validate_inputs_check()`   | Low         | Check       | General input validation     |
++-----------------------------+-------------+-------------+------------------------------+
+| `plot_accessibility()`      | Middle      | Visualize   | Standard accessibility plots |
++-----------------------------+-------------+-------------+------------------------------+
 
 Would you like to: 1. Review specific function groups in detail? 2. Discuss the suggested name changes? 3. Prioritize which missing functions to implement first?

@@ -1,4 +1,4 @@
-# tests/testthat/test-weight-functions.R
+# tests/testthat/test-normalize_functions.R
 
 library(testthat)
 library(terra)
@@ -7,6 +7,7 @@ library(terra)
 create_test_raster <- function(nrow = 3, ncol = 3, nlyr = 2) {
   r <- rast(nrows = nrow, ncols = ncol, nlyr = nlyr)
   values(r) <- runif(nrow * ncol * nlyr)
+  names(r) <- paste0("layer", 1:nlyr)
   return(r)
 }
 
@@ -40,8 +41,9 @@ test_that("calc_normalize handles different methods correctly", {
   expect_equal(calc_normalize(simple_weights, "identity"), simple_weights)
 
   # Test custom function
-  custom_norm <- function(x) x/2
+  custom_norm <- function(x, factor = 2) x/factor
   expect_equal(calc_normalize(simple_weights, custom_norm), simple_weights/2)
+  expect_equal(calc_normalize(simple_weights, custom_norm, factor = 4), simple_weights/4)
 })
 
 test_that("calc_normalize throws appropriate errors", {
@@ -110,6 +112,61 @@ test_that("reference normalization works correctly", {
   expect_true(max(values(rast_result), na.rm = TRUE) <= 1 + 1e-10)
 })
 
+# Tests for outside option (a0)
+test_that("calc_normalize handles outside option (a0) correctly", {
+  # Test standard normalization with a0
+  result_a0 <- calc_normalize(simple_weights, "standard", a0 = 1)
+  expect_equal(sum(result_a0), sum(simple_weights)/(sum(simple_weights) + 1))
+
+  # Test semi-normalization with a0 (simplified)
+  low_sum <- c(0.2, 0.3, 0.4)
+  expect_equal(calc_normalize(low_sum, "semi", a0 = 0), low_sum)  # No a0 effect when sum + a0 <= 1
+
+  result_high <- calc_normalize(low_sum, "semi", a0 = 0.5)
+  expect_equal(sum(result_high), sum(low_sum)/(sum(low_sum) + 0.5))  # sum + a0 > 1
+
+  # Test invalid a0
+  expect_error(calc_normalize(simple_weights, "standard", a0 = -1))
+  expect_error(calc_normalize(simple_weights, "standard", a0 = "invalid"))
+})
+
+# Tests for snap parameter
+test_that("calc_normalize handles snap parameter correctly", {
+  # Test that snap=TRUE skips validation
+  expect_silent(calc_normalize(simple_weights, "standard", snap = TRUE))
+  expect_error(calc_normalize(simple_weights, "invalid_method", snap = FALSE))
+  expect_silent(calc_normalize(simple_weights, "invalid_method", snap = TRUE))
+
+  # Verify results are the same with and without snap
+  result_normal <- calc_normalize(simple_weights, "standard", snap = FALSE)
+  result_snap <- calc_normalize(simple_weights, "standard", snap = TRUE)
+  expect_equal(result_normal, result_snap)
+})
+
+# Tests for SpatRaster properties
+test_that("calc_normalize preserves raster properties", {
+  # Test layer names preservation
+  input_raster <- test_raster
+  result <- calc_normalize(input_raster, "standard")
+  expect_equal(names(result), names(input_raster))
+
+  # Test extent preservation (compare values instead of pointers)
+  ext_input <- as.vector(ext(input_raster))
+  ext_result <- as.vector(ext(result))
+  expect_equal(ext_result, ext_input)
+
+  # Test CRS preservation
+  crs(input_raster) <- "EPSG:4326"
+  result <- calc_normalize(input_raster, "standard")
+  expect_equal(crs(result), crs(input_raster))
+
+  # Test multi-layer handling
+  three_layer <- create_test_raster(nlyr = 3)
+  result <- calc_normalize(three_layer, "standard")
+  expect_equal(nlyr(result), 3)
+  expect_true(all(abs(as.vector(sum(result)) - 1) < 1e-10))
+})
+
 # Edge cases and error handling
 test_that("calc_normalize handles edge cases appropriately", {
   # Test with negative values
@@ -125,7 +182,7 @@ test_that("calc_normalize handles edge cases appropriately", {
   expect_true(all(is.na(calc_normalize(all_na, "standard"))))
 })
 
-# Performance tests (optional)
+# Performance tests
 test_that("calc_normalize performs efficiently with large datasets", {
   skip_on_ci()
 
@@ -137,4 +194,9 @@ test_that("calc_normalize performs efficiently with large datasets", {
     system.time(calc_normalize(large_raster, "standard"))[["elapsed"]],
     5  # Should complete in less than 5 seconds
   )
+
+  # Test snap mode performance improvement
+  time_normal <- system.time(calc_normalize(large_raster, "standard", snap = FALSE))
+  time_snap <- system.time(calc_normalize(large_raster, "standard", snap = TRUE))
+  expect_lt(time_snap[["elapsed"]], time_normal[["elapsed"]])
 })
