@@ -54,7 +54,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   # Fast path for internal use
   if (snap) {
     if (is.function(method)) {
-      return(method(x, a0 = a0, ...))
+      return(method(x, ...))
     }
     return(.normalize_core(x, method, ref_value, a0))
   }
@@ -69,7 +69,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
   # Handle custom function
   if (is.function(method)) {
-    return(method(x, a0 = a0, ...))
+    return(method(x, ...))
   }
 
   # Validate method
