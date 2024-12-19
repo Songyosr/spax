@@ -1,0 +1,216 @@
+---
+title: "spax Package Function Naming Convention"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{spax Package Function Naming Convention}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(spax)
+```
+
+# SPAX Package Development Guidelines
+
+## Function Hierarchy and Naming Conventions
+
+### High-Level Functions (`spax_*`)
+
+-   **Purpose**: Complete workflows that users interact with directly
+-   **Naming**: Must start with `spax_`
+-   **Examples**: `spax_e2sfca()`, `spax_ifca()`
+-   **Input Requirements**: Should accept primitive inputs (demand, supply, distance rasters)
+-   **Documentation**: Must include complete examples in roxygen comments
+
+### Semi-High Level Functions (`comp_*`)
+
+-   **Purpose**: Complex computational operations that can work independently
+-   **Naming**: Must start with `comp_`
+-   **Examples**: `comp_iterative()`, `comp_iterative_fast()`
+-   **Note**: These functions often implement core algorithms
+
+### Middle-Level Operations
+
+Four categories of operational functions:
+
+1.  **Gather Operations** (`gather_*`)
+    -   Purpose: Dimension reduction (e.g., raster stack → vector)
+    -   Examples: `gather_demand()`, `gather_weighted()`
+2.  **Spread Operations** (`spread_*`)
+    -   Purpose: Dimension expansion (e.g., vector → raster stack)
+    -   Examples: `spread_access()`, `spread_weighted()`
+3.  **Calculate Operations** (`calc_*`)
+    -   Purpose: Layer-wise operations maintaining dimensions
+    -   Examples: `calc_decay()`, `calc_normalize()`, `calc_choice()`
+4.  **Transform Operations** (`transform_*`)
+    -   Purpose: Surface-wide transformations
+    -   Examples: `transform_pmf()`
+
+### Low-Level Functions
+
+Internal functions not exported in the NAMESPACE:
+
+1.  **Validation Functions** (`.chck_*`)
+    -   Purpose: Input validation
+    -   Examples: `.chck_calc_choice()`, `.chck_sample_pmf()`
+2.  **Helper Functions** (`.help_*`)
+    -   Purpose: Utility functions used by higher-level functions
+    -   Examples: `.help_prep_facilities()`, `.help_gen_sample_size()`
+3.  **Core Functions** (`.*_core`)
+    -   Purpose: Main computational logic for complex operations
+    -   Examples: `.sample_pmf_core_indp()`, `.sample_pmf_core_evlv()`
+
+## Function Structure Guidelines
+
+### Standard Function Template
+
+``` r
+function_name <- function(
+    required_param,
+    optional_param = default_value,
+    ...,
+    snap = FALSE
+) {
+    # 1. Input Validation (skip if snap = TRUE)
+    if (!snap) {
+        .chck_function_name(required_param, optional_param)
+    }
+    
+    # 2. Pre-processing
+    processed_data <- .help_process_data(required_param)
+    
+    # 3. Main Computation
+    result <- .function_name_core(processed_data, ...)
+    
+    # 4. Post-processing (skip if snap = TRUE)
+    if (!snap) {
+        result <- .help_post_process(result)
+    }
+    
+    return(result)
+}
+```
+
+### The `snap` Parameter
+
+-   **Purpose**: Performance optimization for internal use
+-   **Default**: Always `FALSE`
+-   **When TRUE**:
+    -   Skips input validation
+    -   Skips non-essential processing
+    -   Assumes inputs are correctly formatted
+    -   May skip naming/attribute assignment
+-   **Usage**: Only set `TRUE` when called from within other package functions where inputs have already been validated
+
+### Documentation Requirements
+
+1.  **Roxygen Headers**
+
+``` r
+#' @title Function Title
+#' @description Detailed description
+#' @param snap Logical; if TRUE enables fast computation mode with minimal validation
+#' @export
+```
+
+2.  **Internal Function Documentation**
+
+``` r
+#' @keywords internal
+.internal_function <- function() {
+```
+
+### File Organization
+
+All R files must be in the `R/` directory (no subdirectories). Use file naming conventions:
+
+-   `00-utils.R`: Helper functions
+-   `01-core.R`: Core computations
+-   `02-operations.R`: Middle-level operations
+-   `03-compute.R`: Semi-high level functions
+-   `04-spax.R`: High-level functions
+
+### Error Handling
+
+1.  Use `stop()` for critical errors in validation
+2.  Use `warning()` for non-critical issues
+3.  Use `message()` sparingly for important information
+
+### Performance Considerations
+
+1.  Always include the `snap` parameter for functions that might be called repeatedly
+2.  Use `terra` functions instead of `raster` when possible
+3.  Avoid loops when vectorized operations are possible
+4.  Consider parallel processing for computationally intensive operations
+
+### Testing Requirements
+
+1.  Each function should have corresponding tests in `tests/testthat/`
+2.  Include tests for both normal and `snap=TRUE` modes
+3.  Test error conditions and edge cases
+4.  Include performance benchmarks for critical functions
+
+## Development Workflow
+
+1.  **Creating New Functions**
+    -   Start with the function template
+    -   Add validation function if needed
+    -   Implement core logic
+    -   Add documentation
+    -   Add tests
+2.  **Modifying Existing Functions**
+    -   Maintain backward compatibility
+    -   Update documentation
+    -   Update tests
+    -   Update vignettes if behavior changes
+3.  **Deprecating Functions**
+    -   Use `.Deprecated()` function
+    -   Maintain old function for at least one version
+    -   Update documentation to point to new function
+    -   Update vignettes to use new function
+
+## Version Control Guidelines
+
+1.  **Commit Messages**
+    -   Start with type: feat, fix, docs, style, refactor, test, chore
+    -   Include scope in parentheses
+    -   Example: `feat(calc): add new decay function`
+2.  **Branches**
+    -   `main`: Stable release
+    -   `develop`: Development version
+    -   `feature/*`: New features
+    -   `fix/*`: Bug fixes
+
+## Documentation Updates
+
+When adding or modifying functions:
+
+1\. Update relevant vignettes
+
+2\. Update README.md if needed
+
+3\. Update NAMESPACE
+
+4\. Run roxygen2 to update documentation
+
+5\. Update NEWS.md with changes
+
+## Missing Functions (Suggested Additions)
+
+| Function Name               | Level  | Subcategory | Purpose                      |
+|--------------------|---------------|---------------|---------------------|
+| `spax_2sfca()`              | High   | Main        | Complete 2SFCA workflow      |
+| `spax_montecarlo()`         | High   | Main        | Monte Carlo analysis         |
+| `summarize_accessibility()` | Middle | Summarize   | Accessibility statistics     |
+| `validate_inputs_check()`   | Low    | Check       | General input validation     |
+| `plot_accessibility()`      | Middle | Visualize   | Standard accessibility plots |
+
+Would you like to: 1. Review specific function groups in detail? 2. Discuss the suggested name changes? 3. Prioritize which missing functions to implement first?

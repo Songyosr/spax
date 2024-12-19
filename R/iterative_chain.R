@@ -62,19 +62,19 @@ reintegrate_facilities <- function(results, zero_map, fill = 0) {
   output
 }
 
-#' Update facility names while preserving order
-#' @param names Character vector of facility names
-#' @param zero_map Logical vector marking zero-supply facilities
-#' @return List with name mapping information
-#' @keywords internal
-update_facility_names <- function(names, zero_map) {
-  valid_names <- names[!zero_map]
-  list(
-    original = names,
-    valid = valid_names,
-    mapping = match(valid_names, names)
-  )
-}
+#' #' Update facility names while preserving order
+#' #' @param names Character vector of facility names
+#' #' @param zero_map Logical vector marking zero-supply facilities
+#' #' @return List with name mapping information
+#' #' @keywords internal
+#' update_facility_names <- function(names, zero_map) {
+#'   valid_names <- names[!zero_map]
+#'   list(
+#'     original = names,
+#'     valid = valid_names,
+#'     mapping = match(valid_names, names)
+#'   )
+#' }
 
 # Fast version for snap mode - returns only utilization vector
 run_iterative_core_fast <- function(supply, weights, demand,
