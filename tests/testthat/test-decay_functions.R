@@ -11,33 +11,33 @@ create_test_distances <- function() {
   )
 }
 
-# Test main compute_weights function
-test_that("compute_weights handles different input types", {
+# Test main calc_decay function
+test_that("calc_decay handles different input types", {
   test_data <- create_test_distances()
 
   # Test vector input
   expect_type(
-    compute_weights(test_data$vector, method = "gaussian"),
+    calc_decay(test_data$vector, method = "gaussian"),
     "double"
   )
 
   # Test matrix input
   expect_true(
-    is.matrix(compute_weights(test_data$matrix, method = "gaussian"))
+    is.matrix(calc_decay(test_data$matrix, method = "gaussian"))
   )
 
   # Test raster input
   expect_s4_class(
-    compute_weights(test_data$raster, method = "gaussian"),
+    calc_decay(test_data$raster, method = "gaussian"),
     "SpatRaster"
   )
 })
 
-test_that("compute_weights handles custom functions", {
+test_that("calc_decay handles custom functions", {
   custom_decay <- function(distance, sigma, scale = 1) {
     scale * exp(-(distance^2) / (2 * sigma^2))
   }
-  result <- compute_weights(1:5, method = custom_decay, sigma = 2, scale = 2)
+  result <- calc_decay(1:5, method = custom_decay, sigma = 2, scale = 2)
   expect_type(result, "double")
   expect_length(result, 5)
 })
@@ -97,29 +97,29 @@ test_that("inverse weights computation works correctly", {
 })
 
 # Test error handling
-test_that("compute_weights handles invalid inputs appropriately", {
+test_that("calc_decay handles invalid inputs appropriately", {
   # Test invalid method
   expect_error(
-    compute_weights(1:5, method = "invalid_method"),
+    calc_decay(1:5, method = "invalid_method"),
     "Invalid method specified"
   )
 
   # Test NA handling
   distances <- c(0, 10, NA, 30)
-  weights <- compute_weights(distances, method = "gaussian")
+  weights <- calc_decay(distances, method = "gaussian")
   expect_true(is.na(weights[3]))
 })
 
 # Test edge cases
-test_that("compute_weights handles edge cases", {
+test_that("calc_decay handles edge cases", {
   # Empty input
-  expect_length(compute_weights(numeric(0), method = "gaussian"), 0)
+  expect_length(calc_decay(numeric(0), method = "gaussian"), 0)
 
   # Single value
-  expect_length(compute_weights(0, method = "gaussian"), 1)
+  expect_length(calc_decay(0, method = "gaussian"), 1)
 
   # Very large distances
   large_dist <- 1e6
-  weights <- compute_weights(large_dist, method = "gaussian")
+  weights <- calc_decay(large_dist, method = "gaussian")
   expect_true(weights < 1e-6)  # Should be very close to zero
 })

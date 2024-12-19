@@ -103,7 +103,7 @@ plot(results$util_prob_surface, main = "Utilization Probability Surface")
 ```
 
 ```{r}
-Wr <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 45)
+Wr <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 45)
 spread_access(
   ratios = results$ratios,
   weights = Wr

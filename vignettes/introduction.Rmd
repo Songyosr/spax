@@ -246,7 +246,7 @@ The package implements a flexible system for spatial interaction modeling throug
 
 ### Decay Functions
 
-The package offers several built-in decay functions through `compute_weights()`:
+The package offers several built-in decay functions through `calc_decay()`:
 
 -   **Gaussian:** $W(d) = exp(-d^2 / (2σ^2))$
 
@@ -262,7 +262,7 @@ Users can also define custom decay functions by passing a function to calc_decay
 
 ### Weight Normalization
 
-To handle overlapping service areas, `normalize_weights()` provides several options:
+To handle overlapping service areas, `calc_normalize()` provides several options:
 
 -   **Standard normalization:** Weights sum to 1 at each location ()
 
@@ -282,12 +282,12 @@ In this example, we use:
 # Compute the decayed weight raster for demand - Wd
 # Gaussian decay function with sigma = 60
 # semi-normalized - help reduce double counting of demand
-Wd <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60) |>
-  normalize_weights(method = 'semi')
+Wd <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 60) |>
+  calc_normalize(method = 'semi')
 
 # Compute the decayed weight raster for accessibility ratio - Wr
 # Gaussian decay function with sigma = 60, no normalization
-Wr <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60)
+Wr <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 60)
 
 # Plot
 par(mfrow = c(1, 2))
@@ -380,12 +380,12 @@ spread_access(supply_demand_ratio, Wr, plot_prefix = 'access_',
   
 ```
 
-Or we can use the `measure_access()` or `compute_2sfca()` function to calculate accessibility scores directly:
+Or we can use the `compute_access()` or `spax_e2sfca()` function to calculate accessibility scores directly:
 
 ```{r}
 supply_mat <- hd[,c("s_total_doctors", "s_total_doctors")] |> st_drop_geometry() |> as.matrix()
 
-access_scores <- measure_access(demand = dialysis_density,
+access_scores <- compute_access(demand = dialysis_density,
                                 supply = hd |> st_drop_geometry(),
                                 demand_weights = Wd,
                                 access_weights = Wr,
@@ -395,7 +395,7 @@ access_scores <- measure_access(demand = dialysis_density,
 plot(access_scores)
 
 hd |> st_drop_geometry() |> data.table::data.table() |> class()
-access_scores_2 <- compute_2sfca(demand = dialysis_density,
+access_scores_2 <- spax_e2sfca(demand = dialysis_density,
                                 supply = hd |> st_drop_geometry() |> data.table::data.table() ,
                                 distance = distance_raster,
                                 decay_params = list(method = "gaussian", sigma = 30),

@@ -114,7 +114,7 @@ First, we convert population density to a probability mass function:
 
 ```{r}
 # Convert density to PMF for spatial sampling
-pmf_result <- compute_pmf(tiny_pop_density, return_total = TRUE)
+pmf_result <- transform_pmf(tiny_pop_density, return_total = TRUE)
 pop_pmf <- pmf_result$pmf
 total_pop <- pmf_result$total
 
@@ -159,10 +159,10 @@ Now let's run multiple simulations to understand uncertainty:
 
 ```{r}
 # First calculate weights once instead of in each iteration
-Wd <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60) |>
-  normalize_weights(method = "semi")
+Wd <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 60) |>
+  calc_normalize(method = "semi")
 
-Wr <- compute_weights(distance = distance_raster, method = "gaussian", sigma = 60)
+Wr <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 60)
 
 
 
@@ -178,8 +178,8 @@ run_iteration <- function(seed) {
   )
   
   # Compute accessibility
-  # Use measure_access with pre-computed weights instead of compute_2sfca
-  measure_access(
+  # Use compute_access with pre-computed weights instead of spax_e2sfca
+  compute_access(
     demand = demand_sample,
     supply = hd,
     demand_weights = Wd,
