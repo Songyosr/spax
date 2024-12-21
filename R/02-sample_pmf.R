@@ -44,7 +44,7 @@
 #' @examples
 #' \dontrun{
 #' # Create sample population density
-#' r <- terra::rast(nrows=10, ncols=10)
+#' r <- terra::rast(nrows = 10, ncols = 10)
 #' terra::values(r) <- runif(100) * 100
 #'
 #' # Example 1: Fixed sample size
@@ -52,17 +52,19 @@
 #'
 #' # Example 2: Disease case simulation
 #' samples2 <- sample_pmf(r,
-#'                       size = 10000,     # population size
-#'                       prob = 0.001,     # disease prevalence
-#'                       method = "poisson",
-#'                       iterations = 100)  # Monte Carlo iterations
+#'   size = 10000, # population size
+#'   prob = 0.001, # disease prevalence
+#'   method = "poisson",
+#'   iterations = 100
+#' ) # Monte Carlo iterations
 #'
 #' # Example 3: Using snap mode with pre-computed PMF
 #' pmf <- transform_pmf(r)
 #' samples3 <- sample_pmf(pmf,
-#'                       n = 1000,
-#'                       iterations = 50,
-#'                       snap = TRUE)
+#'   n = 1000,
+#'   iterations = 50,
+#'   snap = TRUE
+#' )
 #' }
 #'
 #' @seealso
@@ -73,7 +75,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                        method = "poisson", iterations = 1,
                        seed = NULL, replace_0 = TRUE,
                        snap = FALSE, ...) {
-
   # Input validation
   .chck_sample_pmf(x, n, size, prob, method, iterations, snap)
 
@@ -98,14 +99,18 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     seed = seed,
     code = {
       # Compute sample sizes
-      n_samples <- .help_gen_sample_size(n = n, size = size, prob = prob,
-                                         method = method, iterations = iterations, ...)
+      n_samples <- .help_gen_sample_size(
+        n = n, size = size, prob = prob,
+        method = method, iterations = iterations, ...
+      )
 
       # Generate spatial samples
-      result <- .sample_pmf_core_indp(x = x, n_samples = n_samples,
-                                          iterations = iterations,
-                                          replace_0 = replace_0,
-                                          snap = snap)
+      result <- .sample_pmf_core_indp(
+        x = x, n_samples = n_samples,
+        iterations = iterations,
+        replace_0 = replace_0,
+        snap = snap
+      )
     }
   )
 
@@ -159,7 +164,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   if (abs(sum_check - 1) > 1e-10) {
     # Not a PMF, need to convert
     pmf_result <- transform_pmf(x, return_total = TRUE)
-    return(pmf_result)  # Returns list with $pmf and $total
+    return(pmf_result) # Returns list with $pmf and $total
   } else {
     # Already a PMF, return as is with NULL total
     return(list(
@@ -204,9 +209,10 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Built-in methods
   switch(method,
-         "poisson" = rpois(iterations, lambda = size * prob),
-         "binomial" = rbinom(iterations, size = size, prob = prob),
-         "nbinom" = rnbinom(iterations, size = size, prob = prob))
+    "poisson" = rpois(iterations, lambda = size * prob),
+    "binomial" = rbinom(iterations, size = size, prob = prob),
+    "nbinom" = rnbinom(iterations, size = size, prob = prob)
+  )
 }
 
 #' Generate spatial samples
@@ -228,10 +234,12 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   if (total_n > 0) {
     # Sample all points at once with replacement
-    sampled_cells <- spatSample(x, size = total_n,
-                                method = "weights",
-                                cells = TRUE,
-                                replace = TRUE)$cell
+    sampled_cells <- spatSample(x,
+      size = total_n,
+      method = "weights",
+      cells = TRUE,
+      replace = TRUE
+    )$cell
 
     # Generate layer indices corresponding to each sample
     layer_indices <- rep(1:iterations, times = n_samples)
@@ -281,8 +289,8 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' Generate evolving spatial samples across iterations
 #' @keywords internal
 .sample_pmf_core_evlv <- function(x, n_samples, iterations,
-                                     evolve_prop = 0.1,
-                                     replace_0 = TRUE, snap = FALSE) {
+                                  evolve_prop = 0.1,
+                                  replace_0 = TRUE, snap = FALSE) {
   # Create empty multi-layer template for results
   result <- rast(x, nlyrs = iterations)
   values(result) <- 0
@@ -308,10 +316,12 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Sample new points according to weights
   if (total_new_n > 0) {
-    sampled_cells <- spatSample(x, size = total_new_n,
-                                method = "weights",
-                                cells = TRUE,
-                                replace = TRUE)$cell
+    sampled_cells <- spatSample(x,
+      size = total_new_n,
+      method = "weights",
+      cells = TRUE,
+      replace = TRUE
+    )$cell
     # Assign new samples
     all_cells[1:total_new_n] <- sampled_cells
   }
@@ -333,8 +343,9 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
         # Get samples from previous iteration
         idx_previous <- which(layer_indices == (i - 1))
         retained_cells <- sample(all_cells[idx_previous],
-                                 size = length(idx_current),
-                                 replace = FALSE)
+          size = length(idx_current),
+          replace = FALSE
+        )
         all_cells[idx_current] <- retained_cells
       }
     }

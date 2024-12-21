@@ -46,12 +46,14 @@ supply measures and flexible weight specifications.
 \dontrun{
 # Basic usage with supply columns
 compute_access(demand, supply, weights,
-              supply_cols = c("doctors", "nurses"))
+  supply_cols = c("doctors", "nurses")
+)
 
 # With custom indicator names
 compute_access(demand, supply, weights,
-              supply_cols = c("doctors", "nurses"),
-              indicator_names = c("physician_access", "nurse_access"))
+  supply_cols = c("doctors", "nurses"),
+  indicator_names = c("physician_access", "nurse_access")
+)
 }
 }
 \seealso{

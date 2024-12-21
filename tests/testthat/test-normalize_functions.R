@@ -22,28 +22,28 @@ test_that("calc_normalize handles different methods correctly", {
   # Test standard normalization
   expect_equal(
     calc_normalize(simple_weights, "standard"),
-    simple_weights/sum(simple_weights)
+    simple_weights / sum(simple_weights)
   )
 
   # Test semi-normalization
   expect_equal(
     calc_normalize(simple_weights, "semi"),
-    simple_weights/sum(simple_weights)  # sum > 1 case
+    simple_weights / sum(simple_weights) # sum > 1 case
   )
 
   # Test reference normalization
   expect_equal(
     calc_normalize(simple_weights, "reference"),
-    simple_weights/max(simple_weights)
+    simple_weights / max(simple_weights)
   )
 
   # Test identity
   expect_equal(calc_normalize(simple_weights, "identity"), simple_weights)
 
   # Test custom function
-  custom_norm <- function(x, factor = 2) x/factor
-  expect_equal(calc_normalize(simple_weights, custom_norm), simple_weights/2)
-  expect_equal(calc_normalize(simple_weights, custom_norm, factor = 4), simple_weights/4)
+  custom_norm <- function(x, factor = 2) x / factor
+  expect_equal(calc_normalize(simple_weights, custom_norm), simple_weights / 2)
+  expect_equal(calc_normalize(simple_weights, custom_norm, factor = 4), simple_weights / 4)
 })
 
 test_that("calc_normalize throws appropriate errors", {
@@ -57,7 +57,7 @@ test_that("standard normalization produces correct weights", {
   # Test with simple numeric vector
   result <- calc_normalize(simple_weights, "standard")
   expect_equal(sum(result), 1)
-  expect_equal(result, simple_weights/sum(simple_weights))
+  expect_equal(result, simple_weights / sum(simple_weights))
 
   # Test with zeros
   expect_equal(calc_normalize(zero_weights, "standard"), zero_weights)
@@ -98,12 +98,12 @@ test_that("reference normalization works correctly", {
   # Test with default reference (max value)
   result <- calc_normalize(simple_weights, "reference")
   expect_equal(max(result), 1)
-  expect_equal(result, simple_weights/max(simple_weights))
+  expect_equal(result, simple_weights / max(simple_weights))
 
   # Test with custom reference value
   ref_value <- 4
   result <- calc_normalize(simple_weights, "reference", ref_value = ref_value)
-  expect_equal(result, simple_weights/ref_value)
+  expect_equal(result, simple_weights / ref_value)
 
   # Test with raster
   rast_result <- calc_normalize(test_raster, "reference")
@@ -116,14 +116,14 @@ test_that("reference normalization works correctly", {
 test_that("calc_normalize handles outside option (a0) correctly", {
   # Test standard normalization with a0
   result_a0 <- calc_normalize(simple_weights, "standard", a0 = 1)
-  expect_equal(sum(result_a0), sum(simple_weights)/(sum(simple_weights) + 1))
+  expect_equal(sum(result_a0), sum(simple_weights) / (sum(simple_weights) + 1))
 
   # Test semi-normalization with a0 (simplified)
   low_sum <- c(0.2, 0.3, 0.4)
-  expect_equal(calc_normalize(low_sum, "semi", a0 = 0), low_sum)  # No a0 effect when sum + a0 <= 1
+  expect_equal(calc_normalize(low_sum, "semi", a0 = 0), low_sum) # No a0 effect when sum + a0 <= 1
 
   result_high <- calc_normalize(low_sum, "semi", a0 = 0.5)
-  expect_equal(sum(result_high), sum(low_sum)/(sum(low_sum) + 0.5))  # sum + a0 > 1
+  expect_equal(sum(result_high), sum(low_sum) / (sum(low_sum) + 0.5)) # sum + a0 > 1
 
   # Test invalid a0
   expect_error(calc_normalize(simple_weights, "standard", a0 = -1))
@@ -171,7 +171,7 @@ test_that("calc_normalize preserves raster properties", {
 test_that("calc_normalize handles edge cases appropriately", {
   # Test with negative values
   neg_weights <- c(-1, -2, -3)
-  expect_error(calc_normalize(neg_weights, "standard"), NA)  # Should not error
+  expect_error(calc_normalize(neg_weights, "standard"), NA) # Should not error
 
   # Test with single value
   single_weight <- 5
@@ -192,7 +192,7 @@ test_that("calc_normalize performs efficiently with large datasets", {
   # Test performance
   expect_lt(
     system.time(calc_normalize(large_raster, "standard"))[["elapsed"]],
-    5  # Should complete in less than 5 seconds
+    5 # Should complete in less than 5 seconds
   )
 
   # Test snap mode performance improvement

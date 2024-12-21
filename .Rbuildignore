@@ -9,4 +9,4 @@
 ^pkgdown$
 ^\.github$
 ^junk/
-^data-raw/
+^data-raw$

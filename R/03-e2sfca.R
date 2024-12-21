@@ -25,23 +25,24 @@
 #' \dontrun{
 #' # Basic usage with supply columns
 #' compute_access(demand, supply, weights,
-#'               supply_cols = c("doctors", "nurses"))
+#'   supply_cols = c("doctors", "nurses")
+#' )
 #'
 #' # With custom indicator names
 #' compute_access(demand, supply, weights,
-#'               supply_cols = c("doctors", "nurses"),
-#'               indicator_names = c("physician_access", "nurse_access"))
+#'   supply_cols = c("doctors", "nurses"),
+#'   indicator_names = c("physician_access", "nurse_access")
+#' )
 #' }
 #' @export
 compute_access <- function(demand, supply, demand_weights, access_weights,
                            id_col = NULL, supply_cols = NULL,
                            indicator_names = NULL,
                            full_output = FALSE) {
-
   # Input validation
   if (!inherits(demand, "SpatRaster") ||
-      !inherits(demand_weights, "SpatRaster") ||
-      !inherits(access_weights, "SpatRaster")) {
+    !inherits(demand_weights, "SpatRaster") ||
+    !inherits(access_weights, "SpatRaster")) {
     stop("demand and weight arguments must be SpatRaster objects")
   }
 
@@ -71,8 +72,10 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
   if (is.null(indicator_names)) {
     if (!is.null(supply_cols)) {
       indicator_names <- paste0("A_", supply_cols)
-      message("Using supply column names as accessibility indicators: ",
-              paste(indicator_names, collapse = ", "))
+      message(
+        "Using supply column names as accessibility indicators: ",
+        paste(indicator_names, collapse = ", ")
+      )
     }
   } else {
     if (length(indicator_names) != ncol(ratios)) {
@@ -107,8 +110,8 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' library(terra)
 #'
 #' # Create a simple demand raster
-#' r <- rast(nrows=10, ncols=10, xmin=0, xmax=10, ymin=0, ymax=10)
-#' values(r) <- runif(ncell(r)) * 100  # Random population values
+#' r <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+#' values(r) <- runif(ncell(r)) * 100 # Random population values
 #' demand <- r
 #'
 #' # Create sample supply data
@@ -119,8 +122,8 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' )
 #'
 #' # Create distance raster stack
-#' distance <- rast(replicate(3, r))  # 3 layers for 3 facilities
-#' values(distance) <- runif(ncell(distance) * nlyr(distance)) * 10  # Random distances
+#' distance <- rast(replicate(3, r)) # 3 layers for 3 facilities
+#' values(distance) <- runif(ncell(distance) * nlyr(distance)) * 10 # Random distances
 #' names(distance) <- supply$location_id
 #'
 #' # Calculate accessibility
@@ -135,12 +138,11 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' )
 #' @export
 spax_e2sfca <- function(demand, supply, distance,
-                          decay_params = list(method = "gaussian", sigma = 30),
-                          demand_normalize = "identity",
-                          id_col = NULL, supply_cols = NULL,
-                          indicator_names = NULL,
-                          full_output = FALSE) {
-
+                        decay_params = list(method = "gaussian", sigma = 30),
+                        demand_normalize = "identity",
+                        id_col = NULL, supply_cols = NULL,
+                        indicator_names = NULL,
+                        full_output = FALSE) {
   # Check for sf object
   if (inherits(supply, "sf")) {
     stop("Supply data is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
@@ -151,22 +153,24 @@ spax_e2sfca <- function(demand, supply, distance,
 
   # Process demand weights based on normalization method
   demand_weights <- calc_normalize(weights, method = demand_normalize)
-    # switch(demand_normalize,
-    #                        "identity" = weights,
-    #                        "standard" = calc_normalize(weights, method = "normalize"),
-    #                        "semi" = calc_normalize(weights, method = "semi"),
-    #                        stop("Invalid demand_normalize method. Use 'identity', 'standard', or 'semi'"))
+  # switch(demand_normalize,
+  #                        "identity" = weights,
+  #                        "standard" = calc_normalize(weights, method = "normalize"),
+  #                        "semi" = calc_normalize(weights, method = "semi"),
+  #                        stop("Invalid demand_normalize method. Use 'identity', 'standard', or 'semi'"))
 
   # Access weights remain unnormalized
   access_weights <- weights
 
   # Use general compute_access function
-  return(compute_access(demand = demand,
-                        supply = supply,
-                        demand_weights = demand_weights,
-                        access_weights = access_weights,
-                        id_col = id_col,
-                        supply_cols = supply_cols,
-                        indicator_names = indicator_names,
-                        full_output = full_output))
+  return(compute_access(
+    demand = demand,
+    supply = supply,
+    demand_weights = demand_weights,
+    access_weights = access_weights,
+    id_col = id_col,
+    supply_cols = supply_cols,
+    indicator_names = indicator_names,
+    full_output = full_output
+  ))
 }

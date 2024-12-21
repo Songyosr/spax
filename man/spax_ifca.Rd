@@ -113,10 +113,10 @@ result <- spax_ifca(
   demand = pop_rast,
   supply = facility_capacity,
   sigma = 30,
-  lambda = 0.3,            # Slower but more stable convergence
+  lambda = 0.3, # Slower but more stable convergence
   convergence_type = "ratio",
-  tolerance = 1e-8,        # Stricter convergence
-  window_size = 10         # Longer rolling window
+  tolerance = 1e-8, # Stricter convergence
+  window_size = 10 # Longer rolling window
 )
 
 # Plot accessibility surface
@@ -127,10 +127,11 @@ if (!is.null(result$accessibility)) {
 # Check convergence history
 if (!is.null(result$history)) {
   plot(1:result$convergence$iterations,
-       result$history[,,1],  # Plot utilization history
-       type = "l",
-       xlab = "Iteration",
-       ylab = "Utilization")
+    result$history[, , 1], # Plot utilization history
+    type = "l",
+    xlab = "Iteration",
+    ylab = "Utilization"
+  )
 }
 }
 

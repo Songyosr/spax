@@ -18,46 +18,46 @@
 #' library(spax)
 #'
 #' # Create a simple distance raster (10x10 grid)
-#' r <- rast(nrows=10, ncols=10, xmin=0, xmax=10, ymin=0, ymax=10)
-#' values(r) <- 1:100  # Distance values
+#' r <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+#' values(r) <- 1:100 # Distance values
 #'
 #' # 1. Basic usage with different methods ----
 #' # Gaussian decay
-#' w1 <- calc_decay(r, method="gaussian", sigma=30)
+#' w1 <- calc_decay(r, method = "gaussian", sigma = 30)
 #'
 #' # Exponential decay
-#' w2 <- calc_decay(r, method="exponential", sigma=0.1)
+#' w2 <- calc_decay(r, method = "exponential", sigma = 0.1)
 #'
 #' # Power decay
-#' w3 <- calc_decay(r, method="power", sigma=2)
+#' w3 <- calc_decay(r, method = "power", sigma = 2)
 #'
 #' # Binary threshold
-#' w4 <- calc_decay(r, method="binary", sigma=50)
+#' w4 <- calc_decay(r, method = "binary", sigma = 50)
 #'
 #' # Plot to compare
 #' plot(c(w1, w2, w3, w4))
 #'
 #' # 2. Custom decay function ----
 #' # Create a custom decay function that combines gaussian and power
-#' custom_decay <- function(distance, sigma=30, power=2, ...) {
+#' custom_decay <- function(distance, sigma = 30, power = 2, ...) {
 #'   gaussian <- exp(-(distance^2) / (2 * sigma^2))
 #'   power_decay <- distance^(-power)
 #'   return(gaussian * power_decay)
 #' }
 #'
-#' w5 <- calc_decay(r, method=custom_decay, sigma=30, power=1.5)
+#' w5 <- calc_decay(r, method = custom_decay, sigma = 30, power = 1.5)
 #'
 #' # 3. Working with multiple facilities ----
 #' # Create distance rasters for 3 facilities
-#' distances <- rast(replicate(3, r))  # Stack of 3 identical rasters
+#' distances <- rast(replicate(3, r)) # Stack of 3 identical rasters
 #' names(distances) <- c("facility1", "facility2", "facility3")
 #'
 #' # Calculate decay weights for all facilities
-#' weights <- calc_decay(distances, method="gaussian", sigma=30)
+#' weights <- calc_decay(distances, method = "gaussian", sigma = 30)
 #'
 #' # 4. Performance optimization ----
 #' # Use snap=TRUE when calling repeatedly in performance-critical code
-#' weights_fast <- calc_decay(distances, method="gaussian", sigma=30, snap=TRUE)
+#' weights_fast <- calc_decay(distances, method = "gaussian", sigma = 30, snap = TRUE)
 #'
 #' # 5. Compare decay parameters ----
 #' # Create a sequence of sigma values
@@ -65,7 +65,7 @@
 #'
 #' # Calculate and plot weights for each sigma
 #' weights_list <- lapply(sigmas, function(s) {
-#'   calc_decay(r, method="gaussian", sigma=s)
+#'   calc_decay(r, method = "gaussian", sigma = s)
 #' })
 #'
 #' # Convert to SpatRaster stack and plot
@@ -75,7 +75,6 @@
 #' }
 #' @export
 calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...) {
-
   # Handle custom function first
   if (is.function(method)) {
     # Get function arguments
@@ -106,21 +105,21 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
   # Set default sigma if not provided
   if (is.null(sigma)) {
     sigma <- switch(method,
-                    "gaussian" = 11.64884,
-                    "exponential" = 0.1,
-                    "power" = 2,
-                    "binary" = 97.5
+      "gaussian" = 11.64884,
+      "exponential" = 0.1,
+      "power" = 2,
+      "binary" = 97.5
     )
   }
 
   # Select and apply the appropriate decay function
   switch(method,
-         "gaussian" = .help_decay_gaussian(distance, sigma, ...),
-         "exponential" = .help_decay_exponential(distance, sigma, ...),
-         "power" = .help_decay_power(distance, sigma, ...),
-         "inverse" = .help_decay_inverse(distance, ...),
-         "binary" = .help_decay_binary(distance, sigma, ...),
-         stop("Invalid method specified")
+    "gaussian" = .help_decay_gaussian(distance, sigma, ...),
+    "exponential" = .help_decay_exponential(distance, sigma, ...),
+    "power" = .help_decay_power(distance, sigma, ...),
+    "inverse" = .help_decay_inverse(distance, ...),
+    "binary" = .help_decay_binary(distance, sigma, ...),
+    stop("Invalid method specified")
   )
 }
 
@@ -131,7 +130,9 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param snap Logical for validation skipping
 #' @keywords internal
 .chck_decay <- function(distance, method, sigma = NULL, snap = FALSE) {
-  if (snap) return(TRUE)
+  if (snap) {
+    return(TRUE)
+  }
 
   if (!inherits(distance, "SpatRaster") && !is.numeric(distance)) {
     stop("distance must be numeric or SpatRaster")
@@ -207,4 +208,3 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
   weight[is.na(weight)] <- 0
   return(weight)
 }
-

@@ -72,7 +72,7 @@ performance. The input must already be a proper PMF in this mode.
 \examples{
 \dontrun{
 # Create sample population density
-r <- terra::rast(nrows=10, ncols=10)
+r <- terra::rast(nrows = 10, ncols = 10)
 terra::values(r) <- runif(100) * 100
 
 # Example 1: Fixed sample size
@@ -80,17 +80,19 @@ samples1 <- sample_pmf(r, n = 50, iterations = 5)
 
 # Example 2: Disease case simulation
 samples2 <- sample_pmf(r,
-                      size = 10000,     # population size
-                      prob = 0.001,     # disease prevalence
-                      method = "poisson",
-                      iterations = 100)  # Monte Carlo iterations
+  size = 10000, # population size
+  prob = 0.001, # disease prevalence
+  method = "poisson",
+  iterations = 100
+) # Monte Carlo iterations
 
 # Example 3: Using snap mode with pre-computed PMF
 pmf <- transform_pmf(r)
 samples3 <- sample_pmf(pmf,
-                      n = 1000,
-                      iterations = 50,
-                      snap = TRUE)
+  n = 1000,
+  iterations = 50,
+  snap = TRUE
+)
 }
 
 }

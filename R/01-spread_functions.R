@@ -55,7 +55,8 @@ spread_weighted <- function(values, weights, value_cols = NULL,
   if (parallel) {
     if (!requireNamespace("parallel", quietly = TRUE)) {
       stop("Package 'parallel' needed for parallel processing. Please install it.",
-           call. = FALSE)
+        call. = FALSE
+      )
     }
     if (is.null(n_cores)) {
       n_cores <- parallel::detectCores() - 1

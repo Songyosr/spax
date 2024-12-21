@@ -24,7 +24,7 @@ test_that("transform_pmf produces valid PMF from density values", {
 
   # Compare raw values instead of raster objects
   pmf_values <- as.vector(values(pmf))
-  expected_values <- test_values/sum(test_values)
+  expected_values <- test_values / sum(test_values)
   expect_equal(pmf_values, expected_values)
 })
 
@@ -92,13 +92,13 @@ test_that("transform_pmf maintains spatial properties", {
   # Test that spatial properties are preserved
   test_values <- c(10, 20, 30, 40)
   density_rast <- create_test_raster(test_values, 2, 2)
-  ext(density_rast) <- c(0, 100, 0, 100)  # Set custom extent
-  crs(density_rast) <- "EPSG:4326"        # Set CRS
+  ext(density_rast) <- c(0, 100, 0, 100) # Set custom extent
+  crs(density_rast) <- "EPSG:4326" # Set CRS
 
   pmf <- transform_pmf(density_rast)
 
   # Compare individual components instead of whole extent object
   expect_equal(as.vector(ext(pmf)), as.vector(ext(density_rast)))
-  expect_equal(crs(pmf, proj=TRUE), crs(density_rast, proj=TRUE))
+  expect_equal(crs(pmf, proj = TRUE), crs(density_rast, proj = TRUE))
   expect_equal(res(pmf), res(density_rast))
 })

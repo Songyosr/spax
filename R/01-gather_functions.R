@@ -35,17 +35,18 @@ gather_weighted <- function(values, weights, snap = FALSE, na.rm = TRUE) {
     }
 
     # Original output format
-    weighted_sums <- global(weights, 'sum',
-                            weights = values,
-                            na.rm = na.rm) |>
+    weighted_sums <- global(weights, "sum",
+      weights = values,
+      na.rm = na.rm
+    ) |>
       rownames_to_column(var = "unit_id") |>
-      rename('weighted_sum' = weighted_sum)
+      rename("weighted_sum" = weighted_sum)
 
     return(weighted_sums)
   }
 
   # Fast mode - skip checks
-  return(global(weights, 'sum', weights = values, na.rm = na.rm))
+  return(global(weights, "sum", weights = values, na.rm = na.rm))
 }
 
 #' Calculate demand captured by each service site

@@ -34,7 +34,7 @@ w <- calc_decay(distance, method = "gaussian", sigma = 30)
 p1 <- calc_choice(w)
 
 # With Huff model attractiveness
-attr <- c(100, 150, 80)  # for 3 facilities
+attr <- c(100, 150, 80) # for 3 facilities
 p2 <- calc_choice(w, attractiveness = attr, alpha = 1.5)
 
 # With outside option

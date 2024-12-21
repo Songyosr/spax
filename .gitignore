@@ -9,4 +9,4 @@ docs
 
 # Ignore junk folder
 junk/
-data-row/
+data-raw/

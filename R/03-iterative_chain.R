@@ -66,11 +66,10 @@
 #' Fast version for snap mode - returns only utilization vector
 #' @export
 compute_iterative_fast <- function(supply, weights, demand,
-                                    lambda = 0.5,
-                                    max_iter = 100,
-                                    tolerance = 1e-6,
-                                    window_size = 5) {
-
+                                   lambda = 0.5,
+                                   max_iter = 100,
+                                   tolerance = 1e-6,
+                                   window_size = 5) {
   n_facilities <- length(supply)
   current_attractiveness <- supply
   current_util <- numeric(n_facilities)
@@ -115,17 +114,17 @@ compute_iterative_fast <- function(supply, weights, demand,
 #' Full version with history tracking and detailed output
 #' @export
 compute_iterative <- function(supply, weights, demand,
-                               lambda = 0.5,
-                               max_iter = 100,
-                               tolerance = 1e-6,
-                               window_size = 5,
-                               convergence_type = "utilization",
-                               debug = FALSE) {
+                              lambda = 0.5,
+                              max_iter = 100,
+                              tolerance = 1e-6,
+                              window_size = 5,
+                              convergence_type = "utilization",
+                              debug = FALSE) {
   n_facilities <- length(supply)
 
   # State array: [iterations, facilities, metrics]
   state <- array(0, dim = c(max_iter, n_facilities, 3))
-  state[1, , 3] <- supply  # Initial attractiveness
+  state[1, , 3] <- supply # Initial attractiveness
 
   # Initialize rolling window
   diff_window <- numeric(window_size)
@@ -144,16 +143,16 @@ compute_iterative <- function(supply, weights, demand,
 
     # Update state array
     iter <- iter + 1
-    state[iter, , 1] <- new_util  # utilization
-    state[iter, , 2] <- ifelse(new_util > 0, supply / new_util, 0)  # ratio
+    state[iter, , 1] <- new_util # utilization
+    state[iter, , 2] <- ifelse(new_util > 0, supply / new_util, 0) # ratio
     state[iter, , 3] <- (1 - lambda) * current[, 3] + lambda * state[iter, , 2]
 
     # Convergence check with type support
     if (iter > 1) {
       current_diff <- if (convergence_type == "utilization") {
-        max(abs(state[iter, , 1] - state[iter-1, , 1]), na.rm = TRUE)
+        max(abs(state[iter, , 1] - state[iter - 1, , 1]), na.rm = TRUE)
       } else {
-        max(abs(state[iter, , 2] - state[iter-1, , 2]), na.rm = TRUE)
+        max(abs(state[iter, , 2] - state[iter - 1, , 2]), na.rm = TRUE)
       }
 
       diff_window[window_idx] <- current_diff
@@ -161,9 +160,11 @@ compute_iterative <- function(supply, weights, demand,
       if (iter >= window_size) window_filled <- TRUE
 
       if (debug) {
-        cat("Iteration:", iter,
-            "\n- Difference:", round(current_diff, 6),
-            "\n- Rolling avg:", round(mean(diff_window), 6), "\n")
+        cat(
+          "Iteration:", iter,
+          "\n- Difference:", round(current_diff, 6),
+          "\n- Rolling avg:", round(mean(diff_window), 6), "\n"
+        )
       }
     }
   }
@@ -269,10 +270,10 @@ compute_iterative <- function(supply, weights, demand,
 #'   demand = pop_rast,
 #'   supply = facility_capacity,
 #'   sigma = 30,
-#'   lambda = 0.3,            # Slower but more stable convergence
+#'   lambda = 0.3, # Slower but more stable convergence
 #'   convergence_type = "ratio",
-#'   tolerance = 1e-8,        # Stricter convergence
-#'   window_size = 10         # Longer rolling window
+#'   tolerance = 1e-8, # Stricter convergence
+#'   window_size = 10 # Longer rolling window
 #' )
 #'
 #' # Plot accessibility surface
@@ -283,10 +284,11 @@ compute_iterative <- function(supply, weights, demand,
 #' # Check convergence history
 #' if (!is.null(result$history)) {
 #'   plot(1:result$convergence$iterations,
-#'        result$history[,,1],  # Plot utilization history
-#'        type = "l",
-#'        xlab = "Iteration",
-#'        ylab = "Utilization")
+#'     result$history[, , 1], # Plot utilization history
+#'     type = "l",
+#'     xlab = "Iteration",
+#'     ylab = "Utilization"
+#'   )
 #' }
 #' }
 #'
@@ -316,15 +318,15 @@ spax_ifca <- function(distance_raster,
                       convergence_type = c("utilization", "ratio"),
                       snap = FALSE,
                       debug = FALSE) {
-
   convergence_type <- match.arg(convergence_type)
 
   # Process facilities and compute weights - needed for both paths
   processed <- .help_prep_facilities(supply, distance_raster, snap = snap)
   weights <- calc_decay(processed$distances,
-                             method = "gaussian",
-                             sigma = sigma,
-                             snap = snap)
+    method = "gaussian",
+    sigma = sigma,
+    snap = snap
+  )
 
   # Fast path - returns only utilization
   if (snap) {
@@ -358,15 +360,15 @@ spax_ifca <- function(distance_raster,
   final_state <- results$state[final_iter, , , drop = TRUE]
 
   # Compute final accessibility using the [valid] weights
-  raw_ratios <- final_state[,2]
+  raw_ratios <- final_state[, 2]
   accessibility <- spread_weighted(raw_ratios, weights, snap = snap)
   util_prob_surface <- sum(results$util_probs, na.rm = TRUE)
 
 
   # Reintegrate zeros into final values
-  utilization <- .help_add_0facilities(final_state[,1], processed$zero_map)
-  ratios <- .help_add_0facilities(final_state[,2], processed$zero_map)
-  attractiveness <- .help_add_0facilities(final_state[,3], processed$zero_map)
+  utilization <- .help_add_0facilities(final_state[, 1], processed$zero_map)
+  ratios <- .help_add_0facilities(final_state[, 2], processed$zero_map)
+  attractiveness <- .help_add_0facilities(final_state[, 3], processed$zero_map)
 
 
 
@@ -384,7 +386,7 @@ spax_ifca <- function(distance_raster,
       final_average = results$convergence$final_average,
       window_size = window_size
     ),
-    history = if(results$converged) results$state else NULL,
+    history = if (results$converged) results$state else NULL,
     parameters = list(
       sigma = sigma,
       lambda = lambda,

@@ -15,7 +15,7 @@ Description: A comprehensive toolkit for analyzing spatial accessibility to heal
     but applicable to other spatial accessibility contexts.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+LazyData: TRUE
 Imports:
     terra,
     parallel,

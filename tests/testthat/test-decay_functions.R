@@ -37,7 +37,7 @@ test_that(".help_decay_gaussian calculates correctly", {
   weights <- .help_decay_gaussian(x, sigma)
 
   # Test mathematical properties
-  expect_equal(weights[1], 1)  # At distance 0
+  expect_equal(weights[1], 1) # At distance 0
   expect_equal(
     weights,
     exp(-(x^2) / (2 * sigma^2))
@@ -46,7 +46,7 @@ test_that(".help_decay_gaussian calculates correctly", {
   # Test decay properties
   expect_true(all(weights <= 1))
   expect_true(all(weights >= 0))
-  expect_true(all(diff(weights) < 0))  # Strictly decreasing
+  expect_true(all(diff(weights) < 0)) # Strictly decreasing
 
   # Test NA handling
   expect_true(is.na(.help_decay_gaussian(NA, sigma)))
@@ -58,7 +58,7 @@ test_that(".help_decay_exponential calculates correctly", {
   weights <- .help_decay_exponential(x, sigma)
 
   # Test mathematical properties
-  expect_equal(weights[1], 1)  # At distance 0
+  expect_equal(weights[1], 1) # At distance 0
   expect_equal(
     weights,
     exp(-sigma * x)
@@ -71,7 +71,7 @@ test_that(".help_decay_exponential calculates correctly", {
 })
 
 test_that(".help_decay_power calculates correctly", {
-  x <- seq(1, 50, by = 10)  # Start at 1 to avoid infinity
+  x <- seq(1, 50, by = 10) # Start at 1 to avoid infinity
   sigma <- 2
   weights <- .help_decay_power(x, sigma)
 
@@ -107,8 +107,8 @@ test_that(".help_decay_inverse calculates correctly", {
   weights <- .help_decay_inverse(x, c)
 
   # Test mathematical properties
-  expect_equal(weights, 1/(x + c))
-  expect_equal(weights[1], 1/(0 + c))
+  expect_equal(weights, 1 / (x + c))
+  expect_equal(weights[1], 1 / (0 + c))
 
   # Test decay properties
   expect_true(all(weights > 0))
@@ -186,16 +186,16 @@ test_that("calc_decay handles custom functions with various signatures", {
   custom_fn2 <- function(distance, sigma = 1) {
     exp(-(distance^2) / (2 * sigma^2))
   }
-  expect_no_error(calc_decay(x, method = custom_fn2))  # Uses default
-  expect_no_error(calc_decay(x, method = custom_fn2, sigma = 2))  # Uses provided
+  expect_no_error(calc_decay(x, method = custom_fn2)) # Uses default
+  expect_no_error(calc_decay(x, method = custom_fn2, sigma = 2)) # Uses provided
 
   # Custom function without sigma
   custom_fn3 <- function(distance, k = 1) {
     1 / (1 + k * distance)
   }
-  expect_no_error(calc_decay(x, method = custom_fn3))  # Ignores sigma
-  expect_no_error(calc_decay(x, method = custom_fn3, k = 2))  # Uses k
-  expect_no_error(calc_decay(x, method = custom_fn3, sigma = 2, k = 2))  # Ignores sigma, uses k
+  expect_no_error(calc_decay(x, method = custom_fn3)) # Ignores sigma
+  expect_no_error(calc_decay(x, method = custom_fn3, k = 2)) # Uses k
+  expect_no_error(calc_decay(x, method = custom_fn3, sigma = 2, k = 2)) # Ignores sigma, uses k
 
   # Verify results
   result3a <- calc_decay(x, method = custom_fn3)

@@ -48,8 +48,8 @@ Calculate Two-Step Floating Catchment Area (2SFCA) accessibility scores
 library(terra)
 
 # Create a simple demand raster
-r <- rast(nrows=10, ncols=10, xmin=0, xmax=10, ymin=0, ymax=10)
-values(r) <- runif(ncell(r)) * 100  # Random population values
+r <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+values(r) <- runif(ncell(r)) * 100 # Random population values
 demand <- r
 
 # Create sample supply data
@@ -60,8 +60,8 @@ supply <- data.frame(
 )
 
 # Create distance raster stack
-distance <- rast(replicate(3, r))  # 3 layers for 3 facilities
-values(distance) <- runif(ncell(distance) * nlyr(distance)) * 10  # Random distances
+distance <- rast(replicate(3, r)) # 3 layers for 3 facilities
+values(distance) <- runif(ncell(distance) * nlyr(distance)) * 10 # Random distances
 names(distance) <- supply$location_id
 
 # Calculate accessibility
