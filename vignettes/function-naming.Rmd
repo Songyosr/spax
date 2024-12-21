@@ -20,66 +20,79 @@ library(spax)
 
 # SPAX Package Development Guidelines
 
-## Function Hierarchy and Naming Conventions
+## Core Principles
 
-### High-Level Functions (`spax_*`)
+1.  **Modularity**: Functions should be single-purpose and composable
+2.  **Consistency**: Follow established naming and structure conventions
+3.  **Documentation**: Provide clear, example-driven documentation
+4.  **Performance**: Consider computational efficiency
+5.  **Testing**: Comprehensive test coverage
 
--   **Purpose**: Complete workflows that users interact with directly
+## Function Hierarchy
+
+### 1. High-Level Functions (`spax_*`)
+
+-   **Purpose**: Complete workflows for direct user interaction
+
 -   **Naming**: Must start with `spax_`
--   **Examples**: `spax_e2sfca()`, `spax_ifca()`
--   **Input Requirements**: Should accept primitive inputs (demand, supply, distance rasters)
--   **Documentation**: Must include complete examples in roxygen comments
 
-### Semi-High Level Functions (`comp_*`)
+-   **Examples**:
 
--   **Purpose**: Complex computational operations that can work independently
--   **Naming**: Must start with `comp_`
--   **Examples**: `comp_iterative()`, `comp_iterative_fast()`
--   **Note**: These functions often implement core algorithms
+    ``` r
+    spax_e2sfca(demand, supply, distance)
+    spax_ifca(distance_raster, demand, supply, sigma)
+    ```
 
-### Middle-Level Operations
+### 2. Semi-High Level Functions (`compute_*`)
+
+-   **Purpose**: Complex computational operations
+-   **Naming**: Must start with `compute_`
+-   **Examples**: `compute_iterative()`, `compute_iterative_fast()`
+
+### 3. Middle-Level Operations
 
 Four categories of operational functions:
 
-1.  **Gather Operations** (`gather_*`)
-    -   Purpose: Dimension reduction (e.g., raster stack → vector)
-    -   Examples: `gather_demand()`, `gather_weighted()`
-2.  **Spread Operations** (`spread_*`)
-    -   Purpose: Dimension expansion (e.g., vector → raster stack)
-    -   Examples: `spread_access()`, `spread_weighted()`
-3.  **Calculate Operations** (`calc_*`)
-    -   Purpose: Layer-wise operations maintaining dimensions
-    -   Examples: `calc_decay()`, `calc_normalize()`, `calc_choice()`
-4.  **Transform Operations** (`transform_*`)
-    -   Purpose: Surface-wide transformations
-    -   Examples: `transform_pmf()`
+#### a. Gather Operations (`gather_*`)
 
-### Low-Level Functions
+-   **Purpose**: Dimension reduction (raster stack → vector)
+-   **Examples**: `gather_demand()`, `gather_weighted()`
 
-Internal functions not exported in the NAMESPACE:
+#### b. Spread Operations (`spread_*`)
 
-1.  **Validation Functions** (`.chck_*`)
-    -   Purpose: Input validation
-    -   Examples: `.chck_calc_choice()`, `.chck_sample_pmf()`
-2.  **Helper Functions** (`.help_*`)
-    -   Purpose: Utility functions used by higher-level functions
-    -   Examples: `.help_prep_facilities()`, `.help_gen_sample_size()`
-3.  **Core Functions** (`.*_core`)
-    -   Purpose: Main computational logic for complex operations
-    -   Examples: `.sample_pmf_core_indp()`, `.sample_pmf_core_evlv()`
+-   **Purpose**: Dimension expansion (vector → raster stack)
+-   **Examples**: `spread_access()`, `spread_weighted()`
 
-## Function Structure Guidelines
+#### c. Calculate Operations (`calc_*`)
 
-### Standard Function Template
+-   **Purpose**: Layer-wise operations maintaining dimensions
+-   **Examples**: `calc_decay()`, `calc_normalize()`
+
+#### d. Transform Operations (`transform_*`)
+
+-   **Purpose**: Surface-wide transformations
+-   **Examples**: `transform_pmf()`
+
+#### e. Independent function (`sample_*`)
+
+### 4. Low-Level Functions (Internal)
+
+-   **Validation** (`.chck_*`): Input validation
+-   **Helpers** (`.help_*`): Utility functions
+-   **Core** (`.*_core`): Main computational logic
+
+## Function Structure
+
+### Standard Template
+
+Note that not all functions will have all sections. Adjust as needed.
 
 ``` r
-function_name <- function(
-    required_param,
-    optional_param = default_value,
-    ...,
-    snap = FALSE
-) {
-    # 1. Input Validation (skip if snap = TRUE)
+function_name <- function(required_param,
+                         optional_param = default_value,
+                         ...,
+                         snap = FALSE) {
+    # 1. Validation
     if (!snap) {
         .chck_function_name(required_param, optional_param)
     }
@@ -87,10 +100,10 @@ function_name <- function(
     # 2. Pre-processing
     processed_data <- .help_process_data(required_param)
     
-    # 3. Main Computation
+    # 3. Core Computation
     result <- .function_name_core(processed_data, ...)
     
-    # 4. Post-processing (skip if snap = TRUE)
+    # 4. Post-processing
     if (!snap) {
         result <- .help_post_process(result)
     }
@@ -99,212 +112,166 @@ function_name <- function(
 }
 ```
 
-### The `snap` Parameter
+## Examples and Data Usage
 
--   **Purpose**: Performance optimization for internal use
--   **Default**: Always `FALSE`
--   **When TRUE**:
-    -   Skips input validation
-    -   Skips non-essential processing
-    -   Assumes inputs are correctly formatted
-    -   May skip naming/attribute assignment
--   **Usage**: Only set `TRUE` when called from within other package functions where inputs have already been validated
+### Using Package Data
 
-### Documentation Requirements
+When creating examples, prefer using package datasets from `data.R`:
 
-1.  **Roxygen Headers**
+1.  **Healthcare Facilities** + **Distance raster/Isochrone**: `hc12_phc` and `hc12_hos`+ `hos_iscr` and `phc_iscr`
+
+    ``` r
+    # Example using hospital data
+    weights <- calc_decay(hos_iscr,
+                         method = "gaussian",
+                         sigma = 30)
+
+    choice_probs <- calc_choice(weights,
+                               attractiveness = hc12_hos$s_doc)
+    ```
+
+2.  **Population Data**: `u5pd` (Under-5 Population Density)
+
+    ``` r
+    # Example using population data
+    pmf_result <- transform_pmf(u5pd, return_total = TRUE)
+    ```
+
+3.  **Administrative Boundaries**: `bound0`, `bound1`
+
+    ``` r
+    # Example using boundary data
+    plot(bound1) +
+      geom_sf(aes(fill = ADM1_EN))
+    ```
+
+### Creating New Examples
+
+If package data isn't suitable, create minimal reproducible examples:
+
+``` r
+# Create test raster
+r <- terra::rast(nrows = 10, ncols = 10)
+values(r) <- runif(100)
+
+# Create test points
+pts <- data.frame(
+    x = runif(5, 0, 1),
+    y = runif(5, 0, 1),
+    capacity = rpois(5, 10)
+)
+```
+
+## Documentation Requirements
+
+### Function Documentation
 
 ``` r
 #' @title Function Title
 #' @description Detailed description
-#' @param snap Logical; if TRUE enables fast computation mode with minimal validation
+#' @param param1 Description of first parameter
+#' @param snap Logical; if TRUE enables fast computation mode
+#' @examples
+#' # Use package data when possible
+#' data(hc12_hos)
+#' result <- function_name(hc12_hos$s_doc)
+#' 
+#' # Or create minimal example
+#' x <- rnorm(10)
+#' result <- function_name(x)
 #' @export
 ```
 
-2.  **Internal Function Documentation**
+### Internal Function Documentation
 
 ``` r
 #' @keywords internal
 .internal_function <- function() {
+    # Implementation
+}
 ```
 
-### File Organization
+## File Organization
 
-All R files must be in the `R/` directory (no subdirectories). Use file naming conventions:
+### File Naming
 
--   `00-utils.R`: Helper functions
--   `01-core.R`: Core computations
--   `02-operations.R`: Middle-level operations
--   `03-compute.R`: Semi-high level functions
--   `04-spax.R`: High-level functions
+`{level}-{description}.R`:
 
-### Error Handling
+\- `01-*`: Core building blocks
 
-1.  Use `stop()` for critical errors in validation
-2.  Use `warning()` for non-critical issues
-3.  Use `message()` sparingly for important information
+\- `02-*`: Assembly-level functions
 
-### Performance Considerations
+\- `03-*`: Main workflows
 
-1.  Always include the `snap` parameter for functions that might be called repeatedly
-2.  Use `terra` functions instead of `raster` when possible
-3.  Avoid loops when vectorized operations are possible
-4.  Consider parallel processing for computationally intensive operations
+\- `09-*`: Independent utilities
 
-### Testing Requirements
+### Location
 
-1.  Each function should have corresponding tests in `tests/testthat/`
-2.  Include tests for both normal and `snap=TRUE` modes
-3.  Test error conditions and edge cases
-4.  Include performance benchmarks for critical functions
+All R files must be in the `R/` directory (no subdirectories)
 
-## Development Workflow
+## Testing Guidelines
 
-1.  **Creating New Functions**
-    -   Start with the function template
-    -   Add validation function if needed
-    -   Implement core logic
-    -   Add documentation
-    -   Add tests
-2.  **Modifying Existing Functions**
-    -   Maintain backward compatibility
-    -   Update documentation
-    -   Update tests
-    -   Update vignettes if behavior changes
-3.  **Deprecating Functions**
-    -   Use `.Deprecated()` function
-    -   Maintain old function for at least one version
-    -   Update documentation to point to new function
-    -   Update vignettes to use new function
+### Test Organization
 
-## Version Control Guidelines
+``` r
+# tests/testthat/test-function_name.R
 
-1.  **Commit Messages**
-    -   Start with type: feat, fix, docs, style, refactor, test, chore
-    -   Include scope in parentheses
-    -   Example: `feat(calc): add new decay function`
-2.  **Branches**
-    -   `main`: Stable release
-    -   `develop`: Development version
-    -   `feature/*`: New features
-    -   `fix/*`: Bug fixes
+test_that("function handles basic cases", {
+    # Use package data - only when nescessary (since it's big)
+    result <- function_name(hc12_hos$s_doc)
+    expect_equal(...)
+    
+    # Or create test data
+    x <- 1:10
+    result <- function_name(x)
+    expect_equal(...)
+})
+```
+
+### Test Coverage
+
+-   Normal operation
+-   Edge cases
+-   Error conditions
+-   `snap = TRUE` mode
+-   Performance benchmarks for critical functions
+
+## Version Control
+
+### Commit Messages
+
+```         
+type(scope): description
+
+- feat(calc): add new decay function
+- fix(normalize): handle NA values correctly
+- docs(examples): update with package data
+```
+
+### Branches
+
+-   `main`: Stable release
+-   `develop`: Development version
+-   `feature/*`: New features
+-   `fix/*`: Bug fixes
+
+## Performance Considerations
+
+1.  Include `snap` parameter for functions called repeatedly
+2.  Use `terra` functions instead of `raster`
+3.  Vectorize operations when possible
+4.  Consider parallel processing for intensive operations
 
 ## Documentation Updates
 
-When adding or modifying functions: 1. Update relevant vignettes 2. Update README.md if needed 3. Update NAMESPACE 4. Run roxygen2 to update documentation 5. Update NEWS.md with changes
+When modifying functions:
 
-# Complete Function Catalog
+1\. Update relevant vignettes
 
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| Current Name                    | /new name                       | Level       | Subcategory                                          | Notes                                                                                          |
-+=================================+=================================+=============+======================================================+================================================================================================+
-| **parameter_tuning.R**          | -   depricated                  | \-          | \-                                                   |                                                                                                |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **spread_functions.R**          | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `weighted_spread()`             | → `spread_weighted()`           | Middle      | Spread                                               | General spreading function                                                                     |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.spread_single()`              | → `.spread_core()`              | Low         | Internal                                             | Single value spreading                                                                         |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `spread_access()`               | ✓                               | Middle      | Spread                                               | Access distribution                                                                            |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **compute_choice.R**            | should change to check and main |             |                                                      |                                                                                                |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.compute_choice_core()`        | → `deprec`                      | Low         | Core                                                 | -   will re write a fn - so the computation will be in a main fn while the check is in another |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `compute_choice()`              | → `calc_choice`                 | mid         | mid                                                  | Choice probability calculation                                                                 |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-|                                 | → `.chck_calc_choice`           | Low         | check                                                | validation for calc choice                                                                     |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **compute_huff_weights.R**      | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `compute_huff_weights()`        | → `deprec`                      | Semi-High   | Compute                                              | Huff model weights                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **compute_pmf.R**               | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `compute_pmf()`                 | → `transform_pmf()`             | Middle\*\   | Transform                                            | PMF conversion                                                                                 |
-|                                 |                                 | independent |                                                      |                                                                                                |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **decay_functions.R**           | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `compute_weights()`             | → `calc_decay()`                | Middle      | Calc                                                 | Calc decay weight                                                                              |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.gaussian_weights()`           |                                 | Low         | Internal                                             | Gaussian decay                                                                                 |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.exponential_weights()`        |                                 | Low         | Internal                                             | Exponential decay                                                                              |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.power_weights()`              |                                 | Low         | Internal                                             | Power decay                                                                                    |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.inverse_weights()`            |                                 | Low         | Internal                                             | Inverse decay                                                                                  |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.binary_weights()`             |                                 | Low         | Internal                                             | Binary decay                                                                                   |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **gather_functions.R**          | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `weighted_gather()`             | → `gather_weighted()`           | Middle      | Gather                                               | General gathering                                                                              |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `gather_demand()`               | ✓                               | Middle      | Gather                                               | Demand aggregation                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **iterative_chain.R**           | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `preprocess_facilities()`       | → `.help_prep_facilities()`     | Low         | Helper                                               | Facility data preparation                                                                      |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `reintegrate_facilities()`      | → `.help_add_0facilities()`     | Low         | Helper                                               | Facility reintegration                                                                         |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `update_facility_names()`       | → depricated                    | Low         | Helper                                               | Name updating                                                                                  |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `run_iterative_core_fast()`     | → `compute_iterative_fast()`    | semi-high\  | Core                                                 | Fast iteration implementation                                                                  |
-|                                 |                                 | \*snap      |                                                      |                                                                                                |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `run_iterative_core()`          | → `compute_iterative()`         | semi-high   | Core                                                 | Full iteration implementation                                                                  |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `spax_ifca()`                   |                                 | High        | Main                                                 | Iterative FCA analysis                                                                         |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **measure_access.R**            | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `measure_access()`              | → `compute_access()`            | Semi-High   | Compute                                              | General accessibility                                                                          |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `compute_2sfca()`               | → `spax_e2sfca()`               | High        | Compute                                              | 2SFCA implementation                                                                           |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **normalize_functions.R**       | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.normalize_core()`             | → `depricate`                   | Low         | Core - will move to validate + main than main + core | Core normalization                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `normalize_weights()`           | → `calc_normalize()`            | Middle      | Calculate                                            | Weight normalization                                                                           |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-|                                 | → `.chck_calc_normalize()`      | low         | checker                                              |                                                                                                |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| **sample_pmf.R**                | \-                              | \-          | \-                                                   | \-                                                                                             |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `sample_pmf()`                  | ok                              | semi-high   | Transform                                            | PMF sampling                                                                                   |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.validate_sample_pmf_inputs()` | → `.chck_sample_pmf()`          | Low         | Check                                                | Input validation                                                                               |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.check_and_convert_pmf()`      | → `.ckck_n_convert_pmf()`       | Low         | Check                                                | PMF validation                                                                                 |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.compute_sample_sizes()`       | → `.help_gen_sample_size()`     | Low         | Helper                                               | Sample size computation                                                                        |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.generate_spatial_samples()`   | → .`sample_pmf_core_indp()`     | mid         | Core                                                 | Sample generation                                                                              |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `est_new_samples()`             | → `.help_est_new_sample()`      | Low         | Helper                                               | Sample estimation                                                                              |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
-| `.generate_evolve_samples()`    | → .`sample_pmf_core_evlv()`     | Low         | Core                                                 | Evolution samples                                                                              |
-+---------------------------------+---------------------------------+-------------+------------------------------------------------------+------------------------------------------------------------------------------------------------+
+2\. Update `README.md` if needed
 
-## Missing Functions (Suggested Additions)
+3\. Run roxygen2
 
-+-----------------------------+-------------+-------------+------------------------------+
-| Function Name               | Level       | Subcategory | Purpose                      |
-+=============================+=============+=============+==============================+
-| `spax_2sfca()`              | High        | Main        | Complete 2SFCA workflow      |
-+-----------------------------+-------------+-------------+------------------------------+
-| `spax_montecarlo()`         | High        | Main        | Monte Carlo analysis         |
-+-----------------------------+-------------+-------------+------------------------------+
-| `summarize_accessibility()` | Middle      | Summarize   | Accessibility statistics     |
-+-----------------------------+-------------+-------------+------------------------------+
-| `validate_inputs_check()`   | Low         | Check       | General input validation     |
-+-----------------------------+-------------+-------------+------------------------------+
-| `plot_accessibility()`      | Middle      | Visualize   | Standard accessibility plots |
-+-----------------------------+-------------+-------------+------------------------------+
+4\. Update `NEWS.md`
 
-Would you like to: 1. Review specific function groups in detail? 2. Discuss the suggested name changes? 3. Prioritize which missing functions to implement first?
+5\. Update examples to use package data where appropriate
