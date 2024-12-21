@@ -15,7 +15,7 @@ Description: A comprehensive toolkit for analyzing spatial accessibility to heal
     but applicable to other spatial accessibility contexts.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+LazyData: TRUE
 Imports:
     terra,
     parallel,
@@ -39,3 +39,5 @@ RoxygenNote: 7.3.2
 URL: https://github.com/songyos/spax, https://songyosr.github.io/spax/
 BugReports: https://github.com/songyos/spax/issues
 VignetteBuilder: knitr
+Depends: 
+    R (>= 3.5)

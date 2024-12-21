@@ -6,3 +6,7 @@ inst/doc
 /doc/
 /Meta/
 docs
+
+# Ignore junk folder
+junk/
+data-raw/
