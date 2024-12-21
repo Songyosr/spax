@@ -38,8 +38,7 @@ This dataset provides detailed administrative information for Region 12 province
 library(sf)
 library(ggplot2)
 
-# Load the dataset
-data(bound1)
+bound1 # already lazy-loaded - no need to run data(bound1)
 
 # Plot the ADM1 boundaries with province names
 ggplot(bound1) +

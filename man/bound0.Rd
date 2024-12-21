@@ -29,7 +29,7 @@ library(sf)
 library(ggplot2)
 
 # Load the dataset
-data(bound0)
+bound0 # already lazy-loaded - no need to run data(bound0)
 
 # Plot the boundary
 ggplot(bound0) +
