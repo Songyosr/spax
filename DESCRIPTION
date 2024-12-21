@@ -18,6 +18,7 @@ Encoding: UTF-8
 LazyData: TRUE
 Imports:
     terra,
+    raster,
     parallel,
     sf,
     stats,

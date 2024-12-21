@@ -15,7 +15,11 @@ calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0)}
 
-\item{snap}{Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use}
+\item{snap}{Logical; if TRUE enables fast computation mode with:
+- Minimal validation
+- Essential preprocessing only
+- No name/attribute assignment
+Only use when inputs are known to be valid.}
 }
 \value{
 SpatRaster stack of choice probabilities (layers sum to 1 at each location)
@@ -26,18 +30,26 @@ implements Huff model logic. Without attractiveness, behaves like standard weigh
 normalization.
 }
 \examples{
-\dontrun{
-# Calculate decay weights
-w <- calc_decay(distance, method = "gaussian", sigma = 30)
+# Using pre-computed isochrone distances and hospital data
+distance_raster <- terra::rast(hos_iscr)  # Already lazy loaded in raster format
+
+# Calculate decay weights using gaussian decay
+weights <- calc_decay(distance_raster, method = "gaussian", sigma = 30)
 
 # Basic usage (equivalent to calc_normalize)
-p1 <- calc_choice(w)
+p1 <- calc_choice(weights)
 
-# With Huff model attractiveness
-attr <- c(100, 150, 80) # for 3 facilities
-p2 <- calc_choice(w, attractiveness = attr, alpha = 1.5)
+# With Huff model using number of doctors as attractiveness
+p2 <- calc_choice(weights,
+                  attractiveness = hc12_hos$s_doc,  # Number of doctors
+                  alpha = 1.5)
 
-# With outside option
-p3 <- calc_choice(w, attractiveness = attr, a0 = 0.1)
-}
+# Plot to compare
+plot(c(p1[[1]], p2[[1]]),
+     main = c("Basic Choice Prob.", "Doctor-weighted Choice Prob."))
+
+# With outside option (a0)
+p3 <- calc_choice(weights,
+                  attractiveness = hc12_hos$s_doc,
+                  a0 = 0.1)
 }
