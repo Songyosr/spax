@@ -87,7 +87,7 @@ compute_iterative_fast <- function(supply, weights, demand,
     # Fast computation path
     huff_probs <- calc_choice(weights, attractiveness = current_attractiveness, snap = TRUE)
     util_probs <- huff_probs * weights
-    new_util <- gather_weighted(demand, util_probs, snap = TRUE)$weighted_sum
+    new_util <- gather_weighted(demand, util_probs, snap = TRUE, simplify = TRUE)
     new_ratio <- ifelse(new_util > 0, supply / new_util, 0)
     new_attractiveness <- (1 - lambda) * current_attractiveness + lambda * new_ratio
 
@@ -139,7 +139,7 @@ compute_iterative <- function(supply, weights, demand,
     # Regular computation path with full tracking
     huff_probs <- calc_choice(weights, attractiveness = current[, 3], snap = TRUE)
     util_probs <- huff_probs * weights
-    new_util <- gather_weighted(demand, util_probs, snap = TRUE)$weighted_sum
+    new_util <- gather_weighted(demand, util_probs, snap = TRUE, simplify = TRUE)
 
     # Update state array
     iter <- iter + 1

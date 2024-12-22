@@ -89,14 +89,14 @@
 #' names(weights) <- c("unit1", "unit2")
 #'
 #' # Single layer example
-#' result1 <- gather_weighted(values, weights)
-#' result1_df <- gather_weighted(values, weights, simplify = FALSE)
+#' result1 <- gather_weighted(values, weights, simplify = T)
+#' result1_df <- gather_weighted(values, weights)
 #'
 #' # Multi-layer example
 #' values_multi <- c(values, values * 2)  # Two scenarios
 #' names(values_multi) <- c("sim1", "sim2")
-#' result2 <- gather_weighted(values_multi, weights)  # Returns matrix
-#' result2_df <- gather_weighted(values_multi, weights, simplify = FALSE)
+#' result2 <- gather_weighted(values_multi, weights, simplify = TRUE)  # Returns matrix
+#' result2_df <- gather_weighted(values_multi, weights)
 #' @export
 gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE) {
   # Validation
