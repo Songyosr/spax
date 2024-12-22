@@ -4,13 +4,15 @@
 \alias{transform_pmf}
 \title{Compute Probability Mass Function from Population Density}
 \usage{
-transform_pmf(x, return_total = FALSE)
+transform_pmf(x, return_total = FALSE, snap = FALSE)
 }
 \arguments{
 \item{x}{SpatRaster of density values (e.g., population density)}
 
 \item{return_total}{logical; if TRUE, returns a list containing both PMF raster
 and total population. If FALSE (default), returns only PMF raster}
+
+\item{snap}{Logical; if TRUE skip validation and verification}
 }
 \value{
 If return_total = FALSE, returns SpatRaster containing probability values
