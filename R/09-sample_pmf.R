@@ -64,17 +64,20 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                        method = "poisson", iterations = 1,
                        evolve_prop = 1, seed = NULL, replace_0 = TRUE,
                        snap = FALSE, ...) {
-  # Input validation
-  .chck_sample_pmf(x, n, size, prob, method, iterations, evolve_prop, snap)
+  # Input validation [unchanged]
+  if (!snap) {
+    .chck_sample_pmf(x, n, size, prob, method, iterations, evolve_prop, snap)
+  }
 
-
-  # PMF checking and size determination
+  # PMF checking and size determination [unchanged]
   if (!snap) {
     pmf_result <- .chck_n_convert_pmf(x)
     x <- pmf_result$pmf
-    if (is.null(size)) {
+    if (is.null(size) && is.null(n) && !is.null(pmf_result$total)) {
       size <- pmf_result$total
-      message("Using total population ", round(size), " as size parameter")
+      if (is.numeric(size) && !is.na(size) && size > 0) {
+        message("Using total population ", format(round(size), scientific = FALSE), " as size parameter")
+      }
     }
   } else {
     # Quick check in snap mode
@@ -84,51 +87,73 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     }
   }
 
-  # Generate samples with seed handling
-  result <- withr::with_seed(
-    seed = seed,
-    code = {
-      # Compute sample sizes
-      n_samples <- .help_gen_sample_size(
-        n = n, size = size, prob = prob,
-        method = method, iterations = iterations, ...
-      )
-
-      if (evolve_prop == 0) {
-        warning("evolve_prop = 0 means no new samples, returning first iteration only")
-        # Return single layer with first sample size
-        .sample_pmf_core_indp(
-          x = x,
-          n_samples = n_samples[1],
-          iterations = 1,
-          replace_0 = replace_0,
-          snap = snap
-        )
-      } else if (evolve_prop == 1) {
-        # Use independent sampling
-        .sample_pmf_core_indp(
-          x = x,
-          n_samples = n_samples,
-          iterations = iterations,
-          replace_0 = replace_0,
-          snap = snap
-        )
-      } else {
-        # Use evolving sampling
-        .sample_pmf_core_evlv(
-          x = x,
-          n_samples = n_samples,
-          iterations = iterations,
-          evolve_prop = evolve_prop,
-          replace_0 = replace_0,
-          snap = snap
-        )
-      }
+  # Initialize RNG if needed
+  if (is.null(seed)) {
+    # Check if RNG is already initialized
+    if (!exists(".Random.seed", envir = .GlobalEnv)) {
+      # Initialize with random seed if none exists
+      set.seed(sample.int(.Machine$integer.max, 1))
     }
-  )
+    # Use current RNG state
+    result <- .sample_pmf_internal(x, n, size, prob, method, iterations,
+                                   evolve_prop, replace_0, snap, ...)
+  } else {
+    # Use specified seed via withr
+    result <- withr::with_seed(
+      seed = seed,
+      code = .sample_pmf_internal(x, n, size, prob, method, iterations,
+                                  evolve_prop, replace_0, snap, ...)
+    )
+  }
 
   return(result)
 }
+#' Internal sampling function (moved from main body)
+#' @keywords internal
+.sample_pmf_internal <- function(x, n, size, prob, method, iterations,
+                                 evolve_prop, replace_0, snap, ...) {
+  # Compute sample sizes - ensure n takes precedence
+  if (!is.null(n)) {
+    n_samples <- rep(n, iterations)
+  } else {
+    n_samples <- .help_gen_sample_size(
+      n = n, size = size, prob = prob,
+      method = method, iterations = iterations, ...
+    )
+  }
+
+  if (evolve_prop == 0) {
+    warning("evolve_prop = 0 means no new samples, returning first iteration only")
+    # Return single layer with first sample size
+    .sample_pmf_core_indp(
+      x = x,
+      n_samples = n_samples[1],
+      iterations = 1,
+      replace_0 = replace_0,
+      snap = snap
+    )
+  } else if (evolve_prop == 1) {
+    # Use independent sampling
+    .sample_pmf_core_indp(
+      x = x,
+      n_samples = n_samples,
+      iterations = iterations,
+      replace_0 = replace_0,
+      snap = snap
+    )
+  } else {
+    # Use evolving sampling
+    .sample_pmf_core_evlv(
+      x = x,
+      n_samples = n_samples,
+      iterations = iterations,
+      evolve_prop = evolve_prop,
+      replace_0 = replace_0,
+      snap = snap
+    )
+  }
+}
+
 #' Validate inputs for sample_pmf
 #'
 #' @param x SpatRaster input
@@ -192,6 +217,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   }
 }
 
+
 #' Compute sample sizes for each iteration
 #'
 #' @param n Fixed sample size
@@ -204,6 +230,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @keywords internal
 .help_gen_sample_size <- function(n = NULL, size = NULL, prob = NULL,
                                   method = "poisson", iterations = 1, ...) {
+  # Fixed sample size takes precedence
   if (!is.null(n)) {
     if (!is.numeric(n) || any(n < 0) || any(n != as.integer(n))) {
       stop("n must be a non-negative integer")
@@ -211,6 +238,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     return(rep(n, iterations))
   }
 
+  # Handle custom function first
   if (is.function(method)) {
     result <- do.call(method, list(...))
     if (!is.numeric(result)) {
@@ -225,11 +253,20 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     return(result)
   }
 
+  # For built-in methods, we need size and prob
+  if (is.null(size) || !is.numeric(size) || is.na(size) || size <= 0) {
+    stop("Valid size parameter required for probabilistic sampling")
+  }
+
+  if (is.null(prob) || !is.numeric(prob) || is.na(prob) || prob < 0 || prob > 1) {
+    stop("Valid probability parameter (between 0 and 1) required for probabilistic sampling")
+  }
+
   # Built-in methods
   switch(method,
-    "poisson" = rpois(iterations, lambda = size * prob),
-    "binomial" = rbinom(iterations, size = size, prob = prob),
-    "nbinom" = rnbinom(iterations, size = size, prob = prob)
+         "poisson" = rpois(iterations, lambda = size * prob),
+         "binomial" = rbinom(iterations, size = size, prob = prob),
+         "nbinom" = rnbinom(iterations, size = size, prob = prob)
   )
 }
 
@@ -279,6 +316,10 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
     # Assign counts to the result raster
     values(result) <- counts
+
+  } else if (replace_0) {
+    # If no samples and replace_0 is TRUE, set all values to NA
+    values(result) <- NA
   }
 
   # Assign layer names if not in snap mode

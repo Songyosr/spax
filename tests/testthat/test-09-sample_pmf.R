@@ -1,7 +1,11 @@
 # tests/testthat/test-02-sample_pmf.R
 
-# Helper function to create test data
+# Initialize random seed for all tests in this file
+set.seed(42)
+
+# Helper function to create test data with proper seed handling
 create_test_pmf <- function(nrows = 5, ncols = 5, normalized = TRUE) {
+  set.seed(42)  # Ensure consistent random values
   r <- terra::rast(nrows = nrows, ncols = ncols)
   values <- runif(nrows * ncols)
   if (normalized) {
@@ -9,6 +13,18 @@ create_test_pmf <- function(nrows = 5, ncols = 5, normalized = TRUE) {
   }
   terra::values(r) <- values
   return(r)
+}
+
+# Test setup function for common test data and seed initialization
+setup_test_data <- function() {
+  set.seed(42)  # Reset seed for each test
+  pmf <- create_test_pmf()
+  list(
+    pmf = pmf,
+    pmf_norm = create_test_pmf(normalized = TRUE),
+    pmf_raw = create_test_pmf(normalized = FALSE),
+    pmf_single = create_test_pmf(nrows = 1, ncols = 1)
+  )
 }
 
 # 1. Basic Input Validation Tests --------------------------------------------

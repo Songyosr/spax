@@ -12,18 +12,18 @@
   }
 
   # Check for all NA values
-  if (all(is.na(values(x)))) {
+  if (all(is.na(terra::values(x)))) {
     stop("Input raster contains only NA values")
   }
 
   # Check for negative values
-  min_val <- global(x, "min", na.rm = TRUE)$min
+  min_val <- terra::global(x, "min", na.rm = TRUE)$min
   if (min_val < 0) {
     stop("Input values cannot be negative")
   }
 
   # Check for zero sum
-  total <- global(x, "sum", na.rm = TRUE)$sum
+  total <- terra::global(x, "sum", na.rm = TRUE)$sum
   if (total == 0) {
     stop("Total sum is zero - cannot create PMF")
   }
@@ -36,7 +36,7 @@
 #' @return Invisible TRUE, with warning if precision issues detected
 #' @keywords internal
 .help_transform_pmf_verify <- function(pmf_raster) {
-  sum_check <- global(pmf_raster, "sum", na.rm = TRUE)$sum
+  sum_check <- terra::global(pmf_raster, "sum", na.rm = TRUE)$sum
   if (abs(sum_check - 1) > 1e-10) {
     warning("PMF sum deviates from 1 by ", abs(sum_check - 1))
   }
@@ -77,7 +77,7 @@ transform_pmf <- function(x, return_total = FALSE, snap = FALSE) {
   }
 
   # Core computation
-  total <- global(x, "sum", na.rm = TRUE)$sum
+  total <- terra::global(x, "sum", na.rm = TRUE)$sum
   pmf_raster <- x / total
 
   # Verification
