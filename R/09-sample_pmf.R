@@ -20,26 +20,18 @@
 #'   - "nbinom": Random size from negative binomial(size, prob)
 #'   - custom function: Must return vector of length 'iterations'
 #' @param iterations Integer. Number of realizations to generate (default = 1)
+#' @param evolve_prop Numeric between 0 and 1. Controls sample evolution between iterations:
+#'   - 1 (default): Independent sampling, all new samples each iteration
+#'   - 0: No new samples, returns only first iteration
+#'   - (0,1): Proportion of samples that evolve each iteration
 #' @param seed Integer or NULL. Random seed for reproducibility
 #' @param replace_0 Logical. If TRUE, replaces zero values with NA (default = TRUE)
-#' @param snap Logical. If TRUE, enters fast mode with:
-#'   - Minimal input validation
-#'   - Requires input to already be PMF
-#'   - Skips automatic PMF conversion
-#'   - No layer naming
-#'   Use for performance in iteration-heavy applications.
+#' @param snap Logical. If TRUE, enters fast mode with minimal validation (default = FALSE)
 #' @param ... Additional arguments passed to custom sampling function
 #'
-#' @return SpatRaster with one layer per realization, containing counts of samples per cell.
-#'         If replace_0 = TRUE, cells with zero counts contain NA.
-#'
-#' @details
-#' The function supports two main sampling approaches:
-#' 1. Deterministic: Specify exact number of samples via 'n'
-#' 2. Probabilistic: Generate random sample sizes using built-in or custom distributions
-#'
-#' In snap mode, the function assumes inputs are valid and skips certain checks for
-#' performance. The input must already be a proper PMF in this mode.
+#' @return SpatRaster with one layer per realization (or single layer if evolve_prop = 0),
+#'         containing counts of samples per cell. If replace_0 = TRUE, cells with zero
+#'         counts contain NA.
 #'
 #' @examples
 #' \dontrun{
@@ -47,36 +39,34 @@
 #' r <- terra::rast(nrows = 10, ncols = 10)
 #' terra::values(r) <- runif(100) * 100
 #'
-#' # Example 1: Fixed sample size
+#' # Example 1: Independent sampling (default)
 #' samples1 <- sample_pmf(r, n = 50, iterations = 5)
 #'
-#' # Example 2: Disease case simulation
+#' # Example 2: Evolving samples
 #' samples2 <- sample_pmf(r,
+#'   n = 50,
+#'   iterations = 5,
+#'   evolve_prop = 0.3 # 30% new samples each iteration
+#' )
+#'
+#' # Example 3: Disease case simulation with evolution
+#' samples3 <- sample_pmf(r,
 #'   size = 10000, # population size
 #'   prob = 0.001, # disease prevalence
 #'   method = "poisson",
-#'   iterations = 100
-#' ) # Monte Carlo iterations
-#'
-#' # Example 3: Using snap mode with pre-computed PMF
-#' pmf <- transform_pmf(r)
-#' samples3 <- sample_pmf(pmf,
-#'   n = 1000,
-#'   iterations = 50,
-#'   snap = TRUE
+#'   iterations = 100,
+#'   evolve_prop = 0.2
 #' )
 #' }
-#'
-#' @seealso
-#' \code{\link{transform_pmf}} for converting density to PMF
 #'
 #' @export
 sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                        method = "poisson", iterations = 1,
-                       seed = NULL, replace_0 = TRUE,
+                       evolve_prop = 1, seed = NULL, replace_0 = TRUE,
                        snap = FALSE, ...) {
   # Input validation
-  .chck_sample_pmf(x, n, size, prob, method, iterations, snap)
+  .chck_sample_pmf(x, n, size, prob, method, iterations, evolve_prop, snap)
+
 
   # PMF checking and size determination
   if (!snap) {
@@ -95,7 +85,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   }
 
   # Generate samples with seed handling
-  withr::with_seed(
+  result <- withr::with_seed(
     seed = seed,
     code = {
       # Compute sample sizes
@@ -104,13 +94,36 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
         method = method, iterations = iterations, ...
       )
 
-      # Generate spatial samples
-      result <- .sample_pmf_core_indp(
-        x = x, n_samples = n_samples,
-        iterations = iterations,
-        replace_0 = replace_0,
-        snap = snap
-      )
+      if (evolve_prop == 0) {
+        warning("evolve_prop = 0 means no new samples, returning first iteration only")
+        # Return single layer with first sample size
+        .sample_pmf_core_indp(
+          x = x,
+          n_samples = n_samples[1],
+          iterations = 1,
+          replace_0 = replace_0,
+          snap = snap
+        )
+      } else if (evolve_prop == 1) {
+        # Use independent sampling
+        .sample_pmf_core_indp(
+          x = x,
+          n_samples = n_samples,
+          iterations = iterations,
+          replace_0 = replace_0,
+          snap = snap
+        )
+      } else {
+        # Use evolving sampling
+        .sample_pmf_core_evlv(
+          x = x,
+          n_samples = n_samples,
+          iterations = iterations,
+          evolve_prop = evolve_prop,
+          replace_0 = replace_0,
+          snap = snap
+        )
+      }
     }
   )
 
@@ -124,9 +137,10 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param prob Probability parameter
 #' @param method Sampling method
 #' @param iterations Number of iterations
+#' @param evolve_prop Evolution proportion
 #' @param snap Logical for snap mode
 #' @keywords internal
-.chck_sample_pmf <- function(x, n, size, prob, method, iterations, snap) {
+.chck_sample_pmf <- function(x, n, size, prob, method, iterations, evolve_prop, snap) {
   # Essential validation (always run)
   if (!inherits(x, "SpatRaster")) {
     stop("Input 'x' must be a SpatRaster object")
@@ -144,6 +158,10 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
     if (!is.null(prob) && (prob < 0 || prob > 1)) {
       stop("prob must be between 0 and 1")
+    }
+
+    if (!is.numeric(evolve_prop) || evolve_prop < 0 || evolve_prop > 1) {
+      stop("evolve_prop must be between 0 and 1")
     }
 
     if (is.character(method) && !method %in% c("poisson", "binomial", "nbinom")) {

@@ -4,7 +4,7 @@
 \alias{.chck_sample_pmf}
 \title{Validate inputs for sample_pmf}
 \usage{
-.chck_sample_pmf(x, n, size, prob, method, iterations, snap)
+.chck_sample_pmf(x, n, size, prob, method, iterations, evolve_prop, snap)
 }
 \arguments{
 \item{x}{SpatRaster input}
@@ -18,6 +18,8 @@
 \item{method}{Sampling method}
 
 \item{iterations}{Number of iterations}
+
+\item{evolve_prop}{Evolution proportion}
 
 \item{snap}{Logical for snap mode}
 }

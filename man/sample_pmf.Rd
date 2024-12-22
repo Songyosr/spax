@@ -11,6 +11,7 @@ sample_pmf(
   prob = NULL,
   method = "poisson",
   iterations = 1,
+  evolve_prop = 1,
   seed = NULL,
   replace_0 = TRUE,
   snap = FALSE,
@@ -39,35 +40,28 @@ If NULL and input is density (not PMF), will be calculated from data.}
 
 \item{iterations}{Integer. Number of realizations to generate (default = 1)}
 
+\item{evolve_prop}{Numeric between 0 and 1. Controls sample evolution between iterations:
+- 1 (default): Independent sampling, all new samples each iteration
+- 0: No new samples, returns only first iteration
+- (0,1): Proportion of samples that evolve each iteration}
+
 \item{seed}{Integer or NULL. Random seed for reproducibility}
 
 \item{replace_0}{Logical. If TRUE, replaces zero values with NA (default = TRUE)}
 
-\item{snap}{Logical. If TRUE, enters fast mode with:
-- Minimal input validation
-- Requires input to already be PMF
-- Skips automatic PMF conversion
-- No layer naming
-Use for performance in iteration-heavy applications.}
+\item{snap}{Logical. If TRUE, enters fast mode with minimal validation (default = FALSE)}
 
 \item{...}{Additional arguments passed to custom sampling function}
 }
 \value{
-SpatRaster with one layer per realization, containing counts of samples per cell.
-        If replace_0 = TRUE, cells with zero counts contain NA.
+SpatRaster with one layer per realization (or single layer if evolve_prop = 0),
+        containing counts of samples per cell. If replace_0 = TRUE, cells with zero
+        counts contain NA.
 }
 \description{
 Generates multiple realizations of point patterns from a probability mass function (PMF)
 surface using a vectorized approach. The function supports both deterministic sampling
 with fixed sample sizes and probabilistic sampling based on population parameters.
-}
-\details{
-The function supports two main sampling approaches:
-1. Deterministic: Specify exact number of samples via 'n'
-2. Probabilistic: Generate random sample sizes using built-in or custom distributions
-
-In snap mode, the function assumes inputs are valid and skips certain checks for
-performance. The input must already be a proper PMF in this mode.
 }
 \examples{
 \dontrun{
@@ -75,27 +69,24 @@ performance. The input must already be a proper PMF in this mode.
 r <- terra::rast(nrows = 10, ncols = 10)
 terra::values(r) <- runif(100) * 100
 
-# Example 1: Fixed sample size
+# Example 1: Independent sampling (default)
 samples1 <- sample_pmf(r, n = 50, iterations = 5)
 
-# Example 2: Disease case simulation
+# Example 2: Evolving samples
 samples2 <- sample_pmf(r,
+  n = 50,
+  iterations = 5,
+  evolve_prop = 0.3 # 30\% new samples each iteration
+)
+
+# Example 3: Disease case simulation with evolution
+samples3 <- sample_pmf(r,
   size = 10000, # population size
   prob = 0.001, # disease prevalence
   method = "poisson",
-  iterations = 100
-) # Monte Carlo iterations
-
-# Example 3: Using snap mode with pre-computed PMF
-pmf <- transform_pmf(r)
-samples3 <- sample_pmf(pmf,
-  n = 1000,
-  iterations = 50,
-  snap = TRUE
+  iterations = 100,
+  evolve_prop = 0.2
 )
 }
 
-}
-\seealso{
-\code{\link{transform_pmf}} for converting density to PMF
 }
