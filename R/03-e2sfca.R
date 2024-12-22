@@ -20,7 +20,7 @@
 #' \code{\link{spax_e2sfca}} for specific two-step floating catchment area implementation
 #' \code{\link{calc_decay}} for generating weight surfaces
 #' \code{\link{gather_demand}} for demand calculation
-#' \code{\link{spread_access}} for accessibility distribution
+#' \code{\link{spread_weighted}} for accessibility distribution
 #' @examples
 #' \dontrun{
 #' # Basic usage with supply columns
@@ -84,7 +84,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
   }
 
   # Calculate accessibility scores
-  result <- spread_access(ratios, access_weights, full_output = full_output)
+  result <- spread_weighted(ratios, access_weights, full_output = full_output)
 
   # Apply names if they exist
   if (!is.null(indicator_names)) {

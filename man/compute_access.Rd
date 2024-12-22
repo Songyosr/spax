@@ -60,5 +60,5 @@ compute_access(demand, supply, weights,
 \code{\link{spax_e2sfca}} for specific two-step floating catchment area implementation
 \code{\link{calc_decay}} for generating weight surfaces
 \code{\link{gather_demand}} for demand calculation
-\code{\link{spread_access}} for accessibility distribution
+\code{\link{spread_weighted}} for accessibility distribution
 }
