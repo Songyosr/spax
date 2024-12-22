@@ -4,7 +4,7 @@
 \alias{.help_format_gather}
 \title{Format output for gather_weighted}
 \usage{
-.help_format_gather(weighted_sums)
+.help_format_gather(weighted_sums, weights, values = NULL)
 }
 \description{
 Format output for gather_weighted

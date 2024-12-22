@@ -36,73 +36,106 @@
     weights = values,
     na.rm = na.rm
   )
-
-  return(weighted_sums)
+  #return in vector format
+  return(weighted_sums[[1]])
 }
 
 #' Format output for gather_weighted
 #' @keywords internal
-.help_format_gather <- function(weighted_sums) {
-  weighted_sums |>
-    tibble::rownames_to_column(var = "unit_id")
+.help_format_gather <- function(weighted_sums, weights, values = NULL) {
+  if (is.null(values)) {
+    # Single layer case
+    data.frame(
+      unit_id = names(weights),
+      weighted_sum = weighted_sums
+    )
+  } else {
+    # Multi layer case
+    result_df <- as.data.frame(weighted_sums)
+    names(result_df) <- paste0(names(values), "_weighted_sum")
+    result_df$unit_id <- names(weights)
+    result_df[c("unit_id", names(result_df)[-ncol(result_df)])]
+  }
 }
+
 #' Aggregate weighted values from a raster
 #'
 #' @description
-#' General-purpose function to aggregate values from a raster using a stack of weight
-#' rasters. Each layer in the weights represents a different aggregation unit.
+#' General-purpose function to aggregate values from a raster (single or multi-layer) using
+#' a stack of weight rasters. Each layer in the weights represents a different aggregation unit.
 #'
-#' @param values SpatRaster representing values to be aggregated
+#' @param values SpatRaster representing values to be aggregated. Can be single or multi-layer.
+#'        If multi-layer, each layer represents a different realization/scenario.
 #' @param weights Multi-layer SpatRaster where:
 #'        - Each layer represents one aggregation unit
 #'        - Values are weights (typically 0-1) for aggregation
 #'        - Layer names should match unit IDs
 #' @param na.rm Logical; if TRUE, remove NA values from computation (default = TRUE)
-#' @param snap Logical; if TRUE, avoid input validation. Used for performance optimization
-#'        in internal functions.
-#' @return data.frame with:
-#'         - unit_id: identifier matching weight layer names
-#'         - weighted_sum: aggregated value for each unit
+#' @param simplify Logical; if TRUE, returns vector (single layer) or matrix (multi-layer).
+#'        If FALSE, returns data.frame in wide format. (default = FALSE)
+#' @param snap Logical; if TRUE, avoid input validation and formatting. Used for performance
+#'        optimization in internal functions.
+#' @return Depending on input and simplify parameter:
+#'         - If simplify=TRUE and single layer: named vector
+#'         - If simplify=TRUE and multi-layer: matrix with rownames=units, colnames=scenarios
+#'         - If simplify=FALSE: data.frame in wide format with unit_id column
 #' @examples
-#' # pacakge data is already lazy-loaded
+#' # Create test data
+#' values <- terra::rast(matrix(1:9, 3, 3))  # Single layer
+#' weights <- terra::rast(list(
+#'   w1 = matrix(runif(9), 3, 3),
+#'   w2 = matrix(runif(9), 3, 3)
+#' ))
+#' names(weights) <- c("unit1", "unit2")
 #'
-#' # Convert population raster to terra format
-#' pop_terra <- terra::rast(u5pd)
+#' # Single layer example
+#' result1 <- gather_weighted(values, weights)
+#' result1_df <- gather_weighted(values, weights, simplify = FALSE)
 #'
-#' # Calculate distance decay weights using hospital isochrones
-#' weights <- calc_decay(
-#'   terra::rast(hos_iscr),
-#'   method = "gaussian",
-#'   sigma = 30
-#' )
-#'
-#' # Calculate potential demand for each hospital
-#' potential_demand <- gather_weighted(pop_terra, weights)
-#' head(potential_demand)
-#'
-#' # With NA handling - simulate some missing data
-#' pop_with_na <- pop_terra
-#' pop_with_na[1:100] <- NA
-#' demand_na <- gather_weighted(pop_with_na, weights, na.rm = TRUE)
-#' head(demand_na)
+#' # Multi-layer example
+#' values_multi <- c(values, values * 2)  # Two scenarios
+#' names(values_multi) <- c("sim1", "sim2")
+#' result2 <- gather_weighted(values_multi, weights)  # Returns matrix
+#' result2_df <- gather_weighted(values_multi, weights, simplify = FALSE)
 #' @export
-gather_weighted <- function(values, weights, na.rm = TRUE, snap = FALSE) {
+gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE) {
   # Validation
   if (!snap) {
     .chck_gather_weighted(values, weights, na.rm)
   }
 
-  # Core computation
-  weighted_sums <- .gather_weighted_core(values, weights, na.rm)
+  # Single layer fast track
+  if (nlyr(values) == 1) {
+    result <- .gather_weighted_core(values, weights, na.rm)
 
-  # Format output (skip for snap mode)
-  if (!snap) {
-    weighted_sums <- .help_format_gather(weighted_sums)
+    # Fast return for snap mode
+    if (snap) return(result)
+
+    # Format output
+    if (simplify) {
+      return(setNames(result, names(weights)))
+    } else {
+      return(.help_format_gather(result, weights))
+    }
   }
 
-  return(weighted_sums)
-}
+  # Multi-layer processing using vapply for direct matrix output
+  results <- vapply(1:nlyr(values), function(i) {
+    .gather_weighted_core(values[[i]], weights, na.rm)
+  }, numeric(nlyr(weights)))
 
+  # Fast return for snap mode
+  if (snap) return(results)
+
+  # Format output
+  if (simplify) {
+    rownames(results) <- names(weights)
+    colnames(results) <- names(values)
+    return(results)
+  } else {
+    return(.help_format_gather(results, weights, values))
+  }
+}
 #' Calculate demand captured by each service site
 #'
 #' @description

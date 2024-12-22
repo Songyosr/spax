@@ -4,10 +4,11 @@
 \alias{gather_weighted}
 \title{Aggregate weighted values from a raster}
 \usage{
-gather_weighted(values, weights, na.rm = TRUE, snap = FALSE)
+gather_weighted(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE)
 }
 \arguments{
-\item{values}{SpatRaster representing values to be aggregated}
+\item{values}{SpatRaster representing values to be aggregated. Can be single or multi-layer.
+If multi-layer, each layer represents a different realization/scenario.}
 
 \item{weights}{Multi-layer SpatRaster where:
 - Each layer represents one aggregation unit
@@ -16,38 +17,38 @@ gather_weighted(values, weights, na.rm = TRUE, snap = FALSE)
 
 \item{na.rm}{Logical; if TRUE, remove NA values from computation (default = TRUE)}
 
-\item{snap}{Logical; if TRUE, avoid input validation. Used for performance optimization
-in internal functions.}
+\item{simplify}{Logical; if TRUE, returns vector (single layer) or matrix (multi-layer).
+If FALSE, returns data.frame in wide format. (default = FALSE)}
+
+\item{snap}{Logical; if TRUE, avoid input validation and formatting. Used for performance
+optimization in internal functions.}
 }
 \value{
-data.frame with:
-        - unit_id: identifier matching weight layer names
-        - weighted_sum: aggregated value for each unit
+Depending on input and simplify parameter:
+        - If simplify=TRUE and single layer: named vector
+        - If simplify=TRUE and multi-layer: matrix with rownames=units, colnames=scenarios
+        - If simplify=FALSE: data.frame in wide format with unit_id column
 }
 \description{
-General-purpose function to aggregate values from a raster using a stack of weight
-rasters. Each layer in the weights represents a different aggregation unit.
+General-purpose function to aggregate values from a raster (single or multi-layer) using
+a stack of weight rasters. Each layer in the weights represents a different aggregation unit.
 }
 \examples{
-# pacakge data is already lazy-loaded
+# Create test data
+values <- terra::rast(matrix(1:9, 3, 3))  # Single layer
+weights <- terra::rast(list(
+  w1 = matrix(runif(9), 3, 3),
+  w2 = matrix(runif(9), 3, 3)
+))
+names(weights) <- c("unit1", "unit2")
 
-# Convert population raster to terra format
-pop_terra <- terra::rast(u5pd)
+# Single layer example
+result1 <- gather_weighted(values, weights)
+result1_df <- gather_weighted(values, weights, simplify = FALSE)
 
-# Calculate distance decay weights using hospital isochrones
-weights <- calc_decay(
-  terra::rast(hos_iscr),
-  method = "gaussian",
-  sigma = 30
-)
-
-# Calculate potential demand for each hospital
-potential_demand <- gather_weighted(pop_terra, weights)
-head(potential_demand)
-
-# With NA handling - simulate some missing data
-pop_with_na <- pop_terra
-pop_with_na[1:100] <- NA
-demand_na <- gather_weighted(pop_with_na, weights, na.rm = TRUE)
-head(demand_na)
+# Multi-layer example
+values_multi <- c(values, values * 2)  # Two scenarios
+names(values_multi) <- c("sim1", "sim2")
+result2 <- gather_weighted(values_multi, weights)  # Returns matrix
+result2_df <- gather_weighted(values_multi, weights, simplify = FALSE)
 }

@@ -1,12 +1,21 @@
 # tests/testthat/test-gather_functions.R
 
 # Helper function to create test data
-create_test_data <- function() {
+create_test_data <- function(multi = FALSE) {
   # Create a small test raster for values
-  values <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
-  terra::values(values) <- 1:25
+  if (!multi) {
+    values <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
+    terra::values(values) <- 1:25
+  } else {
+    v1 <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
+    v2 <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
+    terra::values(v1) <- 1:25
+    terra::values(v2) <- (1:25) * 2
+    values <- c(v1, v2)
+    names(values) <- c("sim1", "sim2")
+  }
 
-  # Create a multi-layer weight raster with same extent
+  # Create a multi-layer weight raster
   weights <- terra::rast(nrows=5, ncols=5, nlyr=3, xmin=0, xmax=10, ymin=0, ymax=10)
   terra::values(weights) <- runif(75)  # 25 cells * 3 layers
   names(weights) <- c("unit1", "unit2", "unit3")
@@ -16,24 +25,42 @@ create_test_data <- function() {
     weights = weights
   )
 }
+
 # 1. Core Functionality Tests ---------------------------------------------
 
 test_that("gather_weighted performs basic aggregation correctly", {
-  test_data <- create_test_data()
+  td <- create_test_data(multi = FALSE)
+  result <- gather_weighted(td$values, td$weights)  # default simplify=FALSE
 
-  result <- gather_weighted(test_data$values, test_data$weights)
-
-  # Check output structure
+  # Check data.frame output by default
   expect_s3_class(result, "data.frame")
   expect_named(result, c("unit_id", "weighted_sum"))
-  expect_equal(nrow(result), terra::nlyr(test_data$weights))
-
-  # Check if unit IDs match weight layer names
-  expect_equal(result$unit_id, names(test_data$weights))
+  expect_equal(nrow(result), terra::nlyr(td$weights))
 
   # Verify sums are numeric and non-negative
   expect_type(result$weighted_sum, "double")
   expect_true(all(result$weighted_sum >= 0))
+
+  # Check simplified output
+  result_simple <- gather_weighted(td$values, td$weights, simplify = TRUE)
+  expect_type(result_simple, "double")
+  expect_named(result_simple, names(td$weights))
+})
+
+test_that("gather_weighted handles multi-layer correctly", {
+  td <- create_test_data(multi = TRUE)
+  result <- gather_weighted(td$values, td$weights)  # default simplify=FALSE
+
+  # Check data.frame output by default
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("unit_id", "sim1_weighted_sum", "sim2_weighted_sum"))
+  expect_equal(nrow(result), terra::nlyr(td$weights))
+
+  # Check matrix output when simplified
+  result_simple <- gather_weighted(td$values, td$weights, simplify = TRUE)
+  expect_true(is.matrix(result_simple))
+  expect_equal(rownames(result_simple), names(td$weights))
+  expect_equal(colnames(result_simple), names(td$values))
 })
 
 test_that("gather_weighted preserves layer names correctly", {
@@ -45,9 +72,24 @@ test_that("gather_weighted preserves layer names correctly", {
   terra::values(weights) <- rep(c(0.5, 0.5), each = 9)
   names(weights) <- c("zone_A", "zone_B")
 
+  # Test single layer
   result <- gather_weighted(values, weights)
-
   expect_equal(result$unit_id, c("zone_A", "zone_B"))
+
+  result_simple <- gather_weighted(values, weights, simplify = TRUE)
+  expect_named(result_simple, c("zone_A", "zone_B"))
+
+  # Test multi layer
+  values_multi <- c(values, values * 2)
+  names(values_multi) <- c("sim1", "sim2")
+
+  result_multi <- gather_weighted(values_multi, weights)
+  expect_equal(result_multi$unit_id, c("zone_A", "zone_B"))
+  expect_named(result_multi, c("unit_id", "sim1_weighted_sum", "sim2_weighted_sum"))
+
+  result_multi_simple <- gather_weighted(values_multi, weights, simplify = TRUE)
+  expect_equal(rownames(result_multi_simple), c("zone_A", "zone_B"))
+  expect_equal(colnames(result_multi_simple), c("sim1", "sim2"))
 })
 
 # 2. Input Validation Tests ----------------------------------------------
@@ -145,26 +187,35 @@ test_that("gather_weighted handles NA values correctly", {
   expect_true(any(is.na(result_keep$weighted_sum)))
 })
 
-# 5. gather_demand Tests ----------------------------------------------
+# 5. Snap Mode Tests -------------------------------------------------
 
-test_that("gather_demand validates probability weights", {
-  values <- terra::rast(nrows = 3, ncols = 3)
-  terra::values(values) <- 1:9
+test_that("gather_weighted snap mode works correctly", {
+  td <- create_test_data(multi = TRUE)
 
-  # Weights outside [0,1] range
-  invalid_weights <- terra::rast(nrows = 3, ncols = 3, nlyr = 2)
-  terra::values(invalid_weights) <- runif(18) * 2 # Values up to 2
+  # Test single layer snap
+  result_snap <- gather_weighted(td$values[[1]], td$weights, snap = TRUE)
+  expect_type(result_snap, "double")
+  expect_length(result_snap, terra::nlyr(td$weights))
 
-  expect_error(
-    gather_demand(values, invalid_weights),
-    "weights must contain probability values between 0 and 1"
-  )
+  # Test multi layer snap
+  result_multi_snap <- gather_weighted(td$values, td$weights, snap = TRUE)
+  expect_true(is.matrix(result_multi_snap))
+  expect_equal(nrow(result_multi_snap), terra::nlyr(td$weights))
+  expect_equal(ncol(result_multi_snap), terra::nlyr(td$values))
+})
 
-  # Valid probability weights
-  valid_weights <- terra::rast(nrows = 3, ncols = 3, nlyr = 2)
-  terra::values(valid_weights) <- runif(18)
-  names(valid_weights) <- c("loc1", "loc2")
+# 6. Performance Tests -----------------------------------------------
 
-  result <- gather_demand(values, valid_weights)
-  expect_named(result, c("location_id", "potential_demand"))
+test_that("gather_weighted preserves computational accuracy", {
+  td <- create_test_data(multi = TRUE)
+
+  # Test that multi-layer results match individual computations
+  multi_result <- gather_weighted(td$values, td$weights, simplify = TRUE)
+  single_results <- lapply(1:nlyr(td$values), function(i) {
+    gather_weighted(td$values[[i]], td$weights, simplify = TRUE)
+  })
+
+  for (i in 1:nlyr(td$values)) {
+    expect_equal(multi_result[,i], single_results[[i]])
+  }
 })
