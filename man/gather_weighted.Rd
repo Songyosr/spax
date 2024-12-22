@@ -4,7 +4,7 @@
 \alias{gather_weighted}
 \title{Aggregate weighted values from a raster}
 \usage{
-gather_weighted(values, weights, snap = FALSE, na.rm = TRUE)
+gather_weighted(values, weights, na.rm = TRUE, snap = FALSE)
 }
 \arguments{
 \item{values}{SpatRaster representing values to be aggregated}
@@ -14,7 +14,10 @@ gather_weighted(values, weights, snap = FALSE, na.rm = TRUE)
 - Values are weights (typically 0-1) for aggregation
 - Layer names should match unit IDs}
 
-\item{snap}{Logical; if TRUE, avoid input validation. PS. snap is a performance optimization for internal use}
+\item{na.rm}{Logical; if TRUE, remove NA values from computation (default = TRUE)}
+
+\item{snap}{Logical; if TRUE, avoid input validation. Used for performance optimization
+in internal functions.}
 }
 \value{
 data.frame with:
@@ -24,4 +27,27 @@ data.frame with:
 \description{
 General-purpose function to aggregate values from a raster using a stack of weight
 rasters. Each layer in the weights represents a different aggregation unit.
+}
+\examples{
+# pacakge data is already lazy-loaded
+
+# Convert population raster to terra format
+pop_terra <- terra::rast(u5pd)
+
+# Calculate distance decay weights using hospital isochrones
+weights <- calc_decay(
+  terra::rast(hos_iscr),
+  method = "gaussian",
+  sigma = 30
+)
+
+# Calculate potential demand for each hospital
+potential_demand <- gather_weighted(pop_terra, weights)
+head(potential_demand)
+
+# With NA handling - simulate some missing data
+pop_with_na <- pop_terra
+pop_with_na[1:100] <- NA
+demand_na <- gather_weighted(pop_with_na, weights, na.rm = TRUE)
+head(demand_na)
 }
