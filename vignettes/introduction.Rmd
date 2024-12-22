@@ -375,16 +375,15 @@ where:
 # Calculate accessibility using the supply-demand ratio and Wr
 
 # For one indicator
-spread_access(supply_demand_ratio, Wr,
-  ratio_cols = "r_doctors"
+spread_weighted(supply_demand_ratio, Wr,
+  value_cols = "r_doctors"
 ) |> plot()
 plot(vect(mask), add = TRUE)
 
 
 # For multiple indicators - alter
-spread_access(supply_demand_ratio, Wr,
-  plot_prefix = "access_",
-  ratio_cols = c("r_doctors", "r_nurses", "r_rounds", "r_active_hd")
+spread_weighted(supply_demand_ratio, Wr,
+  values_cols = c("r_doctors", "r_nurses", "r_rounds", "r_active_hd")
 ) |>
   plot()
 ```

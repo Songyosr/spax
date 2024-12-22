@@ -2,9 +2,11 @@
 
 # Helper function to create test data - using terra only
 create_test_weights <- function() {
-  r <- terra::rast(nrows=3, ncols=3, nlyr=2)
-  terra::values(r) <- c(0.5, 0.3, 0.2, 0.4, 0.6, 0.8, 0.1, 0.7, 0.9,  # Layer 1
-                        0.2, 0.4, 0.6, 0.3, 0.1, 0.5, 0.8, 0.2, 0.4)   # Layer 2
+  r <- terra::rast(nrows = 3, ncols = 3, nlyr = 2)
+  terra::values(r) <- c(
+    0.5, 0.3, 0.2, 0.4, 0.6, 0.8, 0.1, 0.7, 0.9, # Layer 1
+    0.2, 0.4, 0.6, 0.3, 0.1, 0.5, 0.8, 0.2, 0.4
+  ) # Layer 2
   names(r) <- c("facility1", "facility2")
   return(r)
 }
@@ -18,7 +20,7 @@ test_that("calc_choice handles basic normalization correctly", {
   expect_equal(terra::nlyr(result), 2)
 
   # Test probabilities sum to 1
-  sum_layer <-  terra::app(result, sum)  # Changed from sum to app
+  sum_layer <- terra::app(result, sum) # Changed from sum to app
   expect_true(all(abs(terra::values(sum_layer) - 1) < 1e-10))
 
   # Test names are preserved
@@ -27,7 +29,7 @@ test_that("calc_choice handles basic normalization correctly", {
 
 test_that("calc_choice handles attractiveness correctly", {
   weights <- create_test_weights()
-  attractiveness <- c(100, 50)  # First facility twice as attractive
+  attractiveness <- c(100, 50) # First facility twice as attractive
 
   result <- calc_choice(weights, attractiveness = attractiveness)
 
@@ -54,7 +56,7 @@ test_that("calc_choice handles outside option (a0) correctly", {
   result <- calc_choice(weights, a0 = 0.5)
 
   # Sum of probabilities should be less than 1 due to outside option
-  sum_layer <- terra::app(result, sum)  # Changed from sum to app
+  sum_layer <- terra::app(result, sum) # Changed from sum to app
   expect_true(all(terra::values(sum_layer) < 1))
 })
 
@@ -69,8 +71,8 @@ test_that("calc_choice validates inputs correctly", {
   expect_error(calc_choice(weights, attractiveness = c(-1, 1))) # Negative values
 
   # Test invalid alpha
-  expect_error(calc_choice(weights, attractiveness = c(1,1), alpha = "invalid"))
-  expect_error(calc_choice(weights, attractiveness = c(1,1), alpha = c(1,2)))
+  expect_error(calc_choice(weights, attractiveness = c(1, 1), alpha = "invalid"))
+  expect_error(calc_choice(weights, attractiveness = c(1, 1), alpha = c(1, 2)))
 
   # Test invalid a0
   expect_error(calc_choice(weights, a0 = -1))

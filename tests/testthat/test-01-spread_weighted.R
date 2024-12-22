@@ -4,18 +4,23 @@
 #' @keywords internal
 create_test_data <- function() {
   # Create deterministic test data for reliable testing
-  w1 <- matrix(c(1,2,3,
-                 4,5,6,
-                 7,8,9), 3, 3, byrow = TRUE)
-  w2 <- matrix(c(9,8,7,
-                 6,5,4,
-                 3,2,1), 3, 3, byrow = TRUE)
+  w1 <- matrix(c(
+    1, 2, 3,
+    4, 5, 6,
+    7, 8, 9
+  ), 3, 3, byrow = TRUE)
+  w2 <- matrix(c(
+    9, 8, 7,
+    6, 5, 4,
+    3, 2, 1
+  ), 3, 3, byrow = TRUE)
 
   list(
     weights = c(rast(w1), rast(w2)),
     vector_values = c(10, 20),
     matrix_values = matrix(c(10, 20, 30, 40), 2, 2,
-                           dimnames = list(NULL, c("val1", "val2"))),
+      dimnames = list(NULL, c("val1", "val2"))
+    ),
     df_values = data.frame(
       id = 1:2,
       val1 = c(10, 20),
@@ -47,7 +52,7 @@ test_that("spread_weighted validates inputs correctly", {
 
   # Mismatched lengths
   expect_error(
-    spread_weighted(c(1,2,3), td$weights),
+    spread_weighted(c(1, 2, 3), td$weights),
     "Length of values must match number of weight layers"
   )
 
@@ -101,7 +106,8 @@ test_that("spread_weighted correctly processes matrix input", {
 test_that("spread_weighted handles name_prefix correctly", {
   td <- create_test_data()
   result <- spread_weighted(td$matrix_values, td$weights,
-                            name_prefix = "test_")
+    name_prefix = "test_"
+  )
 
   expect_equal(names(result), c("test_val1", "test_val2"))
 })
@@ -109,7 +115,8 @@ test_that("spread_weighted handles name_prefix correctly", {
 test_that("spread_weighted full_output provides correct components", {
   td <- create_test_data()
   result <- spread_weighted(td$vector_values, td$weights,
-                            full_output = TRUE)
+    full_output = TRUE
+  )
 
   expect_named(result, c("total_distribution", "unit_distribution"))
   expect_s4_class(result$total_distribution, "SpatRaster")
@@ -143,15 +150,17 @@ test_that("spread_weighted handles edge cases correctly", {
   # Should still sum correctly using only non-NA value
   expect_false(any(is.na(values(na_val_result))))
   # Only second layer with value 1 should contribute
-  expect_equal(global(na_val_result, "sum", na.rm = TRUE)$sum,
-               sum(values(td$weights[[2]]), na.rm = TRUE))
+  expect_equal(
+    global(na_val_result, "sum", na.rm = TRUE)$sum,
+    sum(values(td$weights[[2]]), na.rm = TRUE)
+  )
 })
 
 # Package Data Tests ---------------------------------------------------
 
 test_that("spread_weighted works correctly with package data", {
   # Create test weights with explicitly verifiable layers
-  n_facilities <- 2  # Number of rows in our test data
+  n_facilities <- 2 # Number of rows in our test data
   weights_m1 <- matrix(1:100, 10, 10)
   weights_m2 <- matrix(100:1, 10, 10)
   test_weights <- c(rast(weights_m1), rast(weights_m2))
@@ -164,13 +173,14 @@ test_that("spread_weighted works correctly with package data", {
 
   # Create test data matching number of layers
   test_df <- data.frame(
-    s_doc = c(10, 20),    # 2 rows matching 2 layers
+    s_doc = c(10, 20), # 2 rows matching 2 layers
     s_nurse = c(30, 40)
   )
 
   # Test multiple columns with value verification
   result <- spread_weighted(test_df, test_weights,
-                            value_cols = c("s_doc", "s_nurse"))
+    value_cols = c("s_doc", "s_nurse")
+  )
 
   expect_s4_class(result, "SpatRaster")
   expect_equal(names(result), c("s_doc", "s_nurse"))

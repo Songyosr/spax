@@ -61,7 +61,7 @@ Four categories of operational functions:
 #### b. Spread Operations (`spread_*`)
 
 -   **Purpose**: Dimension expansion (vector → raster stack)
--   **Examples**: `spread_access()`, `spread_weighted()`
+-   **Examples**:  `spread_weighted()`
 
 #### c. Calculate Operations (`calc_*`)
 

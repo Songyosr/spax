@@ -54,7 +54,7 @@
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples
 #' # Using pre-computed isochrone distances and hospital data
-#' distance_raster <- terra::rast(hos_iscr)  # Already lazy loaded in raster format
+#' distance_raster <- terra::rast(hos_iscr) # Already lazy loaded in raster format
 #'
 #' # Calculate decay weights using gaussian decay
 #' weights <- calc_decay(distance_raster, method = "gaussian", sigma = 30)
@@ -64,17 +64,20 @@
 #'
 #' # With Huff model using number of doctors as attractiveness
 #' p2 <- calc_choice(weights,
-#'                   attractiveness = hc12_hos$s_doc,  # Number of doctors
-#'                   alpha = 1.5)
+#'   attractiveness = hc12_hos$s_doc, # Number of doctors
+#'   alpha = 1.5
+#' )
 #'
 #' # Plot to compare
 #' plot(c(p1[[1]], p2[[1]]),
-#'      main = c("Basic Choice Prob.", "Doctor-weighted Choice Prob."))
+#'   main = c("Basic Choice Prob.", "Doctor-weighted Choice Prob.")
+#' )
 #'
 #' # With outside option (a0)
 #' p3 <- calc_choice(weights,
-#'                   attractiveness = hc12_hos$s_doc,
-#'                   a0 = 0.1)
+#'   attractiveness = hc12_hos$s_doc,
+#'   a0 = 0.1
+#' )
 #' @export
 calc_choice <- function(weights, attractiveness = NULL,
                         alpha = 1, a0 = 0, snap = FALSE) {
