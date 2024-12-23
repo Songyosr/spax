@@ -1,8 +1,8 @@
 ---
-title: "Getting Started with spax: A Healthcare Accessibility Case Study"
+title: "Data Preparation"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting Started with spax: A Healthcare Accessibility Case Study}
+  %\VignetteIndexEntry{tmp}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -184,7 +184,6 @@ example_raster <- fasterize::fasterize(
 
 ```
 
-
 ```{r}
 # Plot
 plot(example_raster, main = "Travel Time Isochrone for Hospital C1")
@@ -218,7 +217,8 @@ isochrones <- lapply(1:nrow(hc12_hos), function(i) {
 # Then proceed to rastarization ...
 ```
 
-Luckily, the package includes pre-computed isochrones for each hospital in the region (both in a vector and a raster format). 
+Luckily, the package includes pre-computed isochrones for each hospital in the region (both in a vector and a raster format).
+
 ```{r}
 # Vector format
 head(hos_iscvec)
@@ -245,7 +245,6 @@ uf_access <- spax_2sfca(
 plot(uf_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
 ```
 
-
 ```{r}
 u5_access <- spax_e2sfca(
   demand = pop,
@@ -259,6 +258,3 @@ u5_access <- spax_e2sfca(
 
 plot(u5_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
 ```
-
-
-
