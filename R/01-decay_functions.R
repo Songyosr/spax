@@ -205,6 +205,5 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @keywords internal
 .help_decay_binary <- function(distance, sigma = 97.5, ...) {
   weight <- +(distance <= sigma)
-  weight[is.na(weight)] <- 0
   return(weight)
 }
