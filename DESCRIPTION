@@ -16,6 +16,7 @@ Description: A comprehensive toolkit for analyzing spatial accessibility to heal
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: TRUE
+LazyDataCompression: xz
 Imports:
     terra,
     raster,
@@ -33,7 +34,6 @@ Suggests:
     testthat (>= 3.0.0),
     data.table,
     fasterize,
-    raster,
     tidyverse 
 Config/testthat/edition: 3
 RoxygenNote: 7.3.2

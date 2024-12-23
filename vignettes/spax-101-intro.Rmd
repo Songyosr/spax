@@ -11,545 +11,245 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.width = 8, 
+  fig.width = 8,
   fig.height = 4.5,
   dpi = 100
 )
 ```
 
-# Introduction
+# Overview
 
-The `spax` package provides tools for analyzing spatial accessibility to services, with a particular focus on healthcare accessibility. This vignette demonstrates the package's core functionality using a real-world example: analyzing access to healthcare services in Thailand's Health Region 12.
+Let’s assume we both have at least some passing knowledge of the two-step floating catchment area (2sfca) method. Because BAM! here it is, right in your nose:
 
-### What is Spatial Accessibility?
+**Step 1**: Compute the Supply-to-Demand Ratio
 
-Spatial accessibility measures how easily people can reach services from their locations, considering:
+$$R_j = \frac{S_j}{\sum_{i \in C_j} P_i \cdot W_d(d_{ij})}$$
 
--   Travel distance/time to services
+Where:
 
--   Service capacity (e.g., number of doctors)
+-   $S_j$ : Service capacity at location j — think: number of doctors, school seats, or happy-hour cocktails 🍸.
 
--   Population demand
+-   $P_i$ : Population demand at location i — how many people want the service.
 
--   Competition effects (*optional*)
+-   $W_d(d_{ij})$ : Distance decay weight between i and j — spoiler: closer = better.
+
+-   $C_j$ : Catchment area around j , aka the “zone of influence.”
+
+**Step 2:** Aggregate Accessibility at Each Demand Location
+
+$$A_k = \sum_{j \in C_k} R_j \cdot W_a(d_{kj})$$
+
+Where:
+
+-   $A_k$ : Accessibility score at demand location k — the higher, the better access.
+
+-   $R_j$ : Supply-to-demand ratio from Step 1.
+
+-   $W_a(d_{kj})$ : Accessibility-side decay weight between k and j .
+
+And there you have it: the 2sfca approach in all its glory. If you’re nodding in recognition (or tilting your head in confusion), no worries. Let’s break it down.
+
+## Why Do We Care?
+
+In a nutshell, (spatial) accessibility is all about the interplay between **demand**, **supply**, and **distance**. **Demand** represents the size or location of people who need services (e.g., population in a given area), while **supply** is where those services exist (e.g., hospitals, schools, or your favorite late-night taco stands). Once you know where both are, you need the distance or travel time that connects (or separates) them. Whether you store these distances in a matrix, compute them from coordinates, or derive them from a travel-time raster, they represent how hard or easy it is for demand to reach supply.
+
+## Enter the `spax` Package
+
+The `spax` (short for “spatial access”) package offers tools to analyze spatial accessibility to services, with a particular focus on healthcare. The current version leans heavily on raster-based algorithms. This is a big deal if your data or your analysis workflow is raster-focused—from population surfaces to travel-time rasters. (or at least, you can consider migrating to our side). Some key features of spax include:
+
+-   Efficient raster-based spatial accessibility analysis for big dataset (unproven)
+-   Algorithmic simplicity and modular design with composable functions for custom workflows
+-   Flexible distance decay modeling with built-in and custom functions
+-   Support probabilistic demand modeling and Monte Carlo simulation
+
+## Real-World Application: Healthcare Accessibility in Lower Southen Thailand
+
+To illustrate how `spax` can be applied in practice, we'll walk through a real-world scenario: evaluating healthcare accessibility in Thailand's Health Region 12. We'll cover the following steps:
+
+1.  Preparing data on healthcare demand (population) and supply (health facilities)
+
+2.  Computing travel times between demand and supply locations
+
+3.  Conducting accessibility analysis using functions like `compute_access()` and `spax_e2sfca()`
+
+Along the way, we'll see how `spax` makes it easy to incorporate different distance decay functions, handle multi-layered raster data, and generate insightful accessibility maps.
+
+Ready to dive in? Awesome—let's go!
 
 # Getting Start
 
 First, let's load the required package
 
 ```{r setup}
-library(spax)    # For accessibility analysis
-library(terra)   # For raster operations
-library(sf)      # For vector data handling
-library(ggplot2) # For visualization
+library(spax) # For accessibility analysis
+library(terra) # For raster operations
+library(sf) # For vector data handling
+library(tidyverse) # For data manipulation + plotting
+library(osrm) # For routing services
 ```
 
 ## Data Overview
 
-The package includes several integrated datasets focused on healthcare accessibility in Thailand's Health Region 12:
+The package includes several integrated datasets focused on healthcare accessibility of children under 5 in Thailand's Health Region 12:
+
+1.  **Demand:** Under-5 Population Density
+
 ```{r}
 # Load the datasets (already lazy-loaded in the package)
+# Under-5 population density - change from raster to terra::spatRaster
+(pop <- rast(u5pd))
+
 # Region boundary
 print(bound0)
+```
 
-# Healthcare facilities - 
-print(head(hc12_hos))
+```{r}
+# Plot
+plot(pop, main = "Under-5 Population Density")
+plot(vect(bound0), add = TRUE) # change to SpatVector
+```
+
+2.  **Supply:** Location and Capacity of Healthcare Facilities
+
+```{r}
+# Healthcare facilities
+head(hc12_hos)
+
+# Primary healthcare facilities - not used in this example
+head(hc12_phc)
 ```
 
 ```{r}
 # Plot basic facility distribution
 ggplot() +
-  geom_sf(data = bound0, fill = 'grey90') +
+  geom_sf(data = bound0, fill = "grey90") +
   geom_sf(data = hc12_hos, aes(color = hoslvl, size = s_doc)) +
   theme_minimal() +
-  labs(title = "Hospital Distribution in Region 12",
-       color = "Hospital Level",
-       size = "Number of Doctors") +
+  labs(
+    title = "Hospital Distribution in Region 12",
+    color = "Hospital Level",
+    size = "Number of Doctors"
+  ) +
   theme_classic()
 ```
 
-```{r}
-# isochrone
+3.  **Distance:** Travel Time Isochrones to Healthcare Facilities
 
-hos_iscvec[1,] |>
-  
+One way to account for the spatial separation between demand and supply locations is to use travel time isochrones, which represent areas reachable within a given time threshold. This package did not provide a function to generate isochrones, but we can use the ([`osrm`](https://github.com/riatelab/osrm){.uri}) package to calculate travel times between demand and supply locations.
 
+```{r warning=FALSE}
+# Example: Calculate isochrones for the first hospital
+# Since the dataset I've prepared is in a planar projection, we need to transform it to WGS84 (EPSG:4326) for routing services
 
-```
+(example_hos1 <- hc12_hos[1, ] |> # Select the first hospital
+  st_transform(4326) |> # Transform to WGS84 (geodesic projection)
+  st_coordinates() |> # Extract coordinates
+  as.numeric()) # Convert to numeric
 
-
-## Basic Accessibility Analysis
-
-Let's start with a basic accessibility analysis using the Enhanced Two-Step Floating Catchment Area (E2SFCA) method:
-
-```{r}
-# Convert population raster to terra format
-pop_terra <- rast(u5pd)
-
-# Calculate distance decay weights using gaussian decay
-weights <- calc_decay(
-  rast(hos_iscr),    # Travel time raster
-  method = "gaussian",
-  sigma = 30         # 30-minute standard deviation
+# Calculate isochrones
+example_isochrone <- osrm::osrmIsochrone(
+  loc = example_hos1, # Example coordinates
+  breaks = c(15, 30, 45, 60), # 15-minute intervals
+  res = 30 
 )
 
-supply_mat <- hc12_hos |>
-  select(starts_with("s_"), id) |>
-  st_drop_geometry() #|>
-  as.matrix()
-
-# Calculate accessibility scores with compute_access
-accessibility <- compute_access(
-  demand = kid_density,
-  supply = hc12_hos |> st_drop_geometry() |> pluck("bed"),
-  demand_weights = Wd,
-  access_weights = weights,
-  #id_col = "location_id",
-  #supply_cols = c("s_doc")  # Analyze only doctors
-)
-plot(accessibility)
-access_scores <- compute_access(
-  demand = kid_density,
-  supply = supply_mat,
-  demand_weights = Wr,
-  access_weights = Wr,
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse")
-) |> scale()
-  
-plot(access_scores)
-
-
-
-
-plot(accessibility, main = "Hospital Accessibility")
-# Calculate accessibility scores
-accessibility <- spax_e2sfca(
-  demand = pop_terra,
-  supply = hc12_hos |> st_drop_geometry(),
-  distance = rast(hos_iscr),
-  id_col = "location_id",
-  supply_cols = c("s_doc"),  # Analyze both doctors and nurses
-  decay_params = list(method = "gaussian", sigma = 30)
-)
-
-
-# Plot results
-plot(accessibility,
-     main = c("Doctor Accessibility"))
+# change crs back
+(example_isochrone <- st_transform(example_isochrone, st_crs(bound0)))
+par(mfrow = c(1, 2))
+plot(example_isochrone[, "isomax"], main = "Travel Time Isochrone for Hospital C1")
+plot(example_isochrone[3, "isomax"], main = "Travel Time Isochrone ring for Hospital C1 (45 mins)")
 ```
 
-
-# Overview
-
-The `spax` package provides tools for analyzing spatial accessibility to services using a raster-based approach. This vignette demonstrates the package's functionality using a real-world case study analyzing access to dialysis care in Thailand's Health Region 2.
-
-## Implementation Approach
-
-`spax` is specifically designed to work with raster-based spatial analysis, utilizing the `terra` package's `SpatRaster` class as its primary data structure. This approach offers (hopefully) several advantages:
-
--   Efficient handling of continuous spatial phenomena
-
--   Consistent resolution across analysis layers
-
--   Vectorized operations for improved performance
-
--   Memory-efficient processing of large spatial datasets
-
-The inclusion of Vector will be implement later when i have time
-
-## Pre-requisites
-
-The package works with several spatial data formats and relies on a few key R packages:
+As you can see, osrmIsochrone calculates the area reachable within each time threshold for the first hospital (C1) in 15-minute intervals up to 60 minutes as distinct ring-shaped vectors. If you take on a vector-based approach, you can use functions like `st_contain()` to determine the population within each isochrone ring. But in our raster-centric package, we'll rasterize these isochrones for further analysis.
 
 ```{r}
-# Install spax if needed
-# install.packages("pak")
-# pak::pak("Songyosr/spax")
-```
-
-```{r}
-# Load required libraries
-library(raster) # For legacy raster support
-library(terra) # For modern raster operations
-library(tidyverse) # For data manipulation
-library(sf) # For vector spatial data
-library(sp) # For vector spatial data
-library(spax) # For spatial accessibility analysis
-```
-
-# Conceptual Framework
-
-The spatial accessibility index calculation in `spax` follows an enhanced 2SFCA approach:
-
-1.  **Supply-to-Demand Ratio (R):** For each service location j: Rj = Sj / Σ(Pi × Wd(dij)) where:
-    -   Sj is the service capacity at location j
-    -   Pi is the population demand at location i
-    -   Wd(dij) is the demand-side distance decay weight
-2.  **Accessibility Score (A):** For each location k: Ak = Σ(Rj × Wr(dkj)) where:
-    -   Rj is the supply-to-demand ratio at service location j
-    -   Wr(dkj) is the accessibility-side distance decay weight
-
-The package implements this framework using raster operations for improved computational efficiency.
-
-# Data Preparation
-
-Q: how do you set a working directory in a vignette?
-A: You can set the working directory in the setup chunk at the beginning of the vignette. For example:
-
-
-
-## Import
-
-```{r}
-# Mask
-mask <- readRDS("data/r2/r2_mask.rds")
-
-# Healthcare facility information (supply side)
-hd <- readRDS("data/hd/vect/hd_info.rds")
-hd_iso <- readRDS("data/hd/vect/hd_isochrones_det4.rds") # Isochrones
-# hd_iso$location_id <- factor(hd_iso$location_id, levels = unique(hd_iso$location_id))
-
-# Population density (demand side)
-pop_density <- readRDS("data/pop_dens/pop_cropped_10.rds")
-```
-
-```{r}
-# Create a smaller version of the population density raster
-tiny_pop_density <- (pop_density) |>
-  aggregate(
-    fact = 5, fun = "sum", na.rm = TRUE, # method="simple",
-    progress = "text", # window=w,
-    cores = 8
-  ) |>
-  terra::crop(vect(mask), mask = TRUE)
-```
-
-## 1. Supply-Side Data
-
-Supply locations (in our case, dialysis centers) include:
-
--   Geographic coordinates: used to create the traveling time isochrones or distance
-
--   Capacity indicators such as: Number of dialysis machines, Staff availability
-
-```{r}
-hd <- hd |>
-  select(
-    location_id,
-    starts_with("s_"), # Select columns starting with 's_' - supply indicators
-    starts_with("hd_")
-  ) # Select columns starting with 'hd_' - Realized demand indicators
-
-hd |> head()
-```
-
-## 2. Distance/Catchment Areas
-
-The package requires a measure of spatial separation between supply and demand locations. This can be: Travel times, Network distances, Euclidean distances, or Custom distance metrics.
-
-In our example, we use:
-
--   Pre-computed travel time isochrones (15-minute intervals) around each dialysis center
-
--   Generated using the OSRM routing engine
-
-```{r}
-# Example
-hd_iso |>
-  filter(location_id == "c1") |>
-  ggplot() +
-  geom_sf(aes(fill = iso_mean), col = NA) +
-  geom_sf(data = mask, fill = NA, color = "black", lwd = 2) +
-  geom_sf(data = hd |> filter(location_id == "c1"), col = "red", size = 3) +
-  labs(
-    title = "Isochrone for Facility C1",
-    fill = "Traveling time (mins)"
-  ) +
-  scale_fill_viridis_c(option = "plasma") +
-  theme_minimal()
-```
-
-```{r}
-# Converted to a raster format for analysis
-distance_raster <- fasterize::fasterize(hd_iso,
-  tiny_pop_density |> raster(), # Use the dialysis_density raster as a template
-  field = "iso_mean", # Fill the raster with the iso_mean values
+# Create a iso_mean column, and id
+(example_isochrone <- example_isochrone |>
+  mutate(
+    iso_mean = (isomin + isomax) / 2,
+    location_id = hc12_hos[1, ]$id
+  )) # actually dont need it here
+# Convert isochrones to raster format
+example_raster <- fasterize::fasterize(
+  example_isochrone,
+  u5pd, # Use the population raster as a template
+  field = "iso_mean", # Fill the raster with the isomax values
   background = NA,
   fun = "sum",
-  # na.rm = TRUE,
   by = "location_id"
 ) |>
   rast() |>
-  terra::crop(vect(mask), mask = TRUE)
-```
+  crop(vect(bound0), mask = TRUE)
 
-```{r}
-# Reorder - ensure order
-# distance_raster <- distance_raster[[hd$location_id]]
-
-# Check
-names(distance_raster)
-plot(distance_raster[[1]], main = "Distance raster for Facility C1")
-plot(vect(mask), add = TRUE)
-```
-
-```{r eval=FALSE, include=TRUE}
-# Dont know why this is not working - the terra:rasterize seems to corrupt the layer name
-distance_raster <- terra::rasterize(vect(hd_iso),
-  tiny_pop_density, # Use the dialysis_density raster as a template
-  field = "iso_mean", # Fill the raster with the iso_mean values
-  background = NA,
-  fun = "sum",
-  # na.rm = TRUE,
-  by = "location_id"
-) |>
-  terra::crop(vect(mask), mask = TRUE)
-```
-
-## 3. Demand-Side Data
-
-Demand can be represented either as point locations (e.g., population centroids) or a continuous surface (e.g., population density raster). Like previously, we need to convert the demand data to a SpatRaster format.
-
-In our example, we use a population density raster from Meta High Resolution Population Density Maps (2020), aggregated to a manageable resolution while preserving total population counts.
-
-Since our data represents population density rather than actual dialysis cases, we need to make assumptions about the spatial distribution of potential demand. The core assumption is that the distribution of dialysis cases follows that of the general population - in other words, areas with higher population density will have proportionally more dialysis cases.
-
-Under this assumption, we can approach demand modeling in two ways:
-
-1.  Deterministic Approach:
-
--   Using Thailand's national hemodialysis prevalence rate of 2,448 cases per million population
-
--   Directly multiply the population density raster by the prevalence rate (2,448/1,000,000)
-
--   Results in an expected spatial distribution of dialysis cases across the region
-
--   Provides a single, fixed representation of potential demand
-
-2.  Probabilistic Approach (`sample_pmf` function):
-
--   Incorporates uncertainty in disease occurrence
-
--   Uses population density as a probability mass function (PMF)
-
--   Samples a number of cases based on: Total population, Prevalence rate, Chosen probability distribution (e.g., Poisson, Binomial)
-
--   Enables Monte Carlo simulation to generate demand distributions
-
--   Provides insight into potential variability in accessibility scores
-
-For simplicity in this initial example, we'll use the deterministic approach. The probabilistic approach and Monte Carlo simulation capabilities will be covered in later sections.
-
-```{r}
-# Convert the population density to expected dialysis density
-dialysis_density <- tiny_pop_density * 2448 / 1000000 # 2448 dialysis patients per million populations
-
-# Plot
-plot(dialysis_density, main = "Expected Dialysis Density")
-mtext("Resolution:  1224.476 x 1224.476  m", side = 3, line = 1, cex = 0.8)
-plot(vect(mask), add = TRUE)
-```
-
-# Accessibility Analysis
-
-## Step 0: Distance Decay and Weight Preparation
-
-The package implements a flexible system for spatial interaction modeling through distance decay functions and weight normalization.
-
-1.  **Demand-side Weights (Wd):**
-
-    -   Controls how population demand is allocated to facilities
-
-    -   Can be normalized to prevent demand double-counting
-
-    -   Used in calculating potential demand per facility
-
-2.  **Accessibility-side Weights (Wr):**
-
-    -   Controls how service availability diminishes with distance
-
-    -   Generally left unnormalized to allow cumulative effects
-
-    -   Used in final accessibility calculation
-
-### Decay Functions
-
-The package offers several built-in decay functions through `calc_decay()`:
-
--   **Gaussian:** $W(d) = exp(-d^2 / (2σ^2))$
-
--   **Exponential:** $W(d) = exp(-dσ))$
-
--   **Power:** $W(d) = d^{-\sigma})$
-
--   **Binary:** $W(d) = 1 if d ≤ sigma, 0 otherwise$
-
-where: - d is the distance/time - σ (sigma) controls the rate of decay
-
-Users can also define custom decay functions by passing a function to calc_decay(). This enables implementation of domain-specific decay behaviors or novel distance-interaction models.
-
-### Weight Normalization
-
-To handle overlapping service areas, `calc_normalize()` provides several options:
-
--   **Standard normalization:** Weights sum to 1 at each location ()
-
--   **Semi-normalization**: Only normalizes when sum \> 1
-
--   **Custom normalization**: User-defined normalization functions
-
-In this example, we use:
-
--   Gaussian decay (σ = 60 minutes) for both Wd and Wr
-
--   Semi-normalization for Wd to prevent demand double-counting
-
--   No normalization for Wr to allow cumulative accessibility effects
-
-```{r}
-distance_raster <- rast(hos_iscr)
-kid_density <- rast(u5pd)
-```
-
-```{r}
-plot(distance_raster[[1]])
-```
-
-```{r}
-# Compute the decayed weight raster for demand - Wd
-# Gaussian decay function with sigma = 60
-# semi-normalized - help reduce double counting of demand
-Wd <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 30) |>
-  calc_normalize(method = "semi")
-
-# Compute the decayed weight raster for accessibility ratio - Wr
-# Gaussian decay function with sigma = 60, no normalization
-Wr <- calc_decay(distance = distance_raster, method = "gaussian", sigma = 30)
 ```
 
 
 ```{r}
 # Plot
-par(mfrow = c(1, 2))
-plot(Wd[[1]], main = "Demand Decay Wt (Wd)")
-plot(Wr[[1]], main = "Accessibility Ratio Decay Wt (Wr)")
-```
-
-## Step 1. Calculate the Supply-Demand Ratio for each health facility
-
-### 1.1 Calculate the total demand for each facility
-
-The calculation of potential demand involves the Hadamard product (element-wise multiplication) between the weight raster stack and the demand raster. For each facility j, we compute:
-
-$$D_j = \sum(W^d_j \odot P)$$
-
-where: - $D_j$ is the potential demand for facility j - $Wd_j$ is the distance decay weight raster for facility j (for the demand) - $P$ is the population/demand raster - $\odot$ denotes the Hadamard product (element-wise multiplication) - $Σ$ represents the sum over all cells
-
-In raster terms, this means: 1. Each cell in the weight raster is multiplied by the corresponding cell in the demand raster 2. These products are then summed to get the total weighted demand for that facility
-
-```{r}
-demand_by_site <- gather_demand(kid_density, Wd)
-head(demand_by_site)
-```
-
-### 1.2 Calculate the supply to demand ratio
-
-Now we can calculate the supply-to-demand ratio for each facility. This involves dividing the supply indicators by the potential demand:
-
-$$R_j = S_j/Dj$$
-
-where: 
-
-- $R_j$ is the supply-to-demand ratio for facility j 
-
-- $S_j$ is the supply indicator for facility j 
-
-- $D_j$ is the total potential demand for facility j
-
-```{r}
-# merge the supply and demand data
-supply_demand_ratio <- hc12_hos |> # id = id
-  st_drop_geometry() |> # we don't need the geometry column
-  merge(demand_by_site, by.y = 'location_id', by.x = "id") |>
-
-  mutate(
-    r_doctors     = s_doc / potential_demand,
-    r_nurses      = s_nurse / potential_demand,
-    r_bed         = bed / potential_demand
-  ) |>
-  select(id, starts_with("r_"))
-
-
-# Check
-head(supply_demand_ratio)
-```
-
-## Step 2. Calculate Accessibility
-
-Finally, we can calculate the accessibility score for each location. This involves multiplying the supply-to-demand ratio by the accessibility decay weight and summing the results. For each location k, we compute:
-
-$$A_k = \sum(R_j \odot W^r_{kj})$$ 
-
-where: 
-
-- $A_k$ is the accessibility score for location k 
-
-- $R_j$ is the supply-to-demand ratio at facility j 
-
-- $W^r_{kj}$ is the accessibility decay weight from facility j to location k
-
-
-```{r}
-# Calculate accessibility using the supply-demand ratio and Wr
-
-# For one indicator
-spread_weighted(supply_demand_ratio, Wr,
-  value_cols = "r_doctors"
-) |> plot()
+plot(example_raster, main = "Travel Time Isochrone for Hospital C1")
 plot(vect(bound0), add = TRUE)
-
-
-# For multiple indicators - alter
-spread_weighted(supply_demand_ratio, Wr,
-                value_cols = c('r_doctors', 'r_nurses', 'r_bed')
-) |> plot() 
+plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
 ```
 
-Or we can use the `compute_access()` or `spax_e2sfca()` function to calculate accessibility scores directly:
+To analyze all hospitals, we can iterate through each facility and compute their isochrones. By default, the osrmIsochrone function uses the OSRM demo server to perform these calculations. However, relying on the demo server is not recommended for large datasets or repeated analyses due to usage limits and ethical considerations. Instead, it’s advisable to [set up your own OSRM server](https://github.com/Project-OSRM/osrm-backend). This vignette does not cover the server setup process.
+
+```{r, eval=FALSE}
+# Example of looping over all hospitals to calculate isochrones
+# Note: This code is for illustration only and may not run due to API limitations
+# Initialize a list to store isochrones
+isochrones <- list(rep(NA, nrow(hc12_hos)))
+
+# Extract coordinates
+hos_coords <- hc12_hos |>
+  st_transform(4326) |> # only if the data is in planar projection
+  st_coordinates()
+
+# Loop over each hospital - lapply
+isochrones <- lapply(1:nrow(hc12_hos), function(i) {
+  # Calculate isochrone
+  osrm::osrmIsochrone(
+    loc = hos_coords[i, ],
+    breaks = c(15, 30, 45, 60),
+    res = 30
+  )
+}) 
+
+# Then proceed to rastarization ...
+```
+
+Luckily, the package includes pre-computed isochrones for each hospital in the region (both in a vector and a raster format). 
+```{r}
+# Vector format
+head(hos_iscvec)
+
+# Raster format
+distance_raster <- rast(hos_iscr)
+plot(distance_raster[[1]], main = "Distance raster for Hospital C1")
+plot(vect(bound0), add = TRUE)
+```
+
+## Basic Accessibility Analysis
+
+Let's start with a basic accessibility analysis using the Enhanced Two-Step Floating Catchment Area (E2SFCA) method
 
 ```{r}
-supply_mat <- hc12_hos |>
-  select(starts_with("s_"), id) |>
-  st_drop_geometry() #|>
-  as.matrix()
-
-access_scores <- compute_access(
-  demand = kid_density,
-  supply = supply_mat,
-  demand_weights = Wd,
-  access_weights = Wr,
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse")
+weights <- calc_decay(
+  distance_raster, # Travel time raster
+  method = "gaussian",
+  sigma = 30 # 30-minute standard deviation
 )
-plot(access_scores)
-
-hd |>
-  st_drop_geometry() |>
-  data.table::data.table() |>
-  class()
-access_scores_2 <- spax_e2sfca(
-  demand = dialysis_density,
-  supply = hd |> st_drop_geometry() |> data.table::data.table(),
-  distance = distance_raster,
-  decay_params = list(method = "gaussian", sigma = 30),
-  demand_normalize = "identity",
-  id_col = "location_id",
-  supply_cols = c("s_total_doctors", "s_total_nurses")
-)
-plot(access_scores_2)
-
-access_scores_2
 ```
 
+```{r}
+u5_access <- compute_access(
+  demand = pop,
+  supply = hc12_hos$bed,
+  demand_weights = weights,
+  access_weights = weights
+  #id_col = "location_id",
+  #supply_cols = c("s_doc", "s_nurse") # Analyze only doctors
+) |> scale() # Normalize the results
+
+plot(u5_access, main = "Doctor Accessibility")
+```
 
