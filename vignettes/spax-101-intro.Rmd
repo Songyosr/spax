@@ -148,7 +148,7 @@ One way to account for the spatial separation between demand and supply location
   as.numeric()) # Convert to numeric
 
 # Calculate isochrones
-example_isochrone <- osrm::osrmIsochrone(
+example_isochrone <- osrmIsochrone(
   loc = example_hos1, # Example coordinates
   breaks = c(15, 30, 45, 60), # 15-minute intervals
   res = 30 
@@ -208,7 +208,7 @@ hos_coords <- hc12_hos |>
 # Loop over each hospital - lapply
 isochrones <- lapply(1:nrow(hc12_hos), function(i) {
   # Calculate isochrone
-  osrm::osrmIsochrone(
+  osrmIsochrone(
     loc = hos_coords[i, ],
     breaks = c(15, 30, 45, 60),
     res = 30
@@ -234,23 +234,18 @@ plot(vect(bound0), add = TRUE)
 Let's start with a basic accessibility analysis using the Enhanced Two-Step Floating Catchment Area (E2SFCA) method
 
 ```{r}
-weights <- calc_decay(
-  distance_raster, # Travel time raster
-  method = "gaussian",
-  sigma = 30 # 30-minute standard deviation
-)
-```
-
-```{r}
-u5_access <- compute_access(
+u5_access <- spax_e2sfca(
   demand = pop,
-  supply = hc12_hos$bed,
-  demand_weights = weights,
-  access_weights = weights
-  #id_col = "location_id",
-  #supply_cols = c("s_doc", "s_nurse") # Analyze only doctors
-) |> scale() # Normalize the results
+  supply = hc12_hos |> st_drop_geometry(),
+  distance = distance_raster,
+  id_col = "id",
+  supply_cols = c("s_doc", "s_nurse"), # Analyze only doctors
+  decay_params = list(method = "gaussian", sigma = 30),
+  demand_normalize = "standard"
+)
 
-plot(u5_access, main = "Doctor Accessibility")
+plot(u5_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
 ```
+
+
 
