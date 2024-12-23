@@ -53,8 +53,9 @@
 #'        Only use when inputs are known to be valid.
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples
+#' library(terra)
 #' # Using pre-computed isochrone distances and hospital data
-#' distance_raster <- terra::rast(hos_iscr) # Already lazy loaded in raster format
+#' distance_raster <- rast(hos_iscr) # Already lazy loaded in raster format
 #'
 #' # Calculate decay weights using gaussian decay
 #' weights <- calc_decay(distance_raster, method = "gaussian", sigma = 30)
@@ -69,9 +70,9 @@
 #' )
 #'
 #' # Plot to compare
-#' plot(c(p1[[1]], p2[[1]]),
-#'   main = c("Basic Choice Prob.", "Doctor-weighted Choice Prob.")
-#' )
+#' par(mfrow = c(1, 2))  # Set up 2 panels side by side
+#' plot(p1[[1]], main = "Basic Choice Prob.")
+#' plot(p2[[1]], main = "Doctor-weighted Choice Prob.")
 #'
 #' # With outside option (a0)
 #' p3 <- calc_choice(weights,

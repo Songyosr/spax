@@ -34,16 +34,19 @@ General-purpose function to aggregate values from a raster (single or multi-laye
 a stack of weight rasters. Each layer in the weights represents a different aggregation unit.
 }
 \examples{
+# Load necessary library
+library(terra)
+
 # Create test data
-values <- terra::rast(matrix(1:9, 3, 3))  # Single layer
-weights <- terra::rast(list(
-  w1 = matrix(runif(9), 3, 3),
-  w2 = matrix(runif(9), 3, 3)
-))
+values <- rast(matrix(1:9, 3, 3))  # Single layer
+weights <- c(
+  rast(matrix(runif(9), 3, 3)),
+  rast(matrix(runif(9), 3, 3))
+)
 names(weights) <- c("unit1", "unit2")
 
 # Single layer example
-result1 <- gather_weighted(values, weights, simplify = T)
+result1 <- gather_weighted(values, weights, simplify = TRUE)
 result1_df <- gather_weighted(values, weights)
 
 # Multi-layer example

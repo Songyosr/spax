@@ -80,16 +80,19 @@
 #'         - If simplify=TRUE and multi-layer: matrix with rownames=units, colnames=scenarios
 #'         - If simplify=FALSE: data.frame in wide format with unit_id column
 #' @examples
+#' # Load necessary library
+#' library(terra)
+#'
 #' # Create test data
-#' values <- terra::rast(matrix(1:9, 3, 3))  # Single layer
-#' weights <- terra::rast(list(
-#'   w1 = matrix(runif(9), 3, 3),
-#'   w2 = matrix(runif(9), 3, 3)
-#' ))
+#' values <- rast(matrix(1:9, 3, 3))  # Single layer
+#' weights <- c(
+#'   rast(matrix(runif(9), 3, 3)),
+#'   rast(matrix(runif(9), 3, 3))
+#' )
 #' names(weights) <- c("unit1", "unit2")
 #'
 #' # Single layer example
-#' result1 <- gather_weighted(values, weights, simplify = T)
+#' result1 <- gather_weighted(values, weights, simplify = TRUE)
 #' result1_df <- gather_weighted(values, weights)
 #'
 #' # Multi-layer example
