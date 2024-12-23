@@ -83,6 +83,7 @@ First, let's load the required package
 ```{r setup}
 library(spax) # For accessibility analysis
 library(terra) # For raster operations
+library(raster)
 library(sf) # For vector data handling
 library(tidyverse) # For data manipulation + plotting
 library(osrm) # For routing services
