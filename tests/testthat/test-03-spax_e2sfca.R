@@ -119,22 +119,22 @@ test_that(".chck_compute_access validates inputs correctly", {
       td$supply_df,
       demand_weights,
       access_weights,
-      id_col = "id",  # Added this
-      supply_cols = c("doctors", "nurses")  # Added this
+      id_col = "id", # Added this
+      supply_cols = c("doctors", "nurses") # Added this
     ),
     "demand must be a SpatRaster object"
   )
 
   # Test mismatched dimensions
-  wrong_weights <- terra::rast(td$distance[[1]])  # single layer
+  wrong_weights <- terra::rast(td$distance[[1]]) # single layer
   expect_error(
     .chck_compute_access(
       td$demand,
       td$supply_df,
       wrong_weights,
       access_weights,
-      id_col = "id",  # Added this
-      supply_cols = c("doctors", "nurses")  # Added this
+      id_col = "id", # Added this
+      supply_cols = c("doctors", "nurses") # Added this
     ),
     "Number of demand_weights layers must match number of facilities"
   )
@@ -192,7 +192,7 @@ test_that("compute_access handles different supply formats", {
   expect_equal(names(df_result), c("A_doctors", "A_nurses"))
 
   # Test with matrix
-  mat_distance <- td$distance  # Should already have correct number of layers
+  mat_distance <- td$distance # Should already have correct number of layers
   mat_result <- compute_access(
     td$demand,
     td$supply_matrix,
@@ -204,7 +204,7 @@ test_that("compute_access handles different supply formats", {
 
 
   # Test with vector
-  vec_weights <- weights  # weights should have same number of layers as vector length
+  vec_weights <- weights # weights should have same number of layers as vector length
   vec_result <- compute_access(
     td$demand,
     td$supply_vector,

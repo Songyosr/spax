@@ -65,16 +65,20 @@ Limitations addressed by later methods:
 \examples{
 # Load example data
 library(terra)
+library(sf)
 
 # Convert under-5 population density to proper format
 pop_rast <- rast(u5pd)
+
+# Drop geometry for supply data
+hc12_hos <- hc12_hos |> st_drop_geometry()
 
 # Calculate accessibility to doctors with 30-minute catchment
 result <- spax_2sfca(
   demand = pop_rast,
   supply = hc12_hos,
   distance = rast(hos_iscr),
-  threshold = 30,  # 30-minute catchment
+  threshold = 30, # 30-minute catchment
   id_col = "id",
   supply_cols = "s_doc"
 )

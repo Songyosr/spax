@@ -4,7 +4,9 @@
 #' @return Invisible TRUE if valid, error otherwise
 #' @keywords internal
 .chck_transform_pmf <- function(x, snap = FALSE) {
-  if (snap) return(invisible(TRUE))
+  if (snap) {
+    return(invisible(TRUE))
+  }
 
   # Input type validation
   if (!inherits(x, "SpatRaster")) {

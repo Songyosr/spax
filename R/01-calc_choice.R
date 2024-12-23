@@ -70,7 +70,7 @@
 #' )
 #'
 #' # Plot to compare
-#' par(mfrow = c(1, 2))  # Set up 2 panels side by side
+#' par(mfrow = c(1, 2)) # Set up 2 panels side by side
 #' plot(p1[[1]], main = "Basic Choice Prob.")
 #' plot(p2[[1]], main = "Doctor-weighted Choice Prob.")
 #'

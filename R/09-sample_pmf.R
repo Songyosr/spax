@@ -95,14 +95,18 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
       set.seed(sample.int(.Machine$integer.max, 1))
     }
     # Use current RNG state
-    result <- .sample_pmf_internal(x, n, size, prob, method, iterations,
-                                   evolve_prop, replace_0, snap, ...)
+    result <- .sample_pmf_internal(
+      x, n, size, prob, method, iterations,
+      evolve_prop, replace_0, snap, ...
+    )
   } else {
     # Use specified seed via withr
     result <- withr::with_seed(
       seed = seed,
-      code = .sample_pmf_internal(x, n, size, prob, method, iterations,
-                                  evolve_prop, replace_0, snap, ...)
+      code = .sample_pmf_internal(
+        x, n, size, prob, method, iterations,
+        evolve_prop, replace_0, snap, ...
+      )
     )
   }
 
@@ -264,9 +268,9 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Built-in methods
   switch(method,
-         "poisson" = rpois(iterations, lambda = size * prob),
-         "binomial" = rbinom(iterations, size = size, prob = prob),
-         "nbinom" = rnbinom(iterations, size = size, prob = prob)
+    "poisson" = rpois(iterations, lambda = size * prob),
+    "binomial" = rbinom(iterations, size = size, prob = prob),
+    "nbinom" = rnbinom(iterations, size = size, prob = prob)
   )
 }
 
@@ -316,7 +320,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
     # Assign counts to the result raster
     values(result) <- counts
-
   } else if (replace_0) {
     # If no samples and replace_0 is TRUE, set all values to NA
     values(result) <- NA

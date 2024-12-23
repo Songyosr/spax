@@ -4,11 +4,11 @@
 create_test_data <- function(multi = FALSE) {
   # Create a small test raster for values
   if (!multi) {
-    values <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
+    values <- terra::rast(nrows = 5, ncols = 5, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
     terra::values(values) <- 1:25
   } else {
-    v1 <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
-    v2 <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
+    v1 <- terra::rast(nrows = 5, ncols = 5, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+    v2 <- terra::rast(nrows = 5, ncols = 5, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
     terra::values(v1) <- 1:25
     terra::values(v2) <- (1:25) * 2
     values <- c(v1, v2)
@@ -16,8 +16,8 @@ create_test_data <- function(multi = FALSE) {
   }
 
   # Create a multi-layer weight raster
-  weights <- terra::rast(nrows=5, ncols=5, nlyr=3, xmin=0, xmax=10, ymin=0, ymax=10)
-  terra::values(weights) <- runif(75)  # 25 cells * 3 layers
+  weights <- terra::rast(nrows = 5, ncols = 5, nlyr = 3, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
+  terra::values(weights) <- runif(75) # 25 cells * 3 layers
   names(weights) <- c("unit1", "unit2", "unit3")
 
   list(
@@ -30,7 +30,7 @@ create_test_data <- function(multi = FALSE) {
 
 test_that("gather_weighted performs basic aggregation correctly", {
   td <- create_test_data(multi = FALSE)
-  result <- gather_weighted(td$values, td$weights)  # default simplify=FALSE
+  result <- gather_weighted(td$values, td$weights) # default simplify=FALSE
 
   # Check data.frame output by default
   expect_s3_class(result, "data.frame")
@@ -49,7 +49,7 @@ test_that("gather_weighted performs basic aggregation correctly", {
 
 test_that("gather_weighted handles multi-layer correctly", {
   td <- create_test_data(multi = TRUE)
-  result <- gather_weighted(td$values, td$weights)  # default simplify=FALSE
+  result <- gather_weighted(td$values, td$weights) # default simplify=FALSE
 
   # Check data.frame output by default
   expect_s3_class(result, "data.frame")
@@ -112,12 +112,14 @@ test_that("gather_weighted validates input types", {
 
 test_that("gather_weighted validates raster compatibility", {
   # Create base raster
-  values <- terra::rast(nrows=5, ncols=5, xmin=0, xmax=10, ymin=0, ymax=10)
+  values <- terra::rast(nrows = 5, ncols = 5, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
   terra::values(values) <- 1:25
 
   # Create raster with different resolution but same extent
-  weights_diff_res <- terra::rast(nrows=10, ncols=10, nlyr=2,
-                                  xmin=0, xmax=10, ymin=0, ymax=10)
+  weights_diff_res <- terra::rast(
+    nrows = 10, ncols = 10, nlyr = 2,
+    xmin = 0, xmax = 10, ymin = 0, ymax = 10
+  )
   terra::values(weights_diff_res) <- runif(200)
 
   expect_error(
@@ -126,8 +128,10 @@ test_that("gather_weighted validates raster compatibility", {
   )
 
   # Create raster with different extent but same resolution
-  weights_diff_ext <- terra::rast(nrows=5, ncols=5, nlyr=2,
-                                  xmin=10, xmax=20, ymin=10, ymax=20)
+  weights_diff_ext <- terra::rast(
+    nrows = 5, ncols = 5, nlyr = 2,
+    xmin = 10, xmax = 20, ymin = 10, ymax = 20
+  )
   terra::values(weights_diff_ext) <- runif(50)
 
   expect_error(
@@ -216,6 +220,6 @@ test_that("gather_weighted preserves computational accuracy", {
   })
 
   for (i in 1:nlyr(td$values)) {
-    expect_equal(multi_result[,i], single_results[[i]])
+    expect_equal(multi_result[, i], single_results[[i]])
   }
 })

@@ -28,11 +28,11 @@
 
   # Check raster compatibility
   if (!all(res(demand) == res(demand_weights)) ||
-      !all(res(demand) == res(access_weights))) {
+    !all(res(demand) == res(access_weights))) {
     stop("All raster inputs must have the same resolution")
   }
   if (!all(ext(demand) == ext(demand_weights)) ||
-      !all(ext(demand) == ext(access_weights))) {
+    !all(ext(demand) == ext(access_weights))) {
     stop("All raster inputs must have the same extent")
   }
 
@@ -49,8 +49,10 @@
     }
     if (!all(supply_cols %in% names(supply))) {
       missing_cols <- setdiff(supply_cols, names(supply))
-      stop(sprintf("supply_cols not found in supply data.frame: %s",
-                   paste(missing_cols, collapse = ", ")))
+      stop(sprintf(
+        "supply_cols not found in supply data.frame: %s",
+        paste(missing_cols, collapse = ", ")
+      ))
     }
   }
 
@@ -115,8 +117,10 @@
   # Validate demand_normalize
   valid_normalize <- c("identity", "standard", "semi")
   if (!demand_normalize %in% valid_normalize) {
-    stop(sprintf("demand_normalize must be one of: %s",
-                 paste(valid_normalize, collapse = ", ")))
+    stop(sprintf(
+      "demand_normalize must be one of: %s",
+      paste(valid_normalize, collapse = ", ")
+    ))
   }
 
   # Validate raster compatibility
@@ -146,8 +150,10 @@
     }
     if (!all(supply_cols %in% names(supply))) {
       missing_cols <- setdiff(supply_cols, names(supply))
-      stop(sprintf("supply_cols not found in supply data.frame: %s",
-                   paste(missing_cols, collapse = ", ")))
+      stop(sprintf(
+        "supply_cols not found in supply data.frame: %s",
+        paste(missing_cols, collapse = ", ")
+      ))
     }
 
     # Check if id_col values are unique
@@ -211,8 +217,7 @@
       paste0("facility_", seq_along(supply))
     }
     cols <- "supply"
-  }
-  else {
+  } else {
     stop("Unsupported supply data type")
   }
 
@@ -366,9 +371,13 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' @examples
 #' # Load example data
 #' library(terra)
+#' library(sf)
 #'
 #' # Convert under-5 population density to proper format
 #' pop_rast <- rast(u5pd)
+#'
+#' # Drop geometry for supply data
+#' hc12_hos <- hc12_hos |> st_drop_geometry()
 #'
 #' # Calculate accessibility with Gaussian decay
 #' result <- spax_e2sfca(
@@ -377,9 +386,9 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #'   distance = rast(hos_iscr),
 #'   decay_params = list(
 #'     method = "gaussian",
-#'     sigma = 30  # 30-minute characteristic distance
+#'     sigma = 30 # 30-minute characteristic distance
 #'   ),
-#'   demand_normalize = "semi",  # Prevent demand inflation
+#'   demand_normalize = "semi", # Prevent demand inflation
 #'   id_col = "id",
 #'   supply_cols = "s_doc"
 #' )
@@ -403,7 +412,8 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #'
 #' # Plot both for comparison
 #' plot(c(result, result_exp),
-#'      main = c("Gaussian Decay", "Exponential Decay"))
+#'   main = c("Gaussian Decay", "Exponential Decay")
+#' )
 #'
 #' @seealso
 #' * [spax_2sfca()] for the original method without distance decay
@@ -499,16 +509,20 @@ spax_e2sfca <- function(demand, supply, distance,
 #' @examples
 #' # Load example data
 #' library(terra)
+#' library(sf)
 #'
 #' # Convert under-5 population density to proper format
 #' pop_rast <- rast(u5pd)
+#'
+#' # Drop geometry for supply data
+#' hc12_hos <- hc12_hos |> st_drop_geometry()
 #'
 #' # Calculate accessibility to doctors with 30-minute catchment
 #' result <- spax_2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
 #'   distance = rast(hos_iscr),
-#'   threshold = 30,  # 30-minute catchment
+#'   threshold = 30, # 30-minute catchment
 #'   id_col = "id",
 #'   supply_cols = "s_doc"
 #' )

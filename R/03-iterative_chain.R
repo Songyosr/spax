@@ -64,6 +64,13 @@
 
 
 #' Fast version for snap mode - returns only utilization vector
+#' @param supply Numeric vector of facility capacities
+#' @param weights Multi-layer SpatRaster of spatial weights
+#' @param demand SpatRaster of demand distribution
+#' @param lambda Learning rate for iterative adjustment
+#' @param max_iter Maximum number of iterations
+#' @param tolerance Convergence tolerance threshold
+#' @param window_size Size of rolling window for convergence check
 #' @export
 compute_iterative_fast <- function(supply, weights, demand,
                                    lambda = 0.5,
@@ -112,6 +119,16 @@ compute_iterative_fast <- function(supply, weights, demand,
 }
 
 #' Full version with history tracking and detailed output
+#' @param supply Numeric vector of facility capacities
+#' @param weights Multi-layer SpatRaster of spatial weights
+#' @param demand SpatRaster of demand distribution
+#' @param lambda Learning rate for iterative adjustment
+#' @param max_iter Maximum number of iterations
+#' @param tolerance Convergence tolerance threshold
+#' @param window_size Size of rolling window for convergence check
+#' @param convergence_type Type of convergence check: "utilization
+#'       or "ratio"
+#' @param debug Logical; if TRUE provides detailed convergence information
 #' @export
 compute_iterative <- function(supply, weights, demand,
                               lambda = 0.5,

@@ -16,6 +16,26 @@ compute_iterative(
   debug = FALSE
 )
 }
+\arguments{
+\item{supply}{Numeric vector of facility capacities}
+
+\item{weights}{Multi-layer SpatRaster of spatial weights}
+
+\item{demand}{SpatRaster of demand distribution}
+
+\item{lambda}{Learning rate for iterative adjustment}
+
+\item{max_iter}{Maximum number of iterations}
+
+\item{tolerance}{Convergence tolerance threshold}
+
+\item{window_size}{Size of rolling window for convergence check}
+
+\item{convergence_type}{Type of convergence check: "utilization
+or "ratio"}
+
+\item{debug}{Logical; if TRUE provides detailed convergence information}
+}
 \description{
 Full version with history tracking and detailed output
 }

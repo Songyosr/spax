@@ -5,7 +5,7 @@ set.seed(42)
 
 # Helper function to create test data with proper seed handling
 create_test_pmf <- function(nrows = 5, ncols = 5, normalized = TRUE) {
-  set.seed(42)  # Ensure consistent random values
+  set.seed(42) # Ensure consistent random values
   r <- terra::rast(nrows = nrows, ncols = ncols)
   values <- runif(nrows * ncols)
   if (normalized) {
@@ -17,7 +17,7 @@ create_test_pmf <- function(nrows = 5, ncols = 5, normalized = TRUE) {
 
 # Test setup function for common test data and seed initialization
 setup_test_data <- function() {
-  set.seed(42)  # Reset seed for each test
+  set.seed(42) # Reset seed for each test
   pmf <- create_test_pmf()
   list(
     pmf = pmf,
@@ -141,11 +141,11 @@ test_that("sample_pmf evolution works correctly", {
   expect_equal(terra::nlyr(result_partial), iterations)
 
   # Check that subsequent layers have some correlation
-  for(i in 2:iterations) {
-    layer1 <- terra::values(result_partial[[i-1]])
+  for (i in 2:iterations) {
+    layer1 <- terra::values(result_partial[[i - 1]])
     layer2 <- terra::values(result_partial[[i]])
     correlation <- cor(layer1, layer2, use = "complete.obs")
-    expect_true(correlation > 0)  # Should have positive correlation due to sample retention
+    expect_true(correlation > 0) # Should have positive correlation due to sample retention
   }
 })
 
@@ -167,7 +167,7 @@ test_that("sample_pmf maintains spatial distribution properties", {
 
   # Correlation between empirical and expected should be high
   correlation <- cor(empirical_props, expected_props, use = "complete.obs")
-  expect_true(correlation > 0.7)  # Arbitrary threshold, adjust based on needs
+  expect_true(correlation > 0.7) # Arbitrary threshold, adjust based on needs
 })
 
 # 6. Reproducibility Tests -----------------------------------------------

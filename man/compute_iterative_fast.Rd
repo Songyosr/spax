@@ -14,6 +14,21 @@ compute_iterative_fast(
   window_size = 5
 )
 }
+\arguments{
+\item{supply}{Numeric vector of facility capacities}
+
+\item{weights}{Multi-layer SpatRaster of spatial weights}
+
+\item{demand}{SpatRaster of demand distribution}
+
+\item{lambda}{Learning rate for iterative adjustment}
+
+\item{max_iter}{Maximum number of iterations}
+
+\item{tolerance}{Convergence tolerance threshold}
+
+\item{window_size}{Size of rolling window for convergence check}
+}
 \description{
 Fast version for snap mode - returns only utilization vector
 }

@@ -36,7 +36,7 @@
     weights = values,
     na.rm = na.rm
   )
-  #return in vector format
+  # return in vector format
   return(weighted_sums[[1]])
 }
 
@@ -84,7 +84,7 @@
 #' library(terra)
 #'
 #' # Create test data
-#' values <- rast(matrix(1:9, 3, 3))  # Single layer
+#' values <- rast(matrix(1:9, 3, 3)) # Single layer
 #' weights <- c(
 #'   rast(matrix(runif(9), 3, 3)),
 #'   rast(matrix(runif(9), 3, 3))
@@ -96,9 +96,9 @@
 #' result1_df <- gather_weighted(values, weights)
 #'
 #' # Multi-layer example
-#' values_multi <- c(values, values * 2)  # Two scenarios
+#' values_multi <- c(values, values * 2) # Two scenarios
 #' names(values_multi) <- c("sim1", "sim2")
-#' result2 <- gather_weighted(values_multi, weights, simplify = TRUE)  # Returns matrix
+#' result2 <- gather_weighted(values_multi, weights, simplify = TRUE) # Returns matrix
 #' result2_df <- gather_weighted(values_multi, weights)
 #' @export
 gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE) {
@@ -112,7 +112,9 @@ gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, sna
     result <- .gather_weighted_core(values, weights, na.rm)
 
     # Fast return for snap mode
-    if (snap) return(result)
+    if (snap) {
+      return(result)
+    }
 
     # Format output
     if (simplify) {
@@ -128,7 +130,9 @@ gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, sna
   }, numeric(nlyr(weights)))
 
   # Fast return for snap mode
-  if (snap) return(results)
+  if (snap) {
+    return(results)
+  }
 
   # Format output
   if (simplify) {

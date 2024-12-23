@@ -78,9 +78,13 @@ in overlapping service areas.
 \examples{
 # Load example data
 library(terra)
+library(sf)
 
 # Convert under-5 population density to proper format
 pop_rast <- rast(u5pd)
+
+# Drop geometry for supply data
+hc12_hos <- hc12_hos |> st_drop_geometry()
 
 # Calculate accessibility with Gaussian decay
 result <- spax_e2sfca(
@@ -89,9 +93,9 @@ result <- spax_e2sfca(
   distance = rast(hos_iscr),
   decay_params = list(
     method = "gaussian",
-    sigma = 30  # 30-minute characteristic distance
+    sigma = 30 # 30-minute characteristic distance
   ),
-  demand_normalize = "semi",  # Prevent demand inflation
+  demand_normalize = "semi", # Prevent demand inflation
   id_col = "id",
   supply_cols = "s_doc"
 )
@@ -115,7 +119,8 @@ result_exp <- spax_e2sfca(
 
 # Plot both for comparison
 plot(c(result, result_exp),
-     main = c("Gaussian Decay", "Exponential Decay"))
+  main = c("Gaussian Decay", "Exponential Decay")
+)
 
 }
 \references{

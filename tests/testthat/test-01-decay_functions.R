@@ -98,7 +98,7 @@ test_that(".help_decay_binary calculates correctly", {
   # Test NA handling
   x_na <- c(x, NA)
   weights_na <- .help_decay_binary(x_na, sigma)
-  expect_equal(weights_na[is.na(x_na)], 0)
+  expect_equal(weights_na[is.na(x_na)], as.numeric(NA))
 })
 
 test_that(".help_decay_inverse calculates correctly", {
