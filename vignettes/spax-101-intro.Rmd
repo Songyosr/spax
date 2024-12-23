@@ -1,8 +1,8 @@
 ---
-title: "Getting Started with spax: A Healthcare Accessibility Case Study"
+title: "1. Getting Started with spax: A Healthcare Accessibility Case Study"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting Started with spax: A Healthcare Accessibility Case Study}
+  %\VignetteIndexEntry{1. Getting Started with spax: A Healthcare Accessibility Case Study}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,68 +17,37 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Overview
+# Getting Started with `spax`
 
-Let’s assume we both have at least some passing knowledge of the two-step floating catchment area (2sfca) method. Because BAM! here it is, right in your nose:
+Ever wondered how to measure whether people can actually reach the services they need? That's where spatial accessibility analysis comes in. While there are many ways to approach this challenge, the `spax` package offers a fresh perspective with its raster-based tools.
 
-**Step 1**: Compute the Supply-to-Demand Ratio
+## What Makes spax Different?
 
-$$R_j = \frac{S_j}{\sum_{i \in C_j} P_i \cdot W_d(d_{ij})}$$
+Most accessibility tools work with points and distance matrices - think dots on a map connected by lines. `spax` takes a different approach:
 
-Where:
+-   **Raster-First**: At the expense of memory (lol), `spax` Built around continuous surfaces rather than discrete points, making it perfect for working with high-resolution population data or complex service areas
 
--   $S_j$ : Service capacity at location j — think: number of doctors, school seats, or happy-hour cocktails 🍸.
+-   **Modular Design**: Chain together functions to build custom workflows - like LEGO bricks for spatial analysis
 
--   $P_i$ : Population demand at location i — how many people want the service.
+-   **Performance-Focused**: Optimized for large spatial datasets, because sometimes you need to analyze an entire region
 
--   $W_d(d_{ij})$ : Distance decay weight between i and j — spoiler: closer = better.
+-   **Uncertainty-Aware**: Because the real world isn't deterministic, `spax` includes tools for Monte Carlo simulation and sensitivity analysis
 
--   $C_j$ : Catchment area around j , aka the “zone of influence.”
+## The Building Blocks
 
-**Step 2:** Aggregate Accessibility at Each Demand Location
+Every spatial accessibility analysis needs three key ingredients:
 
-$$A_k = \sum_{j \in C_k} R_j \cdot W_a(d_{kj})$$
+1.  **Demand** refers to the size and location of the population requiring services. It can be represented as a population density map or as aggregated values at administrative unit centroids (e.g., the number of elderly residents in each neighborhood).
 
-Where:
+2.  **Supply** represents the capacity and location of service providers. This could be the number of doctors at each hospital, the number of seats available in schools, or even the stock of happy-hour cocktails at your favorite bar 🍸.
 
--   $A_k$ : Accessibility score at demand location k — the higher, the better access.
+3.  **Distance**: connects the dots between demand and supply. It defines the effort needed to bridge the two, whether through travel time or physical separation. Distances can be stored in matrices, calculated from coordinates, or derived from travel-time rasters, offering insights into the accessibility of supply to those in need.
 
--   $R_j$ : Supply-to-demand ratio from Step 1.
+Let's see how these look in practice using our example dataset from Thailand's Health Region 12.
 
--   $W_a(d_{kj})$ : Accessibility-side decay weight between k and j .
+## Working with Example Data
 
-And there you have it: the 2sfca approach in all its glory. If you’re nodding in recognition (or tilting your head in confusion), no worries. Let’s break it down.
-
-## Why Do We Care?
-
-In a nutshell, (spatial) accessibility is all about the interplay between **demand**, **supply**, and **distance**. **Demand** represents the size or location of people who need services (e.g., population in a given area), while **supply** is where those services exist (e.g., hospitals, schools, or your favorite late-night taco stands). Once you know where both are, you need the distance or travel time that connects (or separates) them. Whether you store these distances in a matrix, compute them from coordinates, or derive them from a travel-time raster, they represent how hard or easy it is for demand to reach supply.
-
-## Enter the `spax` Package
-
-The `spax` (short for “spatial access”) package offers tools to analyze spatial accessibility to services, with a particular focus on healthcare. The current version leans heavily on raster-based algorithms. This is a big deal if your data or your analysis workflow is raster-focused—from population surfaces to travel-time rasters. (or at least, you can consider migrating to our side). Some key features of spax include:
-
--   Efficient raster-based spatial accessibility analysis for big dataset (unproven)
--   Algorithmic simplicity and modular design with composable functions for custom workflows
--   Flexible distance decay modeling with built-in and custom functions
--   Support probabilistic demand modeling and Monte Carlo simulation
-
-## Real-World Application: Healthcare Accessibility in Lower Southen Thailand
-
-To illustrate how `spax` can be applied in practice, we'll walk through a real-world scenario: evaluating healthcare accessibility in Thailand's Health Region 12. We'll cover the following steps:
-
-1.  Preparing data on healthcare demand (population) and supply (health facilities)
-
-2.  Computing travel times between demand and supply locations
-
-3.  Conducting accessibility analysis using functions like `compute_access()` and `spax_e2sfca()`
-
-Along the way, we'll see how `spax` makes it easy to incorporate different distance decay functions, handle multi-layered raster data, and generate insightful accessibility maps.
-
-Ready to dive in? Awesome—let's go!
-
-# Getting Start
-
-First, let's load the required package
+The package includes several integrated datasets (already lazy-loaded) that showcase healthcare accessibility analysis in action. Let's load the required packages first:
 
 ```{r setup}
 library(spax) # For accessibility analysis
@@ -86,179 +55,90 @@ library(terra) # For raster operations
 library(raster)
 library(sf) # For vector data handling
 library(tidyverse) # For data manipulation + plotting
-library(osrm) # For routing services
 ```
 
-## Data Overview
+### 1. Understanding Demand
 
-The package includes several integrated datasets focused on healthcare accessibility of children under 5 in Thailand's Health Region 12:
-
-1.  **Demand:** Under-5 Population Density
+Our example uses under-5 population density data aggregated from Meta's High Resolution Population Density Maps:
 
 ```{r}
-# Load the datasets (already lazy-loaded in the package)
-# Under-5 population density - change from raster to terra::spatRaster
-(pop <- rast(u5pd))
+# Load the population density data 
+pop <- rast(u5pd)  # Convert from raster to terra::SpatRaster
 
-# Region boundary
-print(bound0)
+# Quick view of the data
+print(pop)
+res(pop) # each cell is ~520m x 520m
 ```
 
+Let's visualize this with our region boundary:
+
 ```{r}
-# Plot
+# Plot population density
 plot(pop, main = "Under-5 Population Density")
-plot(vect(bound0), add = TRUE) # change to SpatVector
+plot(vect(bound0), add = TRUE)  # Add region boundary
 ```
 
-2.  **Supply:** Location and Capacity of Healthcare Facilities
+This raster shows us where children under 5 years old are located across the region, with brighter colors indicating higher density areas.
+
+### 2. Exploring Supply
+
+For healthcare supply, we have detailed information about hospitals (`hc12_hos`)
 
 ```{r}
-# Healthcare facilities
+# Look at hospital data
 head(hc12_hos)
-
-# Primary healthcare facilities - not used in this example
-head(hc12_phc)
 ```
+
+### 3. Distance and Travel Time
+
+The package includes pre-computed travel time data showing how long it takes to reach each facility:
 
 ```{r}
-# Plot basic facility distribution
-ggplot() +
-  geom_sf(data = bound0, fill = "grey90") +
-  geom_sf(data = hc12_hos, aes(color = hoslvl, size = s_doc)) +
-  theme_minimal() +
-  labs(
-    title = "Hospital Distribution in Region 12",
-    color = "Hospital Level",
-    size = "Number of Doctors"
-  ) +
-  theme_classic()
-```
-
-3.  **Distance:** Travel Time Isochrones to Healthcare Facilities
-
-One way to account for the spatial separation between demand and supply locations is to use travel time isochrones, which represent areas reachable within a given time threshold. This package did not provide a function to generate isochrones, but we can use the ([`osrm`](https://github.com/riatelab/osrm){.uri}) package to calculate travel times between demand and supply locations.
-
-```{r warning=FALSE}
-# Example: Calculate isochrones for the first hospital
-# Since the dataset I've prepared is in a planar projection, we need to transform it to WGS84 (EPSG:4326) for routing services
-
-(example_hos1 <- hc12_hos[1, ] |> # Select the first hospital
-  st_transform(4326) |> # Transform to WGS84 (geodesic projection)
-  st_coordinates() |> # Extract coordinates
-  as.numeric()) # Convert to numeric
-
-# Calculate isochrones
-example_isochrone <- osrmIsochrone(
-  loc = example_hos1, # Example coordinates
-  breaks = c(15, 30, 45, 60), # 15-minute intervals
-  res = 30 
-)
-
-# change crs back
-(example_isochrone <- st_transform(example_isochrone, st_crs(bound0)))
-par(mfrow = c(1, 2))
-plot(example_isochrone[, "isomax"], main = "Travel Time Isochrone for Hospital C1")
-plot(example_isochrone[3, "isomax"], main = "Travel Time Isochrone ring for Hospital C1 (45 mins)")
-```
-
-As you can see, osrmIsochrone calculates the area reachable within each time threshold for the first hospital (C1) in 15-minute intervals up to 60 minutes as distinct ring-shaped vectors. If you take on a vector-based approach, you can use functions like `st_contain()` to determine the population within each isochrone ring. But in our raster-centric package, we'll rasterize these isochrones for further analysis.
-
-```{r}
-# Create a iso_mean column, and id
-(example_isochrone <- example_isochrone |>
-  mutate(
-    iso_mean = (isomin + isomax) / 2,
-    location_id = hc12_hos[1, ]$id
-  )) # actually dont need it here
-# Convert isochrones to raster format
-example_raster <- fasterize::fasterize(
-  example_isochrone,
-  u5pd, # Use the population raster as a template
-  field = "iso_mean", # Fill the raster with the isomax values
-  background = NA,
-  fun = "sum",
-  by = "location_id"
-) |>
-  rast() |>
-  crop(vect(bound0), mask = TRUE)
-
-```
+# Load the travel time data
+(distance_raster <- rast(hos_iscr))  # Convert to terra::SpatRaster
+# Each layer represents travel time to a different facility
 
 
-```{r}
-# Plot
-plot(example_raster, main = "Travel Time Isochrone for Hospital C1")
+# Look at travel time to one facility
+plot(distance_raster[[1]], 
+     main = "Travel Time to Hospital C1 (minutes)")
 plot(vect(bound0), add = TRUE)
-plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
+plot(hc12_hos[1, ], add = TRUE, pch = 16, col = "red")
 ```
 
-To analyze all hospitals, we can iterate through each facility and compute their isochrones. By default, the osrmIsochrone function uses the OSRM demo server to perform these calculations. However, relying on the demo server is not recommended for large datasets or repeated analyses due to usage limits and ethical considerations. Instead, it’s advisable to [set up your own OSRM server](https://github.com/Project-OSRM/osrm-backend). This vignette does not cover the server setup process.
+## Quick Start: Basic Accessibility Analysis
 
-```{r, eval=FALSE}
-# Example of looping over all hospitals to calculate isochrones
-# Note: This code is for illustration only and may not run due to API limitations
-# Initialize a list to store isochrones
-isochrones <- list(rep(NA, nrow(hc12_hos)))
+Now that we understand our data, let's put it all together for a basic accessibility analysis. We'll use the Enhanced Two-Step Floating Catchment Area (E2SFCA) method to analyze access to doctors:
 
-# Extract coordinates
-hos_coords <- hc12_hos |>
-  st_transform(4326) |> # only if the data is in planar projection
-  st_coordinates()
-
-# Loop over each hospital - lapply
-isochrones <- lapply(1:nrow(hc12_hos), function(i) {
-  # Calculate isochrone
-  osrmIsochrone(
-    loc = hos_coords[i, ],
-    breaks = c(15, 30, 45, 60),
-    res = 30
-  )
-}) 
-
-# Then proceed to rastarization ...
-```
-
-Luckily, the package includes pre-computed isochrones for each hospital in the region (both in a vector and a raster format). 
 ```{r}
-# Vector format
-head(hos_iscvec)
+# Calculate accessibility scores
+accessibility <- spax_e2sfca(
+  demand = pop,                           # Population density
+  supply = hc12_hos |> st_drop_geometry(),# Hospital capacity
+  distance = distance_raster,             # Travel times
+  decay_params = list(                    # How access decays with distance
+    method = "gaussian", 
+    sigma = 30                           # 30-minute characteristic distance
+  ),
+  demand_normalize = "standard",          # Prevent demand inflation
+  id_col = "id",
+  supply_cols = c("s_doc", "s_nurse")    # Analyze doctors and nurses
+)
+```
 
-# Raster format
-distance_raster <- rast(hos_iscr)
-plot(distance_raster[[1]], main = "Distance raster for Hospital C1")
+```{r}
+# Visualize the results
+plot(accessibility, 
+     main = c("Access to Doctors", "Access to Nurses"))
 plot(vect(bound0), add = TRUE)
 ```
 
-## Basic Accessibility Analysis
+And that's it! We've calculated accessibility scores for doctors and nurses across the region with the lighter colors indicating better access.
 
-Let's start with a basic accessibility analysis using the Enhanced Two-Step Floating Catchment Area (E2SFCA) method
+## What's Next?
 
-```{r}
-uf_access <- spax_2sfca(
-  demand = pop,
-  supply = hc12_hos |> st_drop_geometry(),
-  distance = distance_raster,
-  threshold = 40,
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse") # Analyze only doctors
-)
-plot(uf_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
-```
+This introduction just scratches the surface of what `spax` can do. For more advanced topics, check out:
 
-
-```{r}
-u5_access <- spax_e2sfca(
-  demand = pop,
-  supply = hc12_hos |> st_drop_geometry(),
-  distance = distance_raster,
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse"), # Analyze only doctors
-  decay_params = list(method = "gaussian", sigma = 30),
-  demand_normalize = "standard"
-)
-
-plot(u5_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
-```
-
-
-
+-   `spax` Dissection: Deep dive into accessibility calculations and learning how the package works under the hood
+-   Data Preparation: How to prepare your own data
+-   Advanced Analysis: Uncertainty analysis and Monte Carlo simulation
