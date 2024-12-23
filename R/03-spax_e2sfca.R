@@ -307,23 +307,109 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
   return(result)
 }
 
-#' Calculate Two-Step Floating Catchment Area (2SFCA) accessibility scores
+#' Calculate Enhanced Two-Step Floating Catchment Area (E2SFCA) accessibility scores
 #'
 #' @description
-#' Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method
-#' with flexible decay functions and normalization options.
+#' Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method as proposed
+#' by Luo & Qi (2009). This method improves upon the original 2SFCA by incorporating
+#' distance decay effects and allowing for variable catchment sizes, providing more
+#' realistic measures of spatial accessibility to services.
 #'
 #' @param demand SpatRaster representing spatial distribution of demand
 #' @param supply vector, matrix, or data.frame containing supply capacity values
 #' @param distance SpatRaster stack of travel times/distances to facilities
-#' @param decay_params List of parameters for decay function
+#' @param decay_params List of parameters for decay function:
+#'        \itemize{
+#'          \item method: "gaussian", "exponential", "power", or "binary"
+#'          \item sigma: decay parameter controlling the rate of distance decay
+#'          \item Additional parameters passed to custom decay functions
+#'        }
 #' @param demand_normalize Character specifying normalization method:
-#'        "identity", "standard", or "semi"
+#'        \itemize{
+#'          \item "identity": No normalization (original weights)
+#'          \item "standard": Weights sum to 1 (prevents demand inflation)
+#'          \item "semi": Normalize only when sum > 1 (prevents deflation)
+#'        }
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
 #' @return SpatRaster of accessibility scores
+#'
+#' @details
+#' The E2SFCA method enhances the original 2SFCA by introducing:
+#'
+#' Step 1: For each facility j:
+#' * Weight demand points by distance decay: Wd(dij)
+#' * Calculate supply-to-demand ratio Rj = Sj/sum(Pi * Wd(dij))
+#'
+#' Step 2: For each demand location i:
+#' * Weight facility ratios by distance decay: Wr(dij)
+#' * Calculate accessibility score Ai = sum(Rj * Wr(dij))
+#'
+#' Key improvements over original 2SFCA:
+#' 1. Distance decay within catchments
+#' 2. Differentiated travel behavior in demand vs. access phases
+#' 3. Smoother accessibility surfaces
+#' 4. More realistic representation of access barriers
+#'
+#' The method supports various distance decay functions and normalization approaches
+#' to handle different accessibility scenarios and prevent demand overestimation
+#' in overlapping service areas.
+#'
+#' @references
+#' Luo, W., & Qi, Y. (2009). An enhanced two-step floating catchment area (E2SFCA)
+#' method for measuring spatial accessibility to primary care physicians.
+#' *Health & Place*, *15*(4), 1100-1107.
+#' https://doi.org/10.1016/j.healthplace.2009.06.002
+#'
+#' @examples
+#' # Load example data
+#' library(terra)
+#'
+#' # Convert under-5 population density to proper format
+#' pop_rast <- rast(u5pd)
+#'
+#' # Calculate accessibility with Gaussian decay
+#' result <- spax_e2sfca(
+#'   demand = pop_rast,
+#'   supply = hc12_hos,
+#'   distance = rast(hos_iscr),
+#'   decay_params = list(
+#'     method = "gaussian",
+#'     sigma = 30  # 30-minute characteristic distance
+#'   ),
+#'   demand_normalize = "semi",  # Prevent demand inflation
+#'   id_col = "id",
+#'   supply_cols = "s_doc"
+#' )
+#'
+#' # Plot the results
+#' plot(result, main = "Doctor Accessibility (E2SFCA)")
+#'
+#' # Compare different decay functions
+#' result_exp <- spax_e2sfca(
+#'   demand = pop_rast,
+#'   supply = hc12_hos,
+#'   distance = rast(hos_iscr),
+#'   decay_params = list(
+#'     method = "exponential",
+#'     sigma = 0.1
+#'   ),
+#'   demand_normalize = "semi",
+#'   id_col = "id",
+#'   supply_cols = "s_doc"
+#' )
+#'
+#' # Plot both for comparison
+#' plot(c(result, result_exp),
+#'      main = c("Gaussian Decay", "Exponential Decay"))
+#'
+#' @seealso
+#' * [spax_2sfca()] for the original method without distance decay
+#' * [compute_access()] for more flexible accessibility calculations
+#' * [calc_decay()] for available decay functions
+#'
 #' @export
 spax_e2sfca <- function(demand, supply, distance,
                         decay_params = list(method = "gaussian", sigma = 30),
@@ -357,6 +443,115 @@ spax_e2sfca <- function(demand, supply, distance,
     id_col = id_col,
     supply_cols = supply_cols,
     indicator_names = indicator_names,
+    snap = snap
+  )
+
+  return(result)
+}
+
+#' Calculate Original Two-Step Floating Catchment Area (2SFCA) accessibility scores
+#'
+#' @description
+#' Implements the original Two-Step Floating Catchment Area (2SFCA) method using
+#' binary catchment areas, as proposed by Luo & Wang (2003). This foundational method
+#' uses a single distance/time threshold to define service areas and computes
+#' accessibility as a ratio of supply to demand within these catchments.
+#'
+#' @param demand SpatRaster representing spatial distribution of demand
+#' @param supply vector, matrix, or data.frame containing supply capacity values
+#' @param distance SpatRaster stack of travel times/distances to facilities
+#' @param threshold Numeric value defining the catchment area cutoff (same units as distance)
+#' @param id_col Character; column name for facility IDs if supply is a data.frame
+#' @param supply_cols Character vector; names of supply columns if supply is a data.frame
+#' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
+#' @return SpatRaster of accessibility scores
+#'
+#' @details
+#' The original Two-Step Floating Catchment Area (2SFCA) method operates in two steps:
+#'
+#' Step 1: For each facility j:
+#' * Define a catchment area within threshold distance/time
+#' * Sum the population of all demand locations i within the catchment
+#' * Calculate supply-to-demand ratio Rj = Sj/sum(Pi)
+#'
+#' Step 2: For each demand location i:
+#' * Define a catchment area within threshold distance/time
+#' * Sum all facility ratios Rj within the catchment
+#' * Final accessibility score Ai = sum(Rj)
+#'
+#' Key characteristics:
+#' 1. Binary catchment areas (within threshold = 1, beyond = 0)
+#' 2. Equal weights for all locations within catchment
+#' 3. No normalization of demand weights
+#' 4. Single threshold value for both steps
+#'
+#' Limitations addressed by later methods:
+#' * No distance decay within catchments
+#' * Artificial barriers at catchment boundaries
+#' * Potential demand overestimation in overlapping areas
+#'
+#' @references
+#' Luo, W., & Wang, F. (2003). Measures of Spatial Accessibility to Health Care in
+#' a GIS Environment: Synthesis and a Case Study in the Chicago Region.
+#' *Environment and Planning B: Planning and Design*, *30*(6), 865-884.
+#' https://doi.org/10.1068/b29120
+#'
+#' @examples
+#' # Load example data
+#' library(terra)
+#'
+#' # Convert under-5 population density to proper format
+#' pop_rast <- rast(u5pd)
+#'
+#' # Calculate accessibility to doctors with 30-minute catchment
+#' result <- spax_2sfca(
+#'   demand = pop_rast,
+#'   supply = hc12_hos,
+#'   distance = rast(hos_iscr),
+#'   threshold = 30,  # 30-minute catchment
+#'   id_col = "id",
+#'   supply_cols = "s_doc"
+#' )
+#'
+#' # Plot the results
+#' plot(result, main = "Doctor Accessibility (Original 2SFCA)")
+#'
+#' # Calculate accessibility to multiple supply types
+#' result_multi <- spax_2sfca(
+#'   demand = pop_rast,
+#'   supply = hc12_hos,
+#'   distance = rast(hos_iscr),
+#'   threshold = 30,
+#'   id_col = "id",
+#'   supply_cols = c("s_doc", "s_nurse")
+#' )
+#'
+#' # Plot both doctor and nurse accessibility
+#' plot(result_multi)
+#'
+#' @seealso
+#' * [spax_e2sfca()] for the enhanced version with distance decay
+#' * [compute_access()] for more flexible accessibility calculations
+#'
+#' @export
+spax_2sfca <- function(demand, supply, distance, threshold,
+                       id_col = NULL, supply_cols = NULL,
+                       snap = FALSE) {
+  # Create decay parameters for binary catchment
+  decay_params <- list(
+    method = "binary",
+    sigma = threshold
+  )
+
+  # Use spax_e2sfca with binary catchment and no demand normalization
+  result <- spax_e2sfca(
+    demand = demand,
+    supply = supply,
+    distance = distance,
+    decay_params = decay_params,
+    demand_normalize = "identity", # No normalization for original 2SFCA
+    id_col = id_col,
+    supply_cols = supply_cols,
     snap = snap
   )
 

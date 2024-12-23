@@ -2,7 +2,7 @@
 % Please edit documentation in R/03-spax_e2sfca.R
 \name{spax_e2sfca}
 \alias{spax_e2sfca}
-\title{Calculate Two-Step Floating Catchment Area (2SFCA) accessibility scores}
+\title{Calculate Enhanced Two-Step Floating Catchment Area (E2SFCA) accessibility scores}
 \usage{
 spax_e2sfca(
   demand,
@@ -23,10 +23,19 @@ spax_e2sfca(
 
 \item{distance}{SpatRaster stack of travel times/distances to facilities}
 
-\item{decay_params}{List of parameters for decay function}
+\item{decay_params}{List of parameters for decay function:
+\itemize{
+  \item method: "gaussian", "exponential", "power", or "binary"
+  \item sigma: decay parameter controlling the rate of distance decay
+  \item Additional parameters passed to custom decay functions
+}}
 
 \item{demand_normalize}{Character specifying normalization method:
-"identity", "standard", or "semi"}
+\itemize{
+  \item "identity": No normalization (original weights)
+  \item "standard": Weights sum to 1 (prevents demand inflation)
+  \item "semi": Normalize only when sum > 1 (prevents deflation)
+}}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 
@@ -40,6 +49,83 @@ spax_e2sfca(
 SpatRaster of accessibility scores
 }
 \description{
-Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method
-with flexible decay functions and normalization options.
+Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method as proposed
+by Luo & Qi (2009). This method improves upon the original 2SFCA by incorporating
+distance decay effects and allowing for variable catchment sizes, providing more
+realistic measures of spatial accessibility to services.
+}
+\details{
+The E2SFCA method enhances the original 2SFCA by introducing:
+
+Step 1: For each facility j:
+* Weight demand points by distance decay: Wd(dij)
+* Calculate supply-to-demand ratio Rj = Sj/sum(Pi * Wd(dij))
+
+Step 2: For each demand location i:
+* Weight facility ratios by distance decay: Wr(dij)
+* Calculate accessibility score Ai = sum(Rj * Wr(dij))
+
+Key improvements over original 2SFCA:
+1. Distance decay within catchments
+2. Differentiated travel behavior in demand vs. access phases
+3. Smoother accessibility surfaces
+4. More realistic representation of access barriers
+
+The method supports various distance decay functions and normalization approaches
+to handle different accessibility scenarios and prevent demand overestimation
+in overlapping service areas.
+}
+\examples{
+# Load example data
+library(terra)
+
+# Convert under-5 population density to proper format
+pop_rast <- rast(u5pd)
+
+# Calculate accessibility with Gaussian decay
+result <- spax_e2sfca(
+  demand = pop_rast,
+  supply = hc12_hos,
+  distance = rast(hos_iscr),
+  decay_params = list(
+    method = "gaussian",
+    sigma = 30  # 30-minute characteristic distance
+  ),
+  demand_normalize = "semi",  # Prevent demand inflation
+  id_col = "id",
+  supply_cols = "s_doc"
+)
+
+# Plot the results
+plot(result, main = "Doctor Accessibility (E2SFCA)")
+
+# Compare different decay functions
+result_exp <- spax_e2sfca(
+  demand = pop_rast,
+  supply = hc12_hos,
+  distance = rast(hos_iscr),
+  decay_params = list(
+    method = "exponential",
+    sigma = 0.1
+  ),
+  demand_normalize = "semi",
+  id_col = "id",
+  supply_cols = "s_doc"
+)
+
+# Plot both for comparison
+plot(c(result, result_exp),
+     main = c("Gaussian Decay", "Exponential Decay"))
+
+}
+\references{
+Luo, W., & Qi, Y. (2009). An enhanced two-step floating catchment area (E2SFCA)
+method for measuring spatial accessibility to primary care physicians.
+*Health & Place*, *15*(4), 1100-1107.
+https://doi.org/10.1016/j.healthplace.2009.06.002
+}
+\seealso{
+* [spax_2sfca()] for the original method without distance decay
+* [compute_access()] for more flexible accessibility calculations
+* [calc_decay()] for available decay functions
 }
