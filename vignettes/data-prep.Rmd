@@ -190,7 +190,7 @@ centroid_demand <- terra::rasterize(
 )
 ```
 
-```{r admin_pop_data}
+```{r}
 plot(centroid_demand, main = "Centroid-Based Demand")
 plot(vect(bound1), add = TRUE)
 ```
