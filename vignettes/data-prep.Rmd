@@ -1,142 +1,323 @@
 ---
-title: "Data Preparation"
+title: "2. Understanding the Trade-offs: Data Preparation for Spatial Accessibility Analysis"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{tmp}
+  %\VignetteIndexEntry{2. Understanding the Trade-offs: Data Preparation for Spatial Accessibility Analysis}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.width = 8,
   fig.height = 4.5,
-  dpi = 100
+  dpi = 150
+)
+
+# Load required packages
+library(spax)
+library(terra)
+library(pryr)  # for memory tracking
+library(tidyverse)
+library(sf)
+library(osrm)
+```
+
+# The Raster Approach: Understanding the Trade-offs
+
+When working with spatial accessibility analysis, one of the first decisions is how to represent spatial data. The `spax` package takes a raster-based approach (at least for now), representing space as a grid of regular cells rather than points and polygons. This fundamental choice shapes everything from memory usage to computational methods.
+
+## Memory vs. Computational Simplicity
+
+Let's be upfront about the costs and benefits. Raster representations typically require more memory than their vector counterparts:
+
+```{r memory-comparison}
+# Compare memory usage between vector and raster isochrones
+vec_size <- object_size(hos_iscvec)/1024^2
+rast_size <- object_size(hos_iscr)/1024^2
+
+cat("Memory usage comparison:\n",
+    sprintf("Vector isochrones: %.1f MB\n", vec_size),
+    sprintf("Raster isochrones: %.1f MB\n", rast_size),
+    sprintf("Memory increase factor: %.1fx\n", rast_size/vec_size))
+```
+
+As we can see, raster isochrones are 32.7 times larger than vector isochrones\*. So, why accept this memory overhead? The benefits come down to algorithmic simplicity and computational consistency:
+
+> **\*Note:** The actual memory increase factor may vary depending on the resolution and complexity of the raster data.
+
+#### 1. Computational Efficiency
+
+Raster operations translate directly into matrix operations, which modern computers are highly optimized to handle. Instead of complex geometric calculations, we're essentially doing math on a grid:
+
+```{r}
+# Simple example: 
+# 1. Calculate areas within 30 minutes of a facility
+# 2. Calculate Gaussian distance decay with an SD of 30 minutes
+# 3. Calculate Exponential distance decay with a decay rate of 0.05
+
+distance_raster <- rast(hos_iscr)[[1]]  # Travel time to first facility
+
+# Set grid
+par(mfrow = c(2, 2))
+
+# Distance raster
+plot(distance_raster, main = "Travel Time to Hospital C1 (minutes)")
+plot(vect(hc12_hos[1,]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+
+
+# Area within 30 minutes
+within_30min <- distance_raster <= 30    # Simple logical operation
+plot(within_30min, main = "Area within 30 minutes")
+plot(vect(hc12_hos[1,]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+
+# Gaussian decay
+gaussian_decay <- exp(-0.5 * (distance_raster / 30)^2)  #
+plot(gaussian_decay, main = "Gaussian Distance Decay")
+plot(vect(hc12_hos[1,]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+
+# Exponential decay
+exponential_decay <- exp(-0.05 * distance_raster)
+plot(exponential_decay, main = "Exponential Distance Decay")
+plot(vect(hc12_hos[1,]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+```
+
+#### 2. Data Structure Consistency
+
+Almost everything - population, travel times, accessibility scores - lives in the same format (maybe except supply-demand ratio calulation that performs as a vector). This eliminates the need to convert between different spatial representations:
+
+```{r}
+# Show how different components share the same structure
+par(mfrow = c(1, 3))
+
+# Population density
+plot(rast(u5pd), main = "Population")
+
+# Travel time
+plot(distance_raster, main = "Travel Time")
+
+# Result will have same structure
+plot(within_30min, main = "Analysis Result")
+```
+
+#### 3. Built-in Spatial Relationships
+
+The grid structure automatically encodes spatial relationships. We don't need separate distance matrices or spatial indices - the cell positions themselves tell us what's near what.
+
+## When to Consider Alternatives
+
+The raster approach isn't always optimal. Consider vector-based methods when:
+
+-   Your study area is very sparse with few service locations
+-   You need exact precision at specific points
+-   Memory is severely constrained and you're working with a large area
+-   The granularity of your analysis doesn't require a continuous surface
+
+# Data Preparation for Accessibility Analysis
+
+> *“Give me six hours to chop down a tree, and I will spend the first four sharpening the axe.”*
+>
+> — Often attributed to Abraham Lincoln
+
+## Dealing with Demand
+
+When preparing demand data for spatial accessibility analysis, we have several approaches available, each with its own assumptions and trade-offs. Let's explore these methods using a simple example of disease cases by district.
+
+```{r simulate cases}
+set.seed(42) # For reproducibility
+
+# Example district-level case data
+case_data <- tibble(
+  ADM1_PCODE = bound1$ADM1_PCODE,
+  cases = round(rnorm(nrow(bound1), 1000, 200))  # Simulated disease cases
+)
+
+# Join with spatial data
+case_spatial <- bound1 %>%
+  left_join(case_data, by = "ADM1_PCODE")
+```
+
+In a vector-based approach, we typically represent each area with a polygon that has an attribute for the number of cases. This often results in choropleth maps, like this:
+
+```{r}
+# Plot the case
+ggplot() +
+  geom_sf(data = bound1) +
+  geom_sf(data = case_spatial, aes(fill = cases)) +
+  labs(title = "Cases by Province") +
+  scale_fill_viridis_b()+
+  theme_minimal()
+```
+
+But that could sometimes be misleading as when performing spatial analysis; we often allocate demand to only at the centroid of each area, like this:
+
+```{r}
+# Calculate centroids and rasterize
+centroids <- st_centroid(case_spatial)
+
+# Plot the population data
+ggplot() +
+  geom_sf(data = bound1) +
+  geom_sf(data = centroids, aes(size = cases), col = "red") +
+  labs(title = "Population Data by Region") +
+  theme_minimal()
+```
+
+and then we proceed to estimate the pair distance between each centroid-facility pair to calculate the decay weight and accessibility score.
+
+Now, let's see how we can deal with the demand in a raster-centric method.
+
+### 1. Centroid-Based Approach
+
+The simplest approach treats all demand as concentrated at area centroids. This mirrors traditional vector-based accessibility analyses:
+
+```{r admin_pop_data}
+# Create template raster - Coarser resolution for example
+template <- aggregate(rast(u5pd), fact = 10)  
+
+# Rasterize centroids
+centroid_demand <- terra::rasterize(
+  vect(centroids), 
+  template,
+  field = "cases", 
+  fun = "sum"
 )
 ```
 
-# Overview
-
-Let’s assume we both have at least some passing knowledge of the two-step floating catchment area (2sfca) method. Because BAM! here it is, right in your nose:
-
-**Step 1**: Compute the Supply-to-Demand Ratio
-
-$$R_j = \frac{S_j}{\sum_{i \in C_j} P_i \cdot W_d(d_{ij})}$$
-
-Where:
-
--   $S_j$ : Service capacity at location j — think: number of doctors, school seats, or happy-hour cocktails 🍸.
-
--   $P_i$ : Population demand at location i — how many people want the service.
-
--   $W_d(d_{ij})$ : Distance decay weight between i and j — spoiler: closer = better.
-
--   $C_j$ : Catchment area around j , aka the “zone of influence.”
-
-**Step 2:** Aggregate Accessibility at Each Demand Location
-
-$$A_k = \sum_{j \in C_k} R_j \cdot W_a(d_{kj})$$
-
-Where:
-
--   $A_k$ : Accessibility score at demand location k — the higher, the better access.
-
--   $R_j$ : Supply-to-demand ratio from Step 1.
-
--   $W_a(d_{kj})$ : Accessibility-side decay weight between k and j .
-
-And there you have it: the 2sfca approach in all its glory. If you’re nodding in recognition (or tilting your head in confusion), no worries. Let’s break it down.
-
-## Why Do We Care?
-
-In a nutshell, (spatial) accessibility is all about the interplay between **demand**, **supply**, and **distance**. **Demand** represents the size or location of people who need services (e.g., population in a given area), while **supply** is where those services exist (e.g., hospitals, schools, or your favorite late-night taco stands). Once you know where both are, you need the distance or travel time that connects (or separates) them. Whether you store these distances in a matrix, compute them from coordinates, or derive them from a travel-time raster, they represent how hard or easy it is for demand to reach supply.
-
-## Enter the `spax` Package
-
-The `spax` (short for “spatial access”) package offers tools to analyze spatial accessibility to services, with a particular focus on healthcare. The current version leans heavily on raster-based algorithms. This is a big deal if your data or your analysis workflow is raster-focused—from population surfaces to travel-time rasters. (or at least, you can consider migrating to our side). Some key features of spax include:
-
--   Efficient raster-based spatial accessibility analysis for big dataset (unproven)
--   Algorithmic simplicity and modular design with composable functions for custom workflows
--   Flexible distance decay modeling with built-in and custom functions
--   Support probabilistic demand modeling and Monte Carlo simulation
-
-## Real-World Application: Healthcare Accessibility in Lower Southen Thailand
-
-To illustrate how `spax` can be applied in practice, we'll walk through a real-world scenario: evaluating healthcare accessibility in Thailand's Health Region 12. We'll cover the following steps:
-
-1.  Preparing data on healthcare demand (population) and supply (health facilities)
-
-2.  Computing travel times between demand and supply locations
-
-3.  Conducting accessibility analysis using functions like `compute_access()` and `spax_e2sfca()`
-
-Along the way, we'll see how `spax` makes it easy to incorporate different distance decay functions, handle multi-layered raster data, and generate insightful accessibility maps.
-
-Ready to dive in? Awesome—let's go!
-
-# Getting Start
-
-First, let's load the required package
-
-```{r setup}
-library(spax) # For accessibility analysis
-library(terra) # For raster operations
-library(raster)
-library(sf) # For vector data handling
-library(tidyverse) # For data manipulation + plotting
-library(osrm) # For routing services
+```{r admin_pop_data}
+plot(centroid_demand, main = "Centroid-Based Demand")
+plot(vect(bound1), add = TRUE)
 ```
 
-## Data Overview
+As you can see here, the centroid vector data has been converted into a raster format (despite its weird-looking result). However, this raster can now be used in the accessibility analysis, just like the original population density raster.
 
-The package includes several integrated datasets focused on healthcare accessibility of children under 5 in Thailand's Health Region 12:
++-------------------------+--------------------------------------+
+| Pros                    | Cons                                 |
++=========================+======================================+
+| -   Simple to implement | -   Unrealistic spatial distribution |
++-------------------------+--------------------------------------+
 
-1.  **Demand:** Under-5 Population Density
+### 2. Area-Weighted Approach
+
+Now, we can really take a choropleth map into analysis. This method assumes cases are uniformly distributed across each district:
 
 ```{r}
-# Load the datasets (already lazy-loaded in the package)
-# Under-5 population density - change from raster to terra::spatRaster
-(pop <- rast(u5pd))
+# test
+case_spatial_spat <- vect(case_spatial)
+case_spatial_spat |> expanse()
 
-# Region boundary
-print(bound0)
+terra::rasterize(case_spatial_spat, template, field = 1)  |> plot()
+```
+
+
+```{r}
+# 1. Calculate case density
+case_spatial <- case_spatial |>
+  mutate(
+    area_m2 = st_area(case_spatial),  # estimate area
+    case_density = as.numeric(cases / area_m2)  # calc density
+  )
+
+# 2. Rasterize case density
+case_density_raster <- terra::rasterize(
+  vect(case_spatial),
+  template,
+  field = "case_density"
+)
+
+# 3. Calculate pixel area in square kilometers
+pixel_area <- terra::res(template)[1] * terra::res(template)[2]
+
+# 4. Convert density to absolute cases per pixel
+case_raster <- case_density_raster * pixel_area
+```
+
+And you would have some thing like this:
+
+```{r}
+# Plot 
+plot(case_raster, main = "Area-Weighted Demand")
+plot(vect(bound1), add = TRUE)
 ```
 
 ```{r}
-# Plot
-plot(pop, main = "Under-5 Population Density")
-plot(vect(bound0), add = TRUE) # change to SpatVector
+# Extract raster values for each polygon
+extracted_cases <- terra::extract(case_raster, vect(case_spatial), fun = sum, na.rm = TRUE)
+case_spatial <- case_spatial %>%
+  mutate(
+    raster_cases = extracted_cases[, 2]  # Extracted values
+  )
+
+# Compare the result
+case_spatial |> st_drop_geometry() |>
+  select(ADM1_PCODE, cases, raster_cases)
 ```
 
-2.  **Supply:** Location and Capacity of Healthcare Facilities
+
+
+
+
 
 ```{r}
-# Healthcare facilities
-head(hc12_hos)
+# Clump the raster template into a lower resolution a bit
+u5pd_big <- aggregate((u5pd), fact = 15, fun = "sum") |> rast()
 
-# Primary healthcare facilities - not used in this example
-head(hc12_phc)
+
+# Rasterize population attribute (if we had one)
+population_raster <- terra::rasterize(
+  pop_data,
+  y = u5pd_big,         # template raster
+  field = "population", # Name of population column
+  fun = "sum"           # How to aggregate if multiple polygons per cell
+)
 ```
 
 ```{r}
-# Plot basic facility distribution
-ggplot() +
-  geom_sf(data = bound0, fill = "grey90") +
-  geom_sf(data = hc12_hos, aes(color = hoslvl, size = s_doc)) +
-  theme_minimal() +
-  labs(
-    title = "Hospital Distribution in Region 12",
-    color = "Hospital Level",
-    size = "Number of Doctors"
-  ) +
-  theme_classic()
+# Quick view of the data
+print(population_raster)
+
+# Plot the population density raster
+plot(population_raster, main = "Population Density(-ish) Raster")
+plot(vect(bound1), add = TRUE)
 ```
 
-3.  **Distance:** Travel Time Isochrones to Healthcare Facilities
+As you can see here, the centroid vector data has been converted into a raster format (despite its weird-looking result). However, this raster can now be used in the accessibility analysis, just like the original population density raster.
 
-One way to account for the spatial separation between demand and supply locations is to use travel time isochrones, which represent areas reachable within a given time threshold. This package did not provide a function to generate isochrones, but we can use the ([`osrm`](https://github.com/riatelab/osrm){.uri}) package to calculate travel times between demand and supply locations.
+```{r}
+split(u5pd_big, vect(bound1))
+```
+
+### Processing Supply Data & Distance Raster
+
+Supply data typically starts as point locations with attributes (as it's usually a known part of our equation). Let's say we have a dataset of hospital capacity in the region, and we geo-located each of them, you might get something like this:
+
+```{r}
+# Dissect the original data 
+hc12_hos
+class(hc12_hos)
+```
+
+In the spax package, we separate the spatial data from the attribute data to simplify the analysis. This separation allows us to perform spatial operations on the geometry and attribute operations on the data.
+
+```{r}
+# Dissect the original data
+
+# Drop the geometry column
+hc12_hos_dat <- hc12_hos |> st_drop_geometry()
+class(hc12_hos_dat)
+```
+
+### Creating Distance/Travel Time Surfaces
+
+On the other hand, the most complex part of data preparation, imo, is often creating travel time or distance surfaces.
+
+One way to go is to create travel time isochrones, which represent areas reachable from a location within a given time threshold. This package did not provide a function to generate isochrones, but we can use the [`osrm`](https://github.com/riatelab/osrm){.uri} package to calculate travel times rings around each supply location.
 
 ```{r warning=FALSE}
 # Example: Calculate isochrones for the first hospital
@@ -229,32 +410,84 @@ plot(distance_raster[[1]], main = "Distance raster for Hospital C1")
 plot(vect(bound0), add = TRUE)
 ```
 
-## Basic Accessibility Analysis
+## Memory Considerations
 
-Let's start with a basic accessibility analysis using the Enhanced Two-Step Floating Catchment Area (E2SFCA) method
-
-```{r}
-uf_access <- spax_2sfca(
-  demand = pop,
-  supply = hc12_hos |> st_drop_geometry(),
-  distance = distance_raster,
-  threshold = 40,
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse") # Analyze only doctors
-)
-plot(uf_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
-```
+When working with large areas or high-resolution data, memory management becomes crucial. Here are some strategies:
 
 ```{r}
-u5_access <- spax_e2sfca(
-  demand = pop,
-  supply = hc12_hos |> st_drop_geometry(),
-  distance = distance_raster,
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse"), # Analyze only doctors
-  decay_params = list(method = "gaussian", sigma = 30),
-  demand_normalize = "standard"
-)
+# 1. Calculate and show raster memory requirements
+cell_count <- ncell(rast(u5pd))
+n_facilities <- nrow(hc12_hos)
+bytes_per_value <- 8  # Double precision
+total_memory_mb <- (cell_count * n_facilities * bytes_per_value) / (1024^2)
 
-plot(u5_access, main = c("Doctor Accessibility", "Nurse Accessibility"))
+cat("Estimated memory for full resolution analysis:", 
+    round(total_memory_mb, 2), "MB\n")
+
+# 2. Option: Reduce resolution for initial analysis
+coarse_template <- aggregate(rast(u5pd), fact = 2)  # Double cell size
+cat("Memory requirement at half resolution:", 
+    round(total_memory_mb/4, 2), "MB\n")
 ```
+
+## Validating Data Preparation
+
+Before running your analysis, it's crucial to validate your prepared data:
+
+```{r}
+# 1. Check spatial alignment
+matched_crs <- identical(
+  crs(rast(u5pd)),
+  crs(rast(hos_iscr))
+)
+cat("CRS match:", matched_crs, "\n")
+
+# 2. Check for missing values - may or may not be a problem.
+# spatRast often set the area outside the masking to NA
+na_count <- global(is.na(rast(u5pd)), "sum")$sum
+cat("NA cells in population data:", na_count, "\n")
+
+# 3. Verify facility IDs match between data and distance raster
+facility_match <- all(
+  names(hos_iscr) %in% hc12_hos$id
+)
+cat("All facilities matched:", facility_match, "\n")
+```
+
+## Best Practices and Common Pitfalls
+
+1.  **Resolution Selection**
+
+    -   Higher resolution ≠ better analysis
+
+    -   Consider computational resources
+
+    -   Match resolution to spatial scale of phenomenon
+
+2.  **Coordinate Reference Systems**
+
+    -   Ensure all data uses same CRS
+
+    -   Document CRS choices and transformations
+
+3.  **Memory Management**
+
+    -   Start with lower resolution for testing
+
+    -   Monitor memory usage during preparation
+
+4.  **Data Validation**
+
+    -   Check for NA values and their meaning
+
+    -   Verify spatial alignment
+
+    -   Validate facility ID matching
+
+------------------------------------------------------------------------
+
+# Next Steps
+
+With your data prepared, you're ready to move on to actual accessibility analysis. The next vignette will cover how `spax` functions work together to compute accessibility scores.
+
+> Remember: good preparation is half the battle. Taking time to properly prepare and validate your data will save hours of troubleshooting later.
