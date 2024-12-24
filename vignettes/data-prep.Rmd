@@ -203,7 +203,7 @@ As you can see here, the centroid vector data has been converted into a raster f
 | -   Simple to implement | -   Unrealistic spatial distribution |
 +-------------------------+--------------------------------------+
 
-### 2. Area-Weighted Approach
+### 2. Area-Weighted Approach [developing]
 
 Now, we can really take a choropleth map into analysis. This method assumes cases are uniformly distributed across each district:
 
@@ -214,7 +214,6 @@ case_spatial_spat |> expanse()
 
 terra::rasterize(case_spatial_spat, template, field = 1)  |> plot()
 ```
-
 
 ```{r}
 # 1. Calculate case density
@@ -257,67 +256,105 @@ case_spatial <- case_spatial %>%
 # Compare the result
 case_spatial |> st_drop_geometry() |>
   select(ADM1_PCODE, cases, raster_cases)
+
+# Due to the demand approximation, the raster-based method may not exactly match the original case counts. The results, though, will geting closer as the resolution increas.es
 ```
 
+### 3. Informed Distribution [developing]
 
+This approach uses auxiliary data (like population density) to distribute cases more realistically:
 
+### 4. Probabilistic Sampling [developing]
 
-
+For uncertainty analysis, spax provides the sample_pmf() function to generate multiple realizations of demand distributions:
 
 ```{r}
-# Clump the raster template into a lower resolution a bit
-u5pd_big <- aggregate((u5pd), fact = 15, fun = "sum") |> rast()
-
-
-# Rasterize population attribute (if we had one)
-population_raster <- terra::rasterize(
-  pop_data,
-  y = u5pd_big,         # template raster
-  field = "population", # Name of population column
-  fun = "sum"           # How to aggregate if multiple polygons per cell
-)
+# This advanced approach is covered in detail in the "Probabilistic Accessibility Analysis" vignette (developing)
+?sample_pmf  # See documentation for details
 ```
+
+The choice of demand preparation method can significantly impact your accessibility analysis results. Consider your specific context:
+
+-   Data availability (Do you have population density data?)
+-   Scale of analysis (Are districts large enough that distribution matters?)
+-   Purpose (Is point-based analysis sufficient for your needs?)
+-   Computational resources (Can you handle higher resolution distributions?) \### Processing Supply Data & Distance Raster
+
+## Processing Supply and Distance Data
+
+### Supply Data: The Known Part of the Equation
+
+Supply locations are typically the most straightforward component of accessibility analysis - we usually know exactly where facilities are and their capacities. However, there are still important considerations in preparing this data.
 
 ```{r}
-# Quick view of the data
-print(population_raster)
-
-# Plot the population density raster
-plot(population_raster, main = "Population Density(-ish) Raster")
-plot(vect(bound1), add = TRUE)
+# Example of typical supply data structure
+head(hc12_hos) |>
+  select(id, hoslvl, s_doc, s_nurse) 
 ```
-
-As you can see here, the centroid vector data has been converted into a raster format (despite its weird-looking result). However, this raster can now be used in the accessibility analysis, just like the original population density raster.
-
-```{r}
-split(u5pd_big, vect(bound1))
-```
-
-### Processing Supply Data & Distance Raster
 
 Supply data typically starts as point locations with attributes (as it's usually a known part of our equation). Let's say we have a dataset of hospital capacity in the region, and we geo-located each of them, you might get something like this:
 
 ```{r}
 # Dissect the original data 
-hc12_hos
+head(hc12_hos)
 class(hc12_hos)
 ```
 
-In the spax package, we separate the spatial data from the attribute data to simplify the analysis. This separation allows us to perform spatial operations on the geometry and attribute operations on the data.
+For use in `spax`, supply data should be separated into:
+
+1.  Spatial locations (for distance calculations)
+2.  Capacity attributes (for accessibility computations)
 
 ```{r}
-# Dissect the original data
+# Separate spatial and attribute components
+supply_attributes <- hc12_hos |>
+  st_drop_geometry() |>
+  select(id, s_doc, s_nurse)  # Keep only relevant columns
 
-# Drop the geometry column
-hc12_hos_dat <- hc12_hos |> st_drop_geometry()
-class(hc12_hos_dat)
+# Visual check of supply distribution
+ggplot() +
+  geom_sf(data = bound1, fill = "grey80") +
+  geom_sf(data = hc12_hos, aes(size = s_doc, color = hoslvl)) +
+  scale_size_continuous(name = "Number of Doctors") +
+  scale_color_viridis_d(name = "Hospital Level", end = 0.5) +
+  theme_minimal() +
+  labs(title = "Healthcare Supply Distribution",
+       subtitle = "Size indicates number of doctors, color shows facility level")
 ```
 
 ### Creating Distance/Travel Time Surfaces
 
-On the other hand, the most complex part of data preparation, imo, is often creating travel time or distance surfaces.
+On the other hand, the most complex part of data preparation, in my opinion, is often creating travel time or distance surfaces. You have several options:
 
-One way to go is to create travel time isochrones, which represent areas reachable from a location within a given time threshold. This package did not provide a function to generate isochrones, but we can use the [`osrm`](https://github.com/riatelab/osrm){.uri} package to calculate travel times rings around each supply location.
+#### 1. Euclidean Distance
+
+The simplest approach - straight-line distances:
+
+```{r}
+# Example for one facility using terra
+facility_point <- hc12_hos[1,]
+template_rast <- rast(u5pd)  # Use population raster as template
+
+# Calculate Euclidean distance (in meters since our CRS is projected)
+euclidean_dist <- terra::distance(
+  template_rast, 
+  vect(facility_point)
+) |> crop(vect(bound0), mask = TRUE)
+```
+
+```{r}
+# Plot the Euclidean distance
+plot(euclidean_dist / 1000, # Convert to kilometers
+     main = "Euclidean Distance (km)")
+plot(vect(facility_point), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+```
+
+And then you can loop over all facilities to calculate the distance raster for each facility.
+
+#### 2. Travel Time Isochrones
+
+Another way to go is to create travel time isochrones, which represent areas reachable from a location within a given time threshold. This package did not provide a function to generate isochrones, but we can use the [`osrm`](https://github.com/riatelab/osrm){.uri} package to calculate travel times rings around each supply location.
 
 ```{r warning=FALSE}
 # Example: Calculate isochrones for the first hospital
@@ -346,21 +383,20 @@ As you can see, osrmIsochrone calculates the area reachable within each time thr
 
 ```{r}
 # Create a iso_mean column, and id
-(example_isochrone <- example_isochrone |>
+example_isochrone <- example_isochrone |>
   mutate(
     iso_mean = (isomin + isomax) / 2,
-    location_id = hc12_hos[1, ]$id
-  )) # actually dont need it here
+    location_id = hc12_hos[1, ]$id # actually dont need it here
+)
+
 # Convert isochrones to raster format
-example_raster <- fasterize::fasterize(
-  example_isochrone,
-  u5pd, # Use the population raster as a template
+example_raster <- terra::rasterize(
+  x = example_isochrone,
+  y = template_rast, 
   field = "iso_mean", # Fill the raster with the isomax values
   background = NA,
   fun = "sum",
-  by = "location_id"
-) |>
-  rast() |>
+  by = "location_id") |>
   crop(vect(bound0), mask = TRUE)
 
 ```
@@ -394,100 +430,153 @@ isochrones <- lapply(1:nrow(hc12_hos), function(i) {
     res = 30
   )
 }) 
-
 # Then proceed to rastarization ...
 ```
 
-Luckily, the package includes pre-computed isochrones for each hospital in the region (both in a vector and a raster format).
+### Service Provider Options
 
-```{r}
-# Vector format
-head(hos_iscvec)
+**OSRM (Open Source Routing Machine)**
 
-# Raster format
-distance_raster <- rast(hos_iscr)
-plot(distance_raster[[1]], main = "Distance raster for Hospital C1")
-plot(vect(bound0), add = TRUE)
-```
+-   Free and open source
+-   Requires setting up your own server for large analyses
+-   Good for road-based travel times (you can actually use it for other traveling modes, but that requires more setup)
+
+**HERE, Google Maps, or other APIs**
+
+-   More accurate traffic data
+-   Cost associated with usage
+-   May have usage limits
+
+**Custom cost surfaces** (I have no idea how to do this, lol)
+
+-   Can incorporate terrain, land use
+-   Requires more GIS expertise
+-   Good for non-road-based accessibility
 
 ## Memory Considerations
 
-When working with large areas or high-resolution data, memory management becomes crucial. Here are some strategies:
+Travel time surfaces often dominate memory usage. For *n* facilities and a raster of *m* cells, you need space for *n × m* values:
 
 ```{r}
-# 1. Calculate and show raster memory requirements
-cell_count <- ncell(rast(u5pd))
+# Calculate memory requirements
+cells_per_raster <- ncell(rast(u5pd))
 n_facilities <- nrow(hc12_hos)
-bytes_per_value <- 8  # Double precision
-total_memory_mb <- (cell_count * n_facilities * bytes_per_value) / (1024^2)
+bytes_per_value <- 8  # Double precision float
 
-cat("Estimated memory for full resolution analysis:", 
-    round(total_memory_mb, 2), "MB\n")
+total_mb <- cells_per_raster * n_facilities * bytes_per_value / 1024^2
 
-# 2. Option: Reduce resolution for initial analysis
-coarse_template <- aggregate(rast(u5pd), fact = 2)  # Double cell size
-cat("Memory requirement at half resolution:", 
-    round(total_memory_mb/4, 2), "MB\n")
+cat(sprintf("Memory required for ~520*520 m^2 resolution: %.1f MB\n", total_mb))
+
+# Option: Reduce resolution for initial analysis
+cells_per_raster_2 <- ncell(rast(aggregate(u5pd, fact = 2)))
+total_mb_2 <- cells_per_raster_2 * n_facilities * bytes_per_value / 1024^2
+
+cat(sprintf("Memory required for ~1040*1040 m^2 resolution: %.1f MB\n", total_mb_2))
 ```
 
-## Validating Data Preparation
+**Tips for managing memory:**
 
-Before running your analysis, it's crucial to validate your prepared data:
+-   Start with lower resolution for testing
+-   Consider using chunks for large spatial datasets
+-   Clean up unused objects during processing
+
+## Validating Your Data: Essential Checks Before Analysis
+
+Before running any accessibility analysis, it's crucial to validate your prepared data. Here's a systematic approach to validation (some of which already implemented in the package:) :
+
+#### 1. Spatial Alignment
+
+All raster inputs must align perfectly - same extent, resolution, and projection:
 
 ```{r}
-# 1. Check spatial alignment
-matched_crs <- identical(
-  crs(rast(u5pd)),
-  crs(rast(hos_iscr))
-)
-cat("CRS match:", matched_crs, "\n")
+# Example:
+# You might want to create function to summarize raster properties
+summarize_raster <- function(r, name) {
+  tibble(
+    Dataset = name,
+    Resolution = paste(round(res(r),2) , collapse = " x "),
+    Extent = paste(round(as.vector(ext(r)), 2), collapse = ", "),
+    CRS = crs(r, proj = TRUE)
+  )
+}
 
-# 2. Check for missing values - may or may not be a problem.
-# spatRast often set the area outside the masking to NA
-na_count <- global(is.na(rast(u5pd)), "sum")$sum
-cat("NA cells in population data:", na_count, "\n")
-
-# 3. Verify facility IDs match between data and distance raster
-facility_match <- all(
-  names(hos_iscr) %in% hc12_hos$id
+# Compare properties of key rasters
+raster_props <- bind_rows(
+  summarize_raster(rast(u5pd), "Population"),
+  summarize_raster(rast(hos_iscr), "Travel Time")
 )
-cat("All facilities matched:", facility_match, "\n")
+
+raster_props
+
+# Visual check for alignment
+plot(rast(u5pd), main = "Spatial Alignment Check")
+plot(rast(hos_iscr)[[1]], add = TRUE, alpha = 0.5)
+plot(vect(bound1), add = TRUE)
 ```
 
-## Best Practices and Common Pitfalls
+#### 2. Value Range Validation
 
-1.  **Resolution Selection**
+Check for reasonable values in your input data:
+
+```{r}
+# Check population density range
+summary(u5pd)
+summary(hos_iscr[[1:10]])  # Check a few travel time rasters
+```
+
+#### 3. Missing Value Analysis
+
+Understand where and why you have NA values; note that not all NAs are bad:
+
+```{r}
+# Function to analyze NA patterns within boundary
+analyze_nas <- function(r, name, bound = bound0) {
+  # Create mask from boundary
+  mask <- terra::rasterize(bound, r)
+  
+  # Count cells only within boundary
+  cells_in_boundary <- global(!is.na(mask), "sum")$sum
+  nas_in_boundary <- global(is.na(r) & !is.na(mask), "sum")$sum
+  
+  cat(sprintf("%s:\n", name),
+      sprintf("  NA cells within boundary: %d (%.1f%% of study area)\n", 
+              nas_in_boundary, 
+              100 * nas_in_boundary/cells_in_boundary))
+  
+  # Visualize NA pattern
+  na_map <- (is.na(r) & !is.na(mask)) |> crop(bound, mask = T)
+  
+  plot(na_map, main = paste(name, "- NAs within Study Area"),
+       col = c("grey80", "red"),
+       legend = FALSE)
+  plot(vect(bound1), add = TRUE)
+  legend("bottomright", 
+         legend = c("Data present", "NA"),
+         fill = c("grey80", "red"),
+         bty = "n")
+}
+
+# Check NA patterns in key datasets
+par(mfrow = c(1, 2))
+analyze_nas(rast(u5pd), "Pop")
+analyze_nas(rast(hos_iscr)[[1]], "Time from 1st Fac")
+```
+
+### Final reminders:
+
+1.  **Resolution Selection** 
 
     -   Higher resolution ≠ better analysis
-
     -   Consider computational resources
-
-    -   Match resolution to spatial scale of phenomenon
+    -   Match resolution to spatial scale of research question
 
 2.  **Coordinate Reference Systems**
 
-    -   Ensure all data uses same CRS
-
+    -   Be consistent with CRS across all datasets
     -   Document CRS choices and transformations
-
-3.  **Memory Management**
-
-    -   Start with lower resolution for testing
-
-    -   Monitor memory usage during preparation
-
-4.  **Data Validation**
-
-    -   Check for NA values and their meaning
-
-    -   Verify spatial alignment
-
-    -   Validate facility ID matching
 
 ------------------------------------------------------------------------
 
 # Next Steps
 
 With your data prepared, you're ready to move on to actual accessibility analysis. The next vignette will cover how `spax` functions work together to compute accessibility scores.
-
-> Remember: good preparation is half the battle. Taking time to properly prepare and validate your data will save hours of troubleshooting later.
