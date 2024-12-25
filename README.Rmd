@@ -90,7 +90,7 @@ Check out our vignettes for detailed guidance:
 
 - [Getting Started with spax](https://songyosr.github.io/spax/articles/spax-101-intro.html)
 - [Data Preparation Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
-- Dissecting spax: Understanding the package's inner workings *[under development]*
+- [Dissecting spax: Understanding the package's inner workings](https://songyosr.github.io/spax/articles/spax-103-dissection.html)
 - [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
 
 ## Contributing

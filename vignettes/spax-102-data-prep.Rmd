@@ -514,6 +514,6 @@ analyze_nas(rast(hos_iscr)[[1]], "Time from 1st Fac")
 
 With your data prepared, you're ready to move on to actual accessibility analysis. You can explore the following resources for more information:
 
-- Dissecting spax: Understanding the package's inner workings *[under development]*
+- [Dissecting spax: Understanding the package's inner workings](https://songyosr.github.io/spax/articles/spax-103-dissection.html)
 - [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
 

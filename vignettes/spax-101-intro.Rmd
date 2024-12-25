@@ -156,5 +156,5 @@ And that's it! We've calculated accessibility scores for doctors and nurses acro
 This introduction just scratches the surface of what `spax` can do. For more advanced topics, check out:
 
 - [Data Preparation Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
-- Dissecting spax: Understanding the package's inner workings *[under development]*
+- [Dissecting spax: Understanding the package's inner workings](https://songyosr.github.io/spax/articles/spax-103-dissection.html)
 - [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
