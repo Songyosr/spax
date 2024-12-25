@@ -242,3 +242,4 @@ plot(vect(bound0), add = TRUE)
 Understanding these building blocks not only helps you use **spax** more effectively but also opens up possibilities for customization. Want to try a custom decay function? Different normalization approach? Novel accessibility measure? The modular design lets you swap components while maintaining computational efficiency.
 
 Next up: 
+- [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)

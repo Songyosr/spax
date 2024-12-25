@@ -8,4 +8,5 @@ articles:
     contents:
       - spax-101-intro
       - spax-102-data-prep
+      - spax-103-dissection
       - spax-104-raster-tradeoff
