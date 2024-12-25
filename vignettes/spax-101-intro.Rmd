@@ -155,6 +155,6 @@ And that's it! We've calculated accessibility scores for doctors and nurses acro
 
 This introduction just scratches the surface of what `spax` can do. For more advanced topics, check out:
 
--   `spax` Dissection: Deep dive into accessibility calculations and learning how the package works under the hood
--   Data Preparation: How to prepare your own data
--   Advanced Analysis: Uncertainty analysis and Monte Carlo simulation
+-   [Data Preparation Guide](https://songyosr.github.io/spax/articles/data-prep.html): Understanding trade-offs and practical considerations
+-   `spax` Dissection: Deep dive into accessibility calculations and learning how the package works under the hood *[under development]*
+-   Advanced Analysis: Uncertainty analysis and Monte Carlo simulation *[under development]*

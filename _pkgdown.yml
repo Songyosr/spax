@@ -2,3 +2,9 @@ url: https://songyosr.github.io/spax/
 template:
   bootstrap: 5
 
+articles:
+  - title: Get Started
+    navbar: ~
+    contents:
+      - spax-101-intro
+      - data-prep

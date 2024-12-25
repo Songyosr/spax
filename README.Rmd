@@ -86,10 +86,12 @@ This example demonstrates key features of spax:
 
 Check out our vignettes for detailed guidance:
 
-1.  [Getting Started with spax](https://songyosr.github.io/spax/articles/spax-101-intro.html): Learn the basics through a healthcare case study
+## See Also
 
-2.  [Data Preparation Guide](https://songyosr.github.io/spax/articles/data-prep.html): Understanding trade-offs and practical considerations
-
+- [Getting Started with spax](https://songyosr.github.io/spax/articles/spax-101-intro.html)
+- [Data Preparation Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
+- Dissecting spax: Understanding the package's inner workings *[under development]*
+- [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
 
 ## Contributing
 
