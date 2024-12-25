@@ -51,7 +51,7 @@ Let's see how these look in practice using our example dataset from Thailand's H
 
 The package includes several integrated datasets (already lazy-loaded) that showcase healthcare accessibility analysis in action. Let's load the required packages first:
 
-```{r setup}
+```{r setup, warning = FALSE, message = FALSE}
 library(spax) # For accessibility analysis
 library(terra) # For raster operations
 library(raster)
@@ -155,6 +155,6 @@ And that's it! We've calculated accessibility scores for doctors and nurses acro
 
 This introduction just scratches the surface of what `spax` can do. For more advanced topics, check out:
 
--   [Data Preparation Guide](https://songyosr.github.io/spax/articles/data-prep.html): Understanding trade-offs and practical considerations
--   `spax` Dissection: Deep dive into accessibility calculations and learning how the package works under the hood *[under development]*
--   Advanced Analysis: Uncertainty analysis and Monte Carlo simulation *[under development]*
+- [Data Preparation Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
+- Dissecting spax: Understanding the package's inner workings *[under development]*
+- [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)

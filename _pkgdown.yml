@@ -7,4 +7,5 @@ articles:
     navbar: ~
     contents:
       - spax-101-intro
-      - data-prep
+      - spax-102-data-prep
+      - spax-104-raster-tradeoff

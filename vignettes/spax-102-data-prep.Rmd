@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 # Load required packages
 library(spax)
 library(terra)
@@ -299,7 +300,7 @@ plot(example_isochrone[, "isomax"], main = "Travel Time Isochrone for Hospital C
 plot(example_isochrone[3, "isomax"], main = "Travel Time Isochrone ring for Hospital C1 (45 mins)")
 ```
 
-The isochrones show travel time "rings" around our facility. If you take on a vector-based approach, you can use functions like [sf::st_contain()] to determine the population within each isochrone ring.
+The isochrones show travel time "rings" around our facility. If you take on a vector-based approach, you can use functions like [`sf::st_contains()`](https://r-spatial.github.io/sf/reference/st_contains.html) to determine the population within each isochrone ring.
 
 For `spax`, we need to convert these to a raster format:
 
@@ -330,7 +331,7 @@ plot(vect(bound0), add = TRUE)
 plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
 ```
 
-> ⚠️ **Important Note about OSRM**: By default, the [osrm::osrmIsochrone()] function uses OSRM's demo server. This is fine for testing, but for real analysis you should:
+> ⚠️ **Important Note about OSRM**: By default, the [`osrm::osrmIsochrone()`](https://rdrr.io/cran/osrm/man/osrmIsochrone.html)] function uses OSRM's demo server. This is fine for testing, but for real analysis you should:
 >
 > -   [Set up your own OSRM server](https://github.com/Project-OSRM/osrm-backend). *This vignette does not cover the server setup process.*
 >
@@ -512,4 +513,8 @@ analyze_nas(rast(hos_iscr)[[1]], "Time from 1st Fac")
 
 ## Next Steps
 
-With your data prepared, you're ready to move on to actual accessibility analysis.
+With your data prepared, you're ready to move on to actual accessibility analysis. You can explore the following resources for more information:
+
+- Dissecting spax: Understanding the package's inner workings *[under development]*
+- [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
+
