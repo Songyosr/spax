@@ -33,8 +33,9 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/data-prep.html">2. Understanding the Trade-offs: Data Preparation for Spatial Accessibility Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/spax-101-intro.html">1. Getting Started with spax: A Healthcare Accessibility Case Study</a></li>
+<li><a class="dropdown-item" href="../articles/spax-101-intro.html">1. Getting Started with spax: A Healthcare Accessibility Case Study</a></li>
+    <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis</a></li>
   </ul>
 </li>
       </ul>
@@ -131,26 +132,11 @@ Let’s load the required packages first:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyos/spax" class="external-link">spax</a></span><span class="op">)</span> <span class="co"># For accessibility analysis</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span> <span class="co"># For raster operations</span></span>
-<span><span class="co">#&gt; terra 1.8.5</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/raster" class="external-link">raster</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Loading required package: sp</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span> <span class="co"># For vector data handling</span></span>
-<span><span class="co">#&gt; Linking to GEOS 3.10.2, GDAL 3.4.1, PROJ 8.2.1; sf_use_s2() is TRUE</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span> <span class="co"># For data manipulation + plotting</span></span>
 <span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
-<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
-<span><span class="co">#&gt; ── <span style="font-weight: bold;">Attaching core tidyverse packages</span> ──────────────────────── tidyverse 2.0.0 ──</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">dplyr    </span> 1.1.4     <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">readr    </span> 2.1.5</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">forcats  </span> 1.0.0     <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">stringr  </span> 1.5.1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">ggplot2  </span> 3.5.1     <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">tibble   </span> 3.2.1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">lubridate</span> 1.9.4     <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">tidyr    </span> 1.3.1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> <span style="color: #0000BB;">purrr    </span> 1.0.2</span></span>
-<span><span class="co">#&gt; ── <span style="font-weight: bold;">Conflicts</span> ────────────────────────────────────────── tidyverse_conflicts() ──</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">tidyr</span>::<span style="color: #00BB00;">extract()</span> masks <span style="color: #0000BB;">raster</span>::extract(), <span style="color: #0000BB;">terra</span>::extract()</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">dplyr</span>::<span style="color: #00BB00;">filter()</span>  masks <span style="color: #0000BB;">stats</span>::filter()</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">dplyr</span>::<span style="color: #00BB00;">lag()</span>     masks <span style="color: #0000BB;">stats</span>::lag()</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">dplyr</span>::<span style="color: #00BB00;">select()</span>  masks <span style="color: #0000BB;">raster</span>::select()</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Use the conflicted package (<span style="color: #0000BB; font-style: italic;">&lt;http://conflicted.r-lib.org/&gt;</span>) to force all conflicts to become errors</span></span></code></pre></div>
+<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span></code></pre></div>
 <div class="section level4">
 <h4 id="understanding-demand">1. Understanding Demand<a class="anchor" aria-label="anchor" href="#understanding-demand"></a>
 </h4>
@@ -288,12 +274,13 @@ access.</p>
 <p>This introduction just scratches the surface of what
 <code>spax</code> can do. For more advanced topics, check out:</p>
 <ul>
-<li>
-<code>spax</code> Dissection: Deep dive into accessibility
-calculations and learning how the package works under the hood</li>
-<li>Data Preparation: How to prepare your own data</li>
-<li>Advanced Analysis: Uncertainty analysis and Monte Carlo
-simulation</li>
+<li><a href="https://songyosr.github.io/spax/articles/spax-102-data-prep.html">Data
+Preparation Guide</a></li>
+<li>Dissecting spax: Understanding the package’s inner workings
+<em>[under development]</em>
+</li>
+<li><a href="https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html">Understanding
+Raster Trade-offs</a></li>
 </ul>
 </div>
 </div>
