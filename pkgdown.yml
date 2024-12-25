@@ -4,8 +4,9 @@ pkgdown_sha: ~
 articles:
   spax-101-intro: spax-101-intro.html
   spax-102-data-prep: spax-102-data-prep.html
+  spax-103-dissection: spax-103-dissection.html
   spax-104-raster-tradeoff: spax-104-raster-tradeoff.html
-last_built: 2024-12-25T17:20Z
+last_built: 2024-12-25T18:35Z
 urls:
   reference: https://songyosr.github.io/spax/reference
   article: https://songyosr.github.io/spax/articles
