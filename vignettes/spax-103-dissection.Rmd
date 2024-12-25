@@ -1,8 +1,8 @@
 ---
-title: "spax-103-dissection"
+title: "3. Under the Hood: Dissecting Spatial Accessibility Analysis"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{spax-103-dissection}
+  %\VignetteIndexEntry{3. Under the Hood: Dissecting Spatial Accessibility Analysis}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
