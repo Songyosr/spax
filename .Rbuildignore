@@ -10,3 +10,4 @@
 ^\.github$
 ^junk/
 ^data-raw$
+^README.Rmd$

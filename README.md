@@ -1,73 +1,105 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
 # spax: Spatial Accessibility Analysis in R
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-## Overview
+`spax` is an R package designed for advanced spatial accessibility
+analysis, focusing on Two-Step Floating Catchment Area (2SFCA) methods
+and their derivatives. The package offers a fresh perspective on spatial
+accessibility through its raster-based computational approach and
+modular design.
 
-`spax` is an R package designed for advanced spatial accessibility analysis, with a primary focus on Two-Step Floating Catchment Area (2SFCA) methods and their derivatives. The package emphasizes a raster-based approach to spatial analysis, offering efficient computation and flexible spatial resolution handling.
+## Features
 
-### Key Features
-
-- **Modular Design**: Core functions are organized into independent, composable components that can be combined for custom analysis workflows
-- **Raster-Based Analysis**: Optimized for working with spatial rasters (`SpatRaster`) for efficient handling of large spatial datasets
-- **Monte Carlo Simulation**: Tools for uncertainty analysis and stochastic modeling of spatial accessibility
-- **Flexible Distance Decay**: Multiple built-in decay functions with customizable parameters:
-  - Gaussian decay
-  - Exponential decay
-  - Power decay
-  - Binary (threshold) decay
-
-### Core Components
-
-1. **Data Preparation**
-   - Population density processing
-   - Service location handling
-   - Distance/travel time calculations
-   - Weight matrix generation
-
-2. **Accessibility Calculation**
-   - Supply-side ratio computation
-   - Demand weighting
-   - Spatial accessibility scoring
-   - Result normalization
-
-3. **Monte Carlo Analysis**
-   - Stochastic population sampling
-   - Multi-iteration accessibility calculations
-   - Statistical summaries and uncertainty quantification
+- **Computational Simplicity**: Raster-based operations translate
+  complex spatial relationships into simple matrix calculations
+- **Modular Design**: Functions work like LEGO bricks - mix and match
+  components to build custom analysis workflows
+- **Complex Demand Handling**: Support for continuous population
+  surfaces, letting you work with high-resolution demand data
+- **Monte Carlo Integration**: Built-in tools for uncertainty analysis
+  and stochastic demand modeling
 
 ## Installation
 
-You can install the development version of spax from [GitHub](https://github.com/) with:
+You can install the development version of spax from
+[GitHub](https://github.com/) with:
 
-```r
+``` r
 # install.packages("pak")
 pak::pak("Songyosr/spax")
 ```
 
-## Package Status
+## Example
 
-This package is currently under active development. While the core functionality for raster-based spatial accessibility analysis is implemented, additional features and improvements are ongoing:
+Here’s how spax’s modular design works in practice, analyzing healthcare
+accessibility in Thailand’s Region 12:
 
-- Enhanced documentation and vignettes
-- Additional catchment area methods
-- Vector-based analysis support (planned)
-- Performance optimizations
-- Extended Monte Carlo capabilities
+``` r
+library(spax)
+library(terra)
+#> terra 1.8.5
+library(sf)
+#> Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 
-## Dependencies
+# Load example data (already included in package)
+pop <- rast(u5pd)  # Under-5 population density
+hospitals <- hc12_hos  # Hospital locations and capacity
+distance <- rast(hos_iscr)  # Travel time to hospitals
 
-Core dependencies:
-- terra
-- sf
-- tidyverse
-- parallel
+# Calculate accessibility using Enhanced 2SFCA
+accessibility <- spax_e2sfca(
+  demand = pop,  # Population density
+  supply = hospitals |> st_drop_geometry(),  # Hospital capacity
+  distance = distance,  # Travel times
+  decay_params = list(
+    method = "gaussian",
+    sigma = 30  # 30-minute characteristic distance
+  ),
+  demand_normalize = "standard",  # Prevent demand inflation
+  id_col = "id",
+  supply_cols = c("s_doc", "s_nurse")  # Analyze both doctors and nurses
+)
+
+# Plot results
+plot(accessibility, 
+     main = c("Access to Doctors", "Access to Nurses"))
+plot(vect(bound0), add = TRUE)
+```
+
+<img src="man/figures/README-example-1.png" width="100%" />
+
+This example demonstrates key features of spax:
+
+- Working with continuous population surfaces (demand)
+
+- Handling multiple supply indicators simultaneously
+
+- Gaussian distance decay for more realistic accessibility modeling
+
+## Getting Started
+
+Check out our vignettes for detailed guidance:
+
+1.  [Getting Started with
+    spax](https://songyosr.github.io/spax/articles/spax-101-intro.html):
+    Learn the basics through a healthcare case study
+
+2.  [Data Preparation
+    Guide](https://songyosr.github.io/spax/articles/data-prep.html):
+    Understanding trade-offs and practical considerations
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Truth is, I’m just getting started with spax. I’d love to have you on
+board to help shape the future of spatial accessibility analysis in R.
+Please feel free to submit a Pull Request. For major changes, please
+open an issue first to discuss what you would like to change.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file
+for details.
