@@ -1,7 +1,7 @@
 Package: spax
 Type: Package
 Title: An R Package for Modularized (Hopefully) Spatial Accessibility Analysis
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
