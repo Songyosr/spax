@@ -57,63 +57,20 @@
 </h1></div>
 <!-- badges: start -->
 <!-- badges: end -->
+<p><code>spax</code> is an R package designed for advanced spatial accessibility analysis, focusing on Two-Step Floating Catchment Area (2SFCA) methods and their derivatives. The package offers a fresh perspective on spatial accessibility through its raster-based computational approach and modular design.</p>
 <div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+<h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
 </h2>
-<p><code>spax</code> is an R package designed for advanced spatial accessibility analysis, with a primary focus on Two-Step Floating Catchment Area (2SFCA) methods and their derivatives. The package emphasizes a raster-based approach to spatial analysis, offering efficient computation and flexible spatial resolution handling.</p>
-<div class="section level3">
-<h3 id="key-features">Key Features<a class="anchor" aria-label="anchor" href="#key-features"></a>
-</h3>
 <ul>
 <li>
-<strong>Modular Design</strong>: Core functions are organized into independent, composable components that can be combined for custom analysis workflows</li>
+<strong>Computational Simplicity</strong>: Raster-based operations translate complex spatial relationships into simple matrix calculations</li>
 <li>
-<strong>Raster-Based Analysis</strong>: Optimized for working with spatial rasters (<code>SpatRaster</code>) for efficient handling of large spatial datasets</li>
+<strong>Modular Design</strong>: Functions work like LEGO bricks - mix and match components to build custom analysis workflows</li>
 <li>
-<strong>Monte Carlo Simulation</strong>: Tools for uncertainty analysis and stochastic modeling of spatial accessibility</li>
+<strong>Complex Demand Handling</strong>: Support for continuous population surfaces, letting you work with high-resolution demand data</li>
 <li>
-<strong>Flexible Distance Decay</strong>: Multiple built-in decay functions with customizable parameters:
-<ul>
-<li>Gaussian decay</li>
-<li>Exponential decay</li>
-<li>Power decay</li>
-<li>Binary (threshold) decay</li>
+<strong>Monte Carlo Integration</strong>: Built-in tools for uncertainty analysis and stochastic demand modeling</li>
 </ul>
-</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="core-components">Core Components<a class="anchor" aria-label="anchor" href="#core-components"></a>
-</h3>
-<ol style="list-style-type: decimal">
-<li>
-<strong>Data Preparation</strong>
-<ul>
-<li>Population density processing</li>
-<li>Service location handling</li>
-<li>Distance/travel time calculations</li>
-<li>Weight matrix generation</li>
-</ul>
-</li>
-<li>
-<strong>Accessibility Calculation</strong>
-<ul>
-<li>Supply-side ratio computation</li>
-<li>Demand weighting</li>
-<li>Spatial accessibility scoring</li>
-<li>Result normalization</li>
-</ul>
-</li>
-<li>
-<strong>Monte Carlo Analysis</strong>
-<ul>
-<li>Stochastic population sampling</li>
-<li>Multi-iteration accessibility calculations</li>
-<li>Statistical summaries and uncertainty quantification</li>
-</ul>
-</li>
-</ol>
-</div>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -124,26 +81,60 @@
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"Songyosr/spax"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="package-status">Package Status<a class="anchor" aria-label="anchor" href="#package-status"></a>
+<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
-<p>This package is currently under active development. While the core functionality for raster-based spatial accessibility analysis is implemented, additional features and improvements are ongoing:</p>
+<p>Here’s how spax’s modular design works in practice, analyzing healthcare accessibility in Thailand’s Region 12:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyos/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; terra 1.8.5</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE</span></span>
+<span></span>
+<span><span class="co"># Load example data (already included in package)</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>  <span class="co"># Under-5 population density</span></span>
+<span><span class="va">hospitals</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span>  <span class="co"># Hospital locations and capacity</span></span>
+<span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>  <span class="co"># Travel time to hospitals</span></span>
+<span></span>
+<span><span class="co"># Calculate accessibility using Enhanced 2SFCA</span></span>
+<span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<span>  demand <span class="op">=</span> <span class="va">pop</span>,  <span class="co"># Population density</span></span>
+<span>  supply <span class="op">=</span> <span class="va">hospitals</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># Hospital capacity</span></span>
+<span>  distance <span class="op">=</span> <span class="va">distance</span>,  <span class="co"># Travel times</span></span>
+<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    method <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
+<span>    sigma <span class="op">=</span> <span class="fl">30</span>  <span class="co"># 30-minute characteristic distance</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  demand_normalize <span class="op">=</span> <span class="st">"standard"</span>,  <span class="co"># Prevent demand inflation</span></span>
+<span>  id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  supply_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"s_doc"</span>, <span class="st">"s_nurse"</span><span class="op">)</span>  <span class="co"># Analyze both doctors and nurses</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot results</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>, </span>
+<span>     main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Access to Doctors"</span>, <span class="st">"Access to Nurses"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-example-1.png" width="100%"></p>
+<p>This example demonstrates key features of spax:</p>
 <ul>
-<li>Enhanced documentation and vignettes</li>
-<li>Additional catchment area methods</li>
-<li>Vector-based analysis support (planned)</li>
-<li>Performance optimizations</li>
-<li>Extended Monte Carlo capabilities</li>
+<li><p>Working with continuous population surfaces (demand)</p></li>
+<li><p>Handling multiple supply indicators simultaneously</p></li>
+<li><p>Gaussian distance decay for more realistic accessibility modeling</p></li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a>
+<h2 id="getting-started">Getting Started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
 </h2>
-<p>Core dependencies: - terra - sf - tidyverse - parallel</p>
+<p>Check out our vignettes for detailed guidance:</p>
+<ol style="list-style-type: decimal">
+<li><p><a href="https://songyosr.github.io/spax/articles/spax-101-intro.html">Getting Started with spax</a>: Learn the basics through a healthcare case study</p></li>
+<li><p><a href="https://songyosr.github.io/spax/articles/data-prep.html">Data Preparation Guide</a>: Understanding trade-offs and practical considerations</p></li>
+</ol>
 </div>
 <div class="section level2">
 <h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a>
 </h2>
-<p>Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.</p>
+<p>Truth is, I’m just getting started with spax. I’d love to have you on board to help shape the future of spatial accessibility analysis in R. Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.</p>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>

@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   data-prep: data-prep.html
   spax-101-intro: spax-101-intro.html
-last_built: 2024-12-25T06:51Z
+last_built: 2024-12-25T07:23Z
 urls:
   reference: https://songyosr.github.io/spax/reference
   article: https://songyosr.github.io/spax/articles
