@@ -23,8 +23,8 @@ We've been avoiding this moment for two whole vignettes, but there's no escaping
 
 Let's peek under the hood of spax to understand:
 
--   How spatial accessibility is actually calculated\
--   Why we chose certain approaches over others\
+-   How spatial accessibility is actually calculated
+-   Why we chose certain approaches over others
 -   How theory translates into actual code
 
 ## The Recipe for Spatial Accessibility
@@ -445,4 +445,5 @@ Now that you understand how spax works under the hood, you might want to explore
 
 -   [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html): Learn about the memory and performance implications of our raster-based approach
 
--   tba
+-   Advanced Topics in Accessibility: Demand adjustment, normalization, and choice-based modeling [Coming Soon]
+
