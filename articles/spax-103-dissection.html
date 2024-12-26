@@ -169,26 +169,26 @@ spax actually computes them:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">
 r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}
 </annotation></semantics></math></p>
-<p>Where: -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>
-is the population density surface -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>j</mi></msub><annotation encoding="application/x-tex">D_j</annotation></semantics></math>
+<p>Where:</p>
+<ul>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>
+is the population density surface</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>j</mi></msub><annotation encoding="application/x-tex">D_j</annotation></semantics></math>
 is the travel time/distance surface from facility
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
--
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝖽</mi></msub><annotation encoding="application/x-tex">\mathsf{W_d}</annotation></semantics></math>
-is the demand-side weighting function -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>⊙</mo><annotation encoding="application/x-tex">\odot</annotation></semantics></math>
-represents element-wise (Hadamard) multiplication -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sum()</annotation></semantics></math>
-is the global sum over the entire surface -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝖽</mi></msub><annotation encoding="application/x-tex">\mathsf{W_d}</annotation></semantics></math>
+is the demand-side weighting function</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>⊙</mo><annotation encoding="application/x-tex">\odot</annotation></semantics></math>
+represents element-wise (Hadamard) multiplication</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sum()</annotation></semantics></math>
+is the global sum over the entire surface</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math>
 is the supply capacity at facility
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
--
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>j</mi></msub><annotation encoding="application/x-tex">r_j</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>j</mi></msub><annotation encoding="application/x-tex">r_j</annotation></semantics></math>
 is the resulting ratio for facility
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></p></li>
+</ul>
 </div>
 <div class="section level4">
 <h4 id="step-2-accessibility-scores---raster-form">Step 2: Accessibility Scores - Raster Form<a class="anchor" aria-label="anchor" href="#step-2-accessibility-scores---raster-form"></a>
@@ -196,15 +196,23 @@ is the resulting ratio for facility
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">
 A = \sum_j r_j \mathsf{W_r}(D_j)
 </annotation></semantics></math></p>
-<p>Where: -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
+<p>Where:</p>
+<ul>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
 is now a complete accessibility surface rather than point-specific
-values. -
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝗋</mi></msub><annotation encoding="application/x-tex">\mathsf{W_r}</annotation></semantics></math>
-is the ratio-side weighting function</p>
-<p>This raster-based formulation: - Eliminates the need to iterate over
-demand points i - Takes advantage of efficient matrix operations -
-Better reflects how <code>spax</code> works with continuous surfaces</p>
+values.</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝗋</mi></msub><annotation encoding="application/x-tex">\mathsf{W_r}</annotation></semantics></math>
+is the ratio-side weighting function</p></li>
+</ul>
+<p>This raster-based formulation:</p>
+<ul>
+<li>Eliminates the need to iterate over demand points
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+</li>
+<li>Takes advantage of efficient matrix operations</li>
+<li>Better reflects how <code>spax</code> works with continuous
+surfaces</li>
+</ul>
 </div>
 </div>
 <div class="section level3">
@@ -413,9 +421,9 @@ in:</p>
 overlap. If two hospitals serve the same area:</p>
 <ul>
 <li>Standard normalization: Forces weights to sum to 1, effectively
-splitting demand between facilities/</li>
+splitting demand between facilities</li>
 <li>Semi-normalization: Only adjusts weights where facilities actually
-compete (sum &gt; 1)/</li>
+compete (sum &gt; 1)</li>
 <li>No normalization: Allows double-counting, which might be appropriate
 for truly independent services</li>
 </ul>
