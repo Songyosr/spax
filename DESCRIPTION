@@ -39,8 +39,8 @@ Suggests:
     osrm
 Config/testthat/edition: 3
 RoxygenNote: 7.3.2
-URL: https://github.com/songyos/spax, https://songyosr.github.io/spax/
-BugReports: https://github.com/songyos/spax/issues
+URL: https://github.com/songyosr/spax, https://songyosr.github.io/spax/
+BugReports: https://github.com/Songyosr/spax/issues
 VignetteBuilder: knitr
 Depends: 
     R (>= 3.5)
