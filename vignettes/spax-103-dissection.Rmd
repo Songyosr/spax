@@ -80,7 +80,21 @@ $$
 r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}
 $$
 
-Where: - $P$ is the population density surface - $D_j$ is the travel time/distance surface from facility $j$ - $\mathsf{W_d}$ is the demand-side weighting function - $\odot$ represents element-wise (Hadamard) multiplication - $sum()$ is the global sum over the entire surface - $s_j$ is the supply capacity at facility $j$ - $r_j$ is the resulting ratio for facility $j$
+Where:
+
+-   $P$ is the population density surface
+
+-   $D_j$ is the travel time/distance surface from facility $j$
+
+-   $\mathsf{W_d}$ is the demand-side weighting function
+
+-   $\odot$ represents element-wise (Hadamard) multiplication
+
+-   $sum()$ is the global sum over the entire surface
+
+-   $s_j$ is the supply capacity at facility $j$
+
+-   $r_j$ is the resulting ratio for facility $j$
 
 ### Step 2: Accessibility Scores - Raster Form
 
@@ -88,9 +102,17 @@ $$
 A = \sum_j r_j \mathsf{W_r}(D_j)
 $$
 
-Where: - $A$ is now a complete accessibility surface rather than point-specific values. - $\mathsf{W_r}$ is the ratio-side weighting function
+Where:
 
-This raster-based formulation: - Eliminates the need to iterate over demand points i - Takes advantage of efficient matrix operations - Better reflects how `spax` works with continuous surfaces
+-   $A$ is now a complete accessibility surface rather than point-specific values.
+
+-   $\mathsf{W_r}$ is the ratio-side weighting function
+
+This raster-based formulation:
+
+-   Eliminates the need to iterate over demand points $i$
+-   Takes advantage of efficient matrix operations
+-   Better reflects how `spax` works with continuous surfaces
 
 ## From Formulas to Functions
 
@@ -261,8 +283,8 @@ plot(overlap_areas,
 
 Think of normalization like adjusting a recipe when ingredients overlap. If two hospitals serve the same area:
 
--   Standard normalization: Forces weights to sum to 1, effectively splitting demand between facilities/
--   Semi-normalization: Only adjusts weights where facilities actually compete (sum \> 1)/
+-   Standard normalization: Forces weights to sum to 1, effectively splitting demand between facilities
+-   Semi-normalization: Only adjusts weights where facilities actually compete (sum \> 1)
 -   No normalization: Allows double-counting, which might be appropriate for truly independent services
 
 In our raster formulation, this becomes a simple operation on surfaces rather than complex point-wise calculations.
