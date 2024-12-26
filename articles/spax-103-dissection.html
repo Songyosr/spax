@@ -152,11 +152,66 @@ for both distance and competition from other users.</p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="from-theory-to-rasters">From Theory to Rasters<a class="anchor" aria-label="anchor" href="#from-theory-to-rasters"></a>
+<h3 id="rasterized-formulas-a-different-perspective">Rasterized formulas: A Different Perspective<a class="anchor" aria-label="anchor" href="#rasterized-formulas-a-different-perspective"></a>
 </h3>
-<p>Here’s where things get interesting. While the formula looks clean on
-paper, implementing it efficiently means thinking in terms of raster
-operations. Let’s see how spax breaks this down:</p>
+<p>While these formulas are traditionally written in terms of points
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
+our raster-based implementation thinks in terms of surfaces (~every
+point
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+simultaneously). Let’s rewrite these equations to better reflect how
+spax actually computes them:</p>
+<div class="section level4">
+<h4 id="step-1-service-to-population-ratios-raster-form">Step 1: Service-to-Population Ratios Raster Form<a class="anchor" aria-label="anchor" href="#step-1-service-to-population-ratios-raster-form"></a>
+</h4>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">
+r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}
+</annotation></semantics></math></p>
+<p>Where: -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>
+is the population density surface -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>j</mi></msub><annotation encoding="application/x-tex">D_j</annotation></semantics></math>
+is the travel time/distance surface from facility
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+-
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝖽</mi></msub><annotation encoding="application/x-tex">\mathsf{W_d}</annotation></semantics></math>
+is the demand-side weighting function -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>⊙</mo><annotation encoding="application/x-tex">\odot</annotation></semantics></math>
+represents element-wise (Hadamard) multiplication -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sum()</annotation></semantics></math>
+is the global sum over the entire surface -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math>
+is the supply capacity at facility
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+-
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>j</mi></msub><annotation encoding="application/x-tex">r_j</annotation></semantics></math>
+is the resulting ratio for facility
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></p>
+</div>
+<div class="section level4">
+<h4 id="step-2-accessibility-scores---raster-form">Step 2: Accessibility Scores - Raster Form<a class="anchor" aria-label="anchor" href="#step-2-accessibility-scores---raster-form"></a>
+</h4>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">
+A = \sum_j r_j \mathsf{W_r}(D_j)
+</annotation></semantics></math></p>
+<p>Where: -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
+is now a complete accessibility surface rather than point-specific
+values. -
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝗋</mi></msub><annotation encoding="application/x-tex">\mathsf{W_r}</annotation></semantics></math>
+is the ratio-side weighting function</p>
+<p>This raster-based formulation: - Eliminates the need to iterate over
+demand points i - Takes advantage of efficient matrix operations -
+Better reflects how <code>spax</code> works with continuous surfaces</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="from-formulas-to-functions">From Formulas to Functions<a class="anchor" aria-label="anchor" href="#from-formulas-to-functions"></a>
+</h3>
+<p>Let’s see how these formulas - both traditional and raster-based -
+translate into actual code with spax:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
@@ -170,93 +225,157 @@ operations. Let’s see how spax breaks this down:</p>
 <span><span class="va">hospitals</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span> <span class="co"># Hospital locations</span></span>
 <span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span> <span class="co"># Travel times</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Let's look at one hospital's service area</span></span>
+<code class="sourceCode R"><span><span class="co"># Let's look at the basic components for one hospital</span></span>
 <span><span class="va">example_hospital</span> <span class="op">&lt;-</span> <span class="va">hospitals</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
 <span></span>
-<span><span class="co"># Plot basic components</span></span>
+<span><span class="co"># Plot the fundamental surfaces</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pop</span>, main <span class="op">=</span> <span class="st">"Population\n(Demand)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, main <span class="op">=</span> <span class="st">"Travel Time\n(Distance)"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Population surface (P)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pop</span>, main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression</a></span><span class="op">(</span><span class="st">"Population Surface"</span> <span class="op">~</span> <span class="op">(</span><span class="va">P</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Distance surface for facility j (D[j])</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression</a></span><span class="op">(</span><span class="st">"Distance Surface"</span> <span class="op">~</span> <span class="op">(</span><span class="va">D</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Weighted surface (W[d](D[j]))</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
-<span>  main <span class="op">=</span> <span class="st">"Distance Decay\n(Weight)"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>     main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression</a></span><span class="op">(</span><span class="st">"Weighted Surface"</span> <span class="op">~</span> <span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">d</span><span class="op">]</span><span class="op">(</span><span class="va">D</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-2-1.png" width="800"></p>
 <p>Each theoretical component becomes a raster operation:</p>
 <ul>
-<li>Population
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mi>i</mi></msub><annotation encoding="application/x-tex">P_i</annotation></semantics></math>)
-→ Population density raster<br>
+<li>Population Surface
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>):
+A single raster showing population density/</li>
+<li>Distance Surfaces
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>j</mi></msub><annotation encoding="application/x-tex">D_j</annotation></semantics></math>):
+A stack of rasters, one per facility/</li>
+<li>Weight Function
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mo>,</mo><msub><mi>𝖶</mi><mi>𝗋</mi></msub></mrow><annotation encoding="application/x-tex">\mathsf{W_d}, \mathsf{W_r}</annotation></semantics></math>):
+Applied using <code><a href="../reference/calc_decay.html">calc_decay()</a></code>
 </li>
-<li>Distance
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{ij}</annotation></semantics></math>)
-→ Travel time raster<br>
-</li>
-<li>Weights
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>d</mi></msub><mo>,</mo><msub><mi>W</mi><mi>r</mi></msub></mrow><annotation encoding="application/x-tex">W_d, W_r</annotation></semantics></math>)
-→ Decay function applied to distance</li>
 </ul>
-<p>The magic happens in how we combine these layers, but that’s getting
-ahead of ourselves… Let’s look at each building block in detail.</p>
+<p>The real power comes in how spax chains these operations together
+efficiently. Rather than iterating over individual points, we: - Process
+entire surfaces at once - Use optimized matrix operations - Take
+advantage of parallel processing (via <code>terra</code>) where
+possible</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="building-blocks-from-theory-to-practice">Building Blocks: From Theory to Practice<a class="anchor" aria-label="anchor" href="#building-blocks-from-theory-to-practice"></a>
+<h2 id="building-blocks-core-operations-in-spax">Building Blocks: Core Operations in spax<a class="anchor" aria-label="anchor" href="#building-blocks-core-operations-in-spax"></a>
 </h2>
 <div class="section level3">
-<h3 id="the-art-of-distance-decay">The Art of Distance Decay<a class="anchor" aria-label="anchor" href="#the-art-of-distance-decay"></a>
+<h3 id="distance-decay-from-theory-to-practice">Distance Decay: From Theory to Practice<a class="anchor" aria-label="anchor" href="#distance-decay-from-theory-to-practice"></a>
 </h3>
-<p>Let’s start with perhaps the most crucial building block: how we
-model the effect of distance on accessibility. In theory, we write this
-simply as
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W(d_{ij})</annotation></semantics></math>,
-but in practice, we need to decide how exactly distance affects
-accessibility.</p>
+<p>Now that we understand the theory, let’s look at how we actually
+calculate those weight functions
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W_d(d_{ij})</annotation></semantics></math>
+or
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathsf{W_d}(D_j)</annotation></semantics></math>.
+The weight function’s job is simple - take a distance value and return a
+weight between 0 and 1. But how quickly should that weight decay with
+distance?</p>
+<p><code>spax</code> implements three classical decay functions (+ a
+binary decay), each offering different mathematical properties. Let’s
+align them at a common reference point (50% decay at 30 minutes) to see
+how they behave:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Let's explore different decay functions</span></span>
-<span><span class="va">distance_to_hospital</span> <span class="op">&lt;-</span> <span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="co"># Travel time to our example hospital</span></span>
+<code class="sourceCode R"><span><span class="co"># Create example data with functions aligned at 50% decay at 30 minutes</span></span>
+<span><span class="va">example</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">160</span>,<span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">example</span> <span class="op">&lt;-</span> <span class="va">example</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    gaussian_exp <span class="op">=</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">x</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
+<span>    exponential_exp <span class="op">=</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">x</span>, method <span class="op">=</span> <span class="st">"exponential"</span>, sigma <span class="op">=</span> <span class="fl">0.0196</span><span class="op">)</span>,</span>
+<span>    power_exp <span class="op">=</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">x</span>, method <span class="op">=</span> <span class="st">"power"</span>, sigma <span class="op">=</span> <span class="fl">0.1945</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">example</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">gaussian_exp</span>, color <span class="op">=</span> <span class="st">"Gaussian"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">exponential_exp</span>, color <span class="op">=</span> <span class="st">"Exponential"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">power_exp</span>, color <span class="op">=</span> <span class="st">"Power"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>    title <span class="op">=</span> <span class="st">"Distance Decay Functions"</span>,</span>
+<span>    subtitle <span class="op">=</span> <span class="st">"All functions aligned at 50% decay at 30 minutes"</span>,</span>
+<span>    x <span class="op">=</span> <span class="st">"Distance (minutes)"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"Weight"</span>,</span>
+<span>    color <span class="op">=</span> <span class="st">"Function"</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_continuous</a></span><span class="op">(</span>limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-3-1.png" width="800"></p>
+<p>Each function offers a different mathematical perspective on how
+distance affects accessibility:</p>
+<ul>
+<li>Gaussian decay
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = e^{-d^2/(2\sigma^2)}</annotation></semantics></math>):
+Models accessibility like a bell curve, with the greatest change
+happening around that 30-minute mark/</li>
+<li>Exponential decay
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>d</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = e^{-\lambda d}</annotation></semantics></math>):
+Each additional minute of travel reduces accessibility by the same
+percentage/</li>
+<li>Power decay
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>d</mi><mrow><mo>−</mo><mi>β</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = d^{-\beta}</annotation></semantics></math>):
+Similar to exponential early on, but maintains higher weights at larger
+distances</li>
+</ul>
+<p>Let’s see how these functions transform our distance surfaces:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Extract one distance surface to explore</span></span>
+<span><span class="va">D_j</span> <span class="op">&lt;-</span> <span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="co"># Distance surface to our example hospital</span></span>
 <span></span>
 <span><span class="co"># Calculate weights using different decay functions</span></span>
-<span><span class="va">gaussian_decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance_to_hospital</span>,</span>
+<span><span class="va">gaussian_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">D_j</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
 <span>  sigma <span class="op">=</span> <span class="fl">30</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">exponential_decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance_to_hospital</span>,</span>
+<span><span class="va">exponential_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">D_j</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"exponential"</span>,</span>
-<span>  sigma <span class="op">=</span> <span class="fl">0.05</span></span>
+<span>  sigma <span class="op">=</span> <span class="fl">0.0196</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">power_decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance_to_hospital</span>,</span>
+<span><span class="va">power_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">D_j</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"power"</span>,</span>
-<span>  sigma <span class="op">=</span> <span class="fl">2</span></span>
+<span>  sigma <span class="op">=</span> <span class="fl">0.1945</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Visualize how different functions handle distance</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">distance_to_hospital</span>, main <span class="op">=</span> <span class="st">"Original Travel Time"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">gaussian_decay</span>, main <span class="op">=</span> <span class="st">"Gaussian Decay\n(smooth decline)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exponential_decay</span>, main <span class="op">=</span> <span class="st">"Exponential Decay\n(steeper drop-off)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">power_decay</span>, main <span class="op">=</span> <span class="st">"Power Decay\n(long tail)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-3-1.png" width="800"></p>
-<p>Each decay function tells a different story about how people interact
-with distance:</p>
-<ul>
-<li>
-<strong>Gaussian decay</strong>: Like a bell curve, suggesting
-people are relatively willing to travel up to a certain distance before
-their willingness drops off sharply<br>
-</li>
-<li>
-<strong>Exponential decay</strong>: Assumes the deterrent effect of
-distance increases steadily<br>
-</li>
-<li>
-<strong>Power decay</strong>: Creates a long tail, good for services
-where some users might travel very far</li>
-</ul>
-<p>And as we are dealing with raster data, any vectorized function can
-be used as a decay function, and we will apply them across the entire
-raster stack at the same time</p>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">D_j</span>, main <span class="op">=</span> <span class="st">"Original Distance Surface (D_j)"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">gaussian_weights</span>, main <span class="op">=</span> <span class="st">"Gaussian Decay"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exponential_weights</span>, main <span class="op">=</span> <span class="st">"Exponential Decay"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">power_weights</span>, main <span class="op">=</span> <span class="st">"Power Decay"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-4-1.png" width="100%"></p>
+<p>The beauty of spax’s raster-based approach is that these
+transformations happen all at once - every cell in our distance surface
+gets converted to a weight simultaneously. And because we’re using R’s
+vectorized operations under the hood, this works just as efficiently
+whether we’re looking at one facility or a hundred.</p>
+<p>Want to create your own decay function? Any function that takes
+distances and returns weights will work:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Custom decay combining distance threshold with Gaussian decay</span></span>
+<span><span class="va">custom_decay</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">distance</span>, <span class="va">sigma</span> <span class="op">=</span> <span class="fl">30</span>, <span class="va">threshold</span> <span class="op">=</span> <span class="fl">40</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">gaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">distance</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">sigma</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">gaussian</span><span class="op">[</span><span class="va">distance</span> <span class="op">&gt;</span> <span class="va">threshold</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span>  <span class="co"># Hard cutoff at threshold</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">gaussian</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Use it just like the built-in functions</span></span>
+<span><span class="va">custom_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">D_j</span>, </span>
+<span>  method <span class="op">=</span> <span class="va">custom_decay</span>, </span>
+<span>  sigma <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  threshold <span class="op">=</span> <span class="fl">60</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">gaussian_weights</span>, main <span class="op">=</span> <span class="st">"Gaussian Decay"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">custom_weights</span>, main <span class="op">=</span> <span class="st">"Custom Decay\n(thresholded Gaussian)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-5-1.png" width="800"></p>
 </div>
 <div class="section level3">
 <h3 id="managing-competition-weight-normalization">Managing Competition: Weight Normalization<a class="anchor" aria-label="anchor" href="#managing-competition-weight-normalization"></a>
@@ -266,52 +385,65 @@ where things get tricky. If we don’t handle overlapping service areas
 carefully, we might count the same population multiple times. This is
 where <code><a href="../reference/calc_normalize.html">calc_normalize()</a></code> and <code><a href="../reference/calc_choice.html">calc_choice()</a></code> comes
 in:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create example weights for two overlapping hospitals</span></span>
-<span><span class="va">hospital_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="va">gaussian_decay</span>,</span>
-<span>  <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Create weight surfaces for two nearby facilities</span></span>
+<span><span class="va">W1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
+<span><span class="va">W2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
+<span><span class="va">facility_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">W1</span>, <span class="va">W2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Look at different normalization approaches</span></span>
-<span><span class="va">standard_norm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span><span class="va">hospital_weights</span>, method <span class="op">=</span> <span class="st">"standard"</span><span class="op">)</span></span>
-<span><span class="va">semi_norm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span><span class="va">hospital_weights</span>, method <span class="op">=</span> <span class="st">"semi"</span><span class="op">)</span></span>
+<span><span class="co"># Compare different normalization approaches</span></span>
+<span><span class="va">standard_norm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span><span class="va">facility_weights</span>, method <span class="op">=</span> <span class="st">"standard"</span><span class="op">)</span></span>
+<span><span class="va">semi_norm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span><span class="va">facility_weights</span>, method <span class="op">=</span> <span class="st">"semi"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Visualize the effect of normalization</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">hospital_weights</span><span class="op">)</span>, main <span class="op">=</span> <span class="st">"Raw Weights\n(potential double-counting)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">standard_norm</span><span class="op">)</span>, main <span class="op">=</span> <span class="st">"Standard Normalization\n(always sums to 1)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">semi_norm</span><span class="op">)</span>, main <span class="op">=</span> <span class="st">"Semi-normalization\n(prevents inflation)"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">facility_weights</span><span class="op">)</span>, </span>
+<span>     main <span class="op">=</span> <span class="st">"Raw Weight Sum\n(potential double-counting)"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">standard_norm</span><span class="op">)</span>, </span>
+<span>     main <span class="op">=</span> <span class="st">"Standard Normalization\n(sums to 1)"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">semi_norm</span><span class="op">)</span>, </span>
+<span>     main <span class="op">=</span> <span class="st">"Semi-normalization\n(prevents inflation)"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Add a plot showing where normalization matters most</span></span>
-<span><span class="va">overlap_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">hospital_weights</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">overlap_areas</span>, main <span class="op">=</span> <span class="st">"Areas with Overlap\n(where normalization matters)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-4-1.png" width="800"></p>
+<span><span class="co"># Show where normalization matters most</span></span>
+<span><span class="va">overlap_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">facility_weights</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">overlap_areas</span>, </span>
+<span>     main <span class="op">=</span> <span class="st">"Competition Areas\n(where normalization matters)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-6-1.png" width="100%"></p>
 <p>Think of normalization like adjusting a recipe when ingredients
 overlap. If two hospitals serve the same area:</p>
 <ul>
-<li>Standard normalization splits the population evenly<br>
-</li>
-<li>Semi-normalization only adjusts in areas where multiple facilities
-compete<br>
-</li>
-<li>No normalization might double-count, but could be appropriate for
-truly independent services</li>
+<li>Standard normalization: Forces weights to sum to 1, effectively
+splitting demand between facilities/</li>
+<li>Semi-normalization: Only adjusts weights where facilities actually
+compete (sum &gt; 1)/</li>
+<li>No normalization: Allows double-counting, which might be appropriate
+for truly independent services</li>
 </ul>
+<p>In our raster formulation, this becomes a simple operation on
+surfaces rather than complex point-wise calculations.</p>
 </div>
 <div class="section level3">
 <h3 id="spreading-and-gathering-the-core-operations">Spreading and Gathering: The Core Operations<a class="anchor" aria-label="anchor" href="#spreading-and-gathering-the-core-operations"></a>
 </h3>
-<p>Now for the real magic – how do we actually implement those
-theoretical summations? This is where <code><a href="../reference/spread_weighted.html">spread_weighted()</a></code> and
-<code><a href="../reference/gather_weighted.html">gather_weighted()</a></code> come in. These functions are the
-workhorses that handle the spatial distribution and aggregation of our
-accessibility measures.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>Now for the real workhorses of spax: the spread_weighted() and
+gather_weighted() functions. These implement the summations in our
+formulas:</p>
+<ul>
+<li><p>Traditional:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_i P_i W_d(d_{ij})</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_j R_j W_r(d_{ij})</annotation></semantics></math></p></li>
+<li><p>Raster:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sum(P \odot \mathsf{W_d}(D_j))</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_j r_j \mathsf{W_r}(D_j)</annotation></semantics></math></p></li>
+</ul>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Let's see these operations in action</span></span>
-<span><span class="co"># First, calculate potential demand for our hospitals</span></span>
-<span><span class="va">potential_demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gather_weighted.html">gather_weighted</a></span><span class="op">(</span><span class="va">pop</span>,</span>
-<span>  <span class="va">standard_norm</span>,</span>
+<span><span class="co"># First, calculate potential demand for our facilities</span></span>
+<span><span class="va">potential_demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gather_weighted.html">gather_weighted</a></span><span class="op">(</span></span>
+<span>  <span class="va">pop</span>,           <span class="co"># Population surface (P)</span></span>
+<span>  <span class="va">standard_norm</span>, <span class="co"># Normalized weights (W_d)</span></span>
 <span>  simplify <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -322,48 +454,127 @@ accessibility measures.</p>
 <span><span class="co">#&gt; 1    c172     151148.2</span></span>
 <span><span class="co">#&gt; 2    c173     140127.4</span></span>
 <span></span>
-<span><span class="co"># Now calculate and spread supply ratios</span></span>
+<span><span class="co"># Now calculate and spread accessibility</span></span>
 <span><span class="va">supply_ratios</span> <span class="op">&lt;-</span> <span class="va">potential_demand</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    ratio <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">s_doc</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">unit_id</span>, <span class="va">hospitals</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span> <span class="op">/</span> <span class="va">weighted_sum</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spread_weighted.html">spread_weighted</a></span><span class="op">(</span><span class="va">supply_ratios</span>,</span>
-<span>  <span class="va">hospital_weights</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="st">"Supply ratios:"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "Supply ratios:"</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">supply_ratios</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   unit_id weighted_sum       ratio</span></span>
+<span><span class="co">#&gt; 1    c172     151148.2 0.003453564</span></span>
+<span><span class="co">#&gt; 2    c173     140127.4 0.002290772</span></span>
+<span></span>
+<span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spread_weighted.html">spread_weighted</a></span><span class="op">(</span></span>
+<span>  <span class="va">supply_ratios</span>,    <span class="co"># Facility-specific ratios (r_j)</span></span>
+<span>  <span class="va">facility_weights</span>, <span class="co"># Weight surfaces (W_r)</span></span>
 <span>  value_cols <span class="op">=</span> <span class="st">"ratio"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"Final Accessibility Scores"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"Final Accessibility Surface (A)"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-5-1.png" width="800"></p>
-<p>Think of <code><a href="../reference/gather_weighted.html">gather_weighted()</a></code> as a collector, summing up
-weighted values (like population) across space. Meanwhile,
-<code><a href="../reference/spread_weighted.html">spread_weighted()</a></code> works like a distributor, taking values
-associated with facilities (like supply ratios) and spreading them
-across their service areas.</p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-7-1.png" width="800"></p>
+<p>Think of these operations as: - <code><a href="../reference/gather_weighted.html">gather_weighted()</a></code>:
+Collects weighted values from a surface into facility-specific totals (a
+vector) - <code><a href="../reference/spread_weighted.html">spread_weighted()</a></code>: Distributes facility-specific
+values back across their service areas surface</p>
 </div>
 <div class="section level3">
 <h3 id="putting-it-all-together">Putting It All Together<a class="anchor" aria-label="anchor" href="#putting-it-all-together"></a>
 </h3>
-<p>Now we can see how <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> orchestrates all these
-components:</p>
-<ol style="list-style-type: decimal">
-<li>Creates distance decay weights using <code><a href="../reference/calc_decay.html">calc_decay()</a></code><br>
-</li>
-<li>Normalizes demand-side weights with
-<code><a href="../reference/calc_normalize.html">calc_normalize()</a></code><br>
-</li>
-<li>Gathers potential demand using <code><a href="../reference/gather_weighted.html">gather_weighted()</a></code><br>
-</li>
-<li>Calculates supply ratios<br>
-</li>
-<li>Spreads accessibility scores using
-<code><a href="../reference/spread_weighted.html">spread_weighted()</a></code>
-</li>
-</ol>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The full E2SFCA calculation we get "for free"</span></span>
-<span><span class="va">full_accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+</div>
+<div class="section level3">
+<h3 id="putting-it-all-together-1">Putting It All Together<a class="anchor" aria-label="anchor" href="#putting-it-all-together-1"></a>
+</h3>
+<p>Now that we understand each component, let’s see how
+<code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> orchestrates them into a complete
+accessibility analysis. We’ll follow both the formula and the actual
+code:</p>
+<div class="section level4">
+<h4 id="the-complete-workflow">The Complete Workflow<a class="anchor" aria-label="anchor" href="#the-complete-workflow"></a>
+</h4>
+<table class="table">
+<colgroup>
+<col width="47%">
+<col width="52%">
+</colgroup>
+<thead><tr class="header">
+<th>Traditional</th>
+<th>Raster</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><ol style="list-style-type: decimal">
+<li>Calculate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>S</mi><mi>j</mi></msub><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">R_j = \frac{S_j}{\sum_i P_i W_d(d_{ij})}</annotation></semantics></math>
+for each facility</li>
+</ol></td>
+<td><ol style="list-style-type: decimal">
+<li>Calculate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}</annotation></semantics></math>
+for each facility</li>
+</ol></td>
+</tr>
+<tr class="even">
+<td><ol start="2" style="list-style-type: decimal">
+<li>Calculate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">A_i = \sum_j R_j W_r(d_{ij})</annotation></semantics></math>
+for each location</li>
+</ol></td>
+<td><ol start="2" style="list-style-type: decimal">
+<li>Calculate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">A = \sum_j r_j \mathsf{W_r}(D_j)</annotation></semantics></math>
+as a surface</li>
+</ol></td>
+</tr>
+</tbody>
+</table>
+<p>Let’s see this step by step:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Step 1a: Create distance decay weights</span></span>
+<span><span class="va">facility_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span></span>
+<span>  <span class="va">distance</span>,                    <span class="co"># Distance surfaces (D_j)</span></span>
+<span>  method <span class="op">=</span> <span class="st">"gaussian"</span>, </span>
+<span>  sigma <span class="op">=</span> <span class="fl">30</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Step 1b: Normalize weights to handle competition</span></span>
+<span><span class="va">demand_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span></span>
+<span>  <span class="va">facility_weights</span>,           <span class="co"># W_d(D_j)</span></span>
+<span>  method <span class="op">=</span> <span class="st">"standard"</span>        <span class="co"># Prevents double-counting</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Step 1c: Calculate potential demand for each facility</span></span>
+<span><span class="va">potential_demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gather_weighted.html">gather_weighted</a></span><span class="op">(</span></span>
+<span>  <span class="va">pop</span>,             <span class="co"># Population surface (P)</span></span>
+<span>  <span class="va">demand_weights</span>,  <span class="co"># Normalized weights</span></span>
+<span>  simplify <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Step 1d: Calculate supply-to-demand ratios</span></span>
+<span><span class="va">supply_ratios</span> <span class="op">&lt;-</span> <span class="va">potential_demand</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    ratio <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">s_doc</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">unit_id</span>, <span class="va">hospitals</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span> <span class="op">/</span> <span class="va">weighted_sum</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Step 2: Calculate final accessibility surface</span></span>
+<span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spread_weighted.html">spread_weighted</a></span><span class="op">(</span></span>
+<span>  <span class="va">supply_ratios</span>,     <span class="co"># Facility ratios (r_j)</span></span>
+<span>  <span class="va">facility_weights</span>,  <span class="co"># Access-side weights (W_r)</span></span>
+<span>  value_cols <span class="op">=</span> <span class="st">"ratio"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Visualize the final result</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"E2SFCA Accessibility Surface"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-8-1.png" width="800"></p>
+<p>Or we can let <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> handle all of this for
+us:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># The same calculation in one function call</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
 <span>  supply <span class="op">=</span> <span class="va">hospitals</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  distance <span class="op">=</span> <span class="va">distance</span>,</span>
@@ -373,16 +584,61 @@ components:</p>
 <span>  supply_cols <span class="op">=</span> <span class="st">"s_doc"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">full_accessibility</span>, main <span class="op">=</span> <span class="st">"E2SFCA Accessibility Scores"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span>, main <span class="op">=</span> <span class="st">"E2SFCA Accessibility Scores"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-6-1.png" width="800"></p>
-<p>Understanding these building blocks not only helps you use
-<strong>spax</strong> more effectively but also opens up possibilities
-for customization. Want to try a custom decay function? Different
-normalization approach? Novel accessibility measure? The modular design
-lets you swap components while maintaining computational efficiency.</p>
-<p>Next up: - <a href="https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html">Understanding
-Raster Trade-offs</a></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-9-1.png" width="800"></p>
+</div>
+<div class="section level4">
+<h4 id="understanding-the-benefits">Understanding the Benefits<a class="anchor" aria-label="anchor" href="#understanding-the-benefits"></a>
+</h4>
+<p>This modular design offers several advantages:</p>
+<ol style="list-style-type: decimal">
+<li>
+<p><strong>Flexibility</strong>: Each component can be
+customized:</p>
+<ul>
+<li><p>Different decay functions</p></li>
+<li><p>Alternative normalization approaches</p></li>
+</ul>
+</li>
+<li>
+<p><strong>Efficiency</strong>:</p>
+<ul>
+<li><p>Operations are vectorized across entire surfaces</p></li>
+<li><p>Memory usage is optimized for large datasets</p></li>
+<li><p>Parallel processing where beneficial</p></li>
+</ul>
+</li>
+<li>
+<p><strong>Transparency</strong>:</p>
+<ul>
+<li><p>Each step is clear and inspectable</p></li>
+<li><p>Results can be validated at any stage</p></li>
+<li><p>Intermediate outputs available for analysis</p></li>
+</ul>
+</li>
+<li>
+<p><strong>Extensibility</strong>:</p>
+<ul>
+<li><p>New components can be added easily</p></li>
+<li><p>Custom workflows can be built from basic pieces</p></li>
+<li><p>Alternative accessibility measures can be implemented</p></li>
+</ul>
+</li>
+</ol>
+</div>
+</div>
+<div class="section level3">
+<h3 id="whats-next">What’s Next?<a class="anchor" aria-label="anchor" href="#whats-next"></a>
+</h3>
+<p>Now that you understand how spax works under the hood, you might want
+to explore:</p>
+<ul>
+<li><p><a href="https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html">Understanding
+Raster Trade-offs</a>: Learn about the memory and performance
+implications of our raster-based approach</p></li>
+<li><p>tba</p></li>
+</ul>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
