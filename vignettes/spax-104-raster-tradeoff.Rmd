@@ -17,6 +17,10 @@ knitr::opts_chunk$set(
 )
 ```
 
+# Why Rasters? The Pros, Cons, and Best Practices
+
+If you've worked through the previous vignettes, you've seen how spax relies heavily on raster operations for spatial accessibility analysis. But why did we choose this approach? And more importantly, what does it mean for your analysis? In this vignette, we'll explore the practical implications of using raster-based operations, looking at both the benefits and challenges, and providing concrete strategies for optimizing your workflows.
+
 ```{r setup, warning = FALSE, message = FALSE}
 # Load required packages
 library(spax)
@@ -24,32 +28,28 @@ library(terra)
 library(pryr) # for memory tracking
 library(tidyverse)
 library(sf)
-library(bench)
+library(bench) # fotr benchmarking
 ```
 
-# Why Rasters? The Pros, Cons, and Best Practices
+## Understanding the Raster Approach
 
-So you’ve followed the *Getting Started* guide, prepared your data, and even taken a peek under the hood. If you’re still scratching your head wondering, “Why do we keep talking about rasters in spax?”—this one’s for you. In this vignette, we’ll look at **why** spax was designed around **raster surfaces** instead of classic vectors and distance matrices. We’ll also discuss:
+Think of a raster as a giant spreadsheet laid over your study area. Instead of tracking individual points or complex polygons, we store values in a regular grid of cells. This might seem simple, but it's this very simplicity that makes raster operations so powerful for accessibility analysis. Let's see this in action with our example data:
 
--   The benefits of a raster-centric approach
+```{r}
+# Load example population density
+pop <- rast(u5pd)
 
--   The drawbacks (because nothing’s perfect!)
+# Quick look at what we're working with
+(pop)
+cat("Total cells:", ncell(pop), "\n")
+```
 
--   How to optimize your raster workflows (and not blow up memory/disk usage)
+When we calculate accessibility, nearly everything becomes a grid operation:
 
-## 1. Rasters in a Nutshell
-
-A *raster* is basically a big grid laid over space—imagine a huge spreadsheet where each cell covers a tiny piece of the Earth (or wherever you’re studying). Instead of tracking where every single person is as a point or polygon, you store a numeric value (like population) in each cell. Then you do math on those grids:
-
--   Travel time to each hospital? It’s a grid.
-
--   Population density? Another grid.
-
--   Decay weights? Grids, too!
-
-Finally, you layer or combine those grids to get your accessibility results.
-
-#### Why This Works So Well for Accessibility
+-   Population? A grid of density values\
+-   Travel time? A grid for each facility\
+-   Distance decay? A transformation of those grids\
+-   Final accessibility? You guessed it - another grid
 
 Spatial accessibility often boils down to “map algebra”:
 
@@ -57,189 +57,202 @@ $\text{Some function of (Population density)} \times \text{(Distance weights)}.$
 
 Rasters make that algebra super direct: you take your population raster, multiply by a distance raster, and sum the result. Libraries like [*`terra`*](https://rspatial.github.io/terra/reference/terra-package.html "terra main page") are built for these cell-by-cell operations, and `spax` simply arrange them in a handy workflow.
 
-## **2. The Good Stuff: Why We Like Rasters**
+## The Good: Why Raster Operations Shine
 
-#### **2.1 Consistency Across Analyses**
+#### 1. Vectorized Operations = Efficient Computation
 
-Once you decide on a raster resolution (e.g., 500m cells), *everything*—population, distance, decayed weight, final accessibility—can be stored in the same grid. That means fewer mismatches or repeated coordinate transformations. You’re just piling up new layers on the same “sheet.”
-
-#### 2.2 **Map Algebra Is (Relatively) Simple**
-
-With rasters, a “distance decay” step is literally:
-
-```{r eval=FALSE}
-decay_raster <- exp(-0.05 * distance_raster)
-```
-
-where distance_raster is a **terra** SpatRaster. That’s it—each cell’s distance gets exponentiated. No complicated loops over polygons or point sets.
-
-#### 2.3 **Good for Large or Continuous Data**
-
-If your study area is big—like an entire country or region—you often already have population data in a raster format (e.g., WorldPop, GHSL). Sticking to a raster-based approach means you skip that “vectorization” step entirely. For **spax**, large extents with continuous (dense) population data are kind of the sweet spot.
-
-#### **2.4 Terra’s On-Disk Chunking**
-
-The **terra** package processes big rasters in small chunks, which means you usually *won’t* run out of RAM—even if your raster is huge. It writes intermediate results to temporary files, freeing up memory. You might see more read/write on your disk, but you’ll dodge the dreaded “out of memory” crash if your dataset is well beyond your RAM capacity.
-
-------------------------------------------------------------------------
-
-## **3. The Trade-Offs: It’s Not Always Rainbows**
-
-But let’s be honest—rasters can have drawbacks. Here’s what you should know:
-
-#### **3.1 Potentially Large File Sizes**
-
-If your resolution is *really* fine (e.g., 100m cells) over a big region, you end up with *millions* of cells. That can lead to:
-
-```         
-•   Large disk usage (lots of .tif or temporary .gri files).
-
-•   Slower read/write speeds if you’re working on an old spinning HDD.
-```
-
-#### **3.2 Resolution = Coarse or Finer, You Must Decide**
-
-Your analysis is only as precise as the cell size. If you have 1 km cells, you might misrepresent small towns or pockets of population. If you go super fine, you might be dealing with enormous data sets. You have to pick a resolution that’s feasible and that captures your phenomenon accurately.
-
-**3.3 Potential Edge Effects or “Grid Artifacts”**
-
-As we see in the data prep vignette, Rasters discretize space into squares. If you care a lot about exact boundaries (like a city boundary shaped in a weird polygon), some “bleeding” occurs at the cell edges. This might or might not matter, depending on the scale and the question.
-
-#### **3.4 Disk I/O Overhead**
-
-Because **terra** chunk-processes rasters, you can end up reading and writing partial blocks to disk a lot. That can be slower than purely in-memory vector approaches—*if* your vector dataset is small enough to fit comfortably in RAM. For large data, though, chunking is usually a net win.
-
-------------------------------------------------------------------------
-
-## **Demonstrating the Disk vs. Memory Reality**
-
-A lot of folks worry about big rasters “blowing up their memory.” Actually, **terra**’s chunking approach often saves you from that headache. For instance, let’s do a quick (simulated) example:
+One of the biggest advantages of raster operations is that they're naturally vectorized. Instead of looping through points or polygons, we can perform operations on entire surfaces at once. Let's see this in practice:
 
 ```{r}
-# Suppose we have a large raster
-# We'll create something artificially big for demonstration:
-r <- rast(ncols=5000, nrows=5000, vals=runif(5000*5000))
-r <- r*100  # Some random population or something
-
-# Memory check (super approximate)
-# object.size() doesn't reflect disk-based chunk usage, just the object pointer
-cat("In-memory representation ~", round(object.size(r)/1048576, 1), "MB\n")
-
-# maybe at some code to track the new file added totempdir before after and after operation
-
-# Let's do a trivial operation:
-result <- exp(-0.05 * r)  # Map algebra
-
-cat("Result is created.\n")
-```
-
--   Even though r is quite large, **terra** won’t load all 25 million cells into memory at once if it can chunk from disk.
-
--   You might see big temp files (check tempdir()), but your R session won’t necessarily balloon to 10 GB of usage.
-
-Of course, if you want your entire raster in memory (e.g., for super-fast repeated ops), you can tweak terraOptions(memfrac=...). But by default, chunking is the name of the game.
-
-------------------------------------------------------------------------
-
-## **5. Best Practices: Keeping Rasters Happy and Lean**
-
-If you’re going to adopt the raster approach for your accessibility analysis, here are some tips to *make sure you’re not shooting yourself in the foot*:
-
-**5.1 Choose a Sensible Resolution**
-
--   If you pick 100m resolution for a huge region, you’ll have a monstrous dataset.
-
--   Test a coarser resolution (500m or 1km) to see if it’s “good enough” for your question.
-
-**5.2 Avoid Over-Saving Intermediates**
-
--   In spax, each big step (e.g., calc_decay(), calc_normalize()) can create new SpatRasters. ***If and only if,*** you need an intermediate once, consider chaining calls instead of saving each one.
-
--   Example:
-
-```{r}
-# Instead of:
-W <- calc_decay(distance, method="gaussian", sigma=30)
-Nm <- calc_normalize(W)
-
-# Consider chaining:
-Nm <- distance |>
-  calc_decay(method="gaussian", sigma=30)
-  calc_normalize()
-```
-
-#### **5.3 Use Tiling/Chunking Wisely**
-
-By default, terra auto-manages chunk sizes. If you have more memory to spare, you can give terra more breathing room, e.g.:
-
-```{r eval=FALSE}
-terraOptions(memfrac=0.8)  # Let terra use 80% of available RAM
-```
-
-For extremely large datasets, consider splitting your region into multiple tiles, then merging results afterward (though this is more advanced).
-
-#### **5.4 Monitor Your Temp Directory**
-
--   Terra writes big .tif or .gri/.grd files to tempdir(). If you’re on Windows, that might be C:/Users/YourName/AppData/Local/Temp. Watch that folder to avoid filling up your drive. Still, keep in mind that SSD I/O is much faster than HDD's.
-
--   To relocate temp files:
-
-    ```{r eval=FALSE}
-    terraOptions(tempdir = "/path/to/bigger/folder")
-    ```
-
-# 6. A Quick Example: Resolution Trade-Off
-
-Below is a small snippet showing how drastically computation time and file size can drop when you coarsen your raster. (This is a mock example—tweak for your real data.)
-
-```{r}
-# We'll assume 'distance' is a big multi-layer SpatRaster of travel times
-
-# Function to benchmark spax at a given resolution factor
-benchmark_e2sfca <- function(distance, factor) {
-  # Coarsen distance
-  dist_coarse <- aggregate(distance, fact=factor)
-  
-  # Coarsen population
-  pop_coarse <- aggregate(rast(u5pd), fact=factor)
-  
-  # Time the E2SFCA
-  t1 <- Sys.time()
-  result <- spax_e2sfca(
-    demand=pop_coarse,
-    supply=hc12_hos |> st_drop_geometry(),
-    distance=dist_coarse,
-    decay_params=list(method="gaussian", sigma=30),
-    demand_normalize="standard",
-    id_col="id",
-    supply_cols="s_doc"
+# Example: Calculating Gaussian decay for travel times
+# This one line transforms EVERY cell in our raster
+system.time({
+  decay_weights <- calc_decay(
+    distance = rast(hos_iscr)[[1]], 
+    method = "gaussian",
+    sigma = 30
   )
-  t2 <- Sys.time()
-  
-  # Return runtime (or store it)
-  return(difftime(t2, t1, units="secs"))
+})
+
+# Visualize the result
+plot(decay_weights, main="Distance Decay Weights")
+plot(vect(bound0), add=TRUE)
+```
+
+The operation above processes hundreds of thousands of cells in a single step, leveraging optimized matrix operations under the hood.
+
+#### 2. Consistent Data Structures
+
+Once you decide on a raster resolution (e.g., 500m cells), *everything*—population, distance, decayed weight, final accessibility—can be stored in the same grid. That means fewer mismatches, repeated coordinate transformations, or swapping between point sets and polygons. You’re just piling up new layers on the same “sheet.”
+
+```{r}
+# Look at alignment of our key datasets
+check_alignment <- function(rast1, rast2, name1, name2) {
+  cat("\nComparing", name1, "and", name2, ":\n")
+  cat("Same resolution?", all(res(rast1) == res(rast2)), "\n")
+  cat("Same extent?", all(ext(rast1) == ext(rast2)), "\n")
+  cat("Same CRS?", crs(rast1) == crs(rast2), "\n")
 }
 
-factors <- c(1,2,4,8) # 1 = original res, 8 = coarser
-times <- sapply(factors, benchmark_e2sfca, distance=distance)
-
-data.frame(
-  Factor=factors,
-  TimeSec=round(times, 2)
+# Check population and distance rasters
+check_alignment(
+  rast(u5pd), 
+  rast(hos_iscr), 
+  "Population", 
+  "Distance"
 )
 ```
 
-## 7. Final Thoughts
+#### 3. Built-in Spatial Relationships
 
-Choosing a raster-based approach was a deliberate design choice in spax. We wanted:
+The grid structure automatically encodes spatial relationships - no need for complex spatial indices or distance matrices. Want to know what's nearby? Just look at neighboring cells:
 
-1.  A consistent data model for population, distance, and final accessibility.
-2.  Straightforward math—map algebra—for weighting, normalization, etc.
-3.  Scalability via chunk-based or tile-based processing.
+```{r}
+# Look at one facility's service area
+facility_id <- hc12_hos$id[1]  # First facility
+facility_distance <- rast(hos_iscr)[[1]]
 
-Of course, some analyses are still better served by vectors (especially small-scale point-based data or advanced network routing). But if you’re working with big regions or continuous population surfaces, we find rasters a very natural fit.
+facility_distance <- terra::focal(
+  facility_distance, 
+  w = matrix(1, 21, 21), fun = mean, na.rm = T
+)
 
-**Bottom line**: Don’t be scared off by big rasters. If you manage your resolution wisely, monitor your disk usage, and let terra do its chunked thing, you can handle surprisingly large analyses without frying your RAM. Meanwhile, you get an elegant, cell-by-cell approach to accessibility that’s easier to interpret and debug.
+# Bring back the custom decay
+custom_decay <- function(distance, sigma = 45, threshold = 120) {
+  gaussian <- exp(-distance^2 / (2 * sigma^2))
+  gaussian[distance > threshold] <- NA  # Hard cutoff at threshold
+  return(gaussian)
+}
+
+# Calculate decay weights
+decay_weights <- calc_decay(
+  facility_distance, 
+  method = custom_decay
+)
+
+# The population raster automatically masks unpopulated areas
+weighted_pop <- rast(u5pd) * decay_weights
+
+# Visualize how spatial relationships are preserved
+par(mfrow = c(2, 2))
+
+plot(rast(u5pd), main = "Population")
+plot(vect(bound0), add = TRUE)
+
+plot(decay_weights, main = "Distance Decay")
+plot(vect(bound0), add = TRUE)
+
+plot(weighted_pop, main = "Population-Weighted Decay")
+plot(vect(bound0), add = TRUE)
+```
+
+## The Trade-Offs: The Trade-offs: Resolution, Precision, and Computation
+
+After exploring the benefits of raster operations, it's time to confront their fundamental limitations. The key trade-off in raster-based analysis is between computational efficiency and spatial precision - and it affects everything from population distribution to final accessibility scores.
+
+### The Resolution Dilemma
+
+Every raster analysis starts with a critical choice: what cell size should we use? This seemingly simple decision has cascading effects throughout our analysis. Let's explore this with a concrete example:
+
+```{r}
+# Test how resolution affects both precision and computation
+pop <- rast(u5pd)
+dist <- rast(hos_iscr)
+
+test_facility_catchment <- function(factor) {
+  # Time the entire operation
+  start_time <- Sys.time()
+  
+  # Aggregate both population and distance
+  pop_agg <- aggregate(pop, fact = factor, fun = sum, na.rm = TRUE)
+  dist_agg <- aggregate(dist, fact = factor, fun = mean, na.rm = TRUE)
+  
+  # Calculate catchment areas
+  weights <- calc_decay(dist_agg, method = "gaussian", sigma = 30)
+  facility_demand <- gather_demand(pop_agg, weights)
+  
+  end_time <- Sys.time()
+  
+  # Return comprehensive results
+  list(
+    resolution = res(pop_agg)[1],
+    ncells = ncell(pop_agg),
+    runtime = as.numeric(difftime(end_time, start_time, units = "secs")),
+    demands = facility_demand$potential_demand,
+    pop = pop_agg,
+    weights = weights
+  )
+}
+
+# Test a range of resolutions
+factors <- c(1, 2, 4, 8)  # Each step doubles cell size
+results <- lapply(factors, test_facility_catchment)
+
+# Create summary table
+summary_table <- tibble(
+  'Resolution (m)' = sapply(results, function(x) round(x$resolution)),
+  'Grid Cells' = sapply(results, function(x) format(x$ncells, big.mark=",")),
+  'Runtime (s)' = sapply(results, function(x) round(x$runtime, 2))
+)
+
+# Performance Impact of Resolution:
+(summary_table)
+```
+
+But what does this resolution change actually mean for our analysis? Let's look at how it affects our catchment calculations:
+
+```{r}
+# Compare catchment populations for first few facilities
+catchment_table <- data.frame(
+  Resolution = paste0(round(sapply(results, `[[`, "resolution")), "m")
+)
+
+# Add results for first three facilities
+for(i in 1:3) {
+  catchment_table[paste("Facility", i, "Catchment")] <- sapply(results, 
+    function(x) round(x$demands[i]))
+}
+
+print("\nCatchment Population Estimates:")
+print(catchment_table)
+```
+
+Let's visualize what's happening to our spatial data:
+
+```{r}
+# Create a 2x2 plot showing population at different resolutions
+par(mfrow = c(2, 2))
+for(i in seq_along(results)) {
+  plot(results[[i]]$pop, 
+       main = sprintf("%0.0fm Resolution\n%s cells", 
+                     results[[i]]$resolution,
+                     format(results[[i]]$ncells, big.mark=",")))
+  plot(vect(bound0), add = TRUE)
+  plot(vect(hc12_hos[1:3,]), add = TRUE, pch = 16, col = "red")
+}
+```
+
+What we're seeing here illustrates the fundamental trade-off in raster-based analysis:
+
+#### Computational Impact
+
+- Each doubling of resolution (halving cell size) quadruples the number of cells
+- Processing time generally scales with cell count
+- Memory and storage requirements grow quadratically with resolution
+
+#### Precision Impact
+
+- Coarser resolutions smooth out local population variations
+- Facility locations snap to grid cells, affecting exact distances
+- Catchment boundaries become more approximate
+- But total population estimates remain surprisingly stable! (hopefully)
+
+So Finding the Sweet Spot!
+
+## The Best Practices: Optimizing Your Raster Workflow
+
+Now that we understand both the power and limitations of raster-based analysis, let's look at concrete strategies for getting the most out of spax while avoiding common pitfalls.
+
 
 ### See Also:
 
