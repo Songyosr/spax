@@ -164,7 +164,7 @@ Nm <- calc_normalize(W)
 
 # Consider chaining:
 Nm <- distance |>
-  calc_decay(method="gaussian", sigma=30)
+  calc_decay(method="gaussian", sigma=30) |>
   calc_normalize()
 ```
 
