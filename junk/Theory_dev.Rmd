@@ -1,15 +1,21 @@
 ---
-title: "An Iterative Spatial Accessibility Model with Parameter Estimation"
+title: "Draft: Iterative Floating Catchment Area"
 author: "Songyos Rajborirug"
-date: "2024-12-14"
+date: "2024-12-30"
 output: html_document
 editor_options: 
   markdown: 
     wrap: 72
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 4.5,
+  dpi = 150
+)
 ```
 
 ------------------------------------------------------------------------
@@ -56,11 +62,6 @@ of spatial accessibility but also provides practical tools for
 policymakers and researchers.
 
 # Model Framework
-
-# Model Framework
-
-may - be discuss abit on the E3SFCA and discuss how does it works before
-goin into our framework
 
 ## Notation and Definitions
 
