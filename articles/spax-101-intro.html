@@ -36,7 +36,7 @@
 <li><a class="dropdown-item" href="../articles/spax-101-intro.html">1. Getting Started with spax: A Healthcare Accessibility Case Study</a></li>
     <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-103-dissection.html">3. Under the Hood: Dissecting Spatial Accessibility Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Why Rasters? The Pros, Cons, and Best Practices</a></li>
   </ul>
 </li>
       </ul>
@@ -214,7 +214,8 @@ areas.</p>
 it takes to reach each facility:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load the travel time data</span></span>
-<span><span class="op">(</span><span class="va">distance_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">)</span> <span class="co"># Convert to terra::SpatRaster</span></span>
+<span><span class="va">distance_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span> <span class="co"># Convert to terra::SpatRaster</span></span>
+<span><span class="va">distance_raster</span></span>
 <span><span class="co">#&gt; class       : SpatRaster </span></span>
 <span><span class="co">#&gt; dimensions  : 509, 647, 77  (nrow, ncol, nlyr)</span></span>
 <span><span class="co">#&gt; resolution  : 520.4038, 520.4038  (x, y)</span></span>

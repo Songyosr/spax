@@ -36,7 +36,7 @@
 <li><a class="dropdown-item" href="../articles/spax-101-intro.html">1. Getting Started with spax: A Healthcare Accessibility Case Study</a></li>
     <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-103-dissection.html">3. Under the Hood: Dissecting Spatial Accessibility Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Why Rasters? The Pros, Cons, and Best Practices</a></li>
   </ul>
 </li>
       </ul>
@@ -556,21 +556,20 @@ projection:</p>
 <span></span>
 <span><span class="co"># Check a few travel time rasters</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> </span>
-<span><span class="co">#&gt; Warning in .local(object, ...): summary is an estimate based on a sample of 1e+05 cells (30.37% of all cells)</span></span>
-<span><span class="co">#&gt;             c172     c173     c174     c175     c176     c177     c178     c179</span></span>
-<span><span class="co">#&gt; Min.         6.0      3.0      3.5      4.0      8.5     11.0      5.0      7.5</span></span>
-<span><span class="co">#&gt; 1st Qu.     67.5     67.5     82.5     67.5     67.5     67.5     67.5     97.5</span></span>
-<span><span class="co">#&gt; Median      97.5    112.5    127.5    112.5    112.5    112.5    112.5    127.5</span></span>
-<span><span class="co">#&gt; 3rd Qu.    142.5    142.5    157.5    142.5    142.5    142.5    157.5    157.5</span></span>
+<span><span class="co">#&gt;             [,1]     [,2]     [,3]     [,4]     [,5]     [,6]     [,7]     [,8]</span></span>
+<span><span class="co">#&gt; Min.         6.0      3.0      3.5      4.0      4.0     11.0      5.0      7.5</span></span>
+<span><span class="co">#&gt; 1st Qu.     67.5     82.5     97.5     67.5     67.5     67.5     82.5     97.5</span></span>
+<span><span class="co">#&gt; Median     112.5    112.5    127.5    112.5    112.5    112.5    127.5    127.5</span></span>
+<span><span class="co">#&gt; 3rd Qu.    142.5    157.5    157.5    142.5    157.5    157.5    157.5    157.5</span></span>
 <span><span class="co">#&gt; Max.       172.5    172.5    172.5    172.5    172.5    172.5    172.5    172.5</span></span>
-<span><span class="co">#&gt; NA's    232772.0 232555.0 241578.0 226680.0 231076.0 235489.0 241789.0 246926.0</span></span>
-<span><span class="co">#&gt;             c180     c181</span></span>
-<span><span class="co">#&gt; Min.         5.0      8.5</span></span>
+<span><span class="co">#&gt; NA's    214422.0 215942.0 226281.0 208815.0 214457.0 219237.0 228511.0 228151.0</span></span>
+<span><span class="co">#&gt;             [,9]    [,10]</span></span>
+<span><span class="co">#&gt; Min.         5.0      4.0</span></span>
 <span><span class="co">#&gt; 1st Qu.     97.5     67.5</span></span>
-<span><span class="co">#&gt; Median     127.5     97.5</span></span>
-<span><span class="co">#&gt; 3rd Qu.    157.5    127.5</span></span>
+<span><span class="co">#&gt; Median     127.5    112.5</span></span>
+<span><span class="co">#&gt; 3rd Qu.    157.5    142.5</span></span>
 <span><span class="co">#&gt; Max.       172.5    172.5</span></span>
-<span><span class="co">#&gt; NA's    247713.0 236889.0</span></span></code></pre></div>
+<span><span class="co">#&gt; NA's    233929.0 215368.0</span></span></code></pre></div>
 </div>
 <div class="section level5">
 <h5 id="missing-value-analysis">3. Missing Value Analysis<a class="anchor" aria-label="anchor" href="#missing-value-analysis"></a>

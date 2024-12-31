@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis • spax</title>
+<title>4. Why Rasters? The Pros, Cons, and Best Practices • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="4. Why Rasters? The Pros, Cons, and Best Practices">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -36,7 +36,7 @@
 <li><a class="dropdown-item" href="../articles/spax-101-intro.html">1. Getting Started with spax: A Healthcare Accessibility Case Study</a></li>
     <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-103-dissection.html">3. Under the Hood: Dissecting Spatial Accessibility Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Why Rasters? The Pros, Cons, and Best Practices</a></li>
   </ul>
 </li>
       </ul>
@@ -58,7 +58,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>4. Tradeoffs: Understanding the Raster Approach in Spatial Accessibility Analysis</h1>
+      <h1>4. Why Rasters? The Pros, Cons, and Best Practices</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/spax-104-raster-tradeoff.Rmd" class="external-link"><code>vignettes/spax-104-raster-tradeoff.Rmd</code></a></small>
@@ -67,6 +67,16 @@
 
     
     
+<div class="section level2">
+<h2 id="why-rasters-the-pros-cons-and-best-practices">Why Rasters? The Pros, Cons, and Best Practices<a class="anchor" aria-label="anchor" href="#why-rasters-the-pros-cons-and-best-practices"></a>
+</h2>
+<p>If you’ve worked through the previous vignettes, you’ve seen how spax
+relies heavily on raster operations for spatial accessibility analysis.
+But why did we choose this approach? And more importantly, what does it
+mean for your analysis? In this vignette, we’ll explore the practical
+implications of using raster-based operations, looking at both the
+benefits and challenges, and providing concrete strategies for
+optimizing your workflows.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load required packages</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
@@ -75,321 +85,484 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
 <span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span></code></pre></div>
-<div class="section level2">
-<h2 id="why-a-raster-based-approach">Why a Raster-Based Approach?<a class="anchor" aria-label="anchor" href="#why-a-raster-based-approach"></a>
-</h2>
-<p>When working with spatial accessibility analysis, one of the first
-decisions is how to represent spatial data. The <code>spax</code>
-package takes a raster-based approach, representing space as a grid of
-regular cells rather than points and polygons. This fundamental choice
-shapes everything from memory usage to computational methods.</p>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bench.r-lib.org/" class="external-link">bench</a></span><span class="op">)</span> <span class="co"># fotr benchmarking</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="understanding-the-memory-performance-trade-off">Understanding the Memory-Performance Trade-off<a class="anchor" aria-label="anchor" href="#understanding-the-memory-performance-trade-off"></a>
+<h3 id="understanding-the-raster-approach">Understanding the Raster Approach<a class="anchor" aria-label="anchor" href="#understanding-the-raster-approach"></a>
 </h3>
-<p>Let’s be upfront about the costs and benefits. Raster representations
-typically require more memory than their vector counterparts:</p>
+<p>Think of a raster as a giant spreadsheet laid over your study area.
+Instead of tracking individual points or complex polygons, we store
+values in a regular grid of cells. This might seem simple, but it’s this
+very simplicity that makes raster operations so powerful for
+accessibility analysis. Let’s see this in action with our example
+data:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Compare memory usage between vector and raster isochrones</span></span>
-<span><span class="va">vec_size</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/pryr/man/object_size.html" class="external-link">object_size</a></span><span class="op">(</span><span class="va">hos_iscvec</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1024</span><span class="op">^</span><span class="fl">2</span></span>
-<span><span class="va">rast_size</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/pryr/man/object_size.html" class="external-link">object_size</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1024</span><span class="op">^</span><span class="fl">2</span></span>
+<code class="sourceCode R"><span><span class="co"># Load example population density</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Memory usage comparison:\n"</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Vector isochrones: %.1f MB\n"</span>, <span class="va">vec_size</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Raster isochrones: %.1f MB\n"</span>, <span class="va">rast_size</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Memory increase factor: %.1fx\n"</span>, <span class="va">rast_size</span> <span class="op">/</span> <span class="va">vec_size</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co">#&gt; Memory usage comparison:</span></span>
-<span><span class="co">#&gt;  Vector isochrones: 5.9 MB</span></span>
-<span><span class="co">#&gt;  Raster isochrones: 194.0 MB</span></span>
-<span><span class="co">#&gt;  Memory increase factor: 32.7x</span></span></code></pre></div>
-<blockquote>
-<p><strong>*Note:</strong> The actual memory increase factor may vary
-depending on the resolution and complexity of the raster data.</p>
-</blockquote>
-<p>So why accept this memory overhead? The benefits come in three key
-areas:</p>
+<span><span class="co"># Quick look at what we're working with</span></span>
+<span><span class="op">(</span><span class="va">pop</span><span class="op">)</span></span>
+<span><span class="co">#&gt; class       : SpatRaster </span></span>
+<span><span class="co">#&gt; dimensions  : 509, 647, 1  (nrow, ncol, nlyr)</span></span>
+<span><span class="co">#&gt; resolution  : 520.4038, 520.4038  (x, y)</span></span>
+<span><span class="co">#&gt; extent      : 505646.5, 842347.8, 620843.7, 885729.2  (xmin, xmax, ymin, ymax)</span></span>
+<span><span class="co">#&gt; coord. ref. : +proj=utm +zone=47 +datum=WGS84 +units=m +no_defs </span></span>
+<span><span class="co">#&gt; source(s)   : memory</span></span>
+<span><span class="co">#&gt; name        : tha_children_under_five_2020 </span></span>
+<span><span class="co">#&gt; min value   :                      0.00000 </span></span>
+<span><span class="co">#&gt; max value   :                     83.07421</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Total cells:"</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncell</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Total cells: 329323</span></span></code></pre></div>
+<p>When we calculate accessibility, nearly everything becomes a grid
+operation:</p>
+<ul>
+<li>Population? A grid of density values<br>
+</li>
+<li>Travel time? A grid for each facility<br>
+</li>
+<li>Distance decay? A transformation of those grids<br>
+</li>
+<li>Final accessibility? You guessed it - another grid</li>
+</ul>
+<p>Spatial accessibility often boils down to “map algebra”:</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">Some function of (Population density)</mtext><mo>×</mo><mtext mathvariant="normal">(Distance weights)</mtext><mi>.</mi></mrow><annotation encoding="application/x-tex">\text{Some function of (Population density)} \times \text{(Distance weights)}.</annotation></semantics></math></p>
+<p>Rasters make that algebra super direct: you take your population
+raster, multiply by a distance raster, and sum the result. Libraries
+like <a href="https://rspatial.github.io/terra/reference/terra-package.html" title="terra main page" class="external-link"><em><code>terra</code></em></a> are built for
+these cell-by-cell operations, and <code>spax</code> simply arrange them
+in a handy workflow.</p>
+</div>
+<div class="section level3">
+<h3 id="the-good-why-raster-operations-works">The Good: Why Raster Operations Works<a class="anchor" aria-label="anchor" href="#the-good-why-raster-operations-works"></a>
+</h3>
 <div class="section level5">
-<h5 id="computational-efficiency">1. Computational Efficiency<a class="anchor" aria-label="anchor" href="#computational-efficiency"></a>
+<h5 id="vectorized-operations-efficient-computation">1. Vectorized Operations = Efficient Computation<a class="anchor" aria-label="anchor" href="#vectorized-operations-efficient-computation"></a>
 </h5>
-<p>Raster operations translate directly into matrix operations, which
-modern computers are highly optimized to handle. Instead of complex
-geometric calculations, we’re essentially doing math on a grid:</p>
+<p>One of the biggest advantages of raster operations is that they’re
+naturally vectorized. Instead of looping through points or polygons, we
+can perform operations on entire surfaces at once. Let’s see this in
+practice:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Simple example:</span></span>
-<span><span class="co"># 1. Calculate areas within 30 minutes of a facility</span></span>
-<span><span class="co"># 2. Calculate Gaussian distance decay with an SD of 30 minutes</span></span>
-<span><span class="co"># 3. Calculate Exponential distance decay with a decay rate of 0.05</span></span>
+<code class="sourceCode R"><span><span class="co"># First, let's create test datasets of different sizes</span></span>
+<span><span class="va">create_test_distance</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n_facilities</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Take our original distance raster and replicate it</span></span>
+<span>  <span class="va">base_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>  <span class="co"># Use first facility as template</span></span>
+<span>  </span>
+<span>  <span class="co"># Create a stack with n copies</span></span>
+<span>  <span class="va">test_stack</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">base_distance</span>, <span class="va">n_facilities</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">test_stack</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"facility_"</span>, <span class="fl">1</span><span class="op">:</span><span class="va">n_facilities</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">test_stack</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">distance_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="co"># Travel time to first facility</span></span>
+<span><span class="co"># Test with different numbers of facilities</span></span>
+<span><span class="va">test_decay_scaling</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n_facilities</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Create test data</span></span>
+<span>  <span class="va">test_distances</span> <span class="op">&lt;-</span> <span class="fu">create_test_distance</span><span class="op">(</span><span class="va">n_facilities</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Time the decay calculation</span></span>
+<span>  <span class="va">start_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="va">decay_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span></span>
+<span>    <span class="va">test_distances</span>,</span>
+<span>    method <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
+<span>    sigma <span class="op">=</span> <span class="fl">30</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">end_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Return timing and data size</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    n_facilities <span class="op">=</span> <span class="va">n_facilities</span>,</span>
+<span>    n_cells <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncell</a></span><span class="op">(</span><span class="va">test_distances</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nlyr</a></span><span class="op">(</span><span class="va">test_distances</span><span class="op">)</span>,</span>
+<span>    runtime <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/difftime.html" class="external-link">difftime</a></span><span class="op">(</span><span class="va">end_time</span>, <span class="va">start_time</span>, units <span class="op">=</span> <span class="st">"secs"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Set grid</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Run tests with dramatically different sizes</span></span>
+<span><span class="va">facility_counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">100</span><span class="op">)</span></span>
+<span><span class="va">scaling_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">facility_counts</span>, <span class="va">test_decay_scaling</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Distance raster</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">distance_raster</span>, main <span class="op">=</span> <span class="st">"Travel Time to Hospital C1 (minutes)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">"red"</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span></span>
-<span><span class="co"># Area within 30 minutes</span></span>
-<span><span class="va">within_30min</span> <span class="op">&lt;-</span> <span class="va">distance_raster</span> <span class="op">&lt;=</span> <span class="fl">30</span> <span class="co"># Simple logical operation</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">within_30min</span>, main <span class="op">=</span> <span class="st">"Area within 30 minutes"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">"red"</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Gaussian decay</span></span>
-<span><span class="va">gaussian_decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.5</span> <span class="op">*</span> <span class="op">(</span><span class="va">distance_raster</span> <span class="op">/</span> <span class="fl">30</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="co">#</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">gaussian_decay</span>, main <span class="op">=</span> <span class="st">"Gaussian Distance Decay"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">"red"</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Exponential decay</span></span>
-<span><span class="va">exponential_decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.05</span> <span class="op">*</span> <span class="va">distance_raster</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exponential_decay</span>, main <span class="op">=</span> <span class="st">"Exponential Distance Decay"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">"red"</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-104-raster-tradeoff_files/figure-html/unnamed-chunk-3-1.png" width="1200"></p>
-<p>Each operation above is a simple cell-by-cell calculation, leveraging
-optimized matrix operations rather than complex geometric computations.
-Essentially, as long as you can represent your problem in a vectorized
-format, it can be applied to a raster.</p>
+<span><span class="co"># Create summary table</span></span>
+<span><span class="va">scaling_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  <span class="st">'Facilities'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="va">`[[`</span>, <span class="st">"n_facilities"</span><span class="op">)</span>,</span>
+<span>  <span class="st">'Total Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="va">`[[`</span>, <span class="st">"n_cells"</span><span class="op">)</span>,</span>
+<span>  <span class="st">'Runtime (s)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> </span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">runtime</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Time per Cell (ms)"</span> <span class="op">=</span> <span class="va">`Runtime (s)`</span> <span class="op">*</span> <span class="fl">1000</span> <span class="op">/</span> <span class="va">`Total Cells`</span>,</span>
+<span>  <span class="st">'Total Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">`Total Cells`</span>, big.mark<span class="op">=</span><span class="st">","</span><span class="op">)</span> <span class="co"># Format after calculations</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co"># "Computation Scaling with Facility Count:"</span></span>
+<span><span class="op">(</span><span class="va">scaling_summary</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 4</span></span></span>
+<span><span class="co">#&gt;   Facilities `Total Cells` `Runtime (s)` `Time per Cell (ms)`</span></span>
+<span><span class="co">#&gt;        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>          1 <span style="color: #949494;">"</span>   329,323<span style="color: #949494;">"</span>           0.02            0.000<span style="text-decoration: underline;">060</span>7</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>         10 <span style="color: #949494;">"</span> 3,293,230<span style="color: #949494;">"</span>           0.13            0.000<span style="text-decoration: underline;">039</span>5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>        100 <span style="color: #949494;">"</span>32,932,300<span style="color: #949494;">"</span>           0.98            0.000<span style="text-decoration: underline;">029</span>8</span></span></code></pre></div>
+<p>The results tell a compelling story about vectorized efficiency:</p>
+<ol style="list-style-type: decimal">
+<li>While we increased the number of facilities from 1 to 100 (100x more
+data):
+<ul>
+<li>The total runtime only increased from 0.18s to 0.96s (about 5x)</li>
+<li>The time per cell actually decreased from 5.47e-4 to 2.92e-5
+milliseconds</li>
+</ul>
+</li>
+<li>This super-efficient scaling happens because:
+<ul>
+<li><p>Operations are vectorized across all cells
+simultaneously</p></li>
+<li><p>Additional facilities leverage the same computational
+machinery</p></li>
+<li><p>Memory access patterns remain efficient even with more
+layers</p></li>
+</ul>
+</li>
+</ol>
 </div>
 <div class="section level5">
-<h5 id="data-structure-consistency">2. Data Structure Consistency<a class="anchor" aria-label="anchor" href="#data-structure-consistency"></a>
+<h5 id="consistent-data-structures">2. Consistent Data Structures<a class="anchor" aria-label="anchor" href="#consistent-data-structures"></a>
 </h5>
-<p>Almost everything in spatial accessibility analysis - population
-distribution, travel times, decayed weight, or accessibility scores -
-can be represented in the same format. This consistency eliminates the
-need for constant conversion between different spatial
-representations:</p>
+<p>Once you decide on a raster resolution (e.g., 500m cells),
+<em>everything</em>—population, distance, decayed weight, final
+accessibility—can be stored in the same grid. That means fewer
+mismatches, repeated coordinate transformations, or swapping between
+point sets and polygons. You’re just piling up new layers on the same
+“sheet.”</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Show how different components share the same structure</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Look at alignment of our key datasets</span></span>
+<span><span class="va">check_alignment</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">rast1</span>, <span class="va">rast2</span>, <span class="va">name1</span>, <span class="va">name2</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nComparing"</span>, <span class="va">name1</span>, <span class="st">"and"</span>, <span class="va">name2</span>, <span class="st">":\n"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Same resolution?"</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="va">rast1</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="va">rast2</span><span class="op">)</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Same extent?"</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/ext.html" class="external-link">ext</a></span><span class="op">(</span><span class="va">rast1</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/ext.html" class="external-link">ext</a></span><span class="op">(</span><span class="va">rast2</span><span class="op">)</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Same CRS?"</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/crs.html" class="external-link">crs</a></span><span class="op">(</span><span class="va">rast1</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crs.html" class="external-link">crs</a></span><span class="op">(</span><span class="va">rast2</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Population density</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, main <span class="op">=</span> <span class="st">"Population"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Travel time</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">distance_raster</span>, main <span class="op">=</span> <span class="st">"Travel Time"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Result will have same structure</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">within_30min</span>, main <span class="op">=</span> <span class="st">"Decay weight"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-104-raster-tradeoff_files/figure-html/unnamed-chunk-4-1.png" width="1200"></p>
-<p>Having consistent data structures means:</p>
-<ul>
-<li><p>Simpler code with fewer conversions</p></li>
-<li><p>More predictable memory usage</p></li>
-<li><p>Easier to chain operations together</p></li>
-</ul>
+<span><span class="co"># Check population and distance rasters</span></span>
+<span><span class="fu">check_alignment</span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, </span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, </span>
+<span>  <span class="st">"Population"</span>, </span>
+<span>  <span class="st">"Distance"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Comparing Population and Distance :</span></span>
+<span><span class="co">#&gt; Same resolution? TRUE </span></span>
+<span><span class="co">#&gt; Same extent? TRUE </span></span>
+<span><span class="co">#&gt; Same CRS? TRUE</span></span></code></pre></div>
 </div>
 <div class="section level5">
 <h5 id="built-in-spatial-relationships">3. Built-in Spatial Relationships<a class="anchor" aria-label="anchor" href="#built-in-spatial-relationships"></a>
 </h5>
-<p>The grid structure automatically encodes spatial relationships. We
-don’t need separate distance matrices or spatial indices - the cell
-positions themselves tell us what’s near what. This implicit spatial
-indexing:</p>
+<p>The grid structure of rasters automatically handles spatial
+interactions in an elegant way. For instance, when we calculate
+accessibility, the raster structure ensures that:</p>
 <ul>
-<li><p>Simplifies neighbor-based calculations</p></li>
-<li><p>Makes parallel processing more straightforward</p></li>
+<li>Only populated areas contribute to demand calculations<br>
+</li>
+<li>Distance decay is automatically limited to areas with
+population<br>
+</li>
+<li>NA values propagate naturally through calculations</li>
 </ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="when-to-consider-alternatives">When to Consider Alternatives<a class="anchor" aria-label="anchor" href="#when-to-consider-alternatives"></a>
-</h3>
-<p>The raster approach isn’t always optimal. Consider vector-based
-methods when:</p>
-<ul>
-<li>Your study area is very sparse with few service locations</li>
-<li>You need exact precision at specific points</li>
-<li>Memory is severely constrained and you’re working with a large
-area</li>
-<li>The granularity of your analysis doesn’t require a continuous
-surface</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="impact-on-package-design">Impact on Package Design<a class="anchor" aria-label="anchor" href="#impact-on-package-design"></a>
-</h3>
-<p>the raster-based approach influences how <code>spax</code> functions
-are designed:</p>
-<ol style="list-style-type: decimal">
-<li><p><strong>Modular Components</strong>: Each function performs a
-specific raster operation</p></li>
-<li><p><strong>Consistent Interfaces</strong>: Most functions expect and
-return raster objects</p></li>
-<li><p><strong>Performance Optimization</strong>: Special handling for
-large raster operations</p></li>
-</ol>
-</div>
-<div class="section level3">
-<h3 id="practical-memory-management">Practical Memory Management<a class="anchor" aria-label="anchor" href="#practical-memory-management"></a>
-</h3>
-<p>When working with raster-based analysis, memory management becomes
-crucial. Let’s explore some practical strategies:</p>
-<div class="section level4">
-<h4 id="understanding-memory-requirements">1. Understanding Memory Requirements<a class="anchor" aria-label="anchor" href="#understanding-memory-requirements"></a>
-</h4>
-<p>First, let’s see how memory usage scales with resolution:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Function to calculate memory requirements</span></span>
-<span><span class="va">calc_memory_req</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">res_factor</span>, <span class="va">template</span> <span class="op">=</span> <span class="va">u5pd</span>, <span class="va">n_facilities</span> <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">base_rast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">template</span><span class="op">)</span></span>
-<span>  <span class="va">test_rast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">base_rast</span>, fact <span class="op">=</span> <span class="va">res_factor</span><span class="op">)</span></span>
-<span>  <span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncell</a></span><span class="op">(</span><span class="va">test_rast</span><span class="op">)</span></span>
-<span>  <span class="va">bytes</span> <span class="op">&lt;-</span> <span class="fl">8</span> <span class="op">*</span> <span class="va">cells</span> <span class="op">*</span> <span class="va">n_facilities</span> <span class="co"># 8 bytes per value</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    resolution <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="va">test_rast</span><span class="op">)</span>,</span>
-<span>    cells <span class="op">=</span> <span class="va">cells</span>,</span>
-<span>    memory_mb <span class="op">=</span> <span class="va">bytes</span> <span class="op">/</span> <span class="fl">1024</span><span class="op">^</span><span class="fl">2</span></span>
-<span>  <span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="co"># Look at one facility's service area</span></span>
+<span><span class="va">facility_id</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>  <span class="co"># First facility</span></span>
+<span><span class="va">facility_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Compare different resolutions</span></span>
-<span><span class="va">resolutions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">8</span><span class="op">)</span></span>
-<span><span class="va">mem_reqs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">resolutions</span>, <span class="va">calc_memory_req</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: [aggregate] all values in argument 'fact' are 1, nothing to do</span></span>
-<span></span>
-<span><span class="co"># Create summary table</span></span>
-<span><span class="va">mem_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Resolution_m"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">mem_reqs</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="st">"GridCells"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">mem_reqs</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">cells</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="st">"MemoryInMB"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">mem_reqs</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">memory_mb</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Calculate decay weights</span></span>
+<span><span class="va">decay_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span></span>
+<span>  <span class="va">facility_distance</span>, </span>
+<span>  method <span class="op">=</span> <span class="st">"gaussian"</span>, </span>
+<span>  sigma <span class="op">=</span> <span class="fl">60</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mem_summary</span></span>
-<span><span class="co">#&gt;   Resolution_m GridCells MemoryInMB</span></span>
-<span><span class="co">#&gt; 1          520   329,323      193.5</span></span>
-<span><span class="co">#&gt; 2         1041    82,620       48.5</span></span>
-<span><span class="co">#&gt; 3         2082    20,736       12.2</span></span>
-<span><span class="co">#&gt; 4         4163     5,184        3.0</span></span></code></pre></div>
+<span><span class="co"># The population raster automatically masks unpopulated areas</span></span>
+<span><span class="va">weighted_pop</span> <span class="op">&lt;-</span> <span class="va">pop</span> <span class="op">*</span> <span class="va">decay_weights</span></span>
+<span></span>
+<span><span class="co"># Visualize how spatial relationships are preserved</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pop</span>, main <span class="op">=</span> <span class="st">"Population"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">decay_weights</span>, main <span class="op">=</span> <span class="st">"Distance Decay"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">weighted_pop</span>, main <span class="op">=</span> <span class="st">"Population-Weighted Decay"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax-104-raster-tradeoff_files/figure-html/unnamed-chunk-5-1.png" width="1200"></p>
 </div>
+</div>
+<div class="section level3">
+<h3 id="the-trade-offs-the-trade-offs-resolution-precision-and-computation">The Trade-Offs: The Trade-offs: Resolution, Precision, and
+Computation<a class="anchor" aria-label="anchor" href="#the-trade-offs-the-trade-offs-resolution-precision-and-computation"></a>
+</h3>
+<p>After exploring the benefits of raster operations, it’s time to
+confront their fundamental limitations. Every raster analysis starts
+with a critical choice: <em>what cell size should we use?</em> This
+seemingly simple decision affects both computational efficiency and
+spatial precision.</p>
 <div class="section level4">
-<h4 id="optimizing-resolution">2. Optimizing Resolution<a class="anchor" aria-label="anchor" href="#optimizing-resolution"></a>
+<h4 id="the-resolution-dilemma">The Resolution Dilemma<a class="anchor" aria-label="anchor" href="#the-resolution-dilemma"></a>
 </h4>
-<p>The key is finding the right balance between detail and
-performance:</p>
+<p>Let’s explore how resolution affects both computation time and
+analysis results:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Compare computation time at different resolutions</span></span>
-<span><span class="va">benchmark_res</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">res_factor</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># Aggregate test data</span></span>
-<span>  <span class="kw">if</span><span class="op">(</span><span class="va">res_factor</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">pop_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span>
-<span>    <span class="va">dist_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span></span>
-<span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>    <span class="va">pop_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="va">res_factor</span><span class="op">)</span></span>
-<span>    <span class="va">dist_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, fact <span class="op">=</span> <span class="va">res_factor</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="co"># Prepare test datasets at different resolutions first</span></span>
+<span><span class="va">prep_test_data</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">factor</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Aggregate both population and distance</span></span>
+<span>  <span class="va">pop_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="va">factor</span>, fun <span class="op">=</span> <span class="va">sum</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">dist_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, fact <span class="op">=</span> <span class="va">factor</span>, fun <span class="op">=</span> <span class="va">mean</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
-<span>  <span class="co"># Time the computation</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>pop <span class="op">=</span> <span class="va">pop_agg</span>, dist <span class="op">=</span> <span class="va">dist_agg</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Test computation time for actual analysis</span></span>
+<span><span class="va">test_computation</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">test_data</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">start_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">test_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>    demand <span class="op">=</span> <span class="va">pop_agg</span>,</span>
-<span>    supply <span class="op">=</span> <span class="va">hc12_hos</span><span class="op">$</span><span class="va">s_doc</span>,  <span class="co"># Use subset for example</span></span>
-<span>    distance <span class="op">=</span> <span class="va">dist_agg</span>,</span>
+<span>  </span>
+<span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<span>    demand <span class="op">=</span> <span class="va">test_data</span><span class="op">$</span><span class="va">pop</span>,</span>
+<span>    supply <span class="op">=</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    distance <span class="op">=</span> <span class="va">test_data</span><span class="op">$</span><span class="va">dist</span>,</span>
 <span>    decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
-<span>    snap <span class="op">=</span> <span class="cn">TRUE</span>  <span class="co"># Fast mode for benchmarking</span></span>
+<span>    demand_normalize <span class="op">=</span> <span class="st">"standard"</span>,</span>
+<span>    id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>    supply_cols <span class="op">=</span> <span class="st">"s_doc"</span>,</span>
+<span>    snap <span class="op">=</span> <span class="cn">TRUE</span>  <span class="co"># Fast mode for testing</span></span>
 <span>  <span class="op">)</span></span>
+<span>  </span>
 <span>  <span class="va">end_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  </span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/difftime.html" class="external-link">difftime</a></span><span class="op">(</span><span class="va">end_time</span>, <span class="va">start_time</span>, units <span class="op">=</span> <span class="st">"secs"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="co"># Return core metrics</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    resolution <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="va">test_data</span><span class="op">$</span><span class="va">pop</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>    ncells <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncell</a></span><span class="op">(</span><span class="va">test_data</span><span class="op">$</span><span class="va">pop</span><span class="op">)</span>,</span>
+<span>    runtime <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/difftime.html" class="external-link">difftime</a></span><span class="op">(</span><span class="va">end_time</span>, <span class="va">start_time</span>, units <span class="op">=</span> <span class="st">"secs"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    result <span class="op">=</span> <span class="va">result</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Test different resolutions</span></span>
-<span><span class="va">res_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">resolutions</span>, <span class="va">benchmark_res</span><span class="op">)</span></span>
-<span><span class="va">time_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Resolution Factor"</span> <span class="op">=</span> <span class="va">resolutions</span>,</span>
-<span>  <span class="st">"Runtime (seconds)"</span> <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">res_times</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="co"># Test a range of resolutions</span></span>
+<span><span class="va">factors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">8</span><span class="op">)</span>  <span class="co"># Each step doubles cell size</span></span>
+<span><span class="va">test_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">factors</span>, <span class="va">prep_test_data</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: [aggregate] all values in argument 'fact' are 1, nothing to do</span></span>
+<span><span class="co">#&gt; Warning: [aggregate] all values in argument 'fact' are 1, nothing to do</span></span>
+<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">test_data</span>, <span class="va">test_computation</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Create summary table</span></span>
+<span><span class="va">scaling_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  <span class="st">'Resolution (m)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="st">'Grid Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">$</span><span class="va">ncells</span><span class="op">)</span>,</span>
+<span>  <span class="st">'Runtime (s)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">runtime</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>  <span class="st">'Time per Cell (μs)'</span> <span class="op">=</span> <span class="va">`Runtime (s)`</span> <span class="op">*</span> <span class="fl">1e6</span> <span class="op">/</span> <span class="va">`Grid Cells`</span>,</span>
+<span>  <span class="st">'Grid Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">`Grid Cells`</span>, big.mark<span class="op">=</span><span class="st">","</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">time_summary</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   Resolution.Factor Runtime..seconds.</span></span>
-<span><span class="co">#&gt; 1                 1              1.87</span></span>
-<span><span class="co">#&gt; 2                 2              0.55</span></span>
-<span><span class="co">#&gt; 3                 4              0.11</span></span>
-<span><span class="co">#&gt; 4                 8              0.04</span></span></code></pre></div>
-</div>
-<div class="section level4">
-<h4 id="practical-strategies">3. Practical Strategies<a class="anchor" aria-label="anchor" href="#practical-strategies"></a>
-</h4>
+<span><span class="co"># "Performance Impact of Resolution:"</span></span>
+<span><span class="va">scaling_summary</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 4</span></span></span>
+<span><span class="co">#&gt;   `Resolution (m)` `Grid Cells` `Runtime (s)` `Time per Cell (μs)`</span></span>
+<span><span class="co">#&gt;              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              520 <span style="color: #949494;">"</span>329,323<span style="color: #949494;">"</span>             2.66                 8.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">1</span>041 <span style="color: #949494;">"</span> 82,620<span style="color: #949494;">"</span>             0.73                 8.84</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             <span style="text-decoration: underline;">2</span>082 <span style="color: #949494;">"</span> 20,736<span style="color: #949494;">"</span>             0.16                 7.72</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>             <span style="text-decoration: underline;">4</span>163 <span style="color: #949494;">"</span>  5,184<span style="color: #949494;">"</span>             0.07                13.5</span></span></code></pre></div>
+<p>But what about precision? Let’s look at how resolution affects our
+accessibility results for specific locations:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Select one province</span></span>
+<span><span class="va">prov_exam</span> <span class="op">&lt;-</span> <span class="va">bound1</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Compare mean accessibility values within a province</span></span>
+<span><span class="va">extract_province_access</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Extract mean accessibility for first province</span></span>
+<span>  <span class="co"># Extract zonal statistics</span></span>
+<span>  <span class="va">zonal_mean</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/extract.html" class="external-link">extract</a></span><span class="op">(</span></span>
+<span>    <span class="va">result</span>,</span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">prov_exam</span><span class="op">)</span>,</span>
+<span>    fun <span class="op">=</span> <span class="va">mean</span>,</span>
+<span>    na.rm <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span>  <span class="co"># The second column contains the mean value</span></span>
+<span>  </span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">zonal_mean</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Create provincial comparison across resolutions</span></span>
+<span><span class="va">access_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  <span class="st">'Resolution (m)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="st">'Mean Provincial Access'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> </span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">extract_province_access</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">result</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>  <span class="st">'Difference from Baseline (%)'</span> <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
+<span>    <span class="op">(</span><span class="va">`Mean Provincial Access`</span> <span class="op">-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nth.html" class="external-link">first</a></span><span class="op">(</span><span class="va">`Mean Provincial Access`</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> </span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nth.html" class="external-link">first</a></span><span class="op">(</span><span class="va">`Mean Provincial Access`</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span>, </span>
+<span>    <span class="fl">2</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Mean Accessibility in one province</span></span>
+<span><span class="va">prov_exam</span><span class="op">$</span><span class="va">ADM1_EN</span> <span class="co"># Name of the province</span></span>
+<span><span class="co">#&gt; [1] "Songkhla"</span></span>
+<span><span class="va">access_comparison</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 3</span></span></span>
+<span><span class="co">#&gt;   `Resolution (m)` `Mean Provincial Access` `Difference from Baseline (%)`</span></span>
+<span><span class="co">#&gt;              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              520                   0.081<span style="text-decoration: underline;">7</span>                           0   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">1</span>041                   0.081<span style="text-decoration: underline;">6</span>                          -<span style="color: #BB0000;">0.12</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             <span style="text-decoration: underline;">2</span>082                   0.081<span style="text-decoration: underline;">5</span>                          -<span style="color: #BB0000;">0.24</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>             <span style="text-decoration: underline;">4</span>163                   0.079<span style="text-decoration: underline;">8</span>                          -<span style="color: #BB0000;">2.33</span></span></span></code></pre></div>
+<p>Let’s visualize what’s happening to our spatial data:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Create a 2x2 plot showing accessibility at different resolutions with province highlight</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Plot base accessibility surface</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">result</span>, </span>
+<span>       main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%0.0fm Resolution\n%s cells"</span>, </span>
+<span>                     <span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">resolution</span>,</span>
+<span>                     <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">ncells</span>, big.mark<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="co"># Add full region boundary in thin black</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
+<span>  <span class="co"># Highlight our test province in thicker white</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, border <span class="op">=</span> <span class="st">"red"</span>, lwd <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><img src="spax-104-raster-tradeoff_files/figure-html/unnamed-chunk-8-1.png" width="1200"></p>
+<p>These results tell an interesting story about resolution
+trade-offs:</p>
 <ol style="list-style-type: decimal">
-<li>Progressive Refinement</li>
+<li>Computational costs vary dramatically:</li>
 </ol>
 <ul>
-<li>Start with coarse resolution for initial analysis</li>
-<li>Refine resolution only in areas of interest</li>
-<li>Validate results at different resolutions</li>
+<li>Going from 520m to 4163m cells reduces our grid from 329,323 to
+5,164 cells</li>
+<li>Processing time scales accordingly with cell count</li>
+<li>Each level of aggregation roughly quarters our computational
+load</li>
 </ul>
 <ol start="2" style="list-style-type: decimal">
-<li>Chunking Large Areas</li>
+<li>But accessibility patterns remain remarkably stable:</li>
 </ol>
 <ul>
-<li>
-<em>Depending on the type of analysis</em>, you may be able to split
-your study area into smaller chunks.</li>
+<li>Mean accessibility in our test province only varies by about 2%
+across resolutions</li>
+<li>Even at 4x coarser resolution (2082m), the difference is just
+0.12%</li>
+<li>Only at the coarsest resolution (4163m) do we see a more noticeable
+change of -2.20%</li>
 </ul>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Example of processing in chunks (pseudocode)</span></span>
-<span><span class="va">process_chunks</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">large_raster</span>, <span class="va">chunk_size</span> <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># Split into manageable chunks</span></span>
-<span>  <span class="va">chunks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/split.html" class="external-link">split</a></span><span class="op">(</span><span class="va">large_raster</span>, <span class="va">chunk_size</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># Process each chunk</span></span>
-<span>  <span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">chunks</span>, <span class="kw">function</span><span class="op">(</span><span class="va">chunk</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># Process chunk</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># Clean up after each chunk</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># Combine results</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">merge</span>, <span class="va">results</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
+<p>This stability suggests that while raster operations necessarily
+involve some loss of precision, the overall patterns of accessibility
+often remain robust across reasonable resolution choices. For regional
+planning purposes, this means we can often use coarser resolutions
+without significantly compromising our conclusions. The key is choosing
+<strong><em>a resolution that matches your analytical
+needs.</em></strong></p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="summary-of-trade-offs">Summary of Trade-offs<a class="anchor" aria-label="anchor" href="#summary-of-trade-offs"></a>
+<h3 id="the-best-practices-optimizing-your-raster-workflow">The Best Practices: Optimizing Your Raster Workflow<a class="anchor" aria-label="anchor" href="#the-best-practices-optimizing-your-raster-workflow"></a>
 </h3>
-<table class="table">
-<colgroup>
-<col width="30%">
-<col width="34%">
-<col width="34%">
-</colgroup>
-<thead><tr class="header">
-<th>Aspect</th>
-<th>Raster Approach</th>
-<th>Vector Approach</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Memory Usage</td>
-<td>Higher (-)</td>
-<td>Lower (+)</td>
-</tr>
-<tr class="even">
-<td>Spatial Precision</td>
-<td>Limited by resolution (-)</td>
-<td>Exact (+)</td>
-</tr>
-<tr class="odd">
-<td>Implementation Complexity</td>
-<td>Simpler (+)</td>
-<td>More complex (-)</td>
-</tr>
-<tr class="even">
-<td>Data Structure</td>
-<td>Consistent, grid-based (+)</td>
-<td>aries by geometry type (±)</td>
-</tr>
-<tr class="odd">
-<td>Scalability</td>
-<td>Good for parallel processing (+)</td>
-<td>Depends on implementation (±)</td>
-</tr>
-</tbody>
-</table>
+<p>Now that we understand both the power and limitations of raster-based
+analysis, let’s look at concrete strategies for getting the most out of
+spax while avoiding common pitfalls.</p>
+<div class="section level5">
+<h5 id="start-coarse-then-refine">1. Start Coarse, Then Refine<a class="anchor" aria-label="anchor" href="#start-coarse-then-refine"></a>
+</h5>
+<p>Always prototype your analysis at a coarser resolution first:</p>
+<ul>
+<li><p>Catch issues early when computations are fast</p></li>
+<li><p>Test different parameters efficiently</p></li>
+</ul>
+<p>A simple workflow might look like:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Quick prototype at coarse resolution</span></span>
+<span><span class="va">coarse_test</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<span>  demand <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,  <span class="co"># 4x coarser</span></span>
+<span>  supply <span class="op">=</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  distance <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, fact <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
+<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
+<span>  demand_normalize <span class="op">=</span> <span class="st">"standard"</span>,</span>
+<span>  id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  supply_cols <span class="op">=</span> <span class="st">"s_doc"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Once satisfied, run at final resolution</span></span>
+<span><span class="va">final_analysis</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<span>  demand <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>,</span>
+<span>  supply <span class="op">=</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  distance <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>,</span>
+<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
+<span>  demand_normalize <span class="op">=</span> <span class="st">"standard"</span>,</span>
+<span>  id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  supply_cols <span class="op">=</span> <span class="st">"s_doc"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level5">
+<h5 id="match-resolution-to-analysis-scale">2. Match Resolution to Analysis Scale<a class="anchor" aria-label="anchor" href="#match-resolution-to-analysis-scale"></a>
+</h5>
+<p>Choose your resolution based on your analytical needs &amp; never use
+a resolution finer than your coarsest input data</p>
+</div>
+<div class="section level5">
+<h5 id="validate-against-known-totals">3. Validate Against Known Totals<a class="anchor" aria-label="anchor" href="#validate-against-known-totals"></a>
+</h5>
+<p>Always check your aggregated results against known values:</p>
+<ul>
+<li><p>Population totals should remain stable across
+resolutions</p></li>
+<li><p>Compare accessibility metrics at key locations</p></li>
+<li><p>Verify that patterns match expected behavior</p></li>
+<li><p>Consider zonal statistics for administrative units</p></li>
+</ul>
+</div>
+<div class="section level5">
+<h5 id="consider-your-analysis-goals">4. Consider Your Analysis Goals<a class="anchor" aria-label="anchor" href="#consider-your-analysis-goals"></a>
+</h5>
+<p>Choose your approach based on what matters most:</p>
+<ul>
+<li><p>Need quick regional patterns? Use coarser resolutions</p></li>
+<li><p>Studying local variations? Invest in finer resolution</p></li>
+<li><p>Doing sensitivity analysis? Start coarse and progressively
+refine</p></li>
+<li><p><strong>Remember: finer resolution ≠ better
+analysis</strong></p></li>
+</ul>
+</div>
+<div class="section level5">
+<h5 id="document-your-choices">5. Document Your Choices<a class="anchor" aria-label="anchor" href="#document-your-choices"></a>
+</h5>
+<p>Always document your resolution and processing choices:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Example documentation structure</span></span>
+<span><span class="va">analysis_metadata</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  resolution <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  extent <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/ext.html" class="external-link">ext</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  cell_count <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncell</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  parameters <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    decay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
+<span>    normalization <span class="op">=</span> <span class="st">"standard"</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  rationale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>    <span class="st">"500m resolution chosen to balance"</span>,</span>
+<span>    <span class="st">"neighborhood-level detail with computational efficiency"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
+</h3>
+<p>Overall, raster operations are pretty handy for analyzing spatial
+accessibility. They provide quick computations and reliable data
+structures. However, it’s important to keep in mind the balance between
+resolution, precision, and computation time. I hope this vignette has
+helped you understand the trade-offs in raster-based analysis a bit
+better. Enjoy your spax!</p>
 <div class="section level4">
 <h4 id="see-also">See Also:<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h4>
@@ -398,9 +571,8 @@ your study area into smaller chunks.</li>
 Started with spax</a></li>
 <li><a href="https://songyosr.github.io/spax/articles/spax-102-data-prep.html">Data
 Preparation Guide</a></li>
-<li>Dissecting spax: Understanding the package’s inner workings
-<em>[under development]</em>
-</li>
+<li><a href="https://songyosr.github.io/spax/articles/spax-103-dissection.html">Dissecting
+spax: Understanding the package’s inner workings</a></li>
 </ul>
 </div>
 </div>
