@@ -66,20 +66,42 @@ One of the biggest advantages of raster operations is that they're naturally vec
 ```{r}
 # Example: Calculating Gaussian decay for travel times
 # This one line transforms EVERY cell in our raster
-system.time({
-  decay_weights <- calc_decay(
-    distance = rast(hos_iscr)[[1]], 
-    method = "gaussian",
-    sigma = 30
-  )
-})
+# Simple example:
+# 1. Calculate areas within 30 minutes of a facility
+# 2. Calculate Gaussian distance decay with an SD of 30 minutes
+# 3. Calculate Exponential distance decay with a decay rate of 0.05
 
-# Visualize the result
-plot(decay_weights, main="Distance Decay Weights")
-plot(vect(bound0), add=TRUE)
+distance_raster <- rast(hos_iscr)[[1]] # Travel time to first facility
+
+# Set grid
+par(mfrow = c(2, 2))
+
+# Distance raster
+plot(distance_raster, main = "Travel Time to Hospital C1 (minutes)")
+plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+
+
+# Area within 30 minutes
+within_30min <- distance_raster <= 30 # Simple logical operation
+plot(within_30min, main = "Area within 30 minutes")
+plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+
+# Gaussian decay
+gaussian_decay <- exp(-0.5 * (distance_raster / 30)^2) #
+plot(gaussian_decay, main = "Gaussian Distance Decay")
+plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
+
+# Exponential decay
+exponential_decay <- exp(-0.05 * distance_raster)
+plot(exponential_decay, main = "Exponential Distance Decay")
+plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
+plot(vect(bound0), add = TRUE)
 ```
 
-The operation above processes hundreds of thousands of cells in a single step, leveraging optimized matrix operations under the hood.
+The operation above processes hundreds of thousands of cells in a single step, leveraging optimized matrix operations under the hood. Essentially, as long as you can represent your problem in a vectorized format, it can be applied to a raster
 
 #### 2. Consistent Data Structures
 
@@ -236,23 +258,22 @@ What we're seeing here illustrates the fundamental trade-off in raster-based ana
 
 #### Computational Impact
 
-- Each doubling of resolution (halving cell size) quadruples the number of cells
-- Processing time generally scales with cell count
-- Memory and storage requirements grow quadratically with resolution
+-   Each doubling of resolution (halving cell size) quadruples the number of cells
+-   Processing time generally scales with cell count
+-   Memory and storage requirements grow quadratically with resolution
 
 #### Precision Impact
 
-- Coarser resolutions smooth out local population variations
-- Facility locations snap to grid cells, affecting exact distances
-- Catchment boundaries become more approximate
-- But total population estimates remain surprisingly stable! (hopefully)
+-   Coarser resolutions smooth out local population variations
+-   Facility locations snap to grid cells, affecting exact distances
+-   Catchment boundaries become more approximate
+-   But total population estimates remain surprisingly stable! (hopefully)
 
 So Finding the Sweet Spot!
 
 ## The Best Practices: Optimizing Your Raster Workflow
 
 Now that we understand both the power and limitations of raster-based analysis, let's look at concrete strategies for getting the most out of spax while avoiding common pitfalls.
-
 
 ### See Also:
 
