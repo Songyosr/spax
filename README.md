@@ -41,9 +41,7 @@ accessibility in Thailand’s Region 12:
 ``` r
 library(spax)
 library(terra)
-#> terra 1.8.5
 library(sf)
-#> Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 
 # Load example data (already included in package)
 pop <- rast(u5pd)  # Under-5 population density

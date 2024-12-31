@@ -44,7 +44,7 @@ pak::pak("Songyosr/spax")
 
 Here's how spax's modular design works in practice, analyzing healthcare accessibility in Thailand's Region 12:
 
-```{r example}
+```{r example, message=FALSE, warning=FALSE}
 library(spax)
 library(terra)
 library(sf)
