@@ -334,7 +334,6 @@ Always prototype your analysis at a coarser resolution first:
 
 -   Test different parameters efficiently
 
--   Verify your analytical approach before investing time in full-resolution runs
 
 A simple workflow might look like:
 
