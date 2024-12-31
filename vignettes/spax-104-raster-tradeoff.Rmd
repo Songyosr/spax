@@ -57,51 +57,76 @@ $\text{Some function of (Population density)} \times \text{(Distance weights)}.$
 
 Rasters make that algebra super direct: you take your population raster, multiply by a distance raster, and sum the result. Libraries like [*`terra`*](https://rspatial.github.io/terra/reference/terra-package.html "terra main page") are built for these cell-by-cell operations, and `spax` simply arrange them in a handy workflow.
 
-## The Good: Why Raster Operations Shine
+## The Good: Why Raster Operations Works
 
 #### 1. Vectorized Operations = Efficient Computation
 
 One of the biggest advantages of raster operations is that they're naturally vectorized. Instead of looping through points or polygons, we can perform operations on entire surfaces at once. Let's see this in practice:
 
 ```{r}
-# Example: Calculating Gaussian decay for travel times
-# This one line transforms EVERY cell in our raster
-# Simple example:
-# 1. Calculate areas within 30 minutes of a facility
-# 2. Calculate Gaussian distance decay with an SD of 30 minutes
-# 3. Calculate Exponential distance decay with a decay rate of 0.05
+# First, let's create test datasets of different sizes
+create_test_distance <- function(n_facilities) {
+  # Take our original distance raster and replicate it
+  base_distance <- rast(hos_iscr)[[1]]  # Use first facility as template
+  
+  # Create a stack with n copies
+  test_stack <- rep(base_distance, n_facilities)
+  names(test_stack) <- paste0("facility_", 1:n_facilities)
+  
+  return(test_stack)
+}
 
-distance_raster <- rast(hos_iscr)[[1]] # Travel time to first facility
+# Test with different numbers of facilities
+test_decay_scaling <- function(n_facilities) {
+  # Create test data
+  test_distances <- create_test_distance(n_facilities)
+  
+  # Time the decay calculation
+  start_time <- Sys.time()
+  decay_weights <- calc_decay(
+    test_distances,
+    method = "gaussian",
+    sigma = 30
+  )
+  end_time <- Sys.time()
+  
+  # Return timing and data size
+  return(list(
+    n_facilities = n_facilities,
+    n_cells = ncell(test_distances) * nlyr(test_distances),
+    runtime = as.numeric(difftime(end_time, start_time, units = "secs"))
+  ))
+}
 
-# Set grid
-par(mfrow = c(2, 2))
+# Run tests with dramatically different sizes
+facility_counts <- c(1, 10, 100)
+scaling_results <- lapply(facility_counts, test_decay_scaling)
 
-# Distance raster
-plot(distance_raster, main = "Travel Time to Hospital C1 (minutes)")
-plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
-plot(vect(bound0), add = TRUE)
-
-
-# Area within 30 minutes
-within_30min <- distance_raster <= 30 # Simple logical operation
-plot(within_30min, main = "Area within 30 minutes")
-plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
-plot(vect(bound0), add = TRUE)
-
-# Gaussian decay
-gaussian_decay <- exp(-0.5 * (distance_raster / 30)^2) #
-plot(gaussian_decay, main = "Gaussian Distance Decay")
-plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
-plot(vect(bound0), add = TRUE)
-
-# Exponential decay
-exponential_decay <- exp(-0.05 * distance_raster)
-plot(exponential_decay, main = "Exponential Distance Decay")
-plot(vect(hc12_hos[1, ]), add = TRUE, col = "red", pch = 16)
-plot(vect(bound0), add = TRUE)
+# Create summary table
+scaling_summary <- tibble(
+  'Facilities' = sapply(scaling_results, `[[`, "n_facilities"),
+  'Total Cells' = sapply(scaling_results, `[[`, "n_cells"),
+  'Runtime (s)' = sapply(scaling_results, function(x) 
+    round(x$runtime, 2))
+) |> mutate(
+  "Time per Cell (ms)" = `Runtime (s)` * 1000 / `Total Cells`,
+  'Total Cells' = format(`Total Cells`, big.mark=",") # Format after calculations
+)
+# "Computation Scaling with Facility Count:"
+(scaling_summary)
 ```
 
-The operation above processes hundreds of thousands of cells in a single step, leveraging optimized matrix operations under the hood. Essentially, as long as you can represent your problem in a vectorized format, it can be applied to a raster
+The results tell a compelling story about vectorized efficiency:
+
+1.  While we increased the number of facilities from 1 to 100 (100x more data):
+    -   The total runtime only increased from 0.18s to 0.96s (about 5x)
+    -   The time per cell actually decreased from 5.47e-4 to 2.92e-5 milliseconds
+2.  This super-efficient scaling happens because:
+    -   Operations are vectorized across all cells simultaneously
+
+    -   Additional facilities leverage the same computational machinery
+
+    -   Memory access patterns remain efficient even with more layers
 
 #### 2. Consistent Data Structures
 
@@ -127,156 +152,272 @@ check_alignment(
 
 #### 3. Built-in Spatial Relationships
 
-The grid structure automatically encodes spatial relationships - no need for complex spatial indices or distance matrices. Want to know what's nearby? Just look at neighboring cells:
+The grid structure of rasters automatically handles spatial interactions in an elegant way. For instance, when we calculate accessibility, the raster structure ensures that:
+
+-   Only populated areas contribute to demand calculations\
+-   Distance decay is automatically limited to areas with population\
+-   NA values propagate naturally through calculations
 
 ```{r}
 # Look at one facility's service area
 facility_id <- hc12_hos$id[1]  # First facility
 facility_distance <- rast(hos_iscr)[[1]]
-
-facility_distance <- terra::focal(
-  facility_distance, 
-  w = matrix(1, 21, 21), fun = mean, na.rm = T
-)
-
-# Bring back the custom decay
-custom_decay <- function(distance, sigma = 45, threshold = 120) {
-  gaussian <- exp(-distance^2 / (2 * sigma^2))
-  gaussian[distance > threshold] <- NA  # Hard cutoff at threshold
-  return(gaussian)
-}
+pop <- rast(u5pd)
 
 # Calculate decay weights
 decay_weights <- calc_decay(
   facility_distance, 
-  method = custom_decay
+  method = "gaussian", 
+  sigma = 60
 )
 
 # The population raster automatically masks unpopulated areas
-weighted_pop <- rast(u5pd) * decay_weights
+weighted_pop <- pop * decay_weights
 
 # Visualize how spatial relationships are preserved
-par(mfrow = c(2, 2))
+par(mfrow = c(1, 3))
 
-plot(rast(u5pd), main = "Population")
-plot(vect(bound0), add = TRUE)
+plot(pop, main = "Population")
+plot(vect(hc12_hos[1,]), add = TRUE, pch = 16)
 
 plot(decay_weights, main = "Distance Decay")
-plot(vect(bound0), add = TRUE)
+plot(vect(hc12_hos[1,]), add = TRUE, pch = 16)
 
 plot(weighted_pop, main = "Population-Weighted Decay")
-plot(vect(bound0), add = TRUE)
+plot(vect(hc12_hos[1,]), add = TRUE, pch = 16)
 ```
 
 ## The Trade-Offs: The Trade-offs: Resolution, Precision, and Computation
 
-After exploring the benefits of raster operations, it's time to confront their fundamental limitations. The key trade-off in raster-based analysis is between computational efficiency and spatial precision - and it affects everything from population distribution to final accessibility scores.
+After exploring the benefits of raster operations, it's time to confront their fundamental limitations. Every raster analysis starts with a critical choice: *what cell size should we use?* This seemingly simple decision affects both computational efficiency and spatial precision.
 
 ### The Resolution Dilemma
 
-Every raster analysis starts with a critical choice: what cell size should we use? This seemingly simple decision has cascading effects throughout our analysis. Let's explore this with a concrete example:
+Let's explore how resolution affects both computation time and analysis results:
 
 ```{r}
-# Test how resolution affects both precision and computation
-pop <- rast(u5pd)
-dist <- rast(hos_iscr)
+# Prepare test datasets at different resolutions first
+prep_test_data <- function(factor) {
+  # Aggregate both population and distance
+  pop_agg <- aggregate(rast(u5pd), fact = factor, fun = sum, na.rm = TRUE)
+  dist_agg <- aggregate(rast(hos_iscr), fact = factor, fun = mean, na.rm = TRUE)
+  
+  return(list(pop = pop_agg, dist = dist_agg))
+}
 
-test_facility_catchment <- function(factor) {
-  # Time the entire operation
+# Test computation time for actual analysis
+test_computation <- function(test_data) {
   start_time <- Sys.time()
   
-  # Aggregate both population and distance
-  pop_agg <- aggregate(pop, fact = factor, fun = sum, na.rm = TRUE)
-  dist_agg <- aggregate(dist, fact = factor, fun = mean, na.rm = TRUE)
-  
-  # Calculate catchment areas
-  weights <- calc_decay(dist_agg, method = "gaussian", sigma = 30)
-  facility_demand <- gather_demand(pop_agg, weights)
+  result <- spax_e2sfca(
+    demand = test_data$pop,
+    supply = hc12_hos |> st_drop_geometry(),
+    distance = test_data$dist,
+    decay_params = list(method = "gaussian", sigma = 30),
+    demand_normalize = "standard",
+    id_col = "id",
+    supply_cols = "s_doc",
+    snap = TRUE  # Fast mode for testing
+  )
   
   end_time <- Sys.time()
   
-  # Return comprehensive results
+  # Return core metrics
   list(
-    resolution = res(pop_agg)[1],
-    ncells = ncell(pop_agg),
+    resolution = res(test_data$pop)[1],
+    ncells = ncell(test_data$pop),
     runtime = as.numeric(difftime(end_time, start_time, units = "secs")),
-    demands = facility_demand$potential_demand,
-    pop = pop_agg,
-    weights = weights
+    result = result
   )
 }
 
 # Test a range of resolutions
 factors <- c(1, 2, 4, 8)  # Each step doubles cell size
-results <- lapply(factors, test_facility_catchment)
+test_data <- lapply(factors, prep_test_data)
+results <- lapply(test_data, test_computation)
 
 # Create summary table
-summary_table <- tibble(
+scaling_summary <- tibble(
   'Resolution (m)' = sapply(results, function(x) round(x$resolution)),
-  'Grid Cells' = sapply(results, function(x) format(x$ncells, big.mark=",")),
+  'Grid Cells' = sapply(results, function(x) x$ncells),
   'Runtime (s)' = sapply(results, function(x) round(x$runtime, 2))
+) |> mutate(
+  'Time per Cell (μs)' = `Runtime (s)` * 1e6 / `Grid Cells`,
+  'Grid Cells' = format(`Grid Cells`, big.mark=",")
 )
 
-# Performance Impact of Resolution:
-(summary_table)
+# "Performance Impact of Resolution:"
+scaling_summary
 ```
 
-But what does this resolution change actually mean for our analysis? Let's look at how it affects our catchment calculations:
+But what about precision? Let's look at how resolution affects our accessibility results for specific locations:
 
 ```{r}
-# Compare catchment populations for first few facilities
-catchment_table <- data.frame(
-  Resolution = paste0(round(sapply(results, `[[`, "resolution")), "m")
-)
+# Select one province
+prov_exam <- bound1[1,]
 
-# Add results for first three facilities
-for(i in 1:3) {
-  catchment_table[paste("Facility", i, "Catchment")] <- sapply(results, 
-    function(x) round(x$demands[i]))
+# Compare mean accessibility values within a province
+extract_province_access <- function(result) {
+  # Extract mean accessibility for first province
+  # Extract zonal statistics
+  zonal_mean <- terra::extract(
+    result,
+    vect(prov_exam),
+    fun = mean,
+    na.rm = TRUE
+  )[,2]  # The second column contains the mean value
+  
+  return(zonal_mean)
 }
 
-print("\nCatchment Population Estimates:")
-print(catchment_table)
+# Create provincial comparison across resolutions
+access_comparison <- tibble(
+  'Resolution (m)' = sapply(results, function(x) round(x$resolution)),
+  'Mean Provincial Access' = sapply(results, function(x) 
+    round(extract_province_access(x$result), 4))
+) |> mutate(
+  'Difference from Baseline (%)' = round(
+    (`Mean Provincial Access` - first(`Mean Provincial Access`)) / 
+    first(`Mean Provincial Access`) * 100, 
+    2
+  )
+)
+
+# Mean Accessibility in one province
+prov_exam$ADM1_EN # Name of the province
+access_comparison
 ```
 
 Let's visualize what's happening to our spatial data:
 
 ```{r}
-# Create a 2x2 plot showing population at different resolutions
+# Create a 2x2 plot showing accessibility at different resolutions with province highlight
 par(mfrow = c(2, 2))
 for(i in seq_along(results)) {
-  plot(results[[i]]$pop, 
+  # Plot base accessibility surface
+  plot(results[[i]]$result, 
        main = sprintf("%0.0fm Resolution\n%s cells", 
                      results[[i]]$resolution,
                      format(results[[i]]$ncells, big.mark=",")))
-  plot(vect(bound0), add = TRUE)
-  plot(vect(hc12_hos[1:3,]), add = TRUE, pch = 16, col = "red")
+  # Add full region boundary in thin black
+  plot(vect(bound0), add = TRUE, lwd = 0.5)
+  # Highlight our test province in thicker white
+  plot(vect(bound1[1,]), add = TRUE, border = "red", lwd = 3)
 }
 ```
 
-What we're seeing here illustrates the fundamental trade-off in raster-based analysis:
+These results tell an interesting story about resolution trade-offs:
 
-#### Computational Impact
+1.  Computational costs vary dramatically:
 
--   Each doubling of resolution (halving cell size) quadruples the number of cells
--   Processing time generally scales with cell count
--   Memory and storage requirements grow quadratically with resolution
+-   Going from 520m to 4163m cells reduces our grid from 329,323 to 5,164 cells
+-   Processing time scales accordingly with cell count
+-   Each level of aggregation roughly quarters our computational load
 
-#### Precision Impact
+2.  But accessibility patterns remain remarkably stable:
 
--   Coarser resolutions smooth out local population variations
--   Facility locations snap to grid cells, affecting exact distances
--   Catchment boundaries become more approximate
--   But total population estimates remain surprisingly stable! (hopefully)
+-   Mean accessibility in our test province only varies by about 2% across resolutions
+-   Even at 4x coarser resolution (2082m), the difference is just 0.12%
+-   Only at the coarsest resolution (4163m) do we see a more noticeable change of -2.20%
 
-So Finding the Sweet Spot!
+This stability suggests that while raster operations necessarily involve some loss of precision, the overall patterns of accessibility often remain robust across reasonable resolution choices. For regional planning purposes, this means we can often use coarser resolutions without significantly compromising our conclusions. The key is choosing ***a resolution that matches your analytical needs.***
 
 ## The Best Practices: Optimizing Your Raster Workflow
 
 Now that we understand both the power and limitations of raster-based analysis, let's look at concrete strategies for getting the most out of spax while avoiding common pitfalls.
 
+#### 1. Start Coarse, Then Refine
+
+Always prototype your analysis at a coarser resolution first:
+
+-   Catch issues early when computations are fast
+
+-   Test different parameters efficiently
+
+-   Verify your analytical approach before investing time in full-resolution runs
+
+A simple workflow might look like:
+
+```{r eval =FALSE}
+# Quick prototype at coarse resolution
+coarse_test <- spax_e2sfca(
+  demand = aggregate(rast(u5pd), fact = 4),  # 4x coarser
+  supply = hc12_hos |> st_drop_geometry(),
+  distance = aggregate(rast(hos_iscr), fact = 4),
+  decay_params = list(method = "gaussian", sigma = 30),
+  demand_normalize = "standard",
+  id_col = "id",
+  supply_cols = "s_doc"
+)
+
+# Once satisfied, run at final resolution
+final_analysis <- spax_e2sfca(
+  demand = rast(u5pd),
+  supply = hc12_hos |> st_drop_geometry(),
+  distance = rast(hos_iscr),
+  decay_params = list(method = "gaussian", sigma = 30),
+  demand_normalize = "standard",
+  id_col = "id",
+  supply_cols = "s_doc"
+)
+```
+
+#### 2. Match Resolution to Analysis Scale
+
+Choose your resolution based on your analytical needs & never use a resolution finer than your coarsest input data
+
+#### 3. Validate Against Known Totals
+
+Always check your aggregated results against known values:
+
+-   Population totals should remain stable across resolutions
+
+-   Compare accessibility metrics at key locations
+
+-   Verify that patterns match expected behavior
+
+-   Consider zonal statistics for administrative units
+
+#### 4. Consider Your Analysis Goals
+
+Choose your approach based on what matters most:
+
+-   Need quick regional patterns? Use coarser resolutions
+
+-   Studying local variations? Invest in finer resolution
+
+-   Doing sensitivity analysis? Start coarse and progressively refine
+
+-   **Remember: finer resolution ≠ better analysis**
+
+#### 5. Document Your Choices
+
+Always document your resolution and processing choices:
+
+```{r}
+# Example documentation structure
+analysis_metadata <- list(
+  resolution = res(rast(u5pd)),
+  extent = ext(rast(u5pd)),
+  cell_count = ncell(rast(u5pd)),
+  parameters = list(
+    decay = list(method = "gaussian", sigma = 30),
+    normalization = "standard"
+  ),
+  rationale = paste(
+    "500m resolution chosen to balance",
+    "neighborhood-level detail with computational efficiency"
+  )
+)
+```
+
+## Conclusion
+
+Overall, raster operations are pretty handy for analyzing spatial accessibility. They provide quick computations and reliable data structures. However, it’s important to keep in mind the balance between resolution, precision, and computation time. I hope this vignette has helped you understand the trade-offs in raster-based analysis a bit better. Enjoy your spax!
+
+
 ### See Also:
 
 -   [Getting Started with spax](https://songyosr.github.io/spax/articles/spax-101-intro.html)
 -   [Data Preparation Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
--   Dissecting spax: Understanding the package's inner workings *[under development]*
+-   [Dissecting spax: Understanding the package's inner workings](https://songyosr.github.io/spax/articles/spax-103-dissection.html)

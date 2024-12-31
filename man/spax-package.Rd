@@ -11,9 +11,9 @@ A comprehensive toolkit for analyzing spatial accessibility to healthcare facili
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/songyos/spax}
+  \item \url{https://github.com/songyosr/spax}
   \item \url{https://songyosr.github.io/spax/}
-  \item Report bugs at \url{https://github.com/songyos/spax/issues}
+  \item Report bugs at \url{https://github.com/Songyosr/spax/issues}
 }
 
 }
