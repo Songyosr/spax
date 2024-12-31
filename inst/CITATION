@@ -1,0 +1,8 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "{spax}: Modular Raster-Based Spatial Accessibility Analysis",
+  author   = "Songyos Rajborirug",
+  year     = {2024},
+  url = {https://github.com/songyosr/spax}
+
+)
