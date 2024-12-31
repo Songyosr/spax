@@ -109,7 +109,8 @@ The package includes pre-computed travel time data showing how long it takes to 
 
 ```{r}
 # Load the travel time data
-(distance_raster <- rast(hos_iscr)) # Convert to terra::SpatRaster
+distance_raster <- rast(spax::hos_iscr) # Convert to terra::SpatRaster
+distance_raster
 # Each layer represents travel time to a different facility
 
 
