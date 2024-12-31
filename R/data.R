@@ -292,17 +292,19 @@ NULL
 
 #' Primary Health Center Travel Time Isochrones
 #'
-#' A RasterStack containing travel time isochrones for 819 Primary Health Centers (PHCs)
-#' in Thailand's Region 12, limited to 60-minute travel time to reflect local service areas.
+#' @description
+#' Load Primary Health Center (PHC) isochrone data stored as external data.
+#' The data represents travel time isochrones for 819 PHCs in Thailand's Region 12,
+#' limited to 60-minute travel time to reflect local service areas.
 #'
-#' @format A RasterStack with 819 layers and the following specifications:
+#' @format The returned SpatRaster has the following specifications:
 #' \describe{
 #'   \item{Dimensions}{509 rows × 647 columns × 819 layers}
 #'   \item{Resolution}{520.4038 × 520.4038 meters}
 #'   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
 #'   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
 #'   \item{Values}{Travel time in minutes (limited to 60 minutes)}
-#'   \item{Layer Names}{Match facility IDs in hc12_phc (e.g., "c001", "c002")}
+#'   \item{Layer Names}{Match facility IDs in \code{\link{hc12_phc}} (e.g., "c001", "c002")}
 #' }
 #'
 #' @details
@@ -315,16 +317,51 @@ NULL
 #' }
 #'
 #' The 60-minute limit reflects the local service nature of PHCs and optimizes
-#' computational efficiency. Isochrones were generated using PHC locations from
-#' \code{\link{hc12_phc}}.
+#' computational efficiency.
+#'
+#' @return A SpatRaster object containing PHC isochrones
 #'
 #' @source
-#' Computed using OSRM with OpenStreetMap data.
-#' PHC locations from \code{\link{hc12_phc}}.
+#' Travel times computed using OSRM with OpenStreetMap data (2024).
+#' PHC locations from Thailand's Ministry of Public Health (2020).
 #'
 #' @references
-#' Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data.
-#' In Proceedings of the 19th ACM SIGSPATIAL International Conference on
-#' Advances in Geographic Information Systems (pp. 513-516).
+#' \itemize{
+#'   \item Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data.
+#'     In Proceedings of the 19th ACM SIGSPATIAL International Conference on
+#'     Advances in Geographic Information Systems (pp. 513-516).
+#'   \item Office of the Permanent Secretary, Ministry of Public Health. (2020).
+#'     Government Open Data Services.
+#' }
 #'
-"phc_iscr"
+#' @examples
+#' \dontrun{
+#' # Load PHC isochrones
+#' phc_isochrones <- load_phc_iscr()
+#'
+#' # Plot first layer
+#' plot(phc_isochrones[[1]],
+#'      main = "Travel Time to First PHC")
+#' }
+#'
+#' @seealso
+#' \code{\link{hc12_phc}} for PHC attributes
+#'
+#' @export
+load_phc_iscr <- function() {
+  # Get file path using system.file
+  file_path <- system.file("extdata", "phc_iscr.tif", package = "spax")
+
+  if (file_path == "") {
+    stop("PHC isochrone data not found. Please check package installation.")
+  }
+
+  # Load the raster
+  r <- terra::rast(file_path)
+
+  # Apply original names
+  names(r) <- phc_iscr_names
+
+  return(r)
+}
+
