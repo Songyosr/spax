@@ -4,7 +4,7 @@
 \alias{mean.numplus}
 \title{Calculate mean for numplus objects}
 \usage{
-\method{mean}{numplus}(x, ...)
+mean.numplus(x, ...)
 }
 \description{
 Calculate mean for numplus objects
