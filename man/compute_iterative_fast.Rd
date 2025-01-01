@@ -2,7 +2,7 @@
 % Please edit documentation in R/03-iterative_chain.R
 \name{compute_iterative_fast}
 \alias{compute_iterative_fast}
-\title{Fast version for snap mode - returns only utilization vector}
+\title{Fast version of iterative computation for parameter tuning}
 \usage{
 compute_iterative_fast(
   supply,
@@ -17,18 +17,23 @@ compute_iterative_fast(
 \arguments{
 \item{supply}{Numeric vector of facility capacities}
 
-\item{weights}{Multi-layer SpatRaster of spatial weights}
+\item{weights}{Multi-layer SpatRaster of spatial weights from distance decay}
 
-\item{demand}{SpatRaster of demand distribution}
+\item{demand}{SpatRaster of demand (single layer or matching max_iter)}
 
-\item{lambda}{Learning rate for iterative adjustment}
+\item{lambda}{Learning rate between 0 and 1}
 
-\item{max_iter}{Maximum number of iterations}
+\item{max_iter}{Maximum iterations to attempt}
 
-\item{tolerance}{Convergence tolerance threshold}
+\item{tolerance}{Convergence threshold}
 
-\item{window_size}{Size of rolling window for convergence check}
+\item{window_size}{Size of rolling window for convergence checking}
+}
+\value{
+Numeric vector of predicted utilization for all facilities
 }
 \description{
-Fast version for snap mode - returns only utilization vector
+Optimized version that returns only utilization vector, designed for parameter
+tuning scenarios where intermediate results and history aren't needed.
 }
+\keyword{internal}

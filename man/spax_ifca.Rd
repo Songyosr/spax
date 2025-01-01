@@ -8,7 +8,7 @@ spax_ifca(
   distance_raster,
   demand,
   supply,
-  sigma,
+  decay_params = list(method = "gaussian", sigma = 30),
   lambda = 0.5,
   max_iter = 100,
   tolerance = 1e-06,
@@ -22,27 +22,33 @@ spax_ifca(
 \item{distance_raster}{A multi-layer SpatRaster where each layer represents distances
 to one facility. All layers must share the same extent and resolution.}
 
-\item{demand}{SpatRaster of demand distribution (e.g., population density).
-Must have same extent and resolution as distance_raster.}
+\item{demand}{SpatRaster of demand distribution. Can be either:
+- Single layer for static demand
+- Multiple layers (matching max_iter) for dynamic demand}
 
 \item{supply}{Numeric vector of facility capacities. Length must match number
-of layers in distance_raster. Zero values are allowed.}
+of layers in distance_raster.}
 
-\item{sigma}{Distance decay parameter controlling spatial interaction strength.
-Larger values indicate weaker distance decay effect.}
+\item{decay_params}{List of parameters for decay function:
+\itemize{
+  \item method: "gaussian", "exponential", "power", or custom function
+  \item sigma: decay parameter controlling spatial interaction strength
+  \item Additional parameters passed to custom decay functions
+}}
 
 \item{lambda}{Learning rate between 0 and 1 controlling convergence speed.
 Lower values provide more stability but slower convergence.
 Default: 0.5}
 
-\item{max_iter}{Maximum number of iterations to attempt. Default: 100}
+\item{max_iter}{Maximum number of iterations to attempt. For multi-layer demand,
+this must match the number of demand layers. Default: 100}
 
 \item{tolerance}{Convergence tolerance threshold. Iteration stops when the rolling
 average of differences falls below this value. Default: 1e-6}
 
 \item{window_size}{Size of rolling window for convergence checking. Default: 5}
 
-\item{convergence_type}{Character string specifying convergence metric:
+\item{convergence_type}{Character string specifying convergence metric, one of:
 "utilization" (default) or "ratio"}
 
 \item{snap}{Logical; if TRUE enables fast computation mode returning only
@@ -56,7 +62,7 @@ If snap = TRUE:
   Numeric vector of predicted utilization for all facilities
 
 If snap = FALSE:
-  List containing:
+  A list containing:
   \describe{
     \item{utilization}{Numeric vector of predicted facility utilization}
     \item{ratios}{Numeric vector of final supply-demand ratios}
@@ -77,73 +83,59 @@ If snap = FALSE:
 }
 \description{
 Computes spatial accessibility scores using an iterative floating catchment area method
-that combines Huff-model based choice probabilities with distance decay effects. The method
-iteratively adjusts facility attractiveness based on supply-demand ratios until convergence.
+that combines Huff-model based choice probabilities with distance decay effects. This
+enhanced version supports time-series demand patterns and customizable decay functions.
 
 The iFCA method extends traditional FCA approaches by:
 \itemize{
-  \item Incorporating choice behavior through a Huff-model framework
+  \item Supporting dynamic demand patterns through multi-layer inputs
+  \item Incorporating flexible distance decay specifications
   \item Iteratively balancing supply and demand
   \item Using a learning rate to control convergence
-  \item Supporting both utilization and ratio-based convergence checks
 }
 }
 \examples{
 \dontrun{
-# Basic usage
+# Basic usage with static demand
 result <- spax_ifca(
   distance_raster = dist_rast,
   demand = pop_rast,
   supply = facility_capacity,
-  sigma = 30
-)
-
-# Fast computation mode
-util <- spax_ifca(
-  distance_raster = dist_rast,
-  demand = pop_rast,
-  supply = facility_capacity,
-  sigma = 30,
-  snap = TRUE
-)
-
-# With modified convergence settings
-result <- spax_ifca(
-  distance_raster = dist_rast,
-  demand = pop_rast,
-  supply = facility_capacity,
-  sigma = 30,
-  lambda = 0.3, # Slower but more stable convergence
-  convergence_type = "ratio",
-  tolerance = 1e-8, # Stricter convergence
-  window_size = 10 # Longer rolling window
-)
-
-# Plot accessibility surface
-if (!is.null(result$accessibility)) {
-  plot(result$accessibility)
-}
-
-# Check convergence history
-if (!is.null(result$history)) {
-  plot(1:result$convergence$iterations,
-    result$history[, , 1], # Plot utilization history
-    type = "l",
-    xlab = "Iteration",
-    ylab = "Utilization"
+  decay_params = list(
+    method = "gaussian",
+    sigma = 30
   )
-}
+)
+
+# Using custom decay function
+custom_decay <- function(distance, sigma = 30, threshold = 60) {
+  weights <- exp(-distance^2 / (2 * sigma^2))
+  weights[distance > threshold] <- 0
+  return(weights)
 }
 
+result <- spax_ifca(
+  distance_raster = dist_rast,
+  demand = pop_rast,
+  supply = facility_capacity,
+  decay_params = list(
+    method = custom_decay,
+    sigma = 30,
+    threshold = 60
+  )
+)
+
+# With time-series demand (must match max_iter)
+result <- spax_ifca(
+  distance_raster = dist_rast,
+  demand = demand_series,  # Multi-layer demand
+  supply = facility_capacity,
+  max_iter = nlyr(demand_series),
+  decay_params = list(method = "gaussian", sigma = 30)
+)
 }
-\references{
-The iFCA method builds on:
-\itemize{
-  \item Huff's model of retail gravitation
-  \item Two-Step Floating Catchment Area (2SFCA) method
-  \item Enhanced 2SFCA (E2SFCA) with variable catchment sizes
-}
+
 }
 \seealso{
-\code{\link{calc_decay}} for decay function options
+\code{\link{calc_decay}} for available decay functions
 }
