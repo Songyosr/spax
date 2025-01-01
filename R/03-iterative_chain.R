@@ -50,7 +50,7 @@
     stop("tolerance must be positive")
   }
   if (!is.numeric(window_size) || window_size < 1 ||
-      window_size != as.integer(window_size)) {
+    window_size != as.integer(window_size)) {
     stop("window_size must be a positive integer")
   }
   if (window_size > max_iter) {
@@ -156,11 +156,10 @@ compute_iterative_fast <- function(supply, weights, demand,
                                    max_iter = 100,
                                    tolerance = 1e-6,
                                    window_size = 5) {
-
   # Initialize state vectors for current iteration
   n_facilities <- length(supply)
-  current_attractiveness <- supply  # Initial attractiveness = supply
-  current_util <- numeric(n_facilities)  # Initialize utilization vector
+  current_attractiveness <- supply # Initial attractiveness = supply
+  current_util <- numeric(n_facilities) # Initialize utilization vector
 
   # Initialize rolling window for convergence checking
   diff_window <- numeric(window_size)
@@ -178,8 +177,9 @@ compute_iterative_fast <- function(supply, weights, demand,
     # Fast computation path:
     # 1. Convert attractiveness to probabilities
     huff_probs <- calc_choice(weights,
-                              attractiveness = current_attractiveness,
-                              snap = TRUE)
+      attractiveness = current_attractiveness,
+      snap = TRUE
+    )
 
     # 2. Calculate utilization probabilities
     util_probs <- huff_probs * weights
@@ -250,7 +250,7 @@ compute_iterative <- function(supply, weights, demand,
   # State array: [iterations, facilities, metrics]
   # metrics: [1]=utilization, [2]=ratio, [3]=attractiveness
   state <- array(0, dim = c(max_iter, n_facilities, 3))
-  state[1, , 3] <- supply  # Initial attractiveness
+  state[1, , 3] <- supply # Initial attractiveness
 
   # Initialize rolling window for convergence
   diff_window <- numeric(window_size)
@@ -268,18 +268,20 @@ compute_iterative <- function(supply, weights, demand,
 
     # Regular computation path with full tracking
     huff_probs <- calc_choice(weights,
-                              attractiveness = current[, 3],
-                              snap = TRUE)
+      attractiveness = current[, 3],
+      snap = TRUE
+    )
     util_probs <- huff_probs * weights
     new_util <- gather_weighted(current_demand, util_probs,
-                                snap = TRUE, simplify = TRUE)
+      snap = TRUE, simplify = TRUE
+    )
 
     # Update state array
     iter <- iter + 1
-    state[iter, , 1] <- new_util  # utilization
-    state[iter, , 2] <- ifelse(new_util > 0, supply / new_util, 0)  # ratio
+    state[iter, , 1] <- new_util # utilization
+    state[iter, , 2] <- ifelse(new_util > 0, supply / new_util, 0) # ratio
     state[iter, , 3] <- (1 - lambda) * current[, 3] +
-      lambda * state[iter, , 2]  # attractiveness
+      lambda * state[iter, , 2] # attractiveness
 
     # Convergence check with type support
     if (iter > 1) {
@@ -297,9 +299,11 @@ compute_iterative <- function(supply, weights, demand,
 
       # Debug output if requested
       if (debug) {
-        cat(sprintf("Iteration: %d\n", iter),
-            sprintf("- Difference: %.6f\n", current_diff),
-            sprintf("- Rolling avg: %.6f\n", mean(diff_window)))
+        cat(
+          sprintf("Iteration: %d\n", iter),
+          sprintf("- Difference: %.6f\n", current_diff),
+          sprintf("- Rolling avg: %.6f\n", mean(diff_window))
+        )
       }
     }
   }
@@ -422,7 +426,7 @@ compute_iterative <- function(supply, weights, demand,
 #' # With time-series demand (must match max_iter)
 #' result <- spax_ifca(
 #'   distance_raster = dist_rast,
-#'   demand = demand_series,  # Multi-layer demand
+#'   demand = demand_series, # Multi-layer demand
 #'   supply = facility_capacity,
 #'   max_iter = nlyr(demand_series),
 #'   decay_params = list(method = "gaussian", sigma = 30)
@@ -446,23 +450,28 @@ spax_ifca <- function(distance_raster,
                       convergence_type = c("utilization", "ratio"),
                       snap = FALSE,
                       debug = FALSE) {
-
   convergence_type <- match.arg(convergence_type)
 
   # Process facilities and validate inputs (unless in snap mode)
   if (!snap) {
-    .chck_spax_ifca(distance_raster, demand, supply, decay_params,
-                    lambda, max_iter, tolerance, window_size)
+    .chck_spax_ifca(
+      distance_raster, demand, supply, decay_params,
+      lambda, max_iter, tolerance, window_size
+    )
   }
 
   # Process facilities and remove any with zero supply
   processed <- .help_prep_facilities(supply, distance_raster, snap = snap)
 
   # Compute weights using specified decay function
-  weights <- do.call(calc_decay,
-                     c(list(distance = processed$distances),
-                       decay_params,
-                       list(snap = snap)))
+  weights <- do.call(
+    calc_decay,
+    c(
+      list(distance = processed$distances),
+      decay_params,
+      list(snap = snap)
+    )
+  )
 
   # Fast path - returns only utilization
   if (snap) {

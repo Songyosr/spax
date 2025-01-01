@@ -21,14 +21,12 @@ LazyDataCompression: xz
 Imports:
     terra,
     raster,
-    parallel,
     sf,
     stats,
-    dplyr,
-    purrr,
     tibble,
-    withr,
+    withr
 Suggests:
+    dplyr,
     sp,
     knitr,
     rmarkdown,

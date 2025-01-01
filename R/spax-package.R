@@ -7,5 +7,8 @@
 #' @importFrom stats rnbinom
 #' @importFrom stats rpois
 #' @importFrom stats setNames
+#' @import terra
+#' @importFrom raster raster
+#' @importFrom tibble tibble
 ## usethis namespace: end
 NULL

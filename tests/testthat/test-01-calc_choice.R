@@ -82,9 +82,10 @@ test_that("calc_choice validates inputs correctly", {
 test_that("calc_choice handles real-world data correctly", {
   skip_if_not_installed("terra")
 
-  # Convert hos_iscr directly using terra
-  weights <- terra::rast(hos_iscr)
-  doctor_attr <- hc12_hos$s_doc
+  # Convert isochrones to decay weights first
+  weights <- terra::rast(hos_iscr) |>
+    calc_decay(method = "gaussian", sigma = 30)
+  doctor_attr <- hc12_hos$s_doc |> sf::st_drop_geometry()
 
   result <- calc_choice(weights, attractiveness = doctor_attr)
 
@@ -93,7 +94,7 @@ test_that("calc_choice handles real-world data correctly", {
   expect_equal(terra::nlyr(result), length(doctor_attr))
 
   # Probability sum test
-  sum_layer <- terra::app(result, sum)
+  sum_layer <- terra::app(result, sum, na.rm = TRUE)
   non_na_vals <- terra::values(sum_layer)[!is.na(terra::values(sum_layer))]
   expect_true(all(abs(non_na_vals - 1) < 1e-10))
 })

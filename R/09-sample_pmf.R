@@ -81,7 +81,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     }
   } else {
     # Quick check in snap mode
-    sum_check <- global(x, "sum", na.rm = TRUE)$sum
+    sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
     if (abs(sum_check - 1) > 1e-10) {
       message("Input must be PMF in snap mode")
     }
@@ -206,7 +206,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @keywords internal
 .chck_n_convert_pmf <- function(x) {
   # Check if input is PMF
-  sum_check <- global(x, "sum", na.rm = TRUE)$sum
+  sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
 
   if (abs(sum_check - 1) > 1e-10) {
     # Not a PMF, need to convert

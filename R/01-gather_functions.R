@@ -32,7 +32,7 @@
 #' Core computation for gather_weighted
 #' @keywords internal
 .gather_weighted_core <- function(values, weights, na.rm = TRUE) {
-  weighted_sums <- global(weights, "sum",
+  weighted_sums <- terra::global(weights, "sum",
     weights = values,
     na.rm = na.rm
   )

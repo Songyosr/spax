@@ -128,7 +128,7 @@ result <- spax_ifca(
 # With time-series demand (must match max_iter)
 result <- spax_ifca(
   distance_raster = dist_rast,
-  demand = demand_series,  # Multi-layer demand
+  demand = demand_series, # Multi-layer demand
   supply = facility_capacity,
   max_iter = nlyr(demand_series),
   decay_params = list(method = "gaussian", sigma = 30)

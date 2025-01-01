@@ -145,7 +145,8 @@ plot(distance[[1]], main = expression("Distance Surface" ~ (D[j])))
 
 # Weighted surface (W[d](D[j]))
 plot(calc_decay(distance[[1]], method = "gaussian", sigma = 30),
-     main = expression("Weighted Surface" ~ (W[d](D[j]))))
+  main = expression("Weighted Surface" ~ (W[d](D[j])))
+)
 ```
 
 Each theoretical component becomes a raster operation:
@@ -166,7 +167,7 @@ Now that we understand the theory, let's look at how we actually calculate those
 
 ```{r}
 # Create example data with functions aligned at 50% decay at 30 minutes
-example <- data.frame(x = seq(1,160,2))
+example <- data.frame(x = seq(1, 160, 2))
 
 example <- example |>
   mutate(
@@ -186,8 +187,8 @@ ggplot(example, aes(x = x)) +
     x = "Distance (minutes)",
     y = "Weight",
     color = "Function"
-  ) + 
-  scale_y_continuous(limits = c(0, 1)) + 
+  ) +
+  scale_y_continuous(limits = c(0, 1)) +
   theme_minimal()
 ```
 
@@ -235,13 +236,13 @@ Want to create your own decay function? Any function that takes distances and re
 # Custom decay combining distance threshold with Gaussian decay
 custom_decay <- function(distance, sigma = 30, threshold = 40) {
   gaussian <- exp(-distance^2 / (2 * sigma^2))
-  gaussian[distance > threshold] <- 0  # Hard cutoff at threshold
+  gaussian[distance > threshold] <- 0 # Hard cutoff at threshold
   return(gaussian)
 }
 
 # Use it just like the built-in functions
-custom_weights <- calc_decay(D_j, 
-  method = custom_decay, 
+custom_weights <- calc_decay(D_j,
+  method = custom_decay,
   sigma = 30,
   threshold = 60
 )
@@ -268,17 +269,21 @@ semi_norm <- calc_normalize(facility_weights, method = "semi")
 
 # Visualize the effect of normalization
 par(mfrow = c(2, 2))
-plot(sum(facility_weights), 
-     main = "Raw Weight Sum\n(potential double-counting)")
-plot(sum(standard_norm), 
-     main = "Standard Normalization\n(sums to 1)")
-plot(sum(semi_norm), 
-     main = "Semi-normalization\n(prevents inflation)")
+plot(sum(facility_weights),
+  main = "Raw Weight Sum\n(potential double-counting)"
+)
+plot(sum(standard_norm),
+  main = "Standard Normalization\n(sums to 1)"
+)
+plot(sum(semi_norm),
+  main = "Semi-normalization\n(prevents inflation)"
+)
 
 # Show where normalization matters most
 overlap_areas <- sum(facility_weights) > 1
-plot(overlap_areas, 
-     main = "Competition Areas\n(where normalization matters)")
+plot(overlap_areas,
+  main = "Competition Areas\n(where normalization matters)"
+)
 ```
 
 Think of normalization like adjusting a recipe when ingredients overlap. If two hospitals serve the same area:
@@ -301,7 +306,7 @@ Now for the real workhorses of spax: the spread_weighted() and gather_weighted()
 # Let's see these operations in action
 # First, calculate potential demand for our facilities
 potential_demand <- gather_weighted(
-  pop,           # Population surface (P)
+  pop, # Population surface (P)
   standard_norm, # Normalized weights (W_d)
   simplify = FALSE
 )
@@ -319,7 +324,7 @@ print("Supply ratios:")
 head(supply_ratios)
 
 accessibility <- spread_weighted(
-  supply_ratios,    # Facility-specific ratios (r_j)
+  supply_ratios, # Facility-specific ratios (r_j)
   facility_weights, # Weight surfaces (W_r)
   value_cols = "ratio"
 )
@@ -351,21 +356,21 @@ Let's see this step by step:
 ```{r}
 # Step 1a: Create distance decay weights
 facility_weights <- calc_decay(
-  distance,                    # Distance surfaces (D_j)
-  method = "gaussian", 
+  distance, # Distance surfaces (D_j)
+  method = "gaussian",
   sigma = 30
 )
 
 # Step 1b: Normalize weights to handle competition
 demand_weights <- calc_normalize(
-  facility_weights,           # W_d(D_j)
-  method = "standard"        # Prevents double-counting
+  facility_weights, # W_d(D_j)
+  method = "standard" # Prevents double-counting
 )
 
 # Step 1c: Calculate potential demand for each facility
 potential_demand <- gather_weighted(
-  pop,             # Population surface (P)
-  demand_weights,  # Normalized weights
+  pop, # Population surface (P)
+  demand_weights, # Normalized weights
   simplify = FALSE
 )
 
@@ -377,8 +382,8 @@ supply_ratios <- potential_demand |>
 
 # Step 2: Calculate final accessibility surface
 accessibility <- spread_weighted(
-  supply_ratios,     # Facility ratios (r_j)
-  facility_weights,  # Access-side weights (W_r)
+  supply_ratios, # Facility ratios (r_j)
+  facility_weights, # Access-side weights (W_r)
   value_cols = "ratio"
 )
 

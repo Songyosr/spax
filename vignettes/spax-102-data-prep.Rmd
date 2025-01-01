@@ -166,9 +166,8 @@ case_spatial |>
     raster_cases = extracted_cases[, 2],
     difference = abs(cases - raster_cases),
     pct_diff = (difference / cases) * 100
-  ) |> 
+  ) |>
   mutate_if(is.numeric, round, 1)
-  
 ```
 
 The differences between original and rasterized values arise from the discretization process. The results get closer as resolution increases, but there's always a trade-off between accuracy and computational efficiency.
@@ -182,9 +181,9 @@ Even more realistic distribution is possible using auxiliary data like populatio
 For uncertainty analysis, `spax` provides tools to generate multiple potential demand distributions:
 
 ```{r}
-# This advanced approach is covered in detail in the 
-# "Probabilistic Accessibility Analysis" vignette 
-?sample_pmf  # See documentation for details
+# This advanced approach is covered in detail in the
+# "Probabilistic Accessibility Analysis" vignette
+?sample_pmf # See documentation for details
 ```
 
 The choice of demand preparation method can significantly impact your accessibility analysis results. Consider your specific context:
@@ -308,7 +307,7 @@ For `spax`, we need to convert these to a raster format:
 example_isochrone <- example_isochrone |>
   mutate(
     iso_mean = (isomin + isomax) / 2,
-    location_id = hc12_hos[1, ]$id 
+    location_id = hc12_hos[1, ]$id
   )
 
 # Convert to raster format
@@ -437,7 +436,7 @@ Check for reasonable values in your input data:
 summary(u5pd)
 
 # Check a few travel time rasters
-summary(hos_iscr[[1:10]]) 
+summary(hos_iscr[[1:10]])
 ```
 
 #### 3. Missing Value Analysis

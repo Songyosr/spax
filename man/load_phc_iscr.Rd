@@ -48,7 +48,8 @@ phc_isochrones <- load_phc_iscr()
 
 # Plot first layer
 plot(phc_isochrones[[1]],
-     main = "Travel Time to First PHC")
+  main = "Travel Time to First PHC"
+)
 }
 
 }

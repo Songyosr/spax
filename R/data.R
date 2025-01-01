@@ -341,7 +341,8 @@ NULL
 #'
 #' # Plot first layer
 #' plot(phc_isochrones[[1]],
-#'      main = "Travel Time to First PHC")
+#'   main = "Travel Time to First PHC"
+#' )
 #' }
 #'
 #' @seealso
@@ -364,4 +365,3 @@ load_phc_iscr <- function() {
 
   return(r)
 }
-

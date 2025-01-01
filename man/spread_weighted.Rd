@@ -50,8 +50,7 @@ doc_distribution <- spread_weighted(hc12_hos$s_doc, weights)
 # Example 2: Multiple supply measures
 supply_df <- hc12_hos[c("s_doc", "s_nurse")]
 distributions <- spread_weighted(supply_df, weights,
-  value_cols = c("s_doc", "s_nurse"),
-  parallel = TRUE
+  value_cols = c("s_doc", "s_nurse")
 )
 
 # Example 3: With full output for detailed analysis
