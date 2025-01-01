@@ -4,9 +4,9 @@
 \name{spax-package}
 \alias{spax}
 \alias{spax-package}
-\title{spax: An R Package for Modularized (Hopefully) Spatial Accessibility Analysis}
+\title{spax: Modular Raster-Based Spatial Accessibility Analysis}
 \description{
-A comprehensive toolkit for analyzing spatial accessibility to healthcare facilities using enhanced two-step floating catchment area (2SFCA) methods. The package provides functions for calculating catchment areas, processing population demand, and evaluating healthcare facility accessibility. Key features include Monte Carlo simulation for uncertainty analysis, flexible distance decay functions, parallel processing capabilities, and support for multiple supply-side indicators. Designed for healthcare planning and spatial equity analysis, but applicable to other spatial accessibility contexts.
+A fresh take on spatial accessibility analysis that combines modular design with raster-based computation. Like LEGO bricks for spatial analysis, the package provides building blocks for the family of the two-step floating catchment area (2SFCA) analysis that you can mix and match. Built around continuous surfaces rather than discrete points, 'spax' makes it easy to work with high-resolution population data and complex service areas. Features include flexible distance decay functions, Monte Carlo simulation for uncertainty analysis, and support for multiple supply indicators. Whether you're planning healthcare services or analyzing coffee shop coverage, 'spax' helps you build the analysis you need.
 }
 \seealso{
 Useful links:
