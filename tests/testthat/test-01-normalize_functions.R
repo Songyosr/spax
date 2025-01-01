@@ -60,7 +60,7 @@ test_that("standard normalization produces correct weights", {
   expect_equal(result, simple_weights / sum(simple_weights))
 
   # Test with zeros
-  #expect_equal(calc_normalize(zero_weights, "standard"), zero_weights)
+  # expect_equal(calc_normalize(zero_weights, "standard"), zero_weights)
   expect_equal(calc_normalize(zero_weights, "standard"), zero_weights * NA)
 
   # Test with NAs

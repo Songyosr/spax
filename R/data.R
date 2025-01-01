@@ -289,5 +289,3 @@ NULL
 #' Advances in Geographic Information Systems (pp. 513-516).
 #'
 "hos_iscvec"
-
-

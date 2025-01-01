@@ -129,7 +129,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
       "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
       "reference" = {
         if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
-        terra::ifel(ref_value > 0, x / ref_value, NA_real_)  # Avoid division by zero
+        terra::ifel(ref_value > 0, x / ref_value, NA_real_) # Avoid division by zero
       }
     )
 
