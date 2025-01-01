@@ -125,11 +125,11 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
     result <- switch(method,
       "identity" = x,
-      "standard" = ifel(x_sum + a0 > 0, x / (x_sum + a0), 0),
-      "semi" = ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
+      "standard" = terra::ifel(x_sum + a0 > 0, x / (x_sum + a0), NA_real_), # no service = NA
+      "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
       "reference" = {
         if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
-        ifel(ref_value > 0, x / ref_value, 0)
+        terra::ifel(ref_value > 0, x / ref_value, NA_real_)  # Avoid division by zero
       }
     )
 
@@ -146,11 +146,11 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
   switch(method,
     "identity" = x,
-    "standard" = if (x_sum + a0 > 0) x / (x_sum + a0) else x * 0,
+    "standard" = if (x_sum + a0 > 0) x / (x_sum + a0) else rep(NA_real_, length(x)),
     "semi" = if (x_sum + a0 > 1) x / (x_sum + a0) else x,
     "reference" = {
       if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
-      if (ref_value > 0) x / ref_value else x * 0
+      if (ref_value > 0) x / ref_value else rep(NA_real_, length(x))
     }
   )
 }
