@@ -126,7 +126,7 @@ compute_iterative_fast <- function(supply, weights, demand,
 #' @param max_iter Maximum number of iterations
 #' @param tolerance Convergence tolerance threshold
 #' @param window_size Size of rolling window for convergence check
-#' @param convergence_type Type of convergence check: "utilization
+#' @param convergence_type Type of convergence check: "utilization"
 #'       or "ratio"
 #' @param debug Logical; if TRUE provides detailed convergence information
 #' @export

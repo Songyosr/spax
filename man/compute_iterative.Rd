@@ -31,7 +31,7 @@ compute_iterative(
 
 \item{window_size}{Size of rolling window for convergence check}
 
-\item{convergence_type}{Type of convergence check: "utilization
+\item{convergence_type}{Type of convergence check: "utilization"
 or "ratio"}
 
 \item{debug}{Logical; if TRUE provides detailed convergence information}
