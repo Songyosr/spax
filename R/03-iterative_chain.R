@@ -1,3 +1,78 @@
+#' Validate inputs for spax_ifca
+#' @param distance_raster SpatRaster stack of travel times/distances to facilities
+#' @param demand SpatRaster of demand (single layer or matching max_iter)
+#' @param supply Numeric vector of facility capacities
+#' @param decay_params List of parameters for decay function
+#' @param lambda Learning rate between 0 and 1
+#' @param max_iter Maximum number of iterations
+#' @param tolerance Convergence tolerance threshold
+#' @param window_size Size of rolling window for convergence
+#' @return Invisibly returns TRUE if all validations pass.
+#' @keywords internal
+.chck_spax_ifca <- function(distance_raster, demand, supply, decay_params,
+                            lambda, max_iter, tolerance, window_size) {
+  # Input type validation
+  if (!inherits(distance_raster, "SpatRaster")) {
+    stop("distance_raster must be a SpatRaster object")
+  }
+  if (!inherits(demand, "SpatRaster")) {
+    stop("demand must be a SpatRaster object")
+  }
+  if (!is.numeric(supply)) {
+    stop("supply must be a numeric vector")
+  }
+
+  # Validate demand layers
+  n_layers <- nlyr(demand)
+  if (n_layers != 1 && n_layers != max_iter) {
+    stop(sprintf(
+      "demand must have either 1 layer or %d layers (matching max_iter)",
+      max_iter
+    ))
+  }
+
+  # Validate decay_params
+  if (!is.list(decay_params)) {
+    stop("decay_params must be a list")
+  }
+  if (is.null(decay_params$method)) {
+    stop("decay_params must include 'method'")
+  }
+
+  # Parameter range validation
+  if (!is.numeric(lambda) || lambda <= 0 || lambda > 1) {
+    stop("lambda must be between 0 and 1")
+  }
+  if (!is.numeric(max_iter) || max_iter < 1 || max_iter != as.integer(max_iter)) {
+    stop("max_iter must be a positive integer")
+  }
+  if (!is.numeric(tolerance) || tolerance <= 0) {
+    stop("tolerance must be positive")
+  }
+  if (!is.numeric(window_size) || window_size < 1 ||
+      window_size != as.integer(window_size)) {
+    stop("window_size must be a positive integer")
+  }
+  if (window_size > max_iter) {
+    stop("window_size cannot be larger than max_iter")
+  }
+
+  # Validate raster compatibility
+  if (!all(res(demand) == res(distance_raster))) {
+    stop("demand and distance_raster must have the same resolution")
+  }
+  if (!all(ext(demand) == ext(distance_raster))) {
+    stop("demand and distance_raster must have the same extent")
+  }
+
+  # Validate facility counts match
+  if (nlyr(distance_raster) != length(supply)) {
+    stop("Number of distance_raster layers must match length of supply vector")
+  }
+
+  invisible(TRUE)
+}
+
 #' Process facility supply and distance data for accessibility calculations
 #' @param supply Numeric vector of facility capacities
 #' @param distance_raster Multi-layer SpatRaster of distances to facilities
@@ -62,26 +137,32 @@
   output
 }
 
-
-#' Fast version for snap mode - returns only utilization vector
+#' Fast version of iterative computation for parameter tuning
+#' @description
+#' Optimized version that returns only utilization vector, designed for parameter
+#' tuning scenarios where intermediate results and history aren't needed.
+#'
 #' @param supply Numeric vector of facility capacities
-#' @param weights Multi-layer SpatRaster of spatial weights
-#' @param demand SpatRaster of demand distribution
-#' @param lambda Learning rate for iterative adjustment
-#' @param max_iter Maximum number of iterations
-#' @param tolerance Convergence tolerance threshold
-#' @param window_size Size of rolling window for convergence check
-#' @export
+#' @param weights Multi-layer SpatRaster of spatial weights from distance decay
+#' @param demand SpatRaster of demand (single layer or matching max_iter)
+#' @param lambda Learning rate between 0 and 1
+#' @param max_iter Maximum iterations to attempt
+#' @param tolerance Convergence threshold
+#' @param window_size Size of rolling window for convergence checking
+#' @return Numeric vector of predicted utilization for all facilities
+#' @keywords internal
 compute_iterative_fast <- function(supply, weights, demand,
                                    lambda = 0.5,
                                    max_iter = 100,
                                    tolerance = 1e-6,
                                    window_size = 5) {
-  n_facilities <- length(supply)
-  current_attractiveness <- supply
-  current_util <- numeric(n_facilities)
 
-  # Initialize rolling window
+  # Initialize state vectors for current iteration
+  n_facilities <- length(supply)
+  current_attractiveness <- supply  # Initial attractiveness = supply
+  current_util <- numeric(n_facilities)  # Initialize utilization vector
+
+  # Initialize rolling window for convergence checking
   diff_window <- numeric(window_size)
   window_idx <- 1
   window_filled <- FALSE
@@ -91,21 +172,35 @@ compute_iterative_fast <- function(supply, weights, demand,
   while (iter < max_iter && (!window_filled || mean(diff_window) > tolerance)) {
     iter <- iter + 1
 
-    # Fast computation path
-    huff_probs <- calc_choice(weights, attractiveness = current_attractiveness, snap = TRUE)
+    # Get current demand layer - either indexed or single layer reused
+    current_demand <- if (nlyr(demand) > 1) demand[[iter]] else demand
+
+    # Fast computation path:
+    # 1. Convert attractiveness to probabilities
+    huff_probs <- calc_choice(weights,
+                              attractiveness = current_attractiveness,
+                              snap = TRUE)
+
+    # 2. Calculate utilization probabilities
     util_probs <- huff_probs * weights
-    new_util <- gather_weighted(demand, util_probs, snap = TRUE, simplify = TRUE)
+
+    # 3. Calculate new utilization using current demand layer
+    new_util <- gather_weighted(current_demand, util_probs, snap = TRUE, simplify = TRUE)
+
+    # 4. Calculate new supply/demand ratio
     new_ratio <- ifelse(new_util > 0, supply / new_util, 0)
+
+    # 5. Update attractiveness with learning rate
     new_attractiveness <- (1 - lambda) * current_attractiveness + lambda * new_ratio
 
-    # Fast convergence check
+    # Fast convergence check using rolling window
     if (iter > 1) {
       diff_window[window_idx] <- max(abs(new_util - current_util), na.rm = TRUE)
       window_idx <- (window_idx %% window_size) + 1
       if (iter >= window_size) window_filled <- TRUE
     }
 
-    # Update current values
+    # Update current values for next iteration
     current_attractiveness <- new_attractiveness
     current_util <- new_util
   }
@@ -115,21 +210,34 @@ compute_iterative_fast <- function(supply, weights, demand,
     warning("Fast iteration did not converge after ", iter, " iterations")
   }
 
+  # Return only the final utilization vector
   current_util
 }
 
-#' Full version with history tracking and detailed output
+#' Full iterative computation with history tracking
+#' @description
+#' Implements the iterative floating catchment area method with comprehensive
+#' output including convergence history and detailed state tracking. This version
+#' supports both single-layer and time-series demand patterns.
+#'
 #' @param supply Numeric vector of facility capacities
-#' @param weights Multi-layer SpatRaster of spatial weights
-#' @param demand SpatRaster of demand distribution
-#' @param lambda Learning rate for iterative adjustment
-#' @param max_iter Maximum number of iterations
-#' @param tolerance Convergence tolerance threshold
-#' @param window_size Size of rolling window for convergence check
-#' @param convergence_type Type of convergence check: "utilization"
-#'       or "ratio"
+#' @param weights Multi-layer SpatRaster of spatial weights from distance decay
+#' @param demand SpatRaster of demand (single layer or matching max_iter)
+#' @param lambda Learning rate between 0 and 1
+#' @param max_iter Maximum iterations to attempt
+#' @param tolerance Convergence threshold
+#' @param window_size Size of rolling window for convergence checking
+#' @param convergence_type Character; "utilization" or "ratio" for convergence metric
 #' @param debug Logical; if TRUE provides detailed convergence information
-#' @export
+#' @return List containing:
+#'   \itemize{
+#'     \item iterations: Number of iterations completed
+#'     \item converged: Logical indicating convergence status
+#'     \item state: Array of historical state values [iterations, facilities, metrics]
+#'     \item util_probs: Final utilization probability surfaces
+#'     \item convergence: List with convergence details
+#'   }
+#' @keywords internal
 compute_iterative <- function(supply, weights, demand,
                               lambda = 0.5,
                               max_iter = 100,
@@ -140,10 +248,11 @@ compute_iterative <- function(supply, weights, demand,
   n_facilities <- length(supply)
 
   # State array: [iterations, facilities, metrics]
+  # metrics: [1]=utilization, [2]=ratio, [3]=attractiveness
   state <- array(0, dim = c(max_iter, n_facilities, 3))
-  state[1, , 3] <- supply # Initial attractiveness
+  state[1, , 3] <- supply  # Initial attractiveness
 
-  # Initialize rolling window
+  # Initialize rolling window for convergence
   diff_window <- numeric(window_size)
   window_idx <- 1
   window_filled <- FALSE
@@ -151,43 +260,54 @@ compute_iterative <- function(supply, weights, demand,
   # Main iteration loop
   iter <- 1
   while (iter < max_iter && (!window_filled || mean(diff_window) > tolerance)) {
+    # Get current values
     current <- state[iter, , ]
 
+    # Get current demand layer
+    current_demand <- if (nlyr(demand) > 1) demand[[iter]] else demand
+
     # Regular computation path with full tracking
-    huff_probs <- calc_choice(weights, attractiveness = current[, 3], snap = TRUE)
+    huff_probs <- calc_choice(weights,
+                              attractiveness = current[, 3],
+                              snap = TRUE)
     util_probs <- huff_probs * weights
-    new_util <- gather_weighted(demand, util_probs, snap = TRUE, simplify = TRUE)
+    new_util <- gather_weighted(current_demand, util_probs,
+                                snap = TRUE, simplify = TRUE)
 
     # Update state array
     iter <- iter + 1
-    state[iter, , 1] <- new_util # utilization
-    state[iter, , 2] <- ifelse(new_util > 0, supply / new_util, 0) # ratio
-    state[iter, , 3] <- (1 - lambda) * current[, 3] + lambda * state[iter, , 2]
+    state[iter, , 1] <- new_util  # utilization
+    state[iter, , 2] <- ifelse(new_util > 0, supply / new_util, 0)  # ratio
+    state[iter, , 3] <- (1 - lambda) * current[, 3] +
+      lambda * state[iter, , 2]  # attractiveness
 
     # Convergence check with type support
     if (iter > 1) {
+      # Select metric based on convergence type
       current_diff <- if (convergence_type == "utilization") {
         max(abs(state[iter, , 1] - state[iter - 1, , 1]), na.rm = TRUE)
       } else {
         max(abs(state[iter, , 2] - state[iter - 1, , 2]), na.rm = TRUE)
       }
 
+      # Update rolling window
       diff_window[window_idx] <- current_diff
       window_idx <- (window_idx %% window_size) + 1
       if (iter >= window_size) window_filled <- TRUE
 
+      # Debug output if requested
       if (debug) {
-        cat(
-          "Iteration:", iter,
-          "\n- Difference:", round(current_diff, 6),
-          "\n- Rolling avg:", round(mean(diff_window), 6), "\n"
-        )
+        cat(sprintf("Iteration: %d\n", iter),
+            sprintf("- Difference: %.6f\n", current_diff),
+            sprintf("- Rolling avg: %.6f\n", mean(diff_window)))
       }
     }
   }
 
-  # Trim and return full results
+  # Trim state array to actual iterations used
   state <- state[1:iter, , , drop = FALSE]
+
+  # Return comprehensive results
   list(
     iterations = iter,
     converged = window_filled && mean(diff_window) <= tolerance,
@@ -205,33 +325,39 @@ compute_iterative <- function(supply, weights, demand,
 #'
 #' @description
 #' Computes spatial accessibility scores using an iterative floating catchment area method
-#' that combines Huff-model based choice probabilities with distance decay effects. The method
-#' iteratively adjusts facility attractiveness based on supply-demand ratios until convergence.
+#' that combines Huff-model based choice probabilities with distance decay effects. This
+#' enhanced version supports time-series demand patterns and customizable decay functions.
 #'
 #' The iFCA method extends traditional FCA approaches by:
 #' \itemize{
-#'   \item Incorporating choice behavior through a Huff-model framework
+#'   \item Supporting dynamic demand patterns through multi-layer inputs
+#'   \item Incorporating flexible distance decay specifications
 #'   \item Iteratively balancing supply and demand
 #'   \item Using a learning rate to control convergence
-#'   \item Supporting both utilization and ratio-based convergence checks
 #' }
 #'
 #' @param distance_raster A multi-layer SpatRaster where each layer represents distances
 #'        to one facility. All layers must share the same extent and resolution.
-#' @param demand SpatRaster of demand distribution (e.g., population density).
-#'        Must have same extent and resolution as distance_raster.
+#' @param demand SpatRaster of demand distribution. Can be either:
+#'        - Single layer for static demand
+#'        - Multiple layers (matching max_iter) for dynamic demand
 #' @param supply Numeric vector of facility capacities. Length must match number
-#'        of layers in distance_raster. Zero values are allowed.
-#' @param sigma Distance decay parameter controlling spatial interaction strength.
-#'        Larger values indicate weaker distance decay effect.
+#'        of layers in distance_raster.
+#' @param decay_params List of parameters for decay function:
+#'        \itemize{
+#'          \item method: "gaussian", "exponential", "power", or custom function
+#'          \item sigma: decay parameter controlling spatial interaction strength
+#'          \item Additional parameters passed to custom decay functions
+#'        }
 #' @param lambda Learning rate between 0 and 1 controlling convergence speed.
 #'        Lower values provide more stability but slower convergence.
 #'        Default: 0.5
-#' @param max_iter Maximum number of iterations to attempt. Default: 100
+#' @param max_iter Maximum number of iterations to attempt. For multi-layer demand,
+#'        this must match the number of demand layers. Default: 100
 #' @param tolerance Convergence tolerance threshold. Iteration stops when the rolling
 #'        average of differences falls below this value. Default: 1e-6
 #' @param window_size Size of rolling window for convergence checking. Default: 5
-#' @param convergence_type Character string specifying convergence metric:
+#' @param convergence_type Character string specifying convergence metric, one of:
 #'        "utilization" (default) or "ratio"
 #' @param snap Logical; if TRUE enables fast computation mode returning only
 #'        utilization vector. Default: FALSE
@@ -243,7 +369,7 @@ compute_iterative <- function(supply, weights, demand,
 #'   Numeric vector of predicted utilization for all facilities
 #'
 #' If snap = FALSE:
-#'   List containing:
+#'   A list containing:
 #'   \describe{
 #'     \item{utilization}{Numeric vector of predicted facility utilization}
 #'     \item{ratios}{Numeric vector of final supply-demand ratios}
@@ -264,70 +390,55 @@ compute_iterative <- function(supply, weights, demand,
 #'
 #' @examples
 #' \dontrun{
-#' # Basic usage
+#' # Basic usage with static demand
 #' result <- spax_ifca(
 #'   distance_raster = dist_rast,
 #'   demand = pop_rast,
 #'   supply = facility_capacity,
-#'   sigma = 30
-#' )
-#'
-#' # Fast computation mode
-#' util <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = pop_rast,
-#'   supply = facility_capacity,
-#'   sigma = 30,
-#'   snap = TRUE
-#' )
-#'
-#' # With modified convergence settings
-#' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = pop_rast,
-#'   supply = facility_capacity,
-#'   sigma = 30,
-#'   lambda = 0.3, # Slower but more stable convergence
-#'   convergence_type = "ratio",
-#'   tolerance = 1e-8, # Stricter convergence
-#'   window_size = 10 # Longer rolling window
-#' )
-#'
-#' # Plot accessibility surface
-#' if (!is.null(result$accessibility)) {
-#'   plot(result$accessibility)
-#' }
-#'
-#' # Check convergence history
-#' if (!is.null(result$history)) {
-#'   plot(1:result$convergence$iterations,
-#'     result$history[, , 1], # Plot utilization history
-#'     type = "l",
-#'     xlab = "Iteration",
-#'     ylab = "Utilization"
+#'   decay_params = list(
+#'     method = "gaussian",
+#'     sigma = 30
 #'   )
-#' }
+#' )
+#'
+#' # Using custom decay function
+#' custom_decay <- function(distance, sigma = 30, threshold = 60) {
+#'   weights <- exp(-distance^2 / (2 * sigma^2))
+#'   weights[distance > threshold] <- 0
+#'   return(weights)
 #' }
 #'
-#' @references
-#' The iFCA method builds on:
-#' \itemize{
-#'   \item Huff's model of retail gravitation
-#'   \item Two-Step Floating Catchment Area (2SFCA) method
-#'   \item Enhanced 2SFCA (E2SFCA) with variable catchment sizes
+#' result <- spax_ifca(
+#'   distance_raster = dist_rast,
+#'   demand = pop_rast,
+#'   supply = facility_capacity,
+#'   decay_params = list(
+#'     method = custom_decay,
+#'     sigma = 30,
+#'     threshold = 60
+#'   )
+#' )
+#'
+#' # With time-series demand (must match max_iter)
+#' result <- spax_ifca(
+#'   distance_raster = dist_rast,
+#'   demand = demand_series,  # Multi-layer demand
+#'   supply = facility_capacity,
+#'   max_iter = nlyr(demand_series),
+#'   decay_params = list(method = "gaussian", sigma = 30)
+#' )
 #' }
 #'
 #' @seealso
-#' \code{\link{calc_decay}} for decay function options
+#' \code{\link{calc_decay}} for available decay functions
 #'
 #' @import terra
-#' @importFrom stats complete.cases
 #'
 #' @export
 spax_ifca <- function(distance_raster,
                       demand,
                       supply,
-                      sigma,
+                      decay_params = list(method = "gaussian", sigma = 30),
                       lambda = 0.5,
                       max_iter = 100,
                       tolerance = 1e-6,
@@ -335,15 +446,23 @@ spax_ifca <- function(distance_raster,
                       convergence_type = c("utilization", "ratio"),
                       snap = FALSE,
                       debug = FALSE) {
+
   convergence_type <- match.arg(convergence_type)
 
-  # Process facilities and compute weights - needed for both paths
+  # Process facilities and validate inputs (unless in snap mode)
+  if (!snap) {
+    .chck_spax_ifca(distance_raster, demand, supply, decay_params,
+                    lambda, max_iter, tolerance, window_size)
+  }
+
+  # Process facilities and remove any with zero supply
   processed <- .help_prep_facilities(supply, distance_raster, snap = snap)
-  weights <- calc_decay(processed$distances,
-    method = "gaussian",
-    sigma = sigma,
-    snap = snap
-  )
+
+  # Compute weights using specified decay function
+  weights <- do.call(calc_decay,
+                     c(list(distance = processed$distances),
+                       decay_params,
+                       list(snap = snap)))
 
   # Fast path - returns only utilization
   if (snap) {
@@ -376,18 +495,15 @@ spax_ifca <- function(distance_raster,
   final_iter <- results$iterations
   final_state <- results$state[final_iter, , , drop = TRUE]
 
-  # Compute final accessibility using the [valid] weights
+  # Compute final accessibility using valid weights
   raw_ratios <- final_state[, 2]
   accessibility <- spread_weighted(raw_ratios, weights, snap = snap)
   util_prob_surface <- sum(results$util_probs, na.rm = TRUE)
-
 
   # Reintegrate zeros into final values
   utilization <- .help_add_0facilities(final_state[, 1], processed$zero_map)
   ratios <- .help_add_0facilities(final_state[, 2], processed$zero_map)
   attractiveness <- .help_add_0facilities(final_state[, 3], processed$zero_map)
-
-
 
   # Return full results
   list(
@@ -405,7 +521,7 @@ spax_ifca <- function(distance_raster,
     ),
     history = if (results$converged) results$state else NULL,
     parameters = list(
-      sigma = sigma,
+      decay_params = decay_params,
       lambda = lambda,
       tolerance = tolerance
     )

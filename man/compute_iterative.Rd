@@ -2,7 +2,7 @@
 % Please edit documentation in R/03-iterative_chain.R
 \name{compute_iterative}
 \alias{compute_iterative}
-\title{Full version with history tracking and detailed output}
+\title{Full iterative computation with history tracking}
 \usage{
 compute_iterative(
   supply,
@@ -19,23 +19,35 @@ compute_iterative(
 \arguments{
 \item{supply}{Numeric vector of facility capacities}
 
-\item{weights}{Multi-layer SpatRaster of spatial weights}
+\item{weights}{Multi-layer SpatRaster of spatial weights from distance decay}
 
-\item{demand}{SpatRaster of demand distribution}
+\item{demand}{SpatRaster of demand (single layer or matching max_iter)}
 
-\item{lambda}{Learning rate for iterative adjustment}
+\item{lambda}{Learning rate between 0 and 1}
 
-\item{max_iter}{Maximum number of iterations}
+\item{max_iter}{Maximum iterations to attempt}
 
-\item{tolerance}{Convergence tolerance threshold}
+\item{tolerance}{Convergence threshold}
 
-\item{window_size}{Size of rolling window for convergence check}
+\item{window_size}{Size of rolling window for convergence checking}
 
-\item{convergence_type}{Type of convergence check: "utilization"
-or "ratio"}
+\item{convergence_type}{Character; "utilization" or "ratio" for convergence metric}
 
 \item{debug}{Logical; if TRUE provides detailed convergence information}
 }
-\description{
-Full version with history tracking and detailed output
+\value{
+List containing:
+  \itemize{
+    \item iterations: Number of iterations completed
+    \item converged: Logical indicating convergence status
+    \item state: Array of historical state values [iterations, facilities, metrics]
+    \item util_probs: Final utilization probability surfaces
+    \item convergence: List with convergence details
+  }
 }
+\description{
+Implements the iterative floating catchment area method with comprehensive
+output including convergence history and detailed state tracking. This version
+supports both single-layer and time-series demand patterns.
+}
+\keyword{internal}
