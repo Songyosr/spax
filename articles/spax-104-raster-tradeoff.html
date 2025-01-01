@@ -80,11 +80,11 @@ optimizing your workflows.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load required packages</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
+<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/hadley/pryr" class="external-link">pryr</a></span><span class="op">)</span> <span class="co"># for memory tracking</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
-<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bench.r-lib.org/" class="external-link">bench</a></span><span class="op">)</span> <span class="co"># fotr benchmarking</span></span></code></pre></div>
 <div class="section level3">
@@ -146,12 +146,12 @@ practice:</p>
 <code class="sourceCode R"><span><span class="co"># First, let's create test datasets of different sizes</span></span>
 <span><span class="va">create_test_distance</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n_facilities</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Take our original distance raster and replicate it</span></span>
-<span>  <span class="va">base_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>  <span class="co"># Use first facility as template</span></span>
-<span>  </span>
+<span>  <span class="va">base_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="co"># Use first facility as template</span></span>
+<span></span>
 <span>  <span class="co"># Create a stack with n copies</span></span>
 <span>  <span class="va">test_stack</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">base_distance</span>, <span class="va">n_facilities</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">test_stack</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"facility_"</span>, <span class="fl">1</span><span class="op">:</span><span class="va">n_facilities</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">test_stack</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
@@ -159,7 +159,7 @@ practice:</p>
 <span><span class="va">test_decay_scaling</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n_facilities</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Create test data</span></span>
 <span>  <span class="va">test_distances</span> <span class="op">&lt;-</span> <span class="fu">create_test_distance</span><span class="op">(</span><span class="va">n_facilities</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Time the decay calculation</span></span>
 <span>  <span class="va">start_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="va">decay_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span></span>
@@ -168,7 +168,7 @@ practice:</p>
 <span>    sigma <span class="op">=</span> <span class="fl">30</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="va">end_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Return timing and data size</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    n_facilities <span class="op">=</span> <span class="va">n_facilities</span>,</span>
@@ -183,13 +183,14 @@ practice:</p>
 <span></span>
 <span><span class="co"># Create summary table</span></span>
 <span><span class="va">scaling_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
-<span>  <span class="st">'Facilities'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="va">`[[`</span>, <span class="st">"n_facilities"</span><span class="op">)</span>,</span>
-<span>  <span class="st">'Total Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="va">`[[`</span>, <span class="st">"n_cells"</span><span class="op">)</span>,</span>
-<span>  <span class="st">'Runtime (s)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> </span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">runtime</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="st">"Facilities"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="va">`[[`</span>, <span class="st">"n_facilities"</span><span class="op">)</span>,</span>
+<span>  <span class="st">"Total Cells"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="va">`[[`</span>, <span class="st">"n_cells"</span><span class="op">)</span>,</span>
+<span>  <span class="st">"Runtime (s)"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scaling_results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">runtime</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Time per Cell (ms)"</span> <span class="op">=</span> <span class="va">`Runtime (s)`</span> <span class="op">*</span> <span class="fl">1000</span> <span class="op">/</span> <span class="va">`Total Cells`</span>,</span>
-<span>  <span class="st">'Total Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">`Total Cells`</span>, big.mark<span class="op">=</span><span class="st">","</span><span class="op">)</span> <span class="co"># Format after calculations</span></span>
+<span>  <span class="st">"Total Cells"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">`Total Cells`</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span> <span class="co"># Format after calculations</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co"># "Computation Scaling with Facility Count:"</span></span>
 <span><span class="op">(</span><span class="va">scaling_summary</span><span class="op">)</span></span>
@@ -198,7 +199,7 @@ practice:</p>
 <span><span class="co">#&gt;        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>          1 <span style="color: #949494;">"</span>   329,323<span style="color: #949494;">"</span>           0.02            0.000<span style="text-decoration: underline;">060</span>7</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>         10 <span style="color: #949494;">"</span> 3,293,230<span style="color: #949494;">"</span>           0.13            0.000<span style="text-decoration: underline;">039</span>5</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>        100 <span style="color: #949494;">"</span>32,932,300<span style="color: #949494;">"</span>           0.98            0.000<span style="text-decoration: underline;">029</span>8</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>        100 <span style="color: #949494;">"</span>32,932,300<span style="color: #949494;">"</span>           0.97            0.000<span style="text-decoration: underline;">029</span>5</span></span></code></pre></div>
 <p>The results tell a compelling story about vectorized efficiency:</p>
 <ol style="list-style-type: decimal">
 <li>While we increased the number of facilities from 1 to 100 (100x more
@@ -241,9 +242,9 @@ point sets and polygons. You’re just piling up new layers on the same
 <span></span>
 <span><span class="co"># Check population and distance rasters</span></span>
 <span><span class="fu">check_alignment</span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, </span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, </span>
-<span>  <span class="st">"Population"</span>, </span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>,</span>
+<span>  <span class="st">"Population"</span>,</span>
 <span>  <span class="st">"Distance"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -268,14 +269,14 @@ population<br>
 </ul>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Look at one facility's service area</span></span>
-<span><span class="va">facility_id</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>  <span class="co"># First facility</span></span>
+<span><span class="va">facility_id</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="co"># First facility</span></span>
 <span><span class="va">facility_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Calculate decay weights</span></span>
 <span><span class="va">decay_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span></span>
-<span>  <span class="va">facility_distance</span>, </span>
-<span>  method <span class="op">=</span> <span class="st">"gaussian"</span>, </span>
+<span>  <span class="va">facility_distance</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
 <span>  sigma <span class="op">=</span> <span class="fl">60</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -286,13 +287,13 @@ population<br>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pop</span>, main <span class="op">=</span> <span class="st">"Population"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">decay_weights</span>, main <span class="op">=</span> <span class="st">"Distance Decay"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">weighted_pop</span>, main <span class="op">=</span> <span class="st">"Population-Weighted Decay"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span></code></pre></div>
 <p><img src="spax-104-raster-tradeoff_files/figure-html/unnamed-chunk-5-1.png" width="1200"></p>
 </div>
 </div>
@@ -316,14 +317,14 @@ analysis results:</p>
 <span>  <span class="co"># Aggregate both population and distance</span></span>
 <span>  <span class="va">pop_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="va">factor</span>, fun <span class="op">=</span> <span class="va">sum</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="va">dist_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, fact <span class="op">=</span> <span class="va">factor</span>, fun <span class="op">=</span> <span class="va">mean</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>pop <span class="op">=</span> <span class="va">pop_agg</span>, dist <span class="op">=</span> <span class="va">dist_agg</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Test computation time for actual analysis</span></span>
 <span><span class="va">test_computation</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">test_data</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">start_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
 <span>    demand <span class="op">=</span> <span class="va">test_data</span><span class="op">$</span><span class="va">pop</span>,</span>
 <span>    supply <span class="op">=</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -332,11 +333,11 @@ analysis results:</p>
 <span>    demand_normalize <span class="op">=</span> <span class="st">"standard"</span>,</span>
 <span>    id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
 <span>    supply_cols <span class="op">=</span> <span class="st">"s_doc"</span>,</span>
-<span>    snap <span class="op">=</span> <span class="cn">TRUE</span>  <span class="co"># Fast mode for testing</span></span>
+<span>    snap <span class="op">=</span> <span class="cn">TRUE</span> <span class="co"># Fast mode for testing</span></span>
 <span>  <span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">end_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Return core metrics</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    resolution <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="va">test_data</span><span class="op">$</span><span class="va">pop</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
@@ -347,7 +348,7 @@ analysis results:</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Test a range of resolutions</span></span>
-<span><span class="va">factors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">8</span><span class="op">)</span>  <span class="co"># Each step doubles cell size</span></span>
+<span><span class="va">factors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">8</span><span class="op">)</span> <span class="co"># Each step doubles cell size</span></span>
 <span><span class="va">test_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">factors</span>, <span class="va">prep_test_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: [aggregate] all values in argument 'fact' are 1, nothing to do</span></span>
 <span><span class="co">#&gt; Warning: [aggregate] all values in argument 'fact' are 1, nothing to do</span></span>
@@ -355,12 +356,12 @@ analysis results:</p>
 <span></span>
 <span><span class="co"># Create summary table</span></span>
 <span><span class="va">scaling_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
-<span>  <span class="st">'Resolution (m)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="st">'Grid Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">$</span><span class="va">ncells</span><span class="op">)</span>,</span>
-<span>  <span class="st">'Runtime (s)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">runtime</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="st">"Resolution (m)"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="st">"Grid Cells"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">$</span><span class="va">ncells</span><span class="op">)</span>,</span>
+<span>  <span class="st">"Runtime (s)"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">runtime</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>  <span class="st">'Time per Cell (μs)'</span> <span class="op">=</span> <span class="va">`Runtime (s)`</span> <span class="op">*</span> <span class="fl">1e6</span> <span class="op">/</span> <span class="va">`Grid Cells`</span>,</span>
-<span>  <span class="st">'Grid Cells'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">`Grid Cells`</span>, big.mark<span class="op">=</span><span class="st">","</span><span class="op">)</span></span>
+<span>  <span class="st">"Time per Cell (μs)"</span> <span class="op">=</span> <span class="va">`Runtime (s)`</span> <span class="op">*</span> <span class="fl">1e6</span> <span class="op">/</span> <span class="va">`Grid Cells`</span>,</span>
+<span>  <span class="st">"Grid Cells"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">`Grid Cells`</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># "Performance Impact of Resolution:"</span></span>
@@ -368,7 +369,7 @@ analysis results:</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 4</span></span></span>
 <span><span class="co">#&gt;   `Resolution (m)` `Grid Cells` `Runtime (s)` `Time per Cell (μs)`</span></span>
 <span><span class="co">#&gt;              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              520 <span style="color: #949494;">"</span>329,323<span style="color: #949494;">"</span>             2.68                 8.14</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              520 <span style="color: #949494;">"</span>329,323<span style="color: #949494;">"</span>             2.7                  8.20</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">1</span>041 <span style="color: #949494;">"</span> 82,620<span style="color: #949494;">"</span>             0.74                 8.96</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             <span style="text-decoration: underline;">2</span>082 <span style="color: #949494;">"</span> 20,736<span style="color: #949494;">"</span>             0.17                 8.20</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>             <span style="text-decoration: underline;">4</span>163 <span style="color: #949494;">"</span>  5,184<span style="color: #949494;">"</span>             0.07                13.5</span></span></code></pre></div>
@@ -376,7 +377,7 @@ analysis results:</p>
 accessibility results for specific locations:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Select one province</span></span>
-<span><span class="va">prov_exam</span> <span class="op">&lt;-</span> <span class="va">bound1</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span></span>
+<span><span class="va">prov_exam</span> <span class="op">&lt;-</span> <span class="va">bound1</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
 <span></span>
 <span><span class="co"># Compare mean accessibility values within a province</span></span>
 <span><span class="va">extract_province_access</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="op">{</span></span>
@@ -387,20 +388,21 @@ accessibility results for specific locations:</p>
 <span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">prov_exam</span><span class="op">)</span>,</span>
 <span>    fun <span class="op">=</span> <span class="va">mean</span>,</span>
 <span>    na.rm <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span>  <span class="co"># The second column contains the mean value</span></span>
-<span>  </span>
+<span>  <span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span> <span class="co"># The second column contains the mean value</span></span>
+<span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">zonal_mean</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Create provincial comparison across resolutions</span></span>
 <span><span class="va">access_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
-<span>  <span class="st">'Resolution (m)'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="st">'Mean Provincial Access'</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> </span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">extract_province_access</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">result</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="st">"Resolution (m)"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">resolution</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="st">"Mean Provincial Access"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">extract_province_access</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">result</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>  <span class="st">'Difference from Baseline (%)'</span> <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
-<span>    <span class="op">(</span><span class="va">`Mean Provincial Access`</span> <span class="op">-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nth.html" class="external-link">first</a></span><span class="op">(</span><span class="va">`Mean Provincial Access`</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> </span>
-<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nth.html" class="external-link">first</a></span><span class="op">(</span><span class="va">`Mean Provincial Access`</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span>, </span>
+<span>  <span class="st">"Difference from Baseline (%)"</span> <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
+<span>    <span class="op">(</span><span class="va">`Mean Provincial Access`</span> <span class="op">-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nth.html" class="external-link">first</a></span><span class="op">(</span><span class="va">`Mean Provincial Access`</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span></span>
+<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nth.html" class="external-link">first</a></span><span class="op">(</span><span class="va">`Mean Provincial Access`</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span>,</span>
 <span>    <span class="fl">2</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -420,16 +422,19 @@ accessibility results for specific locations:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Create a 2x2 plot showing accessibility at different resolutions with province highlight</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Plot base accessibility surface</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">result</span>, </span>
-<span>       main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%0.0fm Resolution\n%s cells"</span>, </span>
-<span>                     <span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">resolution</span>,</span>
-<span>                     <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">ncells</span>, big.mark<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">result</span>,</span>
+<span>    main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span></span>
+<span>      <span class="st">"%0.0fm Resolution\n%s cells"</span>,</span>
+<span>      <span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">resolution</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">ncells</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span>  <span class="co"># Add full region boundary in thin black</span></span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span>  <span class="co"># Highlight our test province in thicker white</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, border <span class="op">=</span> <span class="st">"red"</span>, lwd <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, border <span class="op">=</span> <span class="st">"red"</span>, lwd <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p><img src="spax-104-raster-tradeoff_files/figure-html/unnamed-chunk-8-1.png" width="1200"></p>
 <p>These results tell an interesting story about resolution
@@ -482,7 +487,7 @@ spax while avoiding common pitfalls.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Quick prototype at coarse resolution</span></span>
 <span><span class="va">coarse_test</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,  <span class="co"># 4x coarser</span></span>
+<span>  demand <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>, <span class="co"># 4x coarser</span></span>
 <span>  supply <span class="op">=</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  distance <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, fact <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
 <span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>

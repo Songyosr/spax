@@ -70,10 +70,10 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load required packages</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
 <span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/riatelab/osrm" class="external-link">osrm</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
@@ -224,7 +224,7 @@ our totals still match:</p>
 <span>    raster_cases <span class="op">=</span> <span class="va">extracted_cases</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
 <span>    difference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">cases</span> <span class="op">-</span> <span class="va">raster_cases</span><span class="op">)</span>,</span>
 <span>    pct_diff <span class="op">=</span> <span class="op">(</span><span class="va">difference</span> <span class="op">/</span> <span class="va">cases</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span> </span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate_all.html" class="external-link">mutate_if</a></span><span class="op">(</span><span class="va">is.numeric</span>, <span class="va">round</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   ADM1_PCODE cases raster_cases difference pct_diff</span></span>
 <span><span class="co">#&gt; 1       TH90  1274       1261.4       12.6      1.0</span></span>
@@ -253,9 +253,9 @@ versions.</em></p>
 <p>For uncertainty analysis, <code>spax</code> provides tools to
 generate multiple potential demand distributions:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># This advanced approach is covered in detail in the </span></span>
-<span><span class="co"># "Probabilistic Accessibility Analysis" vignette </span></span>
-<span><span class="op">?</span><span class="va">sample_pmf</span>  <span class="co"># See documentation for details</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># This advanced approach is covered in detail in the</span></span>
+<span><span class="co"># "Probabilistic Accessibility Analysis" vignette</span></span>
+<span><span class="op">?</span><span class="va">sample_pmf</span> <span class="co"># See documentation for details</span></span></code></pre></div>
 <p>The choice of demand preparation method can significantly impact your
 accessibility analysis results. Consider your specific context:</p>
 <ul>
@@ -408,7 +408,7 @@ format:</p>
 <span><span class="va">example_isochrone</span> <span class="op">&lt;-</span> <span class="va">example_isochrone</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    iso_mean <span class="op">=</span> <span class="op">(</span><span class="va">isomin</span> <span class="op">+</span> <span class="va">isomax</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
-<span>    location_id <span class="op">=</span> <span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">$</span><span class="va">id</span> </span>
+<span>    location_id <span class="op">=</span> <span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">$</span><span class="va">id</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Convert to raster format</span></span>
@@ -555,7 +555,7 @@ projection:</p>
 <span><span class="co">#&gt; NA's                    2.781020e+05</span></span>
 <span></span>
 <span><span class="co"># Check a few travel time rasters</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> </span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;             [,1]     [,2]     [,3]     [,4]     [,5]     [,6]     [,7]     [,8]</span></span>
 <span><span class="co">#&gt; Min.         6.0      3.0      3.5      4.0      4.0     11.0      5.0      7.5</span></span>
 <span><span class="co">#&gt; 1st Qu.     67.5     82.5     97.5     67.5     67.5     67.5     82.5     97.5</span></span>
