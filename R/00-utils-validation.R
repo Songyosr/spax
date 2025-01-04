@@ -85,7 +85,8 @@
 
 #' Assert values are within range with explicit boundary conditions
 #' @param x Numeric vector to check
-#' @param range A numeric vector of length 2 specifying the range (min and max)
+#' @param min Minimum allowed value
+#' @param max Maximum allowed value
 #' @param name Name of input for error messages
 #' @keywords internal
 .assert_range <- function(x, min, max, name = "Value") {

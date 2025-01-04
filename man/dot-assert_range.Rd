@@ -9,9 +9,11 @@
 \arguments{
 \item{x}{Numeric vector to check}
 
-\item{name}{Name of input for error messages}
+\item{min}{Minimum allowed value}
 
-\item{range}{A numeric vector of length 2 specifying the range (min and max)}
+\item{max}{Maximum allowed value}
+
+\item{name}{Name of input for error messages}
 }
 \description{
 Assert values are within range with explicit boundary conditions
