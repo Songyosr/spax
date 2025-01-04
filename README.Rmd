@@ -54,6 +54,8 @@ pop <- rast(u5pd) # Under-5 population density
 hospitals <- hc12_hos # Hospital locations and capacity
 distance <- rast(hos_iscr) # Travel time to hospitals
 
+
+
 # Calculate accessibility using Enhanced 2SFCA
 accessibility <- spax_e2sfca(
   demand = pop, # Population density
