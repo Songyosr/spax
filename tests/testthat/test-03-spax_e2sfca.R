@@ -122,7 +122,7 @@ test_that(".chck_compute_access validates inputs correctly", {
       id_col = "id", # Added this
       supply_cols = c("doctors", "nurses") # Added this
     ),
-    "demand must be a SpatRaster object"
+    "demand must be one of the following classes: SpatRaster"
   )
 
   # Test mismatched dimensions
@@ -136,7 +136,7 @@ test_that(".chck_compute_access validates inputs correctly", {
       id_col = "id", # Added this
       supply_cols = c("doctors", "nurses") # Added this
     ),
-    "Number of demand_weights layers must match number of facilities"
+    "Length of demand_weights layers \\(1\\) must match length of facilities \\(2\\)"
   )
 })
 
@@ -158,9 +158,11 @@ test_that(".chck_e2sfca validates inputs correctly", {
     .chck_e2sfca(
       td$demand, td$supply_df, td$distance,
       decay_params = "not_a_list",
-      demand_normalize = "standard"
+      demand_normalize = "standard",
+      supply_cols = c("doctors"),
+      id_col = "id"
     ),
-    "decay_params must be a list"
+    "decay_params must be one of the following classes: list"
   )
 
   # Test invalid demand_normalize
@@ -168,7 +170,9 @@ test_that(".chck_e2sfca validates inputs correctly", {
     .chck_e2sfca(
       td$demand, td$supply_df, td$distance,
       decay_params = list(method = "gaussian", sigma = 2),
-      demand_normalize = "invalid"
+      demand_normalize = "invalid",
+      supply_cols = c("doctors"),
+      id_col = "id"
     ),
     "demand_normalize must be one of:"
   )
