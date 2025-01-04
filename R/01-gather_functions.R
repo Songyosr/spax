@@ -5,30 +5,18 @@
 #' @keywords internal
 .chck_gather_weighted <- function(values, weights, na.rm) {
   # Input type validation
-  if (!inherits(values, "SpatRaster")) {
-    stop("values must be a SpatRaster object")
-  }
-  if (!inherits(weights, "SpatRaster")) {
-    stop("weights must be a SpatRaster object")
-  }
+  .assert_class(values, "SpatRaster", "values")
+  .assert_class(weights, "SpatRaster", "weights")
 
-  # Resolution compatibility
-  if (!all(res(values) == res(weights))) {
-    stop("values and weights must have the same resolution")
-  }
-
-  # Extent compatibility
-  if (!all(ext(values) == ext(weights))) {
-    stop("values and weights must have the same extent")
-  }
+  # Check raster alignment (resolution, extent and CRS)
+  .assert_raster_alignment(values, weights, "values", "weights")
 
   # na.rm validation
-  if (!is.logical(na.rm)) {
-    stop("na.rm must be logical")
-  }
+  .assert_class(na.rm, "logical", "na.rm")
 
   invisible(TRUE)
 }
+
 #' Core computation for gather_weighted
 #' @keywords internal
 .gather_weighted_core <- function(values, weights, na.rm = TRUE) {

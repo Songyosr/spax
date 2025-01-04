@@ -5,44 +5,30 @@
 #' @keywords internal
 .chck_spread_weighted <- function(values, weights, value_cols = NULL) {
   # Check weights
-  if (!inherits(weights, "SpatRaster")) {
-    stop("weights must be a SpatRaster object")
-  }
+  .assert_class(weights, "SpatRaster", "weights")
 
   # Handle sf objects first
   if (inherits(values, "sf")) {
-    stop("Input is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
+    stop("'values' is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
   }
 
-  # Handle different input types
+  # Check values is one of allowed types
+  .assert_class(values, c("numeric", "matrix", "data.frame"), "values")
+
+  # Check dimensions based on input type
   if (is.vector(values)) {
-    if (length(values) != nlyr(weights)) {
-      stop("Length of values must match number of weight layers")
-    }
-    return(TRUE)
-  }
-
-  if (is.matrix(values)) {
-    if (nrow(values) != nlyr(weights)) {
-      stop("Number of rows in values must match number of weight layers")
-    }
-    return(TRUE)
-  }
-
-  if (is.data.frame(values)) {
+    .assert_lengths_match(length(values), nlyr(weights), "values", "weight layers")
+  } else if (is.matrix(values)) {
+    .assert_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
+  } else if (is.data.frame(values)) {
     if (is.null(value_cols)) {
       stop("value_cols must be specified when values is a data.frame")
     }
-    if (!all(value_cols %in% names(values))) {
-      stop("Not all value_cols found in data.frame")
-    }
-    if (nrow(values) != nlyr(weights)) {
-      stop("Number of rows in values must match number of weight layers")
-    }
-    return(TRUE)
+    .assert_cols_exist(values, value_cols, "values")
+    .assert_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
   }
 
-  stop("values must be a vector, matrix, or data.frame")
+  invisible(TRUE)
 }
 
 #' Core spreading computation for single value vector
