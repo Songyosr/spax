@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,8 +198,8 @@ practice:</p>
 <span><span class="co">#&gt;   Facilities `Total Cells` `Runtime (s)` `Time per Cell (ms)`</span></span>
 <span><span class="co">#&gt;        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>          1 <span style="color: #949494;">"</span>   329,323<span style="color: #949494;">"</span>           0.02            0.000<span style="text-decoration: underline;">060</span>7</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>         10 <span style="color: #949494;">"</span> 3,293,230<span style="color: #949494;">"</span>           0.14            0.000<span style="text-decoration: underline;">042</span>5</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>        100 <span style="color: #949494;">"</span>32,932,300<span style="color: #949494;">"</span>           0.99            0.000<span style="text-decoration: underline;">030</span>1</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>         10 <span style="color: #949494;">"</span> 3,293,230<span style="color: #949494;">"</span>           0.13            0.000<span style="text-decoration: underline;">039</span>5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>        100 <span style="color: #949494;">"</span>32,932,300<span style="color: #949494;">"</span>           0.97            0.000<span style="text-decoration: underline;">029</span>5</span></span></code></pre></div>
 <p>The results tell a compelling story about vectorized efficiency:</p>
 <ol style="list-style-type: decimal">
 <li>While we increased the number of facilities from 1 to 100 (100x more
@@ -369,9 +369,9 @@ analysis results:</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 4</span></span></span>
 <span><span class="co">#&gt;   `Resolution (m)` `Grid Cells` `Runtime (s)` `Time per Cell (μs)`</span></span>
 <span><span class="co">#&gt;              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              520 <span style="color: #949494;">"</span>329,323<span style="color: #949494;">"</span>             2.71                 8.23</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">1</span>041 <span style="color: #949494;">"</span> 82,620<span style="color: #949494;">"</span>             0.74                 8.96</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             <span style="text-decoration: underline;">2</span>082 <span style="color: #949494;">"</span> 20,736<span style="color: #949494;">"</span>             0.18                 8.68</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              520 <span style="color: #949494;">"</span>329,323<span style="color: #949494;">"</span>             2.68                 8.14</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">1</span>041 <span style="color: #949494;">"</span> 82,620<span style="color: #949494;">"</span>             0.73                 8.84</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             <span style="text-decoration: underline;">2</span>082 <span style="color: #949494;">"</span> 20,736<span style="color: #949494;">"</span>             0.17                 8.20</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>             <span style="text-decoration: underline;">4</span>163 <span style="color: #949494;">"</span>  5,184<span style="color: #949494;">"</span>             0.07                13.5</span></span></code></pre></div>
 <p>But what about precision? Let’s look at how resolution affects our
 accessibility results for specific locations:</p>
