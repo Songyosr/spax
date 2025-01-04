@@ -12,15 +12,9 @@
 .chck_spax_ifca <- function(distance_raster, demand, supply, decay_params,
                             lambda, max_iter, tolerance, window_size) {
   # Input type validation
-  if (!inherits(distance_raster, "SpatRaster")) {
-    stop("distance_raster must be a SpatRaster object")
-  }
-  if (!inherits(demand, "SpatRaster")) {
-    stop("demand must be a SpatRaster object")
-  }
-  if (!is.numeric(supply)) {
-    stop("supply must be a numeric vector")
-  }
+  .assert_class(distance_raster, "SpatRaster", "distance_raster")
+  .assert_class(demand, "SpatRaster", "demand")
+  .assert_numeric(supply, "supply")
 
   # Validate demand layers
   n_layers <- nlyr(demand)
@@ -32,43 +26,32 @@
   }
 
   # Validate decay_params
-  if (!is.list(decay_params)) {
-    stop("decay_params must be a list")
-  }
+  .assert_class(decay_params, "list", "decay_params")
   if (is.null(decay_params$method)) {
     stop("decay_params must include 'method'")
   }
 
   # Parameter range validation
-  if (!is.numeric(lambda) || lambda <= 0 || lambda > 1) {
-    stop("lambda must be between 0 and 1")
-  }
-  if (!is.numeric(max_iter) || max_iter < 1 || max_iter != as.integer(max_iter)) {
-    stop("max_iter must be a positive integer")
-  }
-  if (!is.numeric(tolerance) || tolerance <= 0) {
-    stop("tolerance must be positive")
-  }
-  if (!is.numeric(window_size) || window_size < 1 ||
-    window_size != as.integer(window_size)) {
-    stop("window_size must be a positive integer")
-  }
-  if (window_size > max_iter) {
-    stop("window_size cannot be larger than max_iter")
-  }
+  .assert_numeric(lambda, "lambda")
+  .assert_range(lambda, 0, 1, "lambda")
 
-  # Validate raster compatibility
-  if (!all(res(demand) == res(distance_raster))) {
-    stop("demand and distance_raster must have the same resolution")
-  }
-  if (!all(ext(demand) == ext(distance_raster))) {
-    stop("demand and distance_raster must have the same extent")
-  }
+  .assert_numeric(max_iter, "max_iter")
+  .assert_integer(max_iter, "max_iter")
+  .assert_positive(max_iter, allow_zero = FALSE, "max_iter")
+
+  .assert_numeric(tolerance, "tolerance")
+  .assert_positive(tolerance, allow_zero = FALSE, "tolerance")
+
+  .assert_numeric(window_size, "window_size")
+  .assert_integer(window_size, "window_size")
+  .assert_positive(window_size, allow_zero = FALSE, "window_size")
+
+  # Validate raster alignment
+  .assert_raster_alignment(demand, distance_raster, "demand", "distance_raster")
 
   # Validate facility counts match
-  if (nlyr(distance_raster) != length(supply)) {
-    stop("Number of distance_raster layers must match length of supply vector")
-  }
+  .assert_lengths_match(nlyr(distance_raster), length(supply),
+                        "distance_raster layers", "supply vector")
 
   invisible(TRUE)
 }

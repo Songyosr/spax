@@ -100,13 +100,13 @@ test_that("gather_weighted validates input types", {
   # Non-SpatRaster values
   expect_error(
     gather_weighted(as.matrix(1:25), test_data$weights),
-    "values must be a SpatRaster object"
+    "values must be one of the following classes: SpatRaster"
   )
 
   # Non-SpatRaster weights
   expect_error(
     gather_weighted(test_data$values, as.matrix(runif(75))),
-    "weights must be a SpatRaster object"
+    "weights must be one of the following classes: SpatRaster"
   )
 })
 
@@ -124,7 +124,7 @@ test_that("gather_weighted validates raster compatibility", {
 
   expect_error(
     gather_weighted(values, weights_diff_res),
-    "values and weights must have the same resolution"
+    "values and weights must have the same geometry \\(resolution, extent, and CRS\\)"
   )
 
   # Create raster with different extent but same resolution
@@ -136,7 +136,7 @@ test_that("gather_weighted validates raster compatibility", {
 
   expect_error(
     gather_weighted(values, weights_diff_ext),
-    "values and weights must have the same extent"
+    "values and weights must have the same geometry \\(resolution, extent, and CRS\\)"
   )
 })
 

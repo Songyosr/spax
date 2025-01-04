@@ -36,20 +36,20 @@ test_that("transform_pmf handles NA values correctly", {
 test_that("transform_pmf errors on negative values", {
   test_values <- c(-1, 10, 20, 30)
   density_rast <- create_test_raster(test_values, 2, 2)
-  expect_error(transform_pmf(density_rast), "Input values cannot be negative")
+  expect_error(transform_pmf(density_rast), "values in x must be >= 0")
 
   all_neg_rast <- create_test_raster(rep(-1, 4), 2, 2)
-  expect_error(transform_pmf(all_neg_rast), "Input values cannot be negative")
+  expect_error(transform_pmf(all_neg_rast), "values in x must be >= 0")
 })
 
 test_that("transform_pmf errors on invalid inputs", {
-  expect_error(transform_pmf(c(1, 2, 3)), "Input must be a SpatRaster object")
+  expect_error(transform_pmf(c(1, 2, 3)), "x must be one of the following classes: SpatRaster")
 
   all_na_rast <- create_test_raster(rep(NA, 4), 2, 2)
-  expect_error(transform_pmf(all_na_rast), "Input raster contains only NA values")
+  expect_error(transform_pmf(all_na_rast), "Input raster 'x' contains only NA values")
 
   all_zero_rast <- create_test_raster(rep(0, 4), 2, 2)
-  expect_error(transform_pmf(all_zero_rast), "Total sum is zero")
+  expect_error(transform_pmf(all_zero_rast), "Sum of all values in 'x' is zero - cannot create PMF")
 })
 
 test_that("transform_pmf preserves relative proportions", {

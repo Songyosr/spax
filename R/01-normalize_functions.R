@@ -86,7 +86,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 .chck_normalize <- function(x, method, ref_value = NULL, a0 = 0) {
   # Input existence check
   if (length(x) == 0) {
-    stop("Input weights cannot be empty")
+    stop("'x' weights cannot be empty")
   }
 
   # Method validation - handle both string methods and custom functions
@@ -95,19 +95,20 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
     if (!method %in% valid_methods) {
       stop("Invalid normalization method specified")
     }
-
-    # ref_value validation only for reference method
-    if (method == "reference" && !is.null(ref_value)) {
-      if (!is.numeric(ref_value) || length(ref_value) != 1) {
-        stop("ref_value must be a single numeric value")
-      }
+    # ref_value validation
+    if ((method == "reference") && !is.null(ref_value)) {
+      .assert_numeric(ref_value, "ref_value")
+      .assert_length(length(ref_value), 1, "ref_value")
     }
   }
 
+
+
+
   # a0 validation
-  if (!is.numeric(a0) || length(a0) != 1 || a0 < 0) {
-    stop("a0 must be a non-negative numeric value")
-  }
+  .assert_numeric(a0, "a0")
+  .assert_length(length(a0), 1, "a0")
+  .assert_positive(a0, allow_zero = TRUE, "a0")
 
   invisible(TRUE)
 }
