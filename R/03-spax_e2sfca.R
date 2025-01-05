@@ -379,7 +379,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
     supply_values = processed_supply$values,
     demand_weights = demand_weights,
     access_weights = access_weights,
-    indicator_names = indicator_names %||% paste0("A_", processed_supply$cols)
+    indicator_names = indicator_names %||% processed_supply$cols
   )
 
   return(result)

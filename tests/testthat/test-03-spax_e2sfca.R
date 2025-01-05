@@ -202,7 +202,7 @@ test_that("spax_e2sfca returns valid spax object", {
   # Test core components
   expect_s4_class(result$accessibility, "SpatRaster")
   expect_equal(result$type, "E2SFCA")
-  expect_equal(names(result$accessibility), c("A_doctors"))
+  expect_equal(names(result$accessibility), c("doctors"))
 
   # Test facilities data
   expect_s3_class(result$facilities, "data.frame")
@@ -227,7 +227,7 @@ test_that("spax_e2sfca returns valid spax object", {
   )
 
   expect_s3_class(result_multi, "spax")
-  expect_equal(names(result_multi$accessibility), c("A_doctors", "A_nurses"))
+  expect_equal(names(result_multi$accessibility), c("doctors", "nurses"))
   expect_true(all(c("id", "doctors", "nurses") %in% names(result_multi$facilities)))
 
 })
@@ -246,7 +246,7 @@ test_that("spax_e2sfca handles different supply formats", {
     supply_cols = c("doctors", "nurses")
   )
   expect_s3_class(df_result, "spax")
-  expect_equal(names(df_result$accessibility), c("A_doctors", "A_nurses"))
+  expect_equal(names(df_result$accessibility), c("doctors", "nurses"))
 
   # Test with matrix
   mat_result <- spax_e2sfca(
