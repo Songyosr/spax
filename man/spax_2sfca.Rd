@@ -30,7 +30,14 @@ spax_2sfca(
 \item{snap}{Logical; if TRUE enable fast computation mode (default = FALSE)}
 }
 \value{
-SpatRaster of accessibility scores
+A spax object containing:
+       \itemize{
+         \item accessibility: SpatRaster of accessibility scores
+         \item type: Character string "2SFCA"
+         \item parameters: List containing threshold and binary decay parameters
+         \item facilities: data.frame of facility-level information
+         \item call: The original function call
+       }
 }
 \description{
 Implements the original Two-Step Floating Catchment Area (2SFCA) method using
@@ -84,7 +91,7 @@ result <- spax_2sfca(
 )
 
 # Plot the results
-plot(result, main = "Doctor Accessibility (Original 2SFCA)")
+plot(result$accessibility, main = "Doctor Accessibility (Original 2SFCA)")
 
 # Calculate accessibility to multiple supply types
 result_multi <- spax_2sfca(
@@ -96,8 +103,10 @@ result_multi <- spax_2sfca(
   supply_cols = c("s_doc", "s_nurse")
 )
 
-# Plot both doctor and nurse accessibility
-plot(result_multi)
+# Compare accessibility for different dimensions
+plot(result_multi$accessibility,
+  main = c("Doctor Accessibility", "Nurse Accessibility")
+)
 
 }
 \references{

@@ -46,7 +46,14 @@ spax_e2sfca(
 \item{snap}{Logical; if TRUE enable fast computation mode (default = FALSE)}
 }
 \value{
-SpatRaster of accessibility scores
+A spax object containing:
+       \itemize{
+         \item accessibility: SpatRaster of accessibility scores
+         \item type: Character string "E2SFCA"
+         \item parameters: List of model parameters used
+         \item facilities: data.frame of facility-level information
+         \item call: The original function call
+       }
 }
 \description{
 Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method as proposed
@@ -100,8 +107,11 @@ result <- spax_e2sfca(
   supply_cols = "s_doc"
 )
 
-# Plot the results
-plot(result, main = "Doctor Accessibility (E2SFCA)")
+# Extract and plot accessibility surface
+plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+
+# Access facility-level information
+head(result$facilities)
 
 # Compare different decay functions
 result_exp <- spax_e2sfca(
@@ -118,7 +128,7 @@ result_exp <- spax_e2sfca(
 )
 
 # Plot both for comparison
-plot(c(result, result_exp),
+plot(c(result$accessibility, result_exp$accessibility),
   main = c("Gaussian Decay", "Exponential Decay")
 )
 
