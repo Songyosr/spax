@@ -356,36 +356,73 @@ compute_iterative <- function(supply, weights, demand,
 #'   Numeric vector of predicted utilization for all facilities
 #'
 #' If snap = FALSE:
-#'   A list containing:
+#'   A spax object containing:
 #'   \describe{
-#'     \item{utilization}{Numeric vector of predicted facility utilization}
-#'     \item{ratios}{Numeric vector of final supply-demand ratios}
-#'     \item{attractiveness}{Numeric vector of final facility attractiveness values}
 #'     \item{accessibility}{SpatRaster of accessibility scores}
-#'     \item{convergence}{List with convergence details:
+#'     \item{type}{Character string "iFCA"}
+#'     \item{parameters}{List of model parameters including decay_params, lambda, etc.}
+#'     \item{facilities}{data.frame with columns:
 #'       \itemize{
-#'         \item iterations: Number of iterations run
-#'         \item converged: Logical indicating if convergence achieved
-#'         \item type: Convergence check method used
-#'         \item final_average: Final rolling average of differences
-#'         \item window_size: Size of rolling window used
+#'         \item id: Facility identifiers
+#'         \item utilization: Predicted facility utilization
+#'         \item ratio: Supply-to-demand ratios
+#'         \item attractiveness: Final facility attractiveness
 #'       }
 #'     }
-#'     \item{history}{Array of historical state values if converged, NULL otherwise}
-#'     \item{parameters}{List of parameter values used in computation}
+#'     \item{iterations}{List containing:
+#'       \itemize{
+#'         \item history: Array of historical state values if converged
+#'         \item convergence: Convergence details including iterations, status, etc.
+#'       }
+#'     }
+#'     \item{call}{The original function call}
 #'   }
 #'
 #' @examples
 #' \dontrun{
-#' # Basic usage with static demand
+#' # Load example data
+#' library(terra)
+#' library(sf)
+#'
+#' # Prepare inputs
+#' pop <- rast(u5pd)
+#' hospitals <- st_drop_geometry(hc12_hos)
+#' distance <- rast(hos_iscr)
+#'
+#' # Basic usage with default parameters
 #' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = pop_rast,
-#'   supply = facility_capacity,
+#'   distance_raster = distance,
+#'   demand = pop,
+#'   supply = hospitals$s_doc,
 #'   decay_params = list(
 #'     method = "gaussian",
-#'     sigma = 30
+#'     sigma = 30  # 30-minute characteristic distance
 #'   )
+#' )
+#'
+#' # Plot accessibility surface
+#' plot(result$accessibility, main = "Doctor Accessibility (iFCA)")
+#'
+#' # Examine facility-level results
+#' head(result$facilities)
+#'
+#' # Check convergence information
+#' print(result$iterations$convergence)
+#'
+#' # Fast computation mode - returns only utilization
+#' util <- spax_ifca(
+#'   distance_raster = distance,
+#'   demand = pop,
+#'   supply = hospitals$s_doc,
+#'   decay_params = list(method = "gaussian", sigma = 30),
+#'   snap = TRUE
+#' )
+#'
+#' # Compare predicted utilization with facility capacity
+#' data.frame(
+#'   id = hospitals$id,
+#'   capacity = hospitals$s_doc,
+#'   predicted = util
 #' )
 #'
 #' # Using custom decay function
@@ -395,10 +432,10 @@ compute_iterative <- function(supply, weights, demand,
 #'   return(weights)
 #' }
 #'
-#' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = pop_rast,
-#'   supply = facility_capacity,
+#' result_custom <- spax_ifca(
+#'   distance_raster = distance,
+#'   demand = pop,
+#'   supply = hospitals$s_doc,
 #'   decay_params = list(
 #'     method = custom_decay,
 #'     sigma = 30,
@@ -406,14 +443,6 @@ compute_iterative <- function(supply, weights, demand,
 #'   )
 #' )
 #'
-#' # With time-series demand (must match max_iter)
-#' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = demand_series, # Multi-layer demand
-#'   supply = facility_capacity,
-#'   max_iter = nlyr(demand_series),
-#'   decay_params = list(method = "gaussian", sigma = 30)
-#' )
 #' }
 #'
 #' @seealso
@@ -497,25 +526,39 @@ spax_ifca <- function(distance_raster,
   ratios <- .help_add_0facilities(final_state[, 2], processed$zero_map)
   attractiveness <- .help_add_0facilities(final_state[, 3], processed$zero_map)
 
-  # Return full results
-  list(
+  # Create facilities data.frame
+  facilities <- data.frame(
+    id = processed$names,
     utilization = utilization,
-    ratios = ratios,
+    ratio = ratios,
     attractiveness = attractiveness,
-    accessibility = accessibility,
-    util_prob_surface = util_prob_surface,
-    convergence = list(
-      iterations = results$iterations,
-      converged = results$converged,
-      type = convergence_type,
-      final_average = results$convergence$final_average,
-      window_size = window_size
-    ),
-    history = if (results$converged) results$state else NULL,
+    row.names = NULL
+  )
+
+  # Create spax object
+  .create_spax(
+    accessibility = results$accessibility,
+    type = "iFCA",
     parameters = list(
       decay_params = decay_params,
       lambda = lambda,
-      tolerance = tolerance
-    )
+      tolerance = tolerance,
+      window_size = window_size,
+      convergence_type = convergence_type
+    ),
+    facilities = facilities,
+    iterations = list(
+      history = if (results$converged) results$state else NULL,
+      convergence = list(
+        iterations = results$iterations,
+        converged = results$converged,
+        type = convergence_type,
+        final_average = results$convergence$final_average
+      )
+    ),
+    call = match.call(),
+    snap = snap
   )
+
+
 }

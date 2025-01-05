@@ -51,7 +51,7 @@ distance <- rast(hos_iscr) # Travel time to hospitals
 
 
 # Calculate accessibility using Enhanced 2SFCA
-accessibility <- spax_e2sfca(
+result <- spax_e2sfca(
   demand = pop, # Population density
   supply = hospitals |> st_drop_geometry(), # Hospital capacity
   distance = distance, # Travel times
@@ -65,10 +65,9 @@ accessibility <- spax_e2sfca(
 )
 
 # Plot results
-plot(accessibility,
+plot(result$accessibility,
   main = c("Access to Doctors", "Access to Nurses")
 )
-plot(vect(bound0), add = TRUE)
 ```
 
 <img src="man/figures/README-example-1.png" width="100%" />

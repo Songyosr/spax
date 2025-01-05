@@ -412,7 +412,14 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
-#' @return SpatRaster of accessibility scores
+#' @return A spax object containing:
+#'        \itemize{
+#'          \item accessibility: SpatRaster of accessibility scores
+#'          \item type: Character string "E2SFCA"
+#'          \item parameters: List of model parameters used
+#'          \item facilities: data.frame of facility-level information
+#'          \item call: The original function call
+#'        }
 #'
 #' @details
 #' The E2SFCA method enhances the original 2SFCA by introducing:
@@ -466,8 +473,11 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #'   supply_cols = "s_doc"
 #' )
 #'
-#' # Plot the results
-#' plot(result, main = "Doctor Accessibility (E2SFCA)")
+#' # Extract and plot accessibility surface
+#' plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+#'
+#' # Access facility-level information
+#' head(result$facilities)
 #'
 #' # Compare different decay functions
 #' result_exp <- spax_e2sfca(
@@ -484,7 +494,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' )
 #'
 #' # Plot both for comparison
-#' plot(c(result, result_exp),
+#' plot(c(result$accessibility, result_exp$accessibility),
 #'   main = c("Gaussian Decay", "Exponential Decay")
 #' )
 #'
@@ -509,13 +519,14 @@ spax_e2sfca <- function(demand, supply, distance,
   }
 
   # Compute weights using decay function
-  weights <- do.call(calc_decay, c(list(distance = distance), decay_params))
+  weights <- do.call(calc_decay, c(list(distance = distance), decay_params, list(snap = snap)))
 
   # Process demand weights based on normalization method
   demand_weights <- calc_normalize(weights, method = demand_normalize, snap = snap)
 
   # Access weights remain unnormalized
   access_weights <- weights
+
 
   # Use compute_access for final calculation
   result <- compute_access(
@@ -529,7 +540,36 @@ spax_e2sfca <- function(demand, supply, distance,
     snap = snap
   )
 
-  return(result)
+  # Process facility information
+  if (is.data.frame(supply)) {
+    facilities <- data.frame(
+      id = supply[[id_col]],
+      supply[supply_cols]
+    )
+  } else if (is.matrix(supply)) {
+    facilities <- data.frame(
+      id = rownames(supply) %||% paste0("facility_", seq_len(nrow(supply))),
+      as.data.frame(supply)
+    )
+  } else {
+    facilities <- data.frame(
+      id = names(supply) %||% paste0("facility_", seq_along(supply)),
+      supply = supply
+    )
+  }
+
+  # Create spax object
+  .create_spax(
+    accessibility = result,
+    type = "E2SFCA",
+    parameters = list(
+      decay_params = decay_params,
+      demand_normalize = demand_normalize
+    ),
+    facilities = facilities,
+    call = match.call(),
+    snap = snap
+  )
 }
 
 #' Calculate Original Two-Step Floating Catchment Area (2SFCA) accessibility scores
@@ -547,7 +587,14 @@ spax_e2sfca <- function(demand, supply, distance,
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
-#' @return SpatRaster of accessibility scores
+#' @return A spax object containing:
+#'        \itemize{
+#'          \item accessibility: SpatRaster of accessibility scores
+#'          \item type: Character string "2SFCA"
+#'          \item parameters: List containing threshold and binary decay parameters
+#'          \item facilities: data.frame of facility-level information
+#'          \item call: The original function call
+#'        }
 #'
 #' @details
 #' The original Two-Step Floating Catchment Area (2SFCA) method operates in two steps:
@@ -601,7 +648,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #' )
 #'
 #' # Plot the results
-#' plot(result, main = "Doctor Accessibility (Original 2SFCA)")
+#' plot(result$accessibility, main = "Doctor Accessibility (Original 2SFCA)")
 #'
 #' # Calculate accessibility to multiple supply types
 #' result_multi <- spax_2sfca(
@@ -613,8 +660,10 @@ spax_e2sfca <- function(demand, supply, distance,
 #'   supply_cols = c("s_doc", "s_nurse")
 #' )
 #'
-#' # Plot both doctor and nurse accessibility
-#' plot(result_multi)
+#' # Compare accessibility for different dimensions
+#' plot(result_multi$accessibility,
+#'   main = c("Doctor Accessibility", "Nurse Accessibility")
+#' )
 #'
 #' @seealso
 #' * [spax_e2sfca()] for the enhanced version with distance decay
@@ -642,5 +691,7 @@ spax_2sfca <- function(demand, supply, distance, threshold,
     snap = snap
   )
 
+  # Update type while preserving other components
+  result$type <- "2SFCA"
   return(result)
 }

@@ -262,7 +262,7 @@ extract_province_access <- function(result) {
   # Extract mean accessibility for first province
   # Extract zonal statistics
   zonal_mean <- terra::extract(
-    result,
+    result$accessibility,
     vect(prov_exam),
     fun = mean,
     na.rm = TRUE
@@ -297,7 +297,7 @@ Let's visualize what's happening to our spatial data:
 par(mfrow = c(2, 2))
 for (i in seq_along(results)) {
   # Plot base accessibility surface
-  plot(results[[i]]$result,
+  plot(results[[i]]$result$accessibility,
     main = sprintf(
       "%0.0fm Resolution\n%s cells",
       results[[i]]$resolution,

@@ -272,18 +272,26 @@ par(mfrow = c(2, 2))
 plot(sum(facility_weights),
   main = "Raw Weight Sum\n(potential double-counting)"
 )
+plot(vect(bound0), add = TRUE)
+
+# --
 plot(sum(standard_norm),
   main = "Standard Normalization\n(sums to 1)"
 )
+plot(vect(bound0), add = TRUE)
+
+# --
 plot(sum(semi_norm),
   main = "Semi-normalization\n(prevents inflation)"
 )
+plot(vect(bound0), add = TRUE)
 
 # Show where normalization matters most
 overlap_areas <- sum(facility_weights) > 1
 plot(overlap_areas,
   main = "Competition Areas\n(where normalization matters)"
 )
+plot(vect(bound0), add = TRUE)
 ```
 
 Think of normalization like adjusting a recipe when ingredients overlap. If two hospitals serve the same area:
@@ -406,7 +414,7 @@ result <- spax_e2sfca(
   supply_cols = "s_doc"
 )
 
-plot(result, main = "E2SFCA Accessibility Scores")
+plot(result$accessibility, main = "E2SFCA Accessibility Scores")
 plot(vect(bound0), add = TRUE)
 ```
 
