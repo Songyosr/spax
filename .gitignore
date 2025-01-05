@@ -2,6 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+.DS_Store
+**/.DS_Store
 inst/doc
 /doc/
 /Meta/
@@ -10,3 +12,4 @@ docs
 # Ignore junk folder
 junk/
 data-raw/
+tests/.DS_Store
