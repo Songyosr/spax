@@ -447,9 +447,6 @@ compute_iterative <- function(supply, weights, demand,
 #'
 #' @seealso
 #' \code{\link{calc_decay}} for available decay functions
-#'
-#' @import terra
-#'
 #' @export
 spax_ifca <- function(distance_raster,
                       demand,
