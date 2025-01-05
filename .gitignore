@@ -12,3 +12,4 @@ docs
 # Ignore junk folder
 junk/
 data-raw/
+tests/.DS_Store
