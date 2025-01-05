@@ -128,7 +128,7 @@ Now that we understand our data, let's put it all together for a basic accessibi
 
 ```{r}
 # Calculate accessibility scores
-accessibility <- spax_e2sfca(
+result <- spax_e2sfca(
   demand = pop, # Population density
   supply = hc12_hos |> st_drop_geometry(), # Hospital capacity
   distance = distance_raster, # Travel times
@@ -144,10 +144,9 @@ accessibility <- spax_e2sfca(
 
 ```{r}
 # Visualize the results
-plot(accessibility,
+plot(result$accessibility,
   main = c("Access to Doctors", "Access to Nurses")
 )
-plot(vect(bound0), add = TRUE)
 ```
 
 And that's it! We've calculated accessibility scores for doctors and nurses across the region with the lighter colors indicating better access.
