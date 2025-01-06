@@ -4,7 +4,7 @@
 \alias{plot.spax}
 \title{Plot Spatial Accessibility Results}
 \usage{
-\method{plot}{spax}(x, ...)
+plot.spax(x, ...)
 }
 \arguments{
 \item{x}{A spax object containing accessibility results}

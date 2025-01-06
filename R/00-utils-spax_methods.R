@@ -95,7 +95,7 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     # Quantiles
     quants <- terra::global(layer,
                             function(x) stats::quantile(x, probs = quantiles, na.rm = TRUE)
-                            )
+    )
 
     # Combine into named list
     list(
