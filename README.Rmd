@@ -71,10 +71,13 @@ result <- spax_e2sfca(
 )
 
 # Plot results
-plot(result$accessibility,
-  main = c("Access to Doctors", "Access to Nurses")
+plot(result,  # main = c("Access to Doctors", "Access to Nurses"),
+     fun = function() lines(bound0)
 )
 
+```
+```{r}
+summary(result)
 ```
 
 This example demonstrates key features of spax:

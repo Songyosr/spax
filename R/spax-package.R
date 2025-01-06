@@ -10,5 +10,6 @@
 #' @import terra
 #' @importFrom raster raster
 #' @importFrom tibble tibble
+#' @importFrom base print
 ## usethis namespace: end
 NULL

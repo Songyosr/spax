@@ -65,12 +65,50 @@ result <- spax_e2sfca(
 )
 
 # Plot results
-plot(result$accessibility,
-  main = c("Access to Doctors", "Access to Nurses")
+plot(result,  # main = c("Access to Doctors", "Access to Nurses"),
+     fun = function() lines(bound0)
 )
 ```
 
 <img src="man/figures/README-example-1.png" width="100%" />
+
+``` r
+summary(result)
+#> Summary of Spatial Accessibility Analysis (E2SFCA)
+#> --------------------------------------------- 
+#> 
+#> Accessibility Measures:
+#> 
+#> s_doc:
+#>   Range: 2.14e-10 to 0.1818
+#>   Mean (SD): 0.06002 (0.03767)
+#>   Quantiles:
+#>     Min.:    2.14e-10
+#> 
+#>   Coverage: 33.2% (109362 of 329323 cells)
+#> 
+#> s_nurse:
+#>   Range: 4.172e-10 to 0.2736
+#>   Mean (SD): 0.1066 (0.06332)
+#>   Quantiles:
+#>     Min.:    4.172e-10
+#> 
+#>   Coverage: 33.2% (109362 of 329323 cells)
+#> 
+#> Facility Statistics:
+#> -------------------
+#> Total Facilities: 77
+#> 
+#> s_doc:
+#>   Total Supply: 4669
+#>   Mean (SD): 60.64 (80.09)
+#>   Range: 0 to 522
+#> 
+#> s_nurse:
+#>   Total Supply: 8125
+#>   Mean (SD): 105.5 (159.1)
+#>   Range: 0 to 973
+```
 
 This example demonstrates key features of spax:
 

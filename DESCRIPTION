@@ -23,7 +23,9 @@ Imports:
     raster,
     stats,
     tibble,
-    withr
+    withr,
+    base,
+    graphics
 Suggests:
     dplyr,
     sf,
