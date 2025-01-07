@@ -30,7 +30,14 @@ spax_2sfca(
 \item{snap}{Logical; if TRUE enable fast computation mode (default = FALSE)}
 }
 \value{
-SpatRaster of accessibility scores
+A spax object containing:
+       \itemize{
+         \item accessibility: SpatRaster of accessibility scores
+         \item type: Character string "2SFCA"
+         \item parameters: List containing threshold and binary decay parameters
+         \item facilities: data.frame of facility-level information
+         \item call: The original function call
+       }
 }
 \description{
 Implements the original Two-Step Floating Catchment Area (2SFCA) method using
@@ -67,8 +74,9 @@ Limitations addressed by later methods:
 library(terra)
 library(sf)
 
-# Convert under-5 population density to proper format
-pop_rast <- rast(u5pd)
+# Load data
+pop_rast <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
 
 # Drop geometry for supply data
 hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -77,27 +85,29 @@ hc12_hos <- hc12_hos |> st_drop_geometry()
 result <- spax_2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   threshold = 30, # 30-minute catchment
   id_col = "id",
   supply_cols = "s_doc"
 )
 
 # Plot the results
-plot(result, main = "Doctor Accessibility (Original 2SFCA)")
+plot(result$accessibility, main = "Doctor Accessibility (Original 2SFCA)")
 
 # Calculate accessibility to multiple supply types
 result_multi <- spax_2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   threshold = 30,
   id_col = "id",
   supply_cols = c("s_doc", "s_nurse")
 )
 
-# Plot both doctor and nurse accessibility
-plot(result_multi)
+# Compare accessibility for different dimensions
+plot(result_multi$accessibility,
+  main = c("Doctor Accessibility", "Nurse Accessibility")
+)
 
 }
 \references{

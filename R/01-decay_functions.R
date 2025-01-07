@@ -134,27 +134,25 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
     return(TRUE)
   }
 
-  if (!inherits(distance, "SpatRaster") && !is.numeric(distance)) {
-    stop("distance must be numeric or SpatRaster")
-  }
+  # Check distance can be either numeric, matrix, or SpatRaster
+  .assert_class(distance, c("numeric" , "matrix" , "SpatRaster"), "distance")
+  # if(!is.numeric(distance)) stop("Distance must contain a numeric vector, matrix, or SpatRaster")
 
+  # Check method is either a character or function
   if (!is.function(method)) {
     if (!method %in% c("gaussian", "exponential", "power", "inverse", "binary")) {
       stop("Invalid method specified")
     }
 
-    # Only validate sigma for built-in methods
+    # Sigma validation if provided
     if (!is.null(sigma)) {
-      if (!is.numeric(sigma) || length(sigma) != 1) {
-        stop("sigma must be a single numeric value")
-      }
-      if (sigma <= 0) {
-        stop("sigma must be positive")
-      }
+      .assert_numeric(sigma, "sigma")
+      .assert_length(length(sigma), 1, "sigma")
+      .assert_positive(sigma, allow_zero = FALSE, "sigma")
     }
   }
 
-  return(TRUE)
+  invisible(TRUE)
 }
 
 #' Helper function for Gaussian decay weight computation

@@ -122,7 +122,7 @@ test_that(".chck_compute_access validates inputs correctly", {
       id_col = "id", # Added this
       supply_cols = c("doctors", "nurses") # Added this
     ),
-    "demand must be a SpatRaster object"
+    "demand must be one of the following classes: SpatRaster"
   )
 
   # Test mismatched dimensions
@@ -136,7 +136,7 @@ test_that(".chck_compute_access validates inputs correctly", {
       id_col = "id", # Added this
       supply_cols = c("doctors", "nurses") # Added this
     ),
-    "Number of demand_weights layers must match number of facilities"
+    "Length of demand_weights layers \\(1\\) must match length of facilities \\(2\\)"
   )
 })
 
@@ -158,9 +158,11 @@ test_that(".chck_e2sfca validates inputs correctly", {
     .chck_e2sfca(
       td$demand, td$supply_df, td$distance,
       decay_params = "not_a_list",
-      demand_normalize = "standard"
+      demand_normalize = "standard",
+      supply_cols = c("doctors"),
+      id_col = "id"
     ),
-    "decay_params must be a list"
+    "decay_params must be one of the following classes: list"
   )
 
   # Test invalid demand_normalize
@@ -168,7 +170,9 @@ test_that(".chck_e2sfca validates inputs correctly", {
     .chck_e2sfca(
       td$demand, td$supply_df, td$distance,
       decay_params = list(method = "gaussian", sigma = 2),
-      demand_normalize = "invalid"
+      demand_normalize = "invalid",
+      supply_cols = c("doctors"),
+      id_col = "id"
     ),
     "demand_normalize must be one of:"
   )
@@ -176,50 +180,43 @@ test_that(".chck_e2sfca validates inputs correctly", {
 
 # 3. Test Main Functions ----------------------------------------------------
 
-test_that("compute_access handles different supply formats", {
+test_that("spax_e2sfca returns valid spax object", {
   td <- create_test_data()
 
-  weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
-  demand_weights <- calc_normalize(weights, method = "standard")
-  access_weights <- weights
-
-  # Test with data.frame
-  df_result <- compute_access(
-    td$demand, td$supply_df, demand_weights, access_weights,
-    id_col = "id", supply_cols = c("doctors", "nurses")
-  )
-  expect_s4_class(df_result, "SpatRaster")
-  expect_equal(names(df_result), c("A_doctors", "A_nurses"))
-
-  # Test with matrix
-  mat_distance <- td$distance # Should already have correct number of layers
-  mat_result <- compute_access(
-    td$demand,
-    td$supply_matrix,
-    demand_weights,
-    access_weights
-  )
-  expect_s4_class(mat_result, "SpatRaster")
-  expect_equal(dim(mat_result)[3], ncol(td$supply_matrix))
-
-
-  # Test with vector
-  vec_weights <- weights # weights should have same number of layers as vector length
-  vec_result <- compute_access(
-    td$demand,
-    td$supply_vector,
-    demand_weights,
-    access_weights
-  )
-  expect_s4_class(vec_result, "SpatRaster")
-})
-
-
-test_that("spax_e2sfca implements E2SFCA correctly", {
-  td <- create_test_data()
-
-  # Basic usage
+  # Basic usage with single supply column first
   result <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_df,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2),
+    demand_normalize = "standard",
+    id_col = "id",
+    supply_cols = c("doctors")
+  )
+
+  # Test class and structure
+  expect_s3_class(result, "spax")
+  expect_named(result, c("accessibility", "type", "parameters", "facilities",
+                         "iterations", "variations", "call"))
+
+  # Test core components
+  expect_s4_class(result$accessibility, "SpatRaster")
+  expect_equal(result$type, "E2SFCA")
+  expect_equal(names(result$accessibility), c("doctors"))
+
+  # Test facilities data
+  expect_s3_class(result$facilities, "data.frame")
+  expect_equal(nrow(result$facilities), 2)
+  expect_true(all(c("id", "doctors") %in% names(result$facilities)))
+
+  # Test parameters
+  expect_type(result$parameters, "list")
+  expect_equal(result$parameters$decay_params$method, "gaussian")
+  expect_equal(result$parameters$decay_params$sigma, 2)
+  expect_equal(result$parameters$demand_normalize, "standard")
+
+  # Now test with multiple supply columns
+  result_multi <- spax_e2sfca(
     demand = td$demand,
     supply = td$supply_df,
     distance = td$distance,
@@ -229,23 +226,47 @@ test_that("spax_e2sfca implements E2SFCA correctly", {
     supply_cols = c("doctors", "nurses")
   )
 
-  expect_s4_class(result, "SpatRaster")
-  expect_equal(names(result), c("A_doctors", "A_nurses"))
+  expect_s3_class(result_multi, "spax")
+  expect_equal(names(result_multi$accessibility), c("doctors", "nurses"))
+  expect_true(all(c("id", "doctors", "nurses") %in% names(result_multi$facilities)))
 
-  # Test snap mode
-  snap_result <- spax_e2sfca(
+})
+
+test_that("spax_e2sfca handles different supply formats", {
+  td <- create_test_data()
+
+  # Test with data.frame
+  df_result <- spax_e2sfca(
     demand = td$demand,
     supply = td$supply_df,
     distance = td$distance,
     decay_params = list(method = "gaussian", sigma = 2),
     demand_normalize = "standard",
     id_col = "id",
-    supply_cols = c("doctors", "nurses"),
-    snap = TRUE
+    supply_cols = c("doctors", "nurses")
   )
+  expect_s3_class(df_result, "spax")
+  expect_equal(names(df_result$accessibility), c("doctors", "nurses"))
 
-  # Results should be the same with and without snap
-  expect_equal(terra::values(result), terra::values(snap_result))
+  # Test with matrix
+  mat_result <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_matrix,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2)
+  )
+  expect_s3_class(mat_result, "spax")
+  expect_equal(dim(mat_result$accessibility)[3], ncol(td$supply_matrix))
+
+  # Test with vector
+  vec_result <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_vector,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2)
+  )
+  expect_s3_class(vec_result, "spax")
+  expect_equal(dim(vec_result$accessibility)[3], 1)
 })
 
 test_that("spax_e2sfca handles different normalizations", {
@@ -265,8 +286,51 @@ test_that("spax_e2sfca handles different normalizations", {
     )
   })
 
+  # Check class consistency
+  expect_true(all(sapply(results, inherits, "spax")))
+
   # Results should be different for each normalization method
-  values <- lapply(results, terra::values)
-  expect_false(identical(values[[1]], values[[2]]))
-  expect_false(identical(values[[2]], values[[3]]))
+  access_values <- lapply(results, function(x) terra::values(x$accessibility))
+  expect_false(identical(access_values[[1]], access_values[[2]]))
+  expect_false(identical(access_values[[2]], access_values[[3]]))
+
+  # Check parameters are correctly stored
+  expect_equal(sapply(results, function(x) x$parameters$demand_normalize),
+               normalizations)
 })
+
+test_that("spax_e2sfca preserves snap mode functionality", {
+  td <- create_test_data()
+
+  # Compare results with and without snap
+  normal_result <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_df,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2),
+    demand_normalize = "standard",
+    id_col = "id",
+    supply_cols = c("doctors"),
+    snap = FALSE
+  )
+
+  snap_result <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_df,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2),
+    demand_normalize = "standard",
+    id_col = "id",
+    supply_cols = c("doctors"),
+    snap = TRUE
+  )
+
+  # Both should be spax objects with identical accessibility values
+  expect_s3_class(normal_result, "spax")
+  expect_s3_class(snap_result, "spax")
+  expect_equal(
+    terra::values(normal_result$accessibility),
+    terra::values(snap_result$accessibility)
+  )
+})
+

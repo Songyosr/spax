@@ -12,15 +12,9 @@
 .chck_spax_ifca <- function(distance_raster, demand, supply, decay_params,
                             lambda, max_iter, tolerance, window_size) {
   # Input type validation
-  if (!inherits(distance_raster, "SpatRaster")) {
-    stop("distance_raster must be a SpatRaster object")
-  }
-  if (!inherits(demand, "SpatRaster")) {
-    stop("demand must be a SpatRaster object")
-  }
-  if (!is.numeric(supply)) {
-    stop("supply must be a numeric vector")
-  }
+  .assert_class(distance_raster, "SpatRaster", "distance_raster")
+  .assert_class(demand, "SpatRaster", "demand")
+  .assert_numeric(supply, "supply")
 
   # Validate demand layers
   n_layers <- nlyr(demand)
@@ -32,43 +26,32 @@
   }
 
   # Validate decay_params
-  if (!is.list(decay_params)) {
-    stop("decay_params must be a list")
-  }
+  .assert_class(decay_params, "list", "decay_params")
   if (is.null(decay_params$method)) {
     stop("decay_params must include 'method'")
   }
 
   # Parameter range validation
-  if (!is.numeric(lambda) || lambda <= 0 || lambda > 1) {
-    stop("lambda must be between 0 and 1")
-  }
-  if (!is.numeric(max_iter) || max_iter < 1 || max_iter != as.integer(max_iter)) {
-    stop("max_iter must be a positive integer")
-  }
-  if (!is.numeric(tolerance) || tolerance <= 0) {
-    stop("tolerance must be positive")
-  }
-  if (!is.numeric(window_size) || window_size < 1 ||
-    window_size != as.integer(window_size)) {
-    stop("window_size must be a positive integer")
-  }
-  if (window_size > max_iter) {
-    stop("window_size cannot be larger than max_iter")
-  }
+  .assert_numeric(lambda, "lambda")
+  .assert_range(lambda, 0, 1, "lambda")
 
-  # Validate raster compatibility
-  if (!all(res(demand) == res(distance_raster))) {
-    stop("demand and distance_raster must have the same resolution")
-  }
-  if (!all(ext(demand) == ext(distance_raster))) {
-    stop("demand and distance_raster must have the same extent")
-  }
+  .assert_numeric(max_iter, "max_iter")
+  .assert_integer(max_iter, "max_iter")
+  .assert_positive(max_iter, allow_zero = FALSE, "max_iter")
+
+  .assert_numeric(tolerance, "tolerance")
+  .assert_positive(tolerance, allow_zero = FALSE, "tolerance")
+
+  .assert_numeric(window_size, "window_size")
+  .assert_integer(window_size, "window_size")
+  .assert_positive(window_size, allow_zero = FALSE, "window_size")
+
+  # Validate raster alignment
+  .assert_raster_alignment(demand, distance_raster, "demand", "distance_raster")
 
   # Validate facility counts match
-  if (nlyr(distance_raster) != length(supply)) {
-    stop("Number of distance_raster layers must match length of supply vector")
-  }
+  .assert_lengths_match(nlyr(distance_raster), length(supply),
+                        "distance_raster layers", "supply vector")
 
   invisible(TRUE)
 }
@@ -373,36 +356,73 @@ compute_iterative <- function(supply, weights, demand,
 #'   Numeric vector of predicted utilization for all facilities
 #'
 #' If snap = FALSE:
-#'   A list containing:
+#'   A spax object containing:
 #'   \describe{
-#'     \item{utilization}{Numeric vector of predicted facility utilization}
-#'     \item{ratios}{Numeric vector of final supply-demand ratios}
-#'     \item{attractiveness}{Numeric vector of final facility attractiveness values}
 #'     \item{accessibility}{SpatRaster of accessibility scores}
-#'     \item{convergence}{List with convergence details:
+#'     \item{type}{Character string "iFCA"}
+#'     \item{parameters}{List of model parameters including decay_params, lambda, etc.}
+#'     \item{facilities}{data.frame with columns:
 #'       \itemize{
-#'         \item iterations: Number of iterations run
-#'         \item converged: Logical indicating if convergence achieved
-#'         \item type: Convergence check method used
-#'         \item final_average: Final rolling average of differences
-#'         \item window_size: Size of rolling window used
+#'         \item id: Facility identifiers
+#'         \item utilization: Predicted facility utilization
+#'         \item ratio: Supply-to-demand ratios
+#'         \item attractiveness: Final facility attractiveness
 #'       }
 #'     }
-#'     \item{history}{Array of historical state values if converged, NULL otherwise}
-#'     \item{parameters}{List of parameter values used in computation}
+#'     \item{iterations}{List containing:
+#'       \itemize{
+#'         \item history: Array of historical state values if converged
+#'         \item convergence: Convergence details including iterations, status, etc.
+#'       }
+#'     }
+#'     \item{call}{The original function call}
 #'   }
 #'
 #' @examples
 #' \dontrun{
-#' # Basic usage with static demand
+#' # Load example data
+#' library(terra)
+#' library(sf)
+#'
+#' # Prepare inputs
+#' pop <- read_spax_example("u5pd.tif")
+#' distance <- read_spax_example("hos_iscr.tif")
+#' hospitals <- st_drop_geometry(hc12_hos)
+#'
+#' # Basic usage with default parameters
 #' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = pop_rast,
-#'   supply = facility_capacity,
+#'   distance_raster = distance,
+#'   demand = pop,
+#'   supply = hospitals$s_doc,
 #'   decay_params = list(
 #'     method = "gaussian",
-#'     sigma = 30
+#'     sigma = 30  # 30-minute characteristic distance
 #'   )
+#' )
+#'
+#' # Plot accessibility surface
+#' plot(result$accessibility, main = "Doctor Accessibility (iFCA)")
+#'
+#' # Examine facility-level results
+#' head(result$facilities)
+#'
+#' # Check convergence information
+#' print(result$iterations$convergence)
+#'
+#' # Fast computation mode - returns only utilization
+#' util <- spax_ifca(
+#'   distance_raster = distance,
+#'   demand = pop,
+#'   supply = hospitals$s_doc,
+#'   decay_params = list(method = "gaussian", sigma = 30),
+#'   snap = TRUE
+#' )
+#'
+#' # Compare predicted utilization with facility capacity
+#' data.frame(
+#'   id = hospitals$id,
+#'   capacity = hospitals$s_doc,
+#'   predicted = util
 #' )
 #'
 #' # Using custom decay function
@@ -412,10 +432,10 @@ compute_iterative <- function(supply, weights, demand,
 #'   return(weights)
 #' }
 #'
-#' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = pop_rast,
-#'   supply = facility_capacity,
+#' result_custom <- spax_ifca(
+#'   distance_raster = distance,
+#'   demand = pop,
+#'   supply = hospitals$s_doc,
 #'   decay_params = list(
 #'     method = custom_decay,
 #'     sigma = 30,
@@ -423,21 +443,10 @@ compute_iterative <- function(supply, weights, demand,
 #'   )
 #' )
 #'
-#' # With time-series demand (must match max_iter)
-#' result <- spax_ifca(
-#'   distance_raster = dist_rast,
-#'   demand = demand_series, # Multi-layer demand
-#'   supply = facility_capacity,
-#'   max_iter = nlyr(demand_series),
-#'   decay_params = list(method = "gaussian", sigma = 30)
-#' )
 #' }
 #'
 #' @seealso
 #' \code{\link{calc_decay}} for available decay functions
-#'
-#' @import terra
-#'
 #' @export
 spax_ifca <- function(distance_raster,
                       demand,
@@ -514,25 +523,39 @@ spax_ifca <- function(distance_raster,
   ratios <- .help_add_0facilities(final_state[, 2], processed$zero_map)
   attractiveness <- .help_add_0facilities(final_state[, 3], processed$zero_map)
 
-  # Return full results
-  list(
+  # Create facilities data.frame
+  facilities <- data.frame(
+    id = processed$names,
     utilization = utilization,
-    ratios = ratios,
+    ratio = ratios,
     attractiveness = attractiveness,
-    accessibility = accessibility,
-    util_prob_surface = util_prob_surface,
-    convergence = list(
-      iterations = results$iterations,
-      converged = results$converged,
-      type = convergence_type,
-      final_average = results$convergence$final_average,
-      window_size = window_size
-    ),
-    history = if (results$converged) results$state else NULL,
+    row.names = NULL
+  )
+
+  # Create spax object
+  .create_spax(
+    accessibility = results$accessibility,
+    type = "iFCA",
     parameters = list(
       decay_params = decay_params,
       lambda = lambda,
-      tolerance = tolerance
-    )
+      tolerance = tolerance,
+      window_size = window_size,
+      convergence_type = convergence_type
+    ),
+    facilities = facilities,
+    iterations = list(
+      history = if (results$converged) results$state else NULL,
+      convergence = list(
+        iterations = results$iterations,
+        converged = results$converged,
+        type = convergence_type,
+        final_average = results$convergence$final_average
+      )
+    ),
+    call = match.call(),
+    snap = snap
   )
+
+
 }

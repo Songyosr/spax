@@ -50,12 +50,12 @@ library(terra)
 library(sf)
 
 # Load example data (already included in package)
-pop <- rast(u5pd) # Under-5 population density
+pop <- read_spax_example("u5pd.tif") # Under-5 population density
+distance <- read_spax_example("hos_iscr.tif") # Travel times
 hospitals <- hc12_hos # Hospital locations and capacity
-distance <- rast(hos_iscr) # Travel time to hospitals
 
 # Calculate accessibility using Enhanced 2SFCA
-accessibility <- spax_e2sfca(
+result <- spax_e2sfca(
   demand = pop, # Population density
   supply = hospitals |> st_drop_geometry(), # Hospital capacity
   distance = distance, # Travel times
@@ -69,10 +69,14 @@ accessibility <- spax_e2sfca(
 )
 
 # Plot results
-plot(accessibility,
-  main = c("Access to Doctors", "Access to Nurses")
+plot(result,   main = c("Access to Doctors", "Access to Nurses"),
+     fun = function() lines(bound0)
 )
-plot(vect(bound0), add = TRUE)
+
+```
+```{r}
+result
+summary(result)
 ```
 
 This example demonstrates key features of spax:

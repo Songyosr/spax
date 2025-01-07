@@ -125,9 +125,9 @@ library(sf)
 library(tidyverse)
 
 # Load our example data
-pop <- rast(u5pd) # Population density
+pop <- read_spax_example("u5pd.tif") # Population density
 hospitals <- hc12_hos # Hospital locations
-distance <- rast(hos_iscr) # Travel times
+distance <- read_spax_example("hos_iscr.tif") # Travel times
 ```
 
 ```{r}
@@ -272,18 +272,26 @@ par(mfrow = c(2, 2))
 plot(sum(facility_weights),
   main = "Raw Weight Sum\n(potential double-counting)"
 )
+plot(vect(bound0), add = TRUE)
+
+# --
 plot(sum(standard_norm),
   main = "Standard Normalization\n(sums to 1)"
 )
+plot(vect(bound0), add = TRUE)
+
+# --
 plot(sum(semi_norm),
   main = "Semi-normalization\n(prevents inflation)"
 )
+plot(vect(bound0), add = TRUE)
 
 # Show where normalization matters most
 overlap_areas <- sum(facility_weights) > 1
 plot(overlap_areas,
   main = "Competition Areas\n(where normalization matters)"
 )
+plot(vect(bound0), add = TRUE)
 ```
 
 Think of normalization like adjusting a recipe when ingredients overlap. If two hospitals serve the same area:

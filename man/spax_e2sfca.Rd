@@ -46,7 +46,14 @@ spax_e2sfca(
 \item{snap}{Logical; if TRUE enable fast computation mode (default = FALSE)}
 }
 \value{
-SpatRaster of accessibility scores
+A spax object containing:
+       \itemize{
+         \item accessibility: SpatRaster of accessibility scores
+         \item type: Character string "E2SFCA"
+         \item parameters: List of model parameters used
+         \item facilities: data.frame of facility-level information
+         \item call: The original function call
+       }
 }
 \description{
 Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method as proposed
@@ -81,7 +88,8 @@ library(terra)
 library(sf)
 
 # Convert under-5 population density to proper format
-pop_rast <- rast(u5pd)
+pop_rast <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
 
 # Drop geometry for supply data
 hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -90,7 +98,7 @@ hc12_hos <- hc12_hos |> st_drop_geometry()
 result <- spax_e2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   decay_params = list(
     method = "gaussian",
     sigma = 30 # 30-minute characteristic distance
@@ -100,14 +108,17 @@ result <- spax_e2sfca(
   supply_cols = "s_doc"
 )
 
-# Plot the results
-plot(result, main = "Doctor Accessibility (E2SFCA)")
+# Extract and plot accessibility surface
+plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+
+# Access facility-level information
+head(result$facilities)
 
 # Compare different decay functions
 result_exp <- spax_e2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   decay_params = list(
     method = "exponential",
     sigma = 0.1
@@ -118,7 +129,7 @@ result_exp <- spax_e2sfca(
 )
 
 # Plot both for comparison
-plot(c(result, result_exp),
+plot(c(result$accessibility, result_exp$accessibility),
   main = c("Gaussian Decay", "Exponential Decay")
 )
 

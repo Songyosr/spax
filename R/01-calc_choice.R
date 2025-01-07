@@ -1,26 +1,26 @@
 #' Internal function for core choice cvalidation
 #' @keywords internal
 .chck_calc_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
-  if (!inherits(weights, "SpatRaster")) {
-    stop("weights must be a SpatRaster object")
-  }
+  # Check weights is SpatRaster
+  .assert_class(weights, "SpatRaster", "weights")
 
+  # Check attractiveness if provided
   if (!is.null(attractiveness)) {
-    if (!is.numeric(attractiveness) || any(attractiveness < 0, na.rm = TRUE)) {
-      stop("attractiveness must be a non-negative numeric vector")
-    }
-    if (length(attractiveness) != nlyr(weights)) {
-      stop("Length of attractiveness must match number of weight layers")
-    }
+    .assert_numeric(attractiveness, "attractiveness")
+    .assert_positive(attractiveness, allow_zero = TRUE, "attractiveness")
+    .assert_length(length(attractiveness), nlyr(weights), "attractiveness")
   }
 
-  if (!is.numeric(alpha) || length(alpha) != 1) {
-    stop("alpha must be a single numeric value")
-  }
+  # Check alpha
+  .assert_numeric(alpha, "alpha")
+  .assert_length(length(alpha), 1, "alpha")
 
-  if (!is.numeric(a0) || length(a0) != 1 || a0 < 0) {
-    stop("a0 must be a non-negative numeric value")
-  }
+  # Check a0
+  .assert_numeric(a0, "a0")
+  .assert_length(length(a0), 1, "a0")
+  .assert_positive(a0, allow_zero = TRUE, "a0")
+
+  invisible(TRUE)
 }
 
 #' Internal function for core choice computation
@@ -54,8 +54,8 @@
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples
 #' library(terra)
-#' # Using pre-computed isochrone distances and hospital data
-#' distance_raster <- rast(hos_iscr) # Already lazy loaded in raster format
+#' # load data
+#' distance_raster <- read_spax_example("hos_iscr.tif")
 #'
 #' # Calculate decay weights using gaussian decay
 #' weights <- calc_decay(distance_raster, method = "gaussian", sigma = 30)

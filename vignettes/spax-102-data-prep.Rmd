@@ -95,8 +95,12 @@ The centroid approach works for vector-centric analysis, but for `spax`, we need
 The simplest approach treats all demand as concentrated at area centroids. This mirrors traditional vector-based accessibility analyses but in raster format:
 
 ```{r admin_pop_data}
+# Load population density raster & distance
+u5pd <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
+
 # Create template raster - Coarser resolution for example
-template <- aggregate(rast(u5pd), fact = 10)
+template <- aggregate(u5pd, fact = 10)
 
 # Rasterize centroids
 centroid_demand <- terra::rasterize(
@@ -243,7 +247,7 @@ The simplest approach - straight-line distances:
 ```{r}
 # Example for one facility using terra
 facility_point <- hc12_hos[1, ]
-template_rast <- rast(u5pd) # Use population raster as template
+template_rast <- u5pd # Use population raster as template
 
 # Calculate Euclidean distance (in meters since our CRS is projected)
 euclidean_dist <- terra::distance(
@@ -368,29 +372,23 @@ When creating travel time surfaces, you have several options:
 
 **OSRM (Open Source Routing Machine)**
 
--   [x] Free and open source
--   [x] Can handle multiple travel modes (if setup properly)
+-   ✓ Free and open source
+-   ✓ Can handle multiple travel modes (if setup properly)
 -   × Requires server setup for serious use
 -   × Basic routing without traffic
 
 **Commercial APIs (HERE, Google Maps)**
 
--   [x] Includes real-time traffic
-
--   [x] More accurate travel times
-
+-   ✓ Includes real-time traffic
+-   ✓ More accurate travel times
 -   × Usage costs
-
 -   × API limits
 
 **Custom cost surfaces** (I have no idea how to do this, lol)
 
--   [x] Can include terrain, land use
-
--   [x] Full control over parameters
-
+-   ✓ Can include terrain, land use
+-   ✓ Full control over parameters
 -   × Requires GIS expertise
-
 -   × More complex to validate
 
 ## Validating Your Data: Essential Checks Before Analysis
@@ -415,15 +413,15 @@ summarize_raster <- function(r, name) {
 
 # Compare properties of key rasters
 raster_props <- bind_rows(
-  summarize_raster(rast(u5pd), "Population"),
-  summarize_raster(rast(hos_iscr), "Travel Time")
+  summarize_raster(u5pd, "Population"),
+  summarize_raster(hos_iscr, "Travel Time")
 )
 
 raster_props
 
 # Visual check for alignment
-plot(rast(u5pd), main = "Spatial Alignment Check")
-plot(rast(hos_iscr)[[1]], add = TRUE, alpha = 0.5)
+plot(u5pd, main = "Spatial Alignment Check")
+plot(hos_iscr[[1]], add = TRUE, alpha = 0.5)
 plot(vect(bound1), add = TRUE)
 ```
 
@@ -481,8 +479,8 @@ analyze_nas <- function(r, name, bound = bound0) {
 
 # Check NA patterns in key datasets
 par(mfrow = c(1, 2))
-analyze_nas(rast(u5pd), "Pop")
-analyze_nas(rast(hos_iscr)[[1]], "Time from 1st Fac")
+analyze_nas(u5pd, "Pop")
+analyze_nas(hos_iscr[[1]], "Time from 1st Fac")
 ```
 
 ### Final reminders:
@@ -502,11 +500,8 @@ analyze_nas(rast(hos_iscr)[[1]], "Time from 1st Fac")
 3.  **Documentation**
 
     -   Note data sources and dates
-
     -   Document all preprocessing steps
-
     -   Record assumptions made
-
     -   Note known limitations
 
 ## Next Steps

@@ -65,7 +65,7 @@ Our example uses under-5 population density data aggregated from Meta's High Res
 
 ```{r}
 # Load the population density data
-pop <- rast(u5pd) # Convert from raster to terra::SpatRaster
+pop <- read_spax_example("u5pd.tif") # Under-5 population density
 
 # Quick view of the data
 print(pop)
@@ -109,7 +109,7 @@ The package includes pre-computed travel time data showing how long it takes to 
 
 ```{r}
 # Load the travel time data
-distance_raster <- rast(hos_iscr) # Convert to terra::SpatRaster
+distance_raster <- read_spax_example("hos_iscr.tif")
 distance_raster
 # Each layer represents travel time to a different facility
 
@@ -128,7 +128,7 @@ Now that we understand our data, let's put it all together for a basic accessibi
 
 ```{r}
 # Calculate accessibility scores
-accessibility <- spax_e2sfca(
+result <- spax_e2sfca(
   demand = pop, # Population density
   supply = hc12_hos |> st_drop_geometry(), # Hospital capacity
   distance = distance_raster, # Travel times
@@ -144,10 +144,10 @@ accessibility <- spax_e2sfca(
 
 ```{r}
 # Visualize the results
-plot(accessibility,
-  main = c("Access to Doctors", "Access to Nurses")
+plot(result,
+  main = c("Access to Doctors", "Access to Nurses"),
+  fun = function() lines(bound0) # add region boundary
 )
-plot(vect(bound0), add = TRUE)
 ```
 
 And that's it! We've calculated accessibility scores for doctors and nurses across the region with the lighter colors indicating better access.

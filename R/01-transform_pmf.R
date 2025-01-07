@@ -8,26 +8,22 @@
     return(invisible(TRUE))
   }
 
-  # Input type validation
-  if (!inherits(x, "SpatRaster")) {
-    stop("Input must be a SpatRaster object")
-  }
+  # Input type validation - using parent function param name 'x'
+  .assert_class(x, "SpatRaster", "x")
 
   # Check for all NA values
   if (all(is.na(terra::values(x)))) {
-    stop("Input raster contains only NA values")
+    stop("Input raster 'x' contains only NA values")
   }
 
-  # Check for negative values
+  # Check for negative values and get min in one operation
   min_val <- terra::global(x, "min", na.rm = TRUE)$min
-  if (min_val < 0) {
-    stop("Input values cannot be negative")
-  }
+  .assert_positive(min_val, allow_zero = TRUE, "values in x")
 
   # Check for zero sum
   total <- terra::global(x, "sum", na.rm = TRUE)$sum
   if (total == 0) {
-    stop("Total sum is zero - cannot create PMF")
+    stop("Sum of all values in 'x' is zero - cannot create PMF")
   }
 
   invisible(TRUE)

@@ -1,3 +1,36 @@
+#' Core facility supply validation used by multiple functions
+#' @keywords internal
+.validate_facility_supply <- function(supply, id_col = NULL, supply_cols = NULL) {
+  # Stop early if supply is an sf object
+  if (inherits(supply, "sf")) {
+    stop("Supply data is an sf object. Please use st_drop_geometry() first")
+  }
+
+  # Validate data.frame inputs
+  if (is.data.frame(supply)) {
+    if (is.null(id_col)) {
+      stop("id_col must be specified when supply is a data.frame")
+    }
+    if (is.null(supply_cols)) {
+      stop("supply_cols must be specified when supply is a data.frame")
+    }
+
+    .assert_cols_exist(supply, c(id_col, supply_cols), "supply")
+
+    # Check if id_col values are unique (specific to e2sfca)
+    if (!is.null(id_col) && any(duplicated(supply[[id_col]]))) {
+      stop("Values in id_col must be unique")
+    }
+  }
+
+  # Return number of facilities for convenience
+  if (is.data.frame(supply) || is.matrix(supply)) {
+    return(nrow(supply))
+  } else {
+    return(length(supply))
+  }
+}
+
 #' Validate inputs for compute_access
 #' @param demand SpatRaster representing spatial distribution of demand
 #' @param supply vector, matrix, or data.frame containing supply capacity values
@@ -11,73 +44,22 @@
                                  id_col = NULL, supply_cols = NULL,
                                  indicator_names = NULL) {
   # Input type validation
-  if (!inherits(demand, "SpatRaster")) {
-    stop("demand must be a SpatRaster object")
-  }
-  if (!inherits(demand_weights, "SpatRaster")) {
-    stop("demand_weights must be a SpatRaster object")
-  }
-  if (!inherits(access_weights, "SpatRaster")) {
-    stop("access_weights must be a SpatRaster object")
-  }
+  .assert_class(demand, "SpatRaster", "demand")
+  .assert_class(demand_weights, "SpatRaster", "demand_weights")
+  .assert_class(access_weights, "SpatRaster", "access_weights")
 
-  # Check for sf object
-  if (inherits(supply, "sf")) {
-    stop("Supply data is an sf object. Please use st_drop_geometry() first")
-  }
+  # Validate supply and get facility count
+  n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
 
-  # Check raster compatibility
-  if (!all(res(demand) == res(demand_weights)) ||
-    !all(res(demand) == res(access_weights))) {
-    stop("All raster inputs must have the same resolution")
-  }
-  if (!all(ext(demand) == ext(demand_weights)) ||
-    !all(ext(demand) == ext(access_weights))) {
-    stop("All raster inputs must have the same extent")
-  }
+  # Validate raster alignments
+  .assert_raster_alignment(demand, demand_weights, "demand", "demand_weights")
+  .assert_raster_alignment(demand, access_weights, "demand", "access_weights")
 
-  # Validate data.frame inputs
-  if (is.data.frame(supply)) {
-    if (is.null(id_col)) {
-      stop("id_col must be specified when supply is a data.frame")
-    }
-    if (is.null(supply_cols)) {
-      stop("supply_cols must be specified when supply is a data.frame")
-    }
-    if (!id_col %in% names(supply)) {
-      stop(sprintf("id_col '%s' not found in supply data.frame", id_col))
-    }
-    if (!all(supply_cols %in% names(supply))) {
-      missing_cols <- setdiff(supply_cols, names(supply))
-      stop(sprintf(
-        "supply_cols not found in supply data.frame: %s",
-        paste(missing_cols, collapse = ", ")
-      ))
-    }
-  }
-
-  # Validate weights layers match supply
-  n_facilities <- if (is.data.frame(supply) || is.matrix(supply)) nrow(supply) else length(supply)
-  if (nlyr(demand_weights) != n_facilities) {
-    stop("Number of demand_weights layers must match number of facilities")
-  }
-  if (nlyr(access_weights) != n_facilities) {
-    stop("Number of access_weights layers must match number of facilities")
-  }
-
-  # Validate indicator names if provided
-  if (!is.null(indicator_names)) {
-    n_indicators <- if (is.data.frame(supply)) {
-      length(supply_cols)
-    } else if (is.matrix(supply)) {
-      ncol(supply)
-    } else {
-      1
-    }
-    if (length(indicator_names) != n_indicators) {
-      stop("Length of indicator_names must match number of supply measures")
-    }
-  }
+  # Validate weights match facility count
+  .assert_lengths_match(nlyr(demand_weights), n_facilities,
+                        "demand_weights layers", "facilities")
+  .assert_lengths_match(nlyr(access_weights), n_facilities,
+                        "access_weights layers", "facilities")
 
   invisible(TRUE)
 }
@@ -93,23 +75,15 @@
 #' @keywords internal
 .chck_e2sfca <- function(demand, supply, distance, decay_params,
                          demand_normalize, id_col = NULL, supply_cols = NULL) {
-  # Input type validation
-  if (!inherits(demand, "SpatRaster")) {
-    stop("demand must be a SpatRaster object")
-  }
-  if (!inherits(distance, "SpatRaster")) {
-    stop("distance must be a SpatRaster object")
-  }
+  # Check input types
+  .assert_class(demand, "SpatRaster", "demand")
+  .assert_class(distance, "SpatRaster", "distance")
 
-  # Check for sf object
-  if (inherits(supply, "sf")) {
-    stop("Supply data is an sf object. Please use st_drop_geometry() first")
-  }
+  # Validate supply and get facility count
+  n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
 
   # Validate decay_params
-  if (!is.list(decay_params)) {
-    stop("decay_params must be a list")
-  }
+  .assert_class(decay_params, "list", "decay_params")
   if (is.null(decay_params$method)) {
     stop("decay_params must include 'method'")
   }
@@ -123,48 +97,147 @@
     ))
   }
 
-  # Validate raster compatibility
-  if (!all(res(demand) == res(distance))) {
-    stop("demand and distance must have the same resolution")
-  }
-  if (!all(ext(demand) == ext(distance))) {
-    stop("demand and distance must have the same extent")
-  }
+  # Validate raster alignment
+  .assert_raster_alignment(demand, distance, "demand", "distance")
 
   # Validate facility counts match
-  n_facilities <- if (is.data.frame(supply)) nrow(supply) else length(supply)
-  if (nlyr(distance) != n_facilities) {
-    stop("Number of distance layers must match number of facilities")
-  }
-
-  # Validate data.frame inputs
-  if (is.data.frame(supply)) {
-    if (is.null(id_col)) {
-      stop("id_col must be specified when supply is a data.frame")
-    }
-    if (is.null(supply_cols)) {
-      stop("supply_cols must be specified when supply is a data.frame")
-    }
-    if (!id_col %in% names(supply)) {
-      stop(sprintf("id_col '%s' not found in supply data.frame", id_col))
-    }
-    if (!all(supply_cols %in% names(supply))) {
-      missing_cols <- setdiff(supply_cols, names(supply))
-      stop(sprintf(
-        "supply_cols not found in supply data.frame: %s",
-        paste(missing_cols, collapse = ", ")
-      ))
-    }
-
-    # Check if id_col values are unique
-    if (any(duplicated(supply[[id_col]]))) {
-      stop("Values in id_col must be unique")
-    }
-  }
+  .assert_lengths_match(nlyr(distance), n_facilities,
+                        "distance layers", "facilities")
 
   invisible(TRUE)
 }
 
+#
+# .chck_compute_access <- function(demand, supply, demand_weights, access_weights,
+#                                  id_col = NULL, supply_cols = NULL,
+#                                  indicator_names = NULL) {
+#   # Input type validation
+#   if (!inherits(demand, "SpatRaster")) {
+#     stop("demand must be a SpatRaster object")
+#   }
+#   if (!inherits(demand_weights, "SpatRaster")) {
+#     stop("demand_weights must be a SpatRaster object")
+#   }
+#   if (!inherits(access_weights, "SpatRaster")) {
+#     stop("access_weights must be a SpatRaster object")
+#   }
+#
+#   # Check for sf object
+#   if (inherits(supply, "sf")) {
+#     stop("Supply data is an sf object. Please use st_drop_geometry() first")
+#   }
+#
+#   # Check raster compatibility
+#   if (!all(res(demand) == res(demand_weights)) ||
+#     !all(res(demand) == res(access_weights))) {
+#     stop("All raster inputs must have the same resolution")
+#   }
+#   if (!all(ext(demand) == ext(demand_weights)) ||
+#     !all(ext(demand) == ext(access_weights))) {
+#     stop("All raster inputs must have the same extent")
+#   }
+#
+#   # Validate data.frame inputs
+#   if (is.data.frame(supply)) {
+#     if (is.null(id_col)) {
+#       stop("id_col must be specified when supply is a data.frame")
+#     }
+#     if (is.null(supply_cols)) {
+#       stop("supply_cols must be specified when supply is a data.frame")
+#     }
+#     if (!id_col %in% names(supply)) {
+#       stop(sprintf("id_col '%s' not found in supply data.frame", id_col))
+#     }
+#     if (!all(supply_cols %in% names(supply))) {
+#       missing_cols <- setdiff(supply_cols, names(supply))
+#       stop(sprintf(
+#         "supply_cols not found in supply data.frame: %s",
+#         paste(missing_cols, collapse = ", ")
+#       ))
+#     }
+#   }
+#
+#   # Validate weights layers match supply
+#   n_facilities <- if (is.data.frame(supply) || is.matrix(supply)) nrow(supply) else length(supply)
+#   if (nlyr(demand_weights) != n_facilities) {
+#     stop("Number of demand_weights layers must match number of facilities")
+#   }
+#   if (nlyr(access_weights) != n_facilities) {
+#     stop("Number of access_weights layers must match number of facilities")
+#   }
+#
+#   # Validate indicator names if provided
+#   if (!is.null(indicator_names)) {
+#     n_indicators <- if (is.data.frame(supply)) {
+#       length(supply_cols)
+#     } else if (is.matrix(supply)) {
+#       ncol(supply)
+#     } else {
+#       1
+#     }
+#     if (length(indicator_names) != n_indicators) {
+#       stop("Length of indicator_names must match number of supply measures")
+#     }
+#   }
+#
+#   invisible(TRUE)
+# }
+#
+# .chck_e2sfca <- function(demand, supply, distance, decay_params,
+#                          demand_normalize, id_col = NULL, supply_cols = NULL) {
+#   # Check input types
+#   .assert_class(demand, "SpatRaster", "demand")
+#   .assert_class(distance, "SpatRaster", "distance")
+#
+#   # Stop early if supply is an sf object
+#   if (inherits(supply, "sf")) {
+#     stop("Supply data is an sf object. Please use st_drop_geometry() first")
+#   }
+#
+#   # Validate decay_params
+#   .assert_class(decay_params, "list", "decay_params")
+#   if (is.null(decay_params$method)) {
+#     stop("decay_params must include 'method'")
+#   }
+#
+#   # Validate demand_normalize
+#   valid_normalize <- c("identity", "standard", "semi")
+#   if (!demand_normalize %in% valid_normalize) {
+#     stop(sprintf(
+#       "demand_normalize must be one of: %s",
+#       paste(valid_normalize, collapse = ", ")
+#     ))
+#   }
+#
+#   # Validate raster alignment
+#   .assert_raster_alignment(demand, distance, "demand", "distance")
+#
+#   # Get number of facilities
+#   n_facilities <- if (is.data.frame(supply)) nrow(supply) else length(supply)
+#
+#   # Validate facility counts match
+#   .assert_lengths_match(nlyr(distance), n_facilities,
+#                         "distance layers", "facilities")
+#
+#   # Validate data.frame inputs
+#   if (is.data.frame(supply)) {
+#     if (is.null(id_col)) {
+#       stop("id_col must be specified when supply is a data.frame")
+#     }
+#     if (is.null(supply_cols)) {
+#       stop("supply_cols must be specified when supply is a data.frame")
+#     }
+#
+#     .assert_cols_exist(supply, c(id_col, supply_cols), "supply")
+#
+#     # Check if id_col values are unique
+#     if (any(duplicated(supply[[id_col]]))) {
+#       stop("Values in id_col must be unique")
+#     }
+#   }
+#
+#   invisible(TRUE)
+# }
 #' Process and validate supply data for accessibility calculations
 #'
 #' @param supply vector, matrix, or data.frame containing supply capacity values
@@ -306,7 +379,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
     supply_values = processed_supply$values,
     demand_weights = demand_weights,
     access_weights = access_weights,
-    indicator_names = indicator_names %||% paste0("A_", processed_supply$cols)
+    indicator_names = indicator_names %||% processed_supply$cols
   )
 
   return(result)
@@ -339,7 +412,14 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
-#' @return SpatRaster of accessibility scores
+#' @return A spax object containing:
+#'        \itemize{
+#'          \item accessibility: SpatRaster of accessibility scores
+#'          \item type: Character string "E2SFCA"
+#'          \item parameters: List of model parameters used
+#'          \item facilities: data.frame of facility-level information
+#'          \item call: The original function call
+#'        }
 #'
 #' @details
 #' The E2SFCA method enhances the original 2SFCA by introducing:
@@ -374,7 +454,8 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' library(sf)
 #'
 #' # Convert under-5 population density to proper format
-#' pop_rast <- rast(u5pd)
+#' pop_rast <- read_spax_example("u5pd.tif")
+#' hos_iscr <- read_spax_example("hos_iscr.tif")
 #'
 #' # Drop geometry for supply data
 #' hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -383,7 +464,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' result <- spax_e2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   decay_params = list(
 #'     method = "gaussian",
 #'     sigma = 30 # 30-minute characteristic distance
@@ -393,14 +474,17 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #'   supply_cols = "s_doc"
 #' )
 #'
-#' # Plot the results
-#' plot(result, main = "Doctor Accessibility (E2SFCA)")
+#' # Extract and plot accessibility surface
+#' plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+#'
+#' # Access facility-level information
+#' head(result$facilities)
 #'
 #' # Compare different decay functions
 #' result_exp <- spax_e2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   decay_params = list(
 #'     method = "exponential",
 #'     sigma = 0.1
@@ -411,7 +495,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' )
 #'
 #' # Plot both for comparison
-#' plot(c(result, result_exp),
+#' plot(c(result$accessibility, result_exp$accessibility),
 #'   main = c("Gaussian Decay", "Exponential Decay")
 #' )
 #'
@@ -436,13 +520,14 @@ spax_e2sfca <- function(demand, supply, distance,
   }
 
   # Compute weights using decay function
-  weights <- do.call(calc_decay, c(list(distance = distance), decay_params))
+  weights <- do.call(calc_decay, c(list(distance = distance), decay_params, list(snap = snap)))
 
   # Process demand weights based on normalization method
   demand_weights <- calc_normalize(weights, method = demand_normalize, snap = snap)
 
   # Access weights remain unnormalized
   access_weights <- weights
+
 
   # Use compute_access for final calculation
   result <- compute_access(
@@ -456,7 +541,36 @@ spax_e2sfca <- function(demand, supply, distance,
     snap = snap
   )
 
-  return(result)
+  # Process facility information
+  if (is.data.frame(supply)) {
+    facilities <- data.frame(
+      id = supply[[id_col]],
+      supply[supply_cols]
+    )
+  } else if (is.matrix(supply)) {
+    facilities <- data.frame(
+      id = rownames(supply) %||% paste0("facility_", seq_len(nrow(supply))),
+      as.data.frame(supply)
+    )
+  } else {
+    facilities <- data.frame(
+      id = names(supply) %||% paste0("facility_", seq_along(supply)),
+      supply = supply
+    )
+  }
+
+  # Create spax object
+  .create_spax(
+    accessibility = result,
+    type = "E2SFCA",
+    parameters = list(
+      decay_params = decay_params,
+      demand_normalize = demand_normalize
+    ),
+    facilities = facilities,
+    call = match.call(),
+    snap = snap
+  )
 }
 
 #' Calculate Original Two-Step Floating Catchment Area (2SFCA) accessibility scores
@@ -474,7 +588,14 @@ spax_e2sfca <- function(demand, supply, distance,
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
-#' @return SpatRaster of accessibility scores
+#' @return A spax object containing:
+#'        \itemize{
+#'          \item accessibility: SpatRaster of accessibility scores
+#'          \item type: Character string "2SFCA"
+#'          \item parameters: List containing threshold and binary decay parameters
+#'          \item facilities: data.frame of facility-level information
+#'          \item call: The original function call
+#'        }
 #'
 #' @details
 #' The original Two-Step Floating Catchment Area (2SFCA) method operates in two steps:
@@ -511,8 +632,9 @@ spax_e2sfca <- function(demand, supply, distance,
 #' library(terra)
 #' library(sf)
 #'
-#' # Convert under-5 population density to proper format
-#' pop_rast <- rast(u5pd)
+#' # Load data
+#' pop_rast <- read_spax_example("u5pd.tif")
+#' hos_iscr <- read_spax_example("hos_iscr.tif")
 #'
 #' # Drop geometry for supply data
 #' hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -521,27 +643,29 @@ spax_e2sfca <- function(demand, supply, distance,
 #' result <- spax_2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   threshold = 30, # 30-minute catchment
 #'   id_col = "id",
 #'   supply_cols = "s_doc"
 #' )
 #'
 #' # Plot the results
-#' plot(result, main = "Doctor Accessibility (Original 2SFCA)")
+#' plot(result$accessibility, main = "Doctor Accessibility (Original 2SFCA)")
 #'
 #' # Calculate accessibility to multiple supply types
 #' result_multi <- spax_2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   threshold = 30,
 #'   id_col = "id",
 #'   supply_cols = c("s_doc", "s_nurse")
 #' )
 #'
-#' # Plot both doctor and nurse accessibility
-#' plot(result_multi)
+#' # Compare accessibility for different dimensions
+#' plot(result_multi$accessibility,
+#'   main = c("Doctor Accessibility", "Nurse Accessibility")
+#' )
 #'
 #' @seealso
 #' * [spax_e2sfca()] for the enhanced version with distance decay
@@ -569,5 +693,7 @@ spax_2sfca <- function(demand, supply, distance, threshold,
     snap = snap
   )
 
+  # Update type while preserving other components
+  result$type <- "2SFCA"
   return(result)
 }

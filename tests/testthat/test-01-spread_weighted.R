@@ -47,13 +47,13 @@ test_that("spread_weighted validates inputs correctly", {
   # Invalid weights
   expect_error(
     spread_weighted(td$vector_values, "not_a_raster"),
-    "weights must be a SpatRaster object"
+    "weights must be one of the following classes: SpatRaster"
   )
 
   # Mismatched lengths
   expect_error(
     spread_weighted(c(1, 2, 3), td$weights),
-    "Length of values must match number of weight layers"
+    "Length of values \\(3\\) must match length of weight layers \\(2\\)"
   )
 
   # Missing value_cols for data.frame
@@ -65,7 +65,7 @@ test_that("spread_weighted validates inputs correctly", {
   # Invalid value_cols
   expect_error(
     spread_weighted(td$df_values, td$weights, value_cols = "nonexistent"),
-    "Not all value_cols found in data.frame"
+    "Column\\(s\\) not found in values: nonexistent"
   )
 })
 

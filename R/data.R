@@ -69,66 +69,6 @@
 #' }
 "bound1"
 
-# Demand Data ------------------------------------------------------------------
-#' Under-5 Population Density in Thailand's Health Region 12
-#'
-#' A RasterLayer object containing population density estimates for children under
-#' five years old in Thailand's Health Region 12. The data represents the number
-#' of children per grid cell, derived from Meta's High Resolution Population
-#' Density Maps project.
-#'
-#' @format A raster object with the following specifications:
-#' \describe{
-#'   \item{Dimensions}{865 rows × 1100 columns}
-#'   \item{Resolution}{520.4038 × 520.4038 meters}
-#'   \item{Extent}{505677.7, 842408.5, 620846.3, 885639.2 (xmin, xmax, ymin, ymax)}
-#'   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
-#'   \item{Values}{Population density (children per grid cell)}
-#'   \item{Range}{Minimum: 0, Maximum: 33.19188}
-#' }
-#'
-#' @source Meta. (2024). High Resolution Population Density Maps. Data for Good at Meta.
-#' Retrieved from \url{https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps}
-#'
-#' @details
-#' This dataset was processed from Meta's High Resolution Population Density Maps
-#' for Thailand (2020). The original data was aggregated to a 520.4038-meter
-#' resolution to balance spatial detail with computational efficiency. Zero values
-#' indicate areas with no estimated child population, while NA values represent
-#' areas outside the region boundary or without data coverage.
-#'
-#' The data is stored as a RasterLayer object but can be easily converted to a
-#' SpatRaster using terra::rast() for use with the spax package functions.
-#'
-#' @examples
-#' \dontrun{
-#' # Convert to SpatRaster for use with spax
-#' u5pd_terra <- terra::rast(u5pd)
-#'
-#' # Basic visualization
-#' plot(u5pd_terra, main = "Under-5 Population Density")
-#'
-#' # Get basic statistics
-#' terra::global(u5pd_terra, "sum", na.rm = TRUE) # Total estimated children
-#' terra::global(u5pd_terra, c("min", "max"), na.rm = TRUE) # Range of density values
-#'
-#' # Convert to probability mass function for spatial sampling
-#' pmf_result <- transform_pmf(u5pd_terra, return_total = TRUE)
-#' pop_pmf <- pmf_result$pmf
-#' total_pop <- pmf_result$total
-#'
-#' # Generate sample points based on density
-#' samples <- sample_pmf(
-#'   pop_pmf,
-#'   method = "poisson",
-#'   size = total_pop,
-#'   prob = 0.1, # Example sampling rate
-#'   iterations = 1
-#' )
-#' }
-#'
-"u5pd"
-
 # Supply Data ------------------------------------------------------------------
 #' Health Facilities in Thailand's Region 12
 #'
@@ -220,43 +160,7 @@
 #' @aliases hc12_phc hc12_hos
 NULL
 
-#' Hospital Travel Time Isochrones (Raster Format)
-#'
-#' A RasterStack containing travel time isochrones for 77 hospitals in Thailand's Region 12.
-#' Each layer represents the travel time (in minutes) to reach one hospital, computed using
-#' the OSRM (Open Source Routing Machine) routing engine.
-#'
-#' @format A RasterStack with 77 layers and the following specifications:
-#' \describe{
-#'   \item{Dimensions}{509 rows × 647 columns × 77 layers}
-#'   \item{Resolution}{520.4038 × 520.4038 meters}
-#'   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
-#'   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
-#'   \item{Values}{Travel time in minutes}
-#'   \item{Layer Names}{Match facility IDs in hc12_hos (e.g., "c172", "c173")}
-#' }
-#'
-#' @details
-#' Travel times were calculated using the following time-break structure:
-#' \itemize{
-#'   \item 1-minute intervals for first 10 minutes
-#'   \item 2-minute intervals from 12 to 30 minutes
-#'   \item 5-minute intervals from 35 to 60 minutes
-#'   \item 15-minute intervals from 75 to 180 minutes
-#' }
-#'
-#' The isochrones were generated using hospital locations from \code{\link{hc12_hos}}.
-#'
-#' @source
-#' Computed using OSRM (Open Source Routing Machine) with OpenStreetMap data.
-#' Hospital locations from \code{\link{hc12_hos}}.
-#'
-#' @references
-#' Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data.
-#' In Proceedings of the 19th ACM SIGSPATIAL International Conference on
-#' Advances in Geographic Information Systems (pp. 513-516).
-#'
-"hos_iscr"
+
 
 #' Hospital Travel Time Isochrones (Vector Format)
 #'
