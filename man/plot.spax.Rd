@@ -4,7 +4,7 @@
 \alias{plot.spax}
 \title{Plot Spatial Accessibility Results}
 \usage{
-plot.spax(x, ...)
+\method{plot}{spax}(x, ...)
 }
 \arguments{
 \item{x}{A spax object containing accessibility results}
@@ -36,11 +36,15 @@ package (?terra::plot).
 library(terra)
 library(sf)
 
+# Load data
+u5pd <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
+
 # Calculate accessibility
 result <- spax_e2sfca(
-  demand = rast(u5pd),
+  demand = u5pd,
   supply = st_drop_geometry(hc12_hos),
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   decay_params = list(method = "gaussian", sigma = 30),
   demand_normalize = "standard",
   id_col = "id",

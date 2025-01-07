@@ -25,7 +25,8 @@ Imports:
     tibble,
     withr,
     base,
-    graphics
+    graphics,
+    lifecycle
 Suggests:
     dplyr,
     sf,

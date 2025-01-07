@@ -4,7 +4,7 @@
 \alias{summary.spax}
 \title{Summary method for spax objects}
 \usage{
-summary.spax(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
+\method{summary}{spax}(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
 }
 \arguments{
 \item{x}{A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()}

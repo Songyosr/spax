@@ -13,7 +13,7 @@
 #'
 #' @return Invisibly returns the input object
 #' @export
-print_spax <- function(x, ...) {
+print.spax <- function(x, ...) {
   # Title with analysis type
   cat("Spatial Accessibility Analysis (", x$type, ")\n\n", sep = "")
 
@@ -78,7 +78,7 @@ print_spax <- function(x, ...) {
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return A summary.spax object
-#' @exportS3Method base::summary spax
+#' @exportS3Method base::summary
 summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
   # Calculate accessibility statistics
   acc_stats <- lapply(1:nlyr(x$accessibility), function(i) {
@@ -185,12 +185,12 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
 #'
 #' @return Invisibly returns the input object
 #' @export
-print_summary.spax <- function(x, digits = 4, ...) {
+print.summary.spax <- function(x, digits = 4, ...) {
   # Format numbers with consistent precision
   fmt <- paste0("%.", digits, "g")
 
   # Title and type
-  cat("Summary of Spatial Accessibility Analysis (", x$type, ")\n", sep = "")
+  cat("\nSummary of Spatial Accessibility Analysis (", x$type, ")\n", sep = "")
   cat(paste(rep("-", 45), collapse = ""), "\n\n")
 
   # Accessibility Statistics
@@ -308,11 +308,15 @@ print_summary.spax <- function(x, digits = 4, ...) {
 #' library(terra)
 #' library(sf)
 #'
+#' # Load data
+#' u5pd <- read_spax_example("u5pd.tif")
+#' hos_iscr <- read_spax_example("hos_iscr.tif")
+#'
 #' # Calculate accessibility
 #' result <- spax_e2sfca(
-#'   demand = rast(u5pd),
+#'   demand = u5pd,
 #'   supply = st_drop_geometry(hc12_hos),
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   decay_params = list(method = "gaussian", sigma = 30),
 #'   demand_normalize = "standard",
 #'   id_col = "id",
@@ -328,7 +332,7 @@ print_summary.spax <- function(x, digits = 4, ...) {
 #'
 #' # Plot single layer by name
 #' plot(result, y = "s_doc", main = "Access to Doctors")
-#' @exportS3Method graphics::plot spax
+#' @exportS3Method graphics::plot
 plot.spax <- function(x, ...) {
   plot(x$accessibility, ...)
 }
