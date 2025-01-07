@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -145,7 +145,7 @@ Let’s load the required packages first:</p>
 Meta’s High Resolution Population Density Maps:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load the population density data</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span> <span class="co"># Convert from raster to terra::SpatRaster</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span> <span class="co"># Under-5 population density</span></span>
 <span></span>
 <span><span class="co"># Quick view of the data</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span></span>
@@ -153,8 +153,8 @@ Meta’s High Resolution Population Density Maps:</p>
 <span><span class="co">#&gt; dimensions  : 509, 647, 1  (nrow, ncol, nlyr)</span></span>
 <span><span class="co">#&gt; resolution  : 520.4038, 520.4038  (x, y)</span></span>
 <span><span class="co">#&gt; extent      : 505646.5, 842347.8, 620843.7, 885729.2  (xmin, xmax, ymin, ymax)</span></span>
-<span><span class="co">#&gt; coord. ref. : +proj=utm +zone=47 +datum=WGS84 +units=m +no_defs </span></span>
-<span><span class="co">#&gt; source(s)   : memory</span></span>
+<span><span class="co">#&gt; coord. ref. : WGS 84 / UTM zone 47N (EPSG:32647) </span></span>
+<span><span class="co">#&gt; source      : u5pd.tif </span></span>
 <span><span class="co">#&gt; name        : tha_children_under_five_2020 </span></span>
 <span><span class="co">#&gt; min value   :                      0.00000 </span></span>
 <span><span class="co">#&gt; max value   :                     83.07421</span></span>
@@ -214,14 +214,14 @@ areas.</p>
 it takes to reach each facility:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load the travel time data</span></span>
-<span><span class="va">distance_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span> <span class="co"># Convert to terra::SpatRaster</span></span>
+<span><span class="va">distance_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span></span>
 <span><span class="va">distance_raster</span></span>
 <span><span class="co">#&gt; class       : SpatRaster </span></span>
 <span><span class="co">#&gt; dimensions  : 509, 647, 77  (nrow, ncol, nlyr)</span></span>
 <span><span class="co">#&gt; resolution  : 520.4038, 520.4038  (x, y)</span></span>
 <span><span class="co">#&gt; extent      : 505646.5, 842347.8, 620843.7, 885729.2  (xmin, xmax, ymin, ymax)</span></span>
-<span><span class="co">#&gt; coord. ref. : +proj=utm +zone=47 +datum=WGS84 +units=m +no_defs </span></span>
-<span><span class="co">#&gt; source(s)   : memory</span></span>
+<span><span class="co">#&gt; coord. ref. : WGS 84 / UTM zone 47N (EPSG:32647) </span></span>
+<span><span class="co">#&gt; source      : hos_iscr.tif </span></span>
 <span><span class="co">#&gt; names       :  c172,  c173,  c174,  c175,  c176,  c177, ... </span></span>
 <span><span class="co">#&gt; min values  :   6.0,   3.0,   3.5,   4.0,   4.0,  11.0, ... </span></span>
 <span><span class="co">#&gt; max values  : 172.5, 172.5, 172.5, 172.5, 172.5, 172.5, ...</span></span>
@@ -247,7 +247,7 @@ basic accessibility analysis. We’ll use the Enhanced Two-Step Floating
 Catchment Area (E2SFCA) method to analyze access to doctors:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate accessibility scores</span></span>
-<span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>, <span class="co"># Population density</span></span>
 <span>  supply <span class="op">=</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># Hospital capacity</span></span>
 <span>  distance <span class="op">=</span> <span class="va">distance_raster</span>, <span class="co"># Travel times</span></span>
@@ -261,10 +261,10 @@ Catchment Area (E2SFCA) method to analyze access to doctors:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Visualize the results</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>,</span>
-<span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Access to Doctors"</span>, <span class="st">"Access to Nurses"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span>,</span>
+<span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Access to Doctors"</span>, <span class="st">"Access to Nurses"</span><span class="op">)</span>,</span>
+<span>  fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span> <span class="co"># add region boundary</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p><img src="spax-101-intro_files/figure-html/unnamed-chunk-7-1.png" width="800"></p>
 <p>And that’s it! We’ve calculated accessibility scores for doctors and
 nurses across the region with the lighter colors indicating better

@@ -11,7 +11,7 @@ spatial weights to a demand raster."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -78,31 +78,30 @@ spatial weights to a demand raster.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Load example data - already lazy-loaded</span></span></span>
-<span class="r-in"><span><span class="co"># u5pd # Under-5 population density raster</span></span></span>
-<span class="r-in"><span><span class="co"># hos_iscr # Hospital isochrones</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Convert population to SpatRaster</span></span></span>
-<span class="r-in"><span><span class="va">pop_terra</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Load data</span></span></span>
+<span class="r-in"><span><span class="va">u5pd</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">hos_iscr</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Calculate probability weights using gaussian decay</span></span></span>
 <span class="r-in"><span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="calc_decay.html">calc_decay</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  <span class="va">hos_iscr</span>,</span></span>
 <span class="r-in"><span>  method <span class="op">=</span> <span class="st">"gaussian"</span>,</span></span>
 <span class="r-in"><span>  sigma <span class="op">=</span> <span class="fl">30</span></span></span>
 <span class="r-in"><span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="calc_normalize.html">calc_normalize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"semi"</span><span class="op">)</span> <span class="co"># Normalize to ensure proper probabilities</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Calculate potential demand for each hospital</span></span></span>
-<span class="r-in"><span><span class="va">hospital_demands</span> <span class="op">&lt;-</span> <span class="fu">gather_demand</span><span class="op">(</span><span class="va">pop_terra</span>, <span class="va">weights</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">hospital_demands</span> <span class="op">&lt;-</span> <span class="fu">gather_demand</span><span class="op">(</span><span class="va">u5pd</span>, <span class="va">weights</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">hospital_demands</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   location_id potential_demand</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1        c172         7970.019</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        c173         8244.629</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        c174         4899.034</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        c175         7579.809</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        c176         6361.653</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6        c177         4527.153</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1        c172         7948.891</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        c173         8205.902</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3        c174         4792.858</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4        c175         7542.494</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5        c176         6329.155</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6        c177         4503.939</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

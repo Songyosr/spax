@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -227,9 +227,9 @@ translate into actual code with spax:</p>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Load our example data</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span> <span class="co"># Population density</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span> <span class="co"># Population density</span></span>
 <span><span class="va">hospitals</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span> <span class="co"># Hospital locations</span></span>
-<span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span> <span class="co"># Travel times</span></span></code></pre></div>
+<span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span> <span class="co"># Travel times</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Let's look at the basic components for one hospital</span></span>
 <span><span class="va">example_hospital</span> <span class="op">&lt;-</span> <span class="va">hospitals</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
@@ -407,18 +407,26 @@ in:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">facility_weights</span><span class="op">)</span>,</span>
 <span>  main <span class="op">=</span> <span class="st">"Raw Weight Sum\n(potential double-counting)"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># --</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">standard_norm</span><span class="op">)</span>,</span>
 <span>  main <span class="op">=</span> <span class="st">"Standard Normalization\n(sums to 1)"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># --</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">semi_norm</span><span class="op">)</span>,</span>
 <span>  main <span class="op">=</span> <span class="st">"Semi-normalization\n(prevents inflation)"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Show where normalization matters most</span></span>
 <span><span class="va">overlap_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">facility_weights</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">overlap_areas</span>,</span>
 <span>  main <span class="op">=</span> <span class="st">"Competition Areas\n(where normalization matters)"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-6-1.png" width="100%"></p>
 <p>Think of normalization like adjusting a recipe when ingredients
 overlap. If two hospitals serve the same area:</p>
@@ -462,8 +470,8 @@ and
 <span><span class="co">#&gt; [1] "Potential demand by facility:"</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">potential_demand</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   unit_id weighted_sum</span></span>
-<span><span class="co">#&gt; 1    c172     151148.2</span></span>
-<span><span class="co">#&gt; 2    c173     140127.4</span></span>
+<span><span class="co">#&gt; 1    c172     150186.5</span></span>
+<span><span class="co">#&gt; 2    c173     139014.9</span></span>
 <span></span>
 <span><span class="co"># Now calculate and spread accessibility</span></span>
 <span><span class="va">supply_ratios</span> <span class="op">&lt;-</span> <span class="va">potential_demand</span> <span class="op">|&gt;</span></span>
@@ -475,8 +483,8 @@ and
 <span><span class="co">#&gt; [1] "Supply ratios:"</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">supply_ratios</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   unit_id weighted_sum       ratio</span></span>
-<span><span class="co">#&gt; 1    c172     151148.2 0.003453564</span></span>
-<span><span class="co">#&gt; 2    c173     140127.4 0.002290772</span></span>
+<span><span class="co">#&gt; 1    c172     150186.5 0.003475679</span></span>
+<span><span class="co">#&gt; 2    c173     139014.9 0.002309104</span></span>
 <span></span>
 <span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spread_weighted.html">spread_weighted</a></span><span class="op">(</span></span>
 <span>  <span class="va">supply_ratios</span>, <span class="co"># Facility-specific ratios (r_j)</span></span>

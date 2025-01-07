@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -155,8 +155,12 @@ Let’s explore different ways to convert our data</p>
 centroids. This mirrors traditional vector-based accessibility analyses
 but in raster format:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create template raster - Coarser resolution for example</span></span>
-<span><span class="va">template</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, fact <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Load population density raster &amp; distance</span></span>
+<span><span class="va">u5pd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span></span>
+<span><span class="va">hos_iscr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Create template raster - Coarser resolution for example</span></span>
+<span><span class="va">template</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">u5pd</span>, fact <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Rasterize centroids</span></span>
 <span><span class="va">centroid_demand</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rasterize.html" class="external-link">rasterize</a></span><span class="op">(</span></span>
@@ -342,7 +346,7 @@ surfaces:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example for one facility using terra</span></span>
 <span><span class="va">facility_point</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
-<span><span class="va">template_rast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span> <span class="co"># Use population raster as template</span></span>
+<span><span class="va">template_rast</span> <span class="op">&lt;-</span> <span class="va">u5pd</span> <span class="co"># Use population raster as template</span></span>
 <span></span>
 <span><span class="co"># Calculate Euclidean distance (in meters since our CRS is projected)</span></span>
 <span><span class="va">euclidean_dist</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/distance.html" class="external-link">distance</a></span><span class="op">(</span></span>
@@ -469,31 +473,25 @@ request/second)</p></li>
 <p>When creating travel time surfaces, you have several options:</p>
 <p><strong>OSRM (Open Source Routing Machine)</strong></p>
 <ul>
-<li><label><input type="checkbox" checked>Free and open
-source</label></li>
-<li><label><input type="checkbox" checked>Can handle multiple
-travel modes (if setup properly)</label></li>
+<li>✓ Free and open source</li>
+<li>✓ Can handle multiple travel modes (if setup properly)</li>
 <li>× Requires server setup for serious use</li>
 <li>× Basic routing without traffic</li>
 </ul>
 <p><strong>Commercial APIs (HERE, Google Maps)</strong></p>
 <ul>
-<li><p><label><input type="checkbox" checked>Includes real-time
-traffic</label></p></li>
-<li><p><label><input type="checkbox" checked>More accurate travel
-times</label></p></li>
-<li><p>× Usage costs</p></li>
-<li><p>× API limits</p></li>
+<li>✓ Includes real-time traffic</li>
+<li>✓ More accurate travel times</li>
+<li>× Usage costs</li>
+<li>× API limits</li>
 </ul>
 <p><strong>Custom cost surfaces</strong> (I have no idea how to do this,
 lol)</p>
 <ul>
-<li><p><label><input type="checkbox" checked>Can include terrain,
-land use</label></p></li>
-<li><p><label><input type="checkbox" checked>Full control over
-parameters</label></p></li>
-<li><p>× Requires GIS expertise</p></li>
-<li><p>× More complex to validate</p></li>
+<li>✓ Can include terrain, land use</li>
+<li>✓ Full control over parameters</li>
+<li>× Requires GIS expertise</li>
+<li>× More complex to validate</li>
 </ul>
 </div>
 </div>
@@ -522,8 +520,8 @@ projection:</p>
 <span></span>
 <span><span class="co"># Compare properties of key rasters</span></span>
 <span><span class="va">raster_props</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
-<span>  <span class="fu">summarize_raster</span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, <span class="st">"Population"</span><span class="op">)</span>,</span>
-<span>  <span class="fu">summarize_raster</span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>, <span class="st">"Travel Time"</span><span class="op">)</span></span>
+<span>  <span class="fu">summarize_raster</span><span class="op">(</span><span class="va">u5pd</span>, <span class="st">"Population"</span><span class="op">)</span>,</span>
+<span>  <span class="fu">summarize_raster</span><span class="op">(</span><span class="va">hos_iscr</span>, <span class="st">"Travel Time"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">raster_props</span></span>
@@ -534,8 +532,8 @@ projection:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Travel Time 520.4 x 520.4 505646.53, 842347.77, 620843.72, 885729.24 +proj=ut…</span></span>
 <span></span>
 <span><span class="co"># Visual check for alignment</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, main <span class="op">=</span> <span class="st">"Spatial Alignment Check"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">u5pd</span>, main <span class="op">=</span> <span class="st">"Spatial Alignment Check"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-17-1.png" width="1200"></p>
 </div>
@@ -546,30 +544,43 @@ projection:</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Check population density range</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span>
-<span><span class="co">#&gt;         tha_children_under_five_2020</span></span>
-<span><span class="co">#&gt; Min.                    0.000000e+00</span></span>
-<span><span class="co">#&gt; 1st Qu.                 1.385807e+00</span></span>
-<span><span class="co">#&gt; Median                  3.497750e+00</span></span>
-<span><span class="co">#&gt; 3rd Qu.                 7.571418e+00</span></span>
-<span><span class="co">#&gt; Max.                    8.307421e+01</span></span>
-<span><span class="co">#&gt; NA's                    2.781020e+05</span></span>
+<span><span class="co">#&gt; Warning: [summary] used a sample</span></span>
+<span><span class="co">#&gt;  tha_children_under_five_2020</span></span>
+<span><span class="co">#&gt;  Min.   : 0.00               </span></span>
+<span><span class="co">#&gt;  1st Qu.: 1.40               </span></span>
+<span><span class="co">#&gt;  Median : 3.48               </span></span>
+<span><span class="co">#&gt;  Mean   : 6.03               </span></span>
+<span><span class="co">#&gt;  3rd Qu.: 7.59               </span></span>
+<span><span class="co">#&gt;  Max.   :82.96               </span></span>
+<span><span class="co">#&gt;  NA's   :84773</span></span>
 <span></span>
 <span><span class="co"># Check a few travel time rasters</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;             [,1]     [,2]     [,3]     [,4]     [,5]     [,6]     [,7]     [,8]</span></span>
-<span><span class="co">#&gt; Min.         6.0      3.0      3.5      4.0      4.0     11.0      5.0      7.5</span></span>
-<span><span class="co">#&gt; 1st Qu.     67.5     82.5     97.5     67.5     67.5     67.5     82.5     97.5</span></span>
-<span><span class="co">#&gt; Median     112.5    112.5    127.5    112.5    112.5    112.5    127.5    127.5</span></span>
-<span><span class="co">#&gt; 3rd Qu.    142.5    157.5    157.5    142.5    157.5    157.5    157.5    157.5</span></span>
-<span><span class="co">#&gt; Max.       172.5    172.5    172.5    172.5    172.5    172.5    172.5    172.5</span></span>
-<span><span class="co">#&gt; NA's    214422.0 215942.0 226281.0 208815.0 214457.0 219237.0 228511.0 228151.0</span></span>
-<span><span class="co">#&gt;             [,9]    [,10]</span></span>
-<span><span class="co">#&gt; Min.         5.0      4.0</span></span>
-<span><span class="co">#&gt; 1st Qu.     97.5     67.5</span></span>
-<span><span class="co">#&gt; Median     127.5    112.5</span></span>
-<span><span class="co">#&gt; 3rd Qu.    157.5    142.5</span></span>
-<span><span class="co">#&gt; Max.       172.5    172.5</span></span>
-<span><span class="co">#&gt; NA's    233929.0 215368.0</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: [summary] used a sample</span></span>
+<span><span class="co">#&gt;       c172            c173            c174            c175      </span></span>
+<span><span class="co">#&gt;  Min.   :  6.0   Min.   :  3.0   Min.   :  3.5   Min.   :  4.0  </span></span>
+<span><span class="co">#&gt;  1st Qu.: 67.5   1st Qu.: 67.5   1st Qu.: 82.5   1st Qu.: 67.5  </span></span>
+<span><span class="co">#&gt;  Median : 97.5   Median :112.5   Median :127.5   Median :112.5  </span></span>
+<span><span class="co">#&gt;  Mean   :102.9   Mean   :107.6   Mean   :118.9   Mean   :105.6  </span></span>
+<span><span class="co">#&gt;  3rd Qu.:142.5   3rd Qu.:142.5   3rd Qu.:157.5   3rd Qu.:142.5  </span></span>
+<span><span class="co">#&gt;  Max.   :172.5   Max.   :172.5   Max.   :172.5   Max.   :172.5  </span></span>
+<span><span class="co">#&gt;  NA's   :71579   NA's   :71501   NA's   :74191   NA's   :69709  </span></span>
+<span><span class="co">#&gt;       c176            c177            c178            c179      </span></span>
+<span><span class="co">#&gt;  Min.   :  8.5   Min.   : 11.0   Min.   : 11.0   Min.   :  7.5  </span></span>
+<span><span class="co">#&gt;  1st Qu.: 67.5   1st Qu.: 67.5   1st Qu.: 67.5   1st Qu.: 97.5  </span></span>
+<span><span class="co">#&gt;  Median :112.5   Median :112.5   Median :112.5   Median :127.5  </span></span>
+<span><span class="co">#&gt;  Mean   :107.5   Mean   :107.7   Mean   :110.5   Mean   :120.5  </span></span>
+<span><span class="co">#&gt;  3rd Qu.:142.5   3rd Qu.:142.5   3rd Qu.:157.5   3rd Qu.:157.5  </span></span>
+<span><span class="co">#&gt;  Max.   :172.5   Max.   :172.5   Max.   :172.5   Max.   :172.5  </span></span>
+<span><span class="co">#&gt;  NA's   :70996   NA's   :72338   NA's   :74213   NA's   :75822  </span></span>
+<span><span class="co">#&gt;       c180            c181       </span></span>
+<span><span class="co">#&gt;  Min.   :  5.0   Min.   :  8.50  </span></span>
+<span><span class="co">#&gt;  1st Qu.: 97.5   1st Qu.: 67.50  </span></span>
+<span><span class="co">#&gt;  Median :127.5   Median : 97.50  </span></span>
+<span><span class="co">#&gt;  Mean   :127.3   Mean   : 96.85  </span></span>
+<span><span class="co">#&gt;  3rd Qu.:157.5   3rd Qu.:127.50  </span></span>
+<span><span class="co">#&gt;  Max.   :172.5   Max.   :172.50  </span></span>
+<span><span class="co">#&gt;  NA's   :76037   NA's   :72831</span></span></code></pre></div>
 </div>
 <div class="section level5">
 <h5 id="missing-value-analysis">3. Missing Value Analysis<a class="anchor" aria-label="anchor" href="#missing-value-analysis"></a>
@@ -614,10 +625,10 @@ are bad:</p>
 <span></span>
 <span><span class="co"># Check NA patterns in key datasets</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">analyze_nas</span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span>, <span class="st">"Pop"</span><span class="op">)</span></span>
+<span><span class="fu">analyze_nas</span><span class="op">(</span><span class="va">u5pd</span>, <span class="st">"Pop"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Pop:</span></span>
 <span><span class="co">#&gt;    NA cells within boundary: 60551 (54.4% of study area)</span></span>
-<span><span class="fu">analyze_nas</span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, <span class="st">"Time from 1st Fac"</span><span class="op">)</span></span>
+<span><span class="fu">analyze_nas</span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, <span class="st">"Time from 1st Fac"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Time from 1st Fac:</span></span>
 <span><span class="co">#&gt;    NA cells within boundary: 16841 (15.1% of study area)</span></span></code></pre></div>
 <p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-19-1.png" width="1200"></p>
@@ -645,10 +656,10 @@ are bad:</p>
 <li>
 <p><strong>Documentation</strong></p>
 <ul>
-<li><p>Note data sources and dates</p></li>
-<li><p>Document all preprocessing steps</p></li>
-<li><p>Record assumptions made</p></li>
-<li><p>Note known limitations</p></li>
+<li>Note data sources and dates</li>
+<li>Document all preprocessing steps</li>
+<li>Record assumptions made</li>
+<li>Note known limitations</li>
 </ul>
 </li>
 </ol>

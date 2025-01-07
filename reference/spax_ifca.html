@@ -25,7 +25,7 @@ Using a learning rate to control convergence
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -151,31 +151,29 @@ Default: FALSE</p></dd>
     <p>If snap = TRUE:
   Numeric vector of predicted utilization for all facilities</p>
 <p>If snap = FALSE:
-  A list containing:</p><dl><dt>utilization</dt>
-<dd><p>Numeric vector of predicted facility utilization</p></dd>
-
-    <dt>ratios</dt>
-<dd><p>Numeric vector of final supply-demand ratios</p></dd>
-
-    <dt>attractiveness</dt>
-<dd><p>Numeric vector of final facility attractiveness values</p></dd>
-
-    <dt>accessibility</dt>
+  A spax object containing:</p><dl><dt>accessibility</dt>
 <dd><p>SpatRaster of accessibility scores</p></dd>
 
-    <dt>convergence</dt>
-<dd><p>List with convergence details:</p><ul><li><p>iterations: Number of iterations run</p></li>
-<li><p>converged: Logical indicating if convergence achieved</p></li>
-<li><p>type: Convergence check method used</p></li>
-<li><p>final_average: Final rolling average of differences</p></li>
-<li><p>window_size: Size of rolling window used</p></li>
-</ul><p></p></dd>
-
-    <dt>history</dt>
-<dd><p>Array of historical state values if converged, NULL otherwise</p></dd>
+    <dt>type</dt>
+<dd><p>Character string "iFCA"</p></dd>
 
     <dt>parameters</dt>
-<dd><p>List of parameter values used in computation</p></dd>
+<dd><p>List of model parameters including decay_params, lambda, etc.</p></dd>
+
+    <dt>facilities</dt>
+<dd><p>data.frame with columns:</p><ul><li><p>id: Facility identifiers</p></li>
+<li><p>utilization: Predicted facility utilization</p></li>
+<li><p>ratio: Supply-to-demand ratios</p></li>
+<li><p>attractiveness: Final facility attractiveness</p></li>
+</ul><p></p></dd>
+
+    <dt>iterations</dt>
+<dd><p>List containing:</p><ul><li><p>history: Array of historical state values if converged</p></li>
+<li><p>convergence: Convergence details including iterations, status, etc.</p></li>
+</ul><p></p></dd>
+
+    <dt>call</dt>
+<dd><p>The original function call</p></dd>
 
 
 </dl></div>
@@ -187,15 +185,49 @@ Default: FALSE</p></dd>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Basic usage with static demand</span></span></span>
+<span class="r-in"><span><span class="co"># Load example data</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Prepare inputs</span></span></span>
+<span class="r-in"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">hospitals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Basic usage with default parameters</span></span></span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">spax_ifca</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  distance_raster <span class="op">=</span> <span class="va">dist_rast</span>,</span></span>
-<span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop_rast</span>,</span></span>
-<span class="r-in"><span>  supply <span class="op">=</span> <span class="va">facility_capacity</span>,</span></span>
+<span class="r-in"><span>  distance_raster <span class="op">=</span> <span class="va">distance</span>,</span></span>
+<span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop</span>,</span></span>
+<span class="r-in"><span>  supply <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">s_doc</span>,</span></span>
 <span class="r-in"><span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    method <span class="op">=</span> <span class="st">"gaussian"</span>,</span></span>
-<span class="r-in"><span>    sigma <span class="op">=</span> <span class="fl">30</span></span></span>
+<span class="r-in"><span>    sigma <span class="op">=</span> <span class="fl">30</span>  <span class="co"># 30-minute characteristic distance</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Plot accessibility surface</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"Doctor Accessibility (iFCA)"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Examine facility-level results</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">facilities</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Check convergence information</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">iterations</span><span class="op">$</span><span class="va">convergence</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Fast computation mode - returns only utilization</span></span></span>
+<span class="r-in"><span><span class="va">util</span> <span class="op">&lt;-</span> <span class="fu">spax_ifca</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  distance_raster <span class="op">=</span> <span class="va">distance</span>,</span></span>
+<span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop</span>,</span></span>
+<span class="r-in"><span>  supply <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">s_doc</span>,</span></span>
+<span class="r-in"><span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  snap <span class="op">=</span> <span class="cn">TRUE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Compare predicted utilization with facility capacity</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">id</span>,</span></span>
+<span class="r-in"><span>  capacity <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">s_doc</span>,</span></span>
+<span class="r-in"><span>  predicted <span class="op">=</span> <span class="va">util</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Using custom decay function</span></span></span>
@@ -205,10 +237,10 @@ Default: FALSE</p></dd>
 <span class="r-in"><span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">spax_ifca</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  distance_raster <span class="op">=</span> <span class="va">dist_rast</span>,</span></span>
-<span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop_rast</span>,</span></span>
-<span class="r-in"><span>  supply <span class="op">=</span> <span class="va">facility_capacity</span>,</span></span>
+<span class="r-in"><span><span class="va">result_custom</span> <span class="op">&lt;-</span> <span class="fu">spax_ifca</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  distance_raster <span class="op">=</span> <span class="va">distance</span>,</span></span>
+<span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop</span>,</span></span>
+<span class="r-in"><span>  supply <span class="op">=</span> <span class="va">hospitals</span><span class="op">$</span><span class="va">s_doc</span>,</span></span>
 <span class="r-in"><span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    method <span class="op">=</span> <span class="va">custom_decay</span>,</span></span>
 <span class="r-in"><span>    sigma <span class="op">=</span> <span class="fl">30</span>,</span></span>
@@ -216,14 +248,6 @@ Default: FALSE</p></dd>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># With time-series demand (must match max_iter)</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">spax_ifca</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  distance_raster <span class="op">=</span> <span class="va">dist_rast</span>,</span></span>
-<span class="r-in"><span>  demand <span class="op">=</span> <span class="va">demand_series</span>, <span class="co"># Multi-layer demand</span></span></span>
-<span class="r-in"><span>  supply <span class="op">=</span> <span class="va">facility_capacity</span>,</span></span>
-<span class="r-in"><span>  max_iter <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nlyr</a></span><span class="op">(</span><span class="va">demand_series</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

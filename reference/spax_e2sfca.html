@@ -13,7 +13,7 @@ realistic measures of spatial accessibility to services."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -115,8 +115,12 @@ realistic measures of spatial accessibility to services.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>SpatRaster of accessibility scores</p>
-    </div>
+    <p>A spax object containing:</p><ul><li><p>accessibility: SpatRaster of accessibility scores</p></li>
+<li><p>type: Character string "E2SFCA"</p></li>
+<li><p>parameters: List of model parameters used</p></li>
+<li><p>facilities: data.frame of facility-level information</p></li>
+<li><p>call: The original function call</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The E2SFCA method enhances the original 2SFCA by introducing:</p>
@@ -156,7 +160,8 @@ https://doi.org/10.1016/j.healthplace.2009.06.002</p>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Convert under-5 population density to proper format</span></span></span>
-<span class="r-in"><span><span class="va">pop_rast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">pop_rast</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">hos_iscr</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Drop geometry for supply data</span></span></span>
 <span class="r-in"><span><span class="va">hc12_hos</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span></span>
@@ -165,7 +170,7 @@ https://doi.org/10.1016/j.healthplace.2009.06.002</p>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">spax_e2sfca</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop_rast</span>,</span></span>
 <span class="r-in"><span>  supply <span class="op">=</span> <span class="va">hc12_hos</span>,</span></span>
-<span class="r-in"><span>  distance <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  distance <span class="op">=</span> <span class="va">hos_iscr</span>,</span></span>
 <span class="r-in"><span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    method <span class="op">=</span> <span class="st">"gaussian"</span>,</span></span>
 <span class="r-in"><span>    sigma <span class="op">=</span> <span class="fl">30</span> <span class="co"># 30-minute characteristic distance</span></span></span>
@@ -175,15 +180,25 @@ https://doi.org/10.1016/j.healthplace.2009.06.002</p>
 <span class="r-in"><span>  supply_cols <span class="op">=</span> <span class="st">"s_doc"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Plot the results</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span>, main <span class="op">=</span> <span class="st">"Doctor Accessibility (E2SFCA)"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Extract and plot accessibility surface</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"Doctor Accessibility (E2SFCA)"</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="spax_e2sfca-1.png" alt="" width="700" height="433"></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Access facility-level information</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">facilities</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     id s_doc</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 c172   522</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 c173   321</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 c174    67</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 c175    81</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 c176   175</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 c177    77</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Compare different decay functions</span></span></span>
 <span class="r-in"><span><span class="va">result_exp</span> <span class="op">&lt;-</span> <span class="fu">spax_e2sfca</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  demand <span class="op">=</span> <span class="va">pop_rast</span>,</span></span>
 <span class="r-in"><span>  supply <span class="op">=</span> <span class="va">hc12_hos</span>,</span></span>
-<span class="r-in"><span>  distance <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  distance <span class="op">=</span> <span class="va">hos_iscr</span>,</span></span>
 <span class="r-in"><span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    method <span class="op">=</span> <span class="st">"exponential"</span>,</span></span>
 <span class="r-in"><span>    sigma <span class="op">=</span> <span class="fl">0.1</span></span></span>
@@ -194,7 +209,7 @@ https://doi.org/10.1016/j.healthplace.2009.06.002</p>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Plot both for comparison</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">result_exp</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">accessibility</span>, <span class="va">result_exp</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Gaussian Decay"</span>, <span class="st">"Exponential Decay"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="spax_e2sfca-2.png" alt="" width="700" height="433"></span>

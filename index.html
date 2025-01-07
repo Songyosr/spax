@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -92,12 +92,12 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Load example data (already included in package)</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span> <span class="co"># Under-5 population density</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"u5pd.tif"</span><span class="op">)</span> <span class="co"># Under-5 population density</span></span>
+<span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span> <span class="co"># Travel times</span></span>
 <span><span class="va">hospitals</span> <span class="op">&lt;-</span> <span class="va">hc12_hos</span> <span class="co"># Hospital locations and capacity</span></span>
-<span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">)</span> <span class="co"># Travel time to hospitals</span></span>
 <span></span>
 <span><span class="co"># Calculate accessibility using Enhanced 2SFCA</span></span>
-<span><span class="va">accessibility</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>, <span class="co"># Population density</span></span>
 <span>  supply <span class="op">=</span> <span class="va">hospitals</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># Hospital capacity</span></span>
 <span>  distance <span class="op">=</span> <span class="va">distance</span>, <span class="co"># Travel times</span></span>
@@ -111,11 +111,63 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Plot results</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>,</span>
-<span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Access to Doctors"</span>, <span class="st">"Access to Nurses"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span>,   main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Access to Doctors"</span>, <span class="st">"Access to Nurses"</span><span class="op">)</span>,</span>
+<span>     fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-example-1.png" width="100%"></p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">result</span></span>
+<span><span class="co">#&gt; Spatial Accessibility Analysis (E2SFCA)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Spatial Properties:</span></span>
+<span><span class="co">#&gt; - Resolution: 520.404 x 520.404</span></span>
+<span><span class="co">#&gt; - Dimensions: 509 x 647</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Measures: 2</span></span>
+<span><span class="co">#&gt; - s_doc</span></span>
+<span><span class="co">#&gt; - s_nurse</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Facilities: 77</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Parameters:</span></span>
+<span><span class="co">#&gt; - Decay function: gaussian (sigma = 30)</span></span>
+<span><span class="co">#&gt; - Demand normalization: standard</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Summary of Spatial Accessibility Analysis (E2SFCA)</span></span>
+<span><span class="co">#&gt; --------------------------------------------- </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Accessibility Measures:</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; s_doc:</span></span>
+<span><span class="co">#&gt;   Range: 2.14e-10 to 0.1818</span></span>
+<span><span class="co">#&gt;   Mean (SD): 0.06002 (0.03767)</span></span>
+<span><span class="co">#&gt;   Quantiles:</span></span>
+<span><span class="co">#&gt;     Min.:    2.14e-10</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Coverage: 33.2% (109362 of 329323 cells)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; s_nurse:</span></span>
+<span><span class="co">#&gt;   Range: 4.172e-10 to 0.2736</span></span>
+<span><span class="co">#&gt;   Mean (SD): 0.1066 (0.06332)</span></span>
+<span><span class="co">#&gt;   Quantiles:</span></span>
+<span><span class="co">#&gt;     Min.:    4.172e-10</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Coverage: 33.2% (109362 of 329323 cells)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Facility Statistics:</span></span>
+<span><span class="co">#&gt; -------------------</span></span>
+<span><span class="co">#&gt; Total Facilities: 77</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; s_doc:</span></span>
+<span><span class="co">#&gt;   Total Supply: 4669</span></span>
+<span><span class="co">#&gt;   Mean (SD): 60.64 (80.09)</span></span>
+<span><span class="co">#&gt;   Range: 0 to 522</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; s_nurse:</span></span>
+<span><span class="co">#&gt;   Total Supply: 8125</span></span>
+<span><span class="co">#&gt;   Mean (SD): 105.5 (159.1)</span></span>
+<span><span class="co">#&gt;   Range: 0 to 973</span></span></code></pre></div>
 <p>This example demonstrates key features of spax:</p>
 <ul>
 <li><p>Working with continuous population surfaces (demand)</p></li>
