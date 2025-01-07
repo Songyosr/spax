@@ -65,7 +65,7 @@ Our example uses under-5 population density data aggregated from Meta's High Res
 
 ```{r}
 # Load the population density data
-pop <- rast(u5pd) # Convert from raster to terra::SpatRaster
+pop <- read_spax_example("u5pd.tif") # Under-5 population density
 
 # Quick view of the data
 print(pop)
@@ -109,7 +109,7 @@ The package includes pre-computed travel time data showing how long it takes to 
 
 ```{r}
 # Load the travel time data
-distance_raster <- rast(hos_iscr) # Convert to terra::SpatRaster
+distance_raster <- read_spax_example("hos_iscr.tif")
 distance_raster
 # Each layer represents travel time to a different facility
 
@@ -144,8 +144,9 @@ result <- spax_e2sfca(
 
 ```{r}
 # Visualize the results
-plot(result$accessibility,
-  main = c("Access to Doctors", "Access to Nurses")
+plot(result,
+  main = c("Access to Doctors", "Access to Nurses"),
+  fun = function() lines(bound0) # add region boundary
 )
 ```
 

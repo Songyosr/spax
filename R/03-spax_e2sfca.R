@@ -454,7 +454,8 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' library(sf)
 #'
 #' # Convert under-5 population density to proper format
-#' pop_rast <- rast(u5pd)
+#' pop_rast <- read_spax_example("u5pd.tif")
+#' hos_iscr <- read_spax_example("hos_iscr.tif")
 #'
 #' # Drop geometry for supply data
 #' hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -463,7 +464,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' result <- spax_e2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   decay_params = list(
 #'     method = "gaussian",
 #'     sigma = 30 # 30-minute characteristic distance
@@ -483,7 +484,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' result_exp <- spax_e2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   decay_params = list(
 #'     method = "exponential",
 #'     sigma = 0.1
@@ -631,8 +632,9 @@ spax_e2sfca <- function(demand, supply, distance,
 #' library(terra)
 #' library(sf)
 #'
-#' # Convert under-5 population density to proper format
-#' pop_rast <- rast(u5pd)
+#' # Load data
+#' pop_rast <- read_spax_example("u5pd.tif")
+#' hos_iscr <- read_spax_example("hos_iscr.tif")
 #'
 #' # Drop geometry for supply data
 #' hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -641,7 +643,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #' result <- spax_2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   threshold = 30, # 30-minute catchment
 #'   id_col = "id",
 #'   supply_cols = "s_doc"
@@ -654,7 +656,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #' result_multi <- spax_2sfca(
 #'   demand = pop_rast,
 #'   supply = hc12_hos,
-#'   distance = rast(hos_iscr),
+#'   distance = hos_iscr,
 #'   threshold = 30,
 #'   id_col = "id",
 #'   supply_cols = c("s_doc", "s_nurse")

@@ -147,23 +147,22 @@ gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, sna
 #'         - location_id: identifier matching weight layer names
 #'         - potential_demand: weighted sum of demand for each site
 #' @examples
-#' # Load example data - already lazy-loaded
-#' # u5pd # Under-5 population density raster
-#' # hos_iscr # Hospital isochrones
+#' library(terra)
 #'
-#' # Convert population to SpatRaster
-#' pop_terra <- terra::rast(u5pd)
+#' # Load data
+#' u5pd <- read_spax_example("u5pd.tif")
+#' hos_iscr <- read_spax_example("hos_iscr.tif")
 #'
 #' # Calculate probability weights using gaussian decay
 #' weights <- calc_decay(
-#'   terra::rast(hos_iscr),
+#'   hos_iscr,
 #'   method = "gaussian",
 #'   sigma = 30
 #' ) |>
 #'   calc_normalize(method = "semi") # Normalize to ensure proper probabilities
 #'
 #' # Calculate potential demand for each hospital
-#' hospital_demands <- gather_demand(pop_terra, weights)
+#' hospital_demands <- gather_demand(u5pd, weights)
 #' head(hospital_demands)
 #' @export
 gather_demand <- function(demand, weights) {

@@ -37,10 +37,11 @@ Think of a raster as a giant spreadsheet laid over your study area. Instead of t
 
 ```{r}
 # Load example population density
-pop <- rast(u5pd)
+pop <- read_spax_example("u5pd.tif")
+distances <- read_spax_example("hos_iscr.tif") 
 
 # Quick look at what we're working with
-(pop)
+pop
 cat("Total cells:", ncell(pop), "\n")
 ```
 
@@ -67,7 +68,7 @@ One of the biggest advantages of raster operations is that they're naturally vec
 # First, let's create test datasets of different sizes
 create_test_distance <- function(n_facilities) {
   # Take our original distance raster and replicate it
-  base_distance <- rast(hos_iscr)[[1]] # Use first facility as template
+  base_distance <- distances[[1]] # Use first facility as template
 
   # Create a stack with n copies
   test_stack <- rep(base_distance, n_facilities)
@@ -144,8 +145,8 @@ check_alignment <- function(rast1, rast2, name1, name2) {
 
 # Check population and distance rasters
 check_alignment(
-  rast(u5pd),
-  rast(hos_iscr),
+  pop,
+  distances,
   "Population",
   "Distance"
 )
@@ -162,8 +163,7 @@ The grid structure of rasters automatically handles spatial interactions in an e
 ```{r}
 # Look at one facility's service area
 facility_id <- hc12_hos$id[1] # First facility
-facility_distance <- rast(hos_iscr)[[1]]
-pop <- rast(u5pd)
+facility_distance <- distances[[1]]
 
 # Calculate decay weights
 decay_weights <- calc_decay(
@@ -200,8 +200,8 @@ Let's explore how resolution affects both computation time and analysis results:
 # Prepare test datasets at different resolutions first
 prep_test_data <- function(factor) {
   # Aggregate both population and distance
-  pop_agg <- aggregate(rast(u5pd), fact = factor, fun = sum, na.rm = TRUE)
-  dist_agg <- aggregate(rast(hos_iscr), fact = factor, fun = mean, na.rm = TRUE)
+  pop_agg <- aggregate(pop, fact = factor, fun = sum, na.rm = TRUE)
+  dist_agg <- aggregate(distances, fact = factor, fun = mean, na.rm = TRUE)
 
   return(list(pop = pop_agg, dist = dist_agg))
 }
@@ -297,7 +297,7 @@ Let's visualize what's happening to our spatial data:
 par(mfrow = c(2, 2))
 for (i in seq_along(results)) {
   # Plot base accessibility surface
-  plot(results[[i]]$result$accessibility,
+  plot(results[[i]]$result,
     main = sprintf(
       "%0.0fm Resolution\n%s cells",
       results[[i]]$resolution,
@@ -345,9 +345,9 @@ A simple workflow might look like:
 ```{r eval =FALSE}
 # Quick prototype at coarse resolution
 coarse_test <- spax_e2sfca(
-  demand = aggregate(rast(u5pd), fact = 4), # 4x coarser
+  demand = aggregate(pop, fact = 4), # 4x coarser
   supply = hc12_hos |> st_drop_geometry(),
-  distance = aggregate(rast(hos_iscr), fact = 4),
+  distance = aggregate(distances, fact = 4),
   decay_params = list(method = "gaussian", sigma = 30),
   demand_normalize = "standard",
   id_col = "id",
@@ -356,9 +356,9 @@ coarse_test <- spax_e2sfca(
 
 # Once satisfied, run at final resolution
 final_analysis <- spax_e2sfca(
-  demand = rast(u5pd),
+  demand = pop,
   supply = hc12_hos |> st_drop_geometry(),
-  distance = rast(hos_iscr),
+  distance = distances,
   decay_params = list(method = "gaussian", sigma = 30),
   demand_normalize = "standard",
   id_col = "id",
@@ -401,9 +401,9 @@ Always document your resolution and processing choices:
 ```{r}
 # Example documentation structure
 analysis_metadata <- list(
-  resolution = res(rast(u5pd)),
-  extent = ext(rast(u5pd)),
-  cell_count = ncell(rast(u5pd)),
+  resolution = res(pop),
+  extent = ext(pop),
+  cell_count = ncell(pop),
   parameters = list(
     decay = list(method = "gaussian", sigma = 30),
     normalization = "standard"

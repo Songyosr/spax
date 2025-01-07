@@ -83,7 +83,7 @@ test_that("calc_choice handles real-world data correctly", {
   skip_if_not_installed("terra")
 
   # Convert isochrones to decay weights first
-  weights <- terra::rast(hos_iscr) |>
+  weights <- read_spax_example("hos_iscr.tif") |>
     calc_decay(method = "gaussian", sigma = 30)
   doctor_attr <- hc12_hos$s_doc |> sf::st_drop_geometry()
 

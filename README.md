@@ -44,11 +44,9 @@ library(terra)
 library(sf)
 
 # Load example data (already included in package)
-pop <- rast(u5pd) # Under-5 population density
+pop <- read_spax_example("u5pd.tif") # Under-5 population density
+distance <- read_spax_example("hos_iscr.tif") # Travel times
 hospitals <- hc12_hos # Hospital locations and capacity
-distance <- rast(hos_iscr) # Travel time to hospitals
-
-
 
 # Calculate accessibility using Enhanced 2SFCA
 result <- spax_e2sfca(
@@ -65,7 +63,7 @@ result <- spax_e2sfca(
 )
 
 # Plot results
-plot(result,  # main = c("Access to Doctors", "Access to Nurses"),
+plot(result,   main = c("Access to Doctors", "Access to Nurses"),
      fun = function() lines(bound0)
 )
 ```
@@ -73,7 +71,24 @@ plot(result,  # main = c("Access to Doctors", "Access to Nurses"),
 <img src="man/figures/README-example-1.png" width="100%" />
 
 ``` r
+result
+#> Spatial Accessibility Analysis (E2SFCA)
+#> 
+#> Spatial Properties:
+#> - Resolution: 520.404 x 520.404
+#> - Dimensions: 509 x 647
+#> 
+#> Measures: 2
+#> - s_doc
+#> - s_nurse
+#> 
+#> Facilities: 77
+#> 
+#> Parameters:
+#> - Decay function: gaussian (sigma = 30)
+#> - Demand normalization: standard
 summary(result)
+#> 
 #> Summary of Spatial Accessibility Analysis (E2SFCA)
 #> --------------------------------------------- 
 #> 
