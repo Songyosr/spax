@@ -88,7 +88,8 @@ library(terra)
 library(sf)
 
 # Convert under-5 population density to proper format
-pop_rast <- rast(u5pd)
+pop_rast <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
 
 # Drop geometry for supply data
 hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -97,7 +98,7 @@ hc12_hos <- hc12_hos |> st_drop_geometry()
 result <- spax_e2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   decay_params = list(
     method = "gaussian",
     sigma = 30 # 30-minute characteristic distance
@@ -117,7 +118,7 @@ head(result$facilities)
 result_exp <- spax_e2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   decay_params = list(
     method = "exponential",
     sigma = 0.1

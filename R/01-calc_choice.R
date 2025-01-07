@@ -54,8 +54,8 @@
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples
 #' library(terra)
-#' # Using pre-computed isochrone distances and hospital data
-#' distance_raster <- rast(hos_iscr) # Already lazy loaded in raster format
+#' # load data
+#' distance_raster <- read_spax_example("hos_iscr.tif")
 #'
 #' # Calculate decay weights using gaussian decay
 #' weights <- calc_decay(distance_raster, method = "gaussian", sigma = 30)

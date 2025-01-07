@@ -25,22 +25,21 @@ Calculates the potential demand for each service site by applying pre-computed
 spatial weights to a demand raster.
 }
 \examples{
-# Load example data - already lazy-loaded
-# u5pd # Under-5 population density raster
-# hos_iscr # Hospital isochrones
+library(terra)
 
-# Convert population to SpatRaster
-pop_terra <- terra::rast(u5pd)
+# Load data
+u5pd <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
 
 # Calculate probability weights using gaussian decay
 weights <- calc_decay(
-  terra::rast(hos_iscr),
+  hos_iscr,
   method = "gaussian",
   sigma = 30
 ) |>
   calc_normalize(method = "semi") # Normalize to ensure proper probabilities
 
 # Calculate potential demand for each hospital
-hospital_demands <- gather_demand(pop_terra, weights)
+hospital_demands <- gather_demand(u5pd, weights)
 head(hospital_demands)
 }

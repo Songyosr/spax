@@ -74,8 +74,9 @@ Limitations addressed by later methods:
 library(terra)
 library(sf)
 
-# Convert under-5 population density to proper format
-pop_rast <- rast(u5pd)
+# Load data
+pop_rast <- read_spax_example("u5pd.tif")
+hos_iscr <- read_spax_example("hos_iscr.tif")
 
 # Drop geometry for supply data
 hc12_hos <- hc12_hos |> st_drop_geometry()
@@ -84,7 +85,7 @@ hc12_hos <- hc12_hos |> st_drop_geometry()
 result <- spax_2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   threshold = 30, # 30-minute catchment
   id_col = "id",
   supply_cols = "s_doc"
@@ -97,7 +98,7 @@ plot(result$accessibility, main = "Doctor Accessibility (Original 2SFCA)")
 result_multi <- spax_2sfca(
   demand = pop_rast,
   supply = hc12_hos,
-  distance = rast(hos_iscr),
+  distance = hos_iscr,
   threshold = 30,
   id_col = "id",
   supply_cols = c("s_doc", "s_nurse")

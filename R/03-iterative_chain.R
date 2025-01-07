@@ -385,9 +385,9 @@ compute_iterative <- function(supply, weights, demand,
 #' library(sf)
 #'
 #' # Prepare inputs
-#' pop <- rast(u5pd)
+#' pop <- read_spax_example("u5pd.tif")
+#' distance <- read_spax_example("hos_iscr.tif")
 #' hospitals <- st_drop_geometry(hc12_hos)
-#' distance <- rast(hos_iscr)
 #'
 #' # Basic usage with default parameters
 #' result <- spax_ifca(
@@ -447,9 +447,6 @@ compute_iterative <- function(supply, weights, demand,
 #'
 #' @seealso
 #' \code{\link{calc_decay}} for available decay functions
-#'
-#' @import terra
-#'
 #' @export
 spax_ifca <- function(distance_raster,
                       demand,
