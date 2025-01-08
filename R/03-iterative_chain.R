@@ -544,7 +544,7 @@ spax_ifca <- function(distance_raster,
 
   # Create spax object
   .create_spax(
-    accessibility = results$accessibility,
+    accessibility = accessibility,
     type = "iFCA",
     parameters = list(
       decay_params = decay_params,
