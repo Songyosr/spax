@@ -4,10 +4,12 @@
 \alias{print.ifca_facilities}
 \title{Print method for IFCA facility diagnostics}
 \usage{
-\method{print}{ifca_facilities}(x, ...)
+\method{print}{ifca_facilities}(x, digits = 3, ...)
 }
 \arguments{
 \item{x}{An ifca_facilities object}
+
+\item{digits}{Number of decimal places for numeric output (default = 3)}
 
 \item{...}{Additional arguments passed to print}
 }

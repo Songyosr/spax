@@ -4,7 +4,13 @@
 \alias{.chck_ifca_convergence}
 \title{Validate inputs for IFCA convergence checks}
 \usage{
-.chck_ifca_convergence(x, metrics, plot)
+.chck_ifca_convergence(
+  x,
+  metrics,
+  plot,
+  by_facility = FALSE,
+  relative_cutoff = NULL
+)
 }
 \arguments{
 \item{x}{spax object to validate}
@@ -12,6 +18,10 @@
 \item{metrics}{character vector of requested metrics}
 
 \item{plot}{logical for plot request}
+
+\item{by_facility}{logical for facility-level breakdowns}
+
+\item{relative_cutoff}{numeric between 0 and 1 for defining relative thresholds}
 }
 \value{
 Invisible TRUE if validation passes

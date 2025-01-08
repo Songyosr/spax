@@ -2,17 +2,17 @@
 % Please edit documentation in R/00-spax_diag_facil.R
 \name{.plot_facility_patterns}
 \alias{.plot_facility_patterns}
-\title{Plot facility utilization patterns}
+\title{Plot facility ratio patterns}
 \usage{
 .plot_facility_patterns(patterns)
 }
 \arguments{
-\item{patterns}{List of pattern metrics from .calc_facility_patterns}
+\item{patterns}{List of pattern metrics}
 }
 \value{
-ggplot object
+List of ggplot objects
 }
 \description{
-Plot facility utilization patterns
+Plot facility ratio patterns
 }
 \keyword{internal}

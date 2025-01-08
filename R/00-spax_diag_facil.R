@@ -68,7 +68,7 @@ check_ifca_facilities <- function(x, relative_cutoff = NULL, plot = FALSE) {
 .calc_facility_patterns <- function(history, relative_cutoff = NULL) {
   # Extract final state - focus on supply/demand ratios
   final_state <- history[dim(history)[1], , , drop = TRUE]
-  ratios <- final_state[, 2]  # Column 2 contains supply/demand ratios
+  ratios <- final_state[, 2] # Column 2 contains supply/demand ratios
 
   # Calculate relative metrics using ratios
   mean_ratio <- mean(ratios)
@@ -78,14 +78,14 @@ check_ifca_facilities <- function(x, relative_cutoff = NULL, plot = FALSE) {
   # Classify patterns based on cutoff or quartiles
   if (!is.null(relative_cutoff)) {
     classifications <- cut(rel_to_mean,
-                           breaks = c(-Inf, 1 - relative_cutoff, 1 + relative_cutoff, Inf),
-                           labels = c("Under-served", "Balanced", "Over-served")
+      breaks = c(-Inf, 1 - relative_cutoff, 1 + relative_cutoff, Inf),
+      labels = c("Under-served", "Balanced", "Over-served")
     )
   } else {
     classifications <- cut(ratios,
-                           breaks = quantile(ratios, probs = c(0, 0.25, 0.75, 1)),
-                           labels = c("Under-served", "Balanced", "Over-served"),
-                           include.lowest = TRUE
+      breaks = quantile(ratios, probs = c(0, 0.25, 0.75, 1)),
+      labels = c("Under-served", "Balanced", "Over-served"),
+      include.lowest = TRUE
     )
   }
 
@@ -183,135 +183,42 @@ check_ifca_facilities <- function(x, relative_cutoff = NULL, plot = FALSE) {
   return(results)
 }
 
-#' Calculate facility-specific convergence characteristics
-#' @param history Array of iteration history
-#' @return Data frame of convergence metrics by facility
-#' @keywords internal
-.calc_facility_convergence <- function(history) {
-  n_iter <- dim(history)[1]
-  n_facilities <- dim(history)[2]
-
-  # Calculate metrics for each facility
-  metrics <- t(vapply(1:n_facilities, function(i) {
-    facility_hist <- history[, i, 1]  # Utilization history for facility i
-    changes <- diff(facility_hist)
-
-    # Find convergence iteration (first stable point)
-    stable_point <- which(abs(changes) < 1e-6)[1] %||% n_iter
-
-    # Calculate oscillation metrics
-    pos_changes <- sum(changes > 0)
-    neg_changes <- sum(changes < 0)
-
-    c(
-      converge_iter = stable_point,
-      total_change = abs(facility_hist[length(facility_hist)] - facility_hist[1]),
-      oscillation = sd(changes),
-      direction_ratio = pos_changes / neg_changes,
-      volatility = sd(abs(changes))
-    )
-  }, numeric(5)))
-
-  # Convert to data frame with meaningful names
-  data.frame(
-    converge_iter = metrics[, 1],
-    total_change = metrics[, 2],
-    oscillation = metrics[, 3],
-    direction_ratio = metrics[, 4],
-    volatility = metrics[, 5]
-  )
-}
-
-#' Plot facility utilization patterns
-#' @param patterns List of pattern metrics from .calc_facility_patterns
-#' @return ggplot object
-#' @keywords internal
-.plot_facility_patterns <- function(patterns) {
-  metrics_df <- patterns$metrics
-
-  # Create relative utilization plot
-  p1 <- ggplot(metrics_df, aes(x = relative_to_mean, fill = classification)) +
-    geom_histogram(bins = 30, alpha = 0.7) +
-    geom_vline(xintercept = 1, linetype = "dashed", color = "darkred") +
-    scale_fill_viridis_d(end = 0.8) +
-    labs(
-      title = "Facility Utilization Distribution",
-      x = "Utilization Relative to Mean",
-      y = "Count",
-      fill = "Classification"
-    ) +
-    theme_minimal()
-
-  # Create utilization vs ratio scatterplot
-  p2 <- ggplot(metrics_df, aes(x = utilization, y = ratio, color = classification)) +
-    geom_point(alpha = 0.7) +
-    scale_color_viridis_d(end = 0.8) +
-    labs(
-      title = "Utilization vs Supply/Demand Ratio",
-      x = "Utilization",
-      y = "Supply/Demand Ratio",
-      color = "Classification"
-    ) +
-    theme_minimal()
-
-  list(distribution = p1, relationship = p2)
-}
-
-#' Plot facility convergence characteristics
-#' @param convergence Data frame of convergence metrics
-#' @return ggplot object
-#' @keywords internal
-.plot_facility_convergence <- function(convergence) {
-  # Create convergence timing plot
-  p1 <- ggplot(convergence, aes(x = converge_iter, y = oscillation)) +
-    geom_point(aes(size = volatility), alpha = 0.7) +
-    scale_size_continuous(name = "Volatility") +
-    labs(
-      title = "Facility Convergence Patterns",
-      x = "Iterations to Convergence",
-      y = "Oscillation Magnitude"
-    ) +
-    theme_minimal()
-
-  # Create stability metrics plot
-  p2 <- ggplot(convergence, aes(x = direction_ratio, y = total_change)) +
-    geom_point(aes(size = volatility), alpha = 0.7) +
-    scale_size_continuous(name = "Volatility") +
-    labs(
-      title = "Facility Stability Metrics",
-      x = "Direction Ratio (positive/negative changes)",
-      y = "Total Change"
-    ) +
-    theme_minimal()
-
-  list(convergence = p1, stability = p2)
-}
-
 #' Print method for IFCA facility diagnostics
 #' @param x An ifca_facilities object
+#' @param digits Number of decimal places for numeric output (default = 3)
 #' @param ... Additional arguments passed to print
 #' @export
-print.ifca_facilities <- function(x, ...) {
-  cat("IFCA Facility Diagnostics\n")
-  cat("------------------------\n")
+print.ifca_facilities <- function(x, digits = 3, ...) {
+  cat("IFCA Supply/Demand Pattern Analysis\n")
+  cat("----------------------------------\n")
 
-  # Pattern summary
-  cat("\nUtilization Patterns:\n")
+  # Distribution summary
+  cat("\nService Level Distribution:\n")
   pattern_counts <- table(x$patterns$metrics$classification)
+  total_facilities <- sum(pattern_counts)
+
   for (class in names(pattern_counts)) {
-    cat(sprintf("  %s utilization: %d facilities\n",
-                class, pattern_counts[class]))
+    count <- pattern_counts[class]
+    pct <- count / total_facilities * 100
+    cat(sprintf("  %s: %d facilities (%.1f%%)\n",
+                class, count, pct))
   }
 
-  cat(sprintf("\nBalance Score: %.3f", x$patterns$summary$balance_score))
-  cat(sprintf("\nVariation Coefficient: %.3f", x$patterns$summary$variation))
+  # Pattern metrics
+  cat("\nDistribution Metrics:\n")
+  quartiles <- x$patterns$summary$quartiles
+  cat(sprintf("  Median S/D ratio: %.*f\n",
+              digits, quartiles["50%"]))
+  cat(sprintf("  IQR: %.*f - %.*f\n",
+              digits, quartiles["25%"],
+              digits, quartiles["75%"]))
+  cat(sprintf("  System balance score: %.*f\n",
+              digits, x$patterns$summary$balance_score))
+  cat(sprintf("  Coefficient of variation: %.*f\n",
+              digits, x$patterns$summary$variation))
 
-  # Convergence summary
-  cat("\n\nConvergence Characteristics:\n")
-  conv_summary <- summary(x$convergence$converge_iter, na.rm = TRUE)
-  cat(sprintf("  Median iterations to convergence: %.1f\n", conv_summary["Median"]))
-  cat(sprintf("  Range: %.0f - %.0f iterations\n",
-              conv_summary["Min."], conv_summary["Max."]))
+  # Note about convergence
+  cat("\nNote: For convergence analysis, use check_ifca_convergence()\n")
 
   invisible(x)
 }
