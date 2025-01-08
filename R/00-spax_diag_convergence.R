@@ -4,14 +4,15 @@
 #' @param x spax object to validate
 #' @param metrics character vector of requested metrics
 #' @param plot logical for plot request
+#' @param by_facility logical for facility-level breakdowns
+#' @param relative_cutoff numeric between 0 and 1 for defining relative thresholds
 #' @return Invisible TRUE if validation passes
 #' @keywords internal
-.chck_ifca_convergence <- function(x, metrics, plot) {
-  # Check object class and type
-  .assert_class(x, "spax", "x")
-  if (x$type != "iFCA") {
-    stop("Input must be from spax_ifca()")
-  }
+.chck_ifca_convergence <- function(x, metrics, plot, by_facility = FALSE,
+                                   relative_cutoff = NULL) {
+
+  # Validate ifca
+  .assert_ifca(x, check_history = TRUE, name = "x")
 
   # Validate metrics specification
   valid_metrics <- c("speed", "stability", "efficiency")
@@ -25,10 +26,17 @@
   # Check plot parameter
   .assert_class(plot, "logical", "plot")
 
-  # Verify iteration history exists
-  if (is.null(x$iterations) || is.null(x$iterations$history)) {
-    stop("No iteration history found in spax object")
+  # Check by_facility parameter
+  .assert_class(by_facility, "logical", "by_facility")
+
+  # Check relative_cutoff parameter
+  if (!is.null(relative_cutoff)) {
+    .assert_numeric(relative_cutoff, "relative_cutoff")
+    .assert_range(relative_cutoff, 0, 1, "relative_cutoff")
   }
+
+
+
 
   invisible(TRUE)
 }
@@ -164,7 +172,7 @@
 #'
 #' @description
 #' Evaluates convergence behavior of an IFCA model by analyzing iteration history
-#' and convergence patterns. Can produce both numerical metrics and visualizations.
+#' and convergence patterns, with optional facility-level details.
 #'
 #' @param x A spax object from spax_ifca()
 #' @param plot Logical; whether to return convergence plot (default = FALSE)
@@ -173,17 +181,25 @@
 #'   - "stability": variance in convergence
 #'   - "efficiency": resource usage metrics
 #'   Default is all metrics.
+#' @param by_facility Logical; whether to include facility-level breakdowns
+#'        (default = FALSE)
+#' @param relative_cutoff Numeric between 0 and 1; threshold for defining relative
+#'        service levels when by_facility=TRUE. Default NULL uses quartile-based
+#'        classification.
 #' @return A list containing convergence diagnostics:
 #'   \describe{
 #'     \item{convergence_speed}{Metrics about convergence rate}
 #'     \item{stability_metrics}{Measures of solution stability}
+#'     \item{facility_metrics}{Optional facility-level metrics if by_facility=TRUE}
 #'     \item{plot}{Optional ggplot object if plot=TRUE}
 #'   }
 #' @export
 check_ifca_convergence <- function(x, plot = FALSE,
-                                   metrics = c("speed", "stability", "efficiency")) {
+                                   metrics = c("speed", "stability", "efficiency"),
+                                   by_facility = FALSE,
+                                   relative_cutoff = NULL) {
   # Validation
-  .chck_ifca_convergence(x, metrics, plot)
+  .chck_ifca_convergence(x, metrics, plot, by_facility, relative_cutoff)
 
   # Extract history data
   history <- x$iterations$history
@@ -203,32 +219,29 @@ check_ifca_convergence <- function(x, plot = FALSE,
     results$efficiency_metrics <- .calc_efficiency_metrics(history)
   }
 
+  # Add facility-level metrics if requested
+  if (by_facility) {
+    results$facility_metrics <- .calc_facility_patterns(history, relative_cutoff)
+  }
+
   # Handle plotting
   if (plot) {
-    # Extract history
-    history <- x$iterations$history
-
-    # Set up plotting layout
-    old_par <- par(mfrow = c(1, 2))
-    on.exit(par(old_par))
-
-    # Create and store both plots
     results$plots <- list(
       trajectory = .plot_convergence(history, type = "trajectory"),
       difference = .plot_convergence(history, type = "difference")
     )
 
-    # Display plots
-    print(results$plots$trajectory)
-    print(results$plots$difference)
+    # Add facility-specific plots if requested
+    if (by_facility) {
+      results$plots$facility_patterns <-
+        .plot_facility_patterns(results$facility_metrics)
+    }
   }
 
-  # Set class and return
   class(results) <- c("ifca_convergence", "list")
   return(results)
 }
 
-# Print method unmodified from before -------------------------------------
 #' Print method for IFCA convergence diagnostics
 #' @param x An ifca_convergence object
 #' @param ... Additional arguments passed to print
@@ -257,6 +270,17 @@ print.ifca_convergence <- function(x, ...) {
     cat("\nEfficiency Metrics:\n")
     cat("  Convergence ratio:", round(x$efficiency_metrics$convergence_ratio, 4), "\n")
     cat("  Facility variation:", round(x$efficiency_metrics$facility_variation, 4), "\n")
+  }
+
+  # Add facility-level summary if present
+  if (!is.null(x$facility_metrics)) {
+    cat("\nFacility-Level Metrics:\n")
+    pattern_counts <- table(x$facility_metrics$metrics$classification)
+    for (class in names(pattern_counts)) {
+      cat(sprintf("  %s: %d facilities\n", class, pattern_counts[class]))
+    }
+    cat(sprintf("  Balance score: %.3f\n",
+                x$facility_metrics$summary$balance_score))
   }
 
   invisible(x)

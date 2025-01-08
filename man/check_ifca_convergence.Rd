@@ -7,7 +7,9 @@
 check_ifca_convergence(
   x,
   plot = FALSE,
-  metrics = c("speed", "stability", "efficiency")
+  metrics = c("speed", "stability", "efficiency"),
+  by_facility = FALSE,
+  relative_cutoff = NULL
 )
 }
 \arguments{
@@ -20,16 +22,24 @@ check_ifca_convergence(
 - "stability": variance in convergence
 - "efficiency": resource usage metrics
 Default is all metrics.}
+
+\item{by_facility}{Logical; whether to include facility-level breakdowns
+(default = FALSE)}
+
+\item{relative_cutoff}{Numeric between 0 and 1; threshold for defining relative
+service levels when by_facility=TRUE. Default NULL uses quartile-based
+classification.}
 }
 \value{
 A list containing convergence diagnostics:
   \describe{
     \item{convergence_speed}{Metrics about convergence rate}
     \item{stability_metrics}{Measures of solution stability}
+    \item{facility_metrics}{Optional facility-level metrics if by_facility=TRUE}
     \item{plot}{Optional ggplot object if plot=TRUE}
   }
 }
 \description{
 Evaluates convergence behavior of an IFCA model by analyzing iteration history
-and convergence patterns. Can produce both numerical metrics and visualizations.
+and convergence patterns, with optional facility-level details.
 }

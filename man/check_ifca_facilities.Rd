@@ -5,12 +5,14 @@
 \title{Analyze facility-level patterns in IFCA model results}
 \usage{
 check_ifca_facilities(x, relative_cutoff = NULL, plot = FALSE)
+
+check_ifca_facilities(x, relative_cutoff = NULL, plot = FALSE)
 }
 \arguments{
 \item{x}{A spax object from spax_ifca()}
 
 \item{relative_cutoff}{Numeric between 0 and 1; threshold for defining relative
-utilization patterns (e.g., 0.2 means ±20% from mean). Default NULL uses
+service levels (e.g., 0.2 means ±20% from mean). Default NULL uses
 quartile-based classification.}
 
 \item{plot}{Logical; whether to return facility analysis plots (default = FALSE)}
@@ -22,8 +24,18 @@ A list containing facility diagnostics:
     \item{convergence}{Facility-specific convergence characteristics}
     \item{plots}{Optional ggplot objects if plot=TRUE}
   }
+
+A list containing facility diagnostics:
+  \describe{
+    \item{patterns}{Supply/demand ratio patterns and classifications}
+    \item{metrics}{Extended facility-specific metrics}
+    \item{plots}{Optional ggplot objects if plot=TRUE}
+  }
 }
 \description{
 Evaluates facility-specific behavior in an IFCA model by analyzing utilization
 patterns, convergence characteristics, and relative performance metrics.
+
+Evaluates facility-specific behavior focusing on supply/demand ratios and extending
+basic convergence diagnostics with facility-level detail.
 }
