@@ -55,8 +55,10 @@ result <- spax_e2sfca(
 plot(result)
 
 # Plot with custom title and color scheme
-plot(result, main = c("Doctor Access", "Nurse Access"),
-     col = hcl.colors(100, "YlOrRd"))
+plot(result,
+  main = c("Doctor Access", "Nurse Access"),
+  col = hcl.colors(100, "YlOrRd")
+)
 
 # Plot single layer by name
 plot(result, y = "s_doc", main = "Access to Doctors")

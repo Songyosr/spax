@@ -196,8 +196,10 @@ test_that("spax_e2sfca returns valid spax object", {
 
   # Test class and structure
   expect_s3_class(result, "spax")
-  expect_named(result, c("accessibility", "type", "parameters", "facilities",
-                         "iterations", "variations", "call"))
+  expect_named(result, c(
+    "accessibility", "type", "parameters", "facilities",
+    "iterations", "variations", "call"
+  ))
 
   # Test core components
   expect_s4_class(result$accessibility, "SpatRaster")
@@ -229,7 +231,6 @@ test_that("spax_e2sfca returns valid spax object", {
   expect_s3_class(result_multi, "spax")
   expect_equal(names(result_multi$accessibility), c("doctors", "nurses"))
   expect_true(all(c("id", "doctors", "nurses") %in% names(result_multi$facilities)))
-
 })
 
 test_that("spax_e2sfca handles different supply formats", {
@@ -295,8 +296,10 @@ test_that("spax_e2sfca handles different normalizations", {
   expect_false(identical(access_values[[2]], access_values[[3]]))
 
   # Check parameters are correctly stored
-  expect_equal(sapply(results, function(x) x$parameters$demand_normalize),
-               normalizations)
+  expect_equal(
+    sapply(results, function(x) x$parameters$demand_normalize),
+    normalizations
+  )
 })
 
 test_that("spax_e2sfca preserves snap mode functionality", {
@@ -333,4 +336,3 @@ test_that("spax_e2sfca preserves snap mode functionality", {
     terra::values(snap_result$accessibility)
   )
 })
-

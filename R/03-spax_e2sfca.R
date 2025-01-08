@@ -56,10 +56,14 @@
   .assert_raster_alignment(demand, access_weights, "demand", "access_weights")
 
   # Validate weights match facility count
-  .assert_lengths_match(nlyr(demand_weights), n_facilities,
-                        "demand_weights layers", "facilities")
-  .assert_lengths_match(nlyr(access_weights), n_facilities,
-                        "access_weights layers", "facilities")
+  .assert_lengths_match(
+    nlyr(demand_weights), n_facilities,
+    "demand_weights layers", "facilities"
+  )
+  .assert_lengths_match(
+    nlyr(access_weights), n_facilities,
+    "access_weights layers", "facilities"
+  )
 
   invisible(TRUE)
 }
@@ -101,8 +105,10 @@
   .assert_raster_alignment(demand, distance, "demand", "distance")
 
   # Validate facility counts match
-  .assert_lengths_match(nlyr(distance), n_facilities,
-                        "distance layers", "facilities")
+  .assert_lengths_match(
+    nlyr(distance), n_facilities,
+    "distance layers", "facilities"
+  )
 
   invisible(TRUE)
 }

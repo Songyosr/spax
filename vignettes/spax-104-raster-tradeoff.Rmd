@@ -38,7 +38,7 @@ Think of a raster as a giant spreadsheet laid over your study area. Instead of t
 ```{r}
 # Load example population density
 pop <- read_spax_example("u5pd.tif")
-distances <- read_spax_example("hos_iscr.tif") 
+distances <- read_spax_example("hos_iscr.tif")
 
 # Quick look at what we're working with
 pop

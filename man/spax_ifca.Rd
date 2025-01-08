@@ -115,7 +115,7 @@ result <- spax_ifca(
   supply = hospitals$s_doc,
   decay_params = list(
     method = "gaussian",
-    sigma = 30  # 30-minute characteristic distance
+    sigma = 30 # 30-minute characteristic distance
   )
 )
 
@@ -161,7 +161,6 @@ result_custom <- spax_ifca(
     threshold = 60
   )
 )
-
 }
 
 }

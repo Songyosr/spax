@@ -50,8 +50,10 @@
   .assert_raster_alignment(demand, distance_raster, "demand", "distance_raster")
 
   # Validate facility counts match
-  .assert_lengths_match(nlyr(distance_raster), length(supply),
-                        "distance_raster layers", "supply vector")
+  .assert_lengths_match(
+    nlyr(distance_raster), length(supply),
+    "distance_raster layers", "supply vector"
+  )
 
   invisible(TRUE)
 }
@@ -396,7 +398,7 @@ compute_iterative <- function(supply, weights, demand,
 #'   supply = hospitals$s_doc,
 #'   decay_params = list(
 #'     method = "gaussian",
-#'     sigma = 30  # 30-minute characteristic distance
+#'     sigma = 30 # 30-minute characteristic distance
 #'   )
 #' )
 #'
@@ -442,7 +444,6 @@ compute_iterative <- function(supply, weights, demand,
 #'     threshold = 60
 #'   )
 #' )
-#'
 #' }
 #'
 #' @seealso
@@ -556,6 +557,4 @@ spax_ifca <- function(distance_raster,
     call = match.call(),
     snap = snap
   )
-
-
 }

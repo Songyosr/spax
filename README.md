@@ -63,8 +63,9 @@ result <- spax_e2sfca(
 )
 
 # Plot results
-plot(result,   main = c("Access to Doctors", "Access to Nurses"),
-     fun = function() lines(bound0)
+plot(result,
+  main = c("Access to Doctors", "Access to Nurses"),
+  fun = function() lines(bound0)
 )
 ```
 

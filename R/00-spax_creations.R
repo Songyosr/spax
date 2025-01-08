@@ -63,12 +63,12 @@
 #' @return A spax object
 #' @keywords internal
 .new_spax <- function(accessibility = NULL,
-                     type = NULL,
-                     parameters = list(),
-                     facilities = NULL,
-                     iterations = NULL,
-                     variations = NULL,
-                     call = NULL) {
+                      type = NULL,
+                      parameters = list(),
+                      facilities = NULL,
+                      iterations = NULL,
+                      variations = NULL,
+                      call = NULL) {
   # Return structured object
   structure(
     list(

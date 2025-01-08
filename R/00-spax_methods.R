@@ -19,12 +19,16 @@ print.spax <- function(x, ...) {
 
   # Core spatial information
   cat("Spatial Properties:\n")
-  cat(sprintf("- Resolution: %g x %g\n",
-              res(x$accessibility)[1],
-              res(x$accessibility)[2]))
-  cat(sprintf("- Dimensions: %d x %d\n",
-              dim(x$accessibility)[1],
-              dim(x$accessibility)[2]))
+  cat(sprintf(
+    "- Resolution: %g x %g\n",
+    res(x$accessibility)[1],
+    res(x$accessibility)[2]
+  ))
+  cat(sprintf(
+    "- Dimensions: %d x %d\n",
+    dim(x$accessibility)[1],
+    dim(x$accessibility)[2]
+  ))
 
   # Accessibility measures
   cat(sprintf("\nMeasures: %d\n", nlyr(x$accessibility)))
@@ -53,8 +57,10 @@ print.spax <- function(x, ...) {
     cat("\nModel Details:\n")
     if (!is.null(x$iterations$convergence)) {
       cat(sprintf("- Iterations: %d\n", x$iterations$convergence$iterations))
-      cat(sprintf("- Converged: %s\n",
-                  ifelse(x$iterations$convergence$converged, "Yes", "No")))
+      cat(sprintf(
+        "- Converged: %s\n",
+        ifelse(x$iterations$convergence$converged, "Yes", "No")
+      ))
     }
   }
 
@@ -93,8 +99,9 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     n_covered <- sum(!is.na(values))
 
     # Quantiles
-    quants <- terra::global(layer,
-                            function(x) stats::quantile(x, probs = quantiles, na.rm = TRUE)
+    quants <- terra::global(
+      layer,
+      function(x) stats::quantile(x, probs = quantiles, na.rm = TRUE)
     )
 
     # Combine into named list
@@ -197,27 +204,35 @@ print.summary.spax <- function(x, digits = 4, ...) {
   cat("Accessibility Measures:\n")
   for (measure in x$accessibility) {
     cat("\n", measure$name, ":\n", sep = "")
-    cat(sprintf("  Range: %s to %s\n",
-                sprintf(fmt, measure$min),
-                sprintf(fmt, measure$max)))
-    cat(sprintf("  Mean (SD): %s (%s)\n",
-                sprintf(fmt, measure$mean),
-                sprintf(fmt, measure$sd)))
+    cat(sprintf(
+      "  Range: %s to %s\n",
+      sprintf(fmt, measure$min),
+      sprintf(fmt, measure$max)
+    ))
+    cat(sprintf(
+      "  Mean (SD): %s (%s)\n",
+      sprintf(fmt, measure$mean),
+      sprintf(fmt, measure$sd)
+    ))
 
     # Quantiles with labels
     cat("  Quantiles:\n")
     quant_labels <- c("Min.", "1st Qu.", "Median", "3rd Qu.", "Max.")
     for (i in seq_along(measure$quantiles)) {
-      cat(sprintf("    %-8s %s\n",
-                  paste0(quant_labels[i], ":"),
-                  sprintf(fmt, measure$quantiles[i])))
+      cat(sprintf(
+        "    %-8s %s\n",
+        paste0(quant_labels[i], ":"),
+        sprintf(fmt, measure$quantiles[i])
+      ))
     }
 
     # Coverage statistics
-    cat(sprintf("\n  Coverage: %.1f%% (%d of %d cells)\n",
-                100 * measure$coverage$proportion,
-                measure$coverage$cells_covered,
-                measure$coverage$cells_total))
+    cat(sprintf(
+      "\n  Coverage: %.1f%% (%d of %d cells)\n",
+      100 * measure$coverage$proportion,
+      measure$coverage$cells_covered,
+      measure$coverage$cells_total
+    ))
   }
 
   # Facility Statistics (if present)
@@ -230,12 +245,16 @@ print.summary.spax <- function(x, digits = 4, ...) {
       for (supply in x$facilities$supply) {
         cat(sprintf("\n%s:\n", supply$name))
         cat(sprintf("  Total Supply: %s\n", sprintf(fmt, supply$total)))
-        cat(sprintf("  Mean (SD): %s (%s)\n",
-                    sprintf(fmt, supply$mean),
-                    sprintf(fmt, supply$sd)))
-        cat(sprintf("  Range: %s to %s\n",
-                    sprintf(fmt, supply$min),
-                    sprintf(fmt, supply$max)))
+        cat(sprintf(
+          "  Mean (SD): %s (%s)\n",
+          sprintf(fmt, supply$mean),
+          sprintf(fmt, supply$sd)
+        ))
+        cat(sprintf(
+          "  Range: %s to %s\n",
+          sprintf(fmt, supply$min),
+          sprintf(fmt, supply$max)
+        ))
       }
     }
   }
@@ -249,11 +268,15 @@ print.summary.spax <- function(x, digits = 4, ...) {
     if (!is.null(x$model_specific$convergence)) {
       conv <- x$model_specific$convergence
       cat(sprintf("Iterations: %d\n", conv$iterations))
-      cat(sprintf("Converged: %s\n",
-                  ifelse(conv$converged, "Yes", "No")))
+      cat(sprintf(
+        "Converged: %s\n",
+        ifelse(conv$converged, "Yes", "No")
+      ))
       if (!is.null(conv$final_average)) {
-        cat(sprintf("Final convergence metric: %s\n",
-                    sprintf(fmt, conv$final_average)))
+        cat(sprintf(
+          "Final convergence metric: %s\n",
+          sprintf(fmt, conv$final_average)
+        ))
       }
     }
 
@@ -261,12 +284,16 @@ print.summary.spax <- function(x, digits = 4, ...) {
     if (!is.null(x$model_specific$utilization)) {
       util <- x$model_specific$utilization
       cat("\nUtilization Statistics:\n")
-      cat(sprintf("  Mean (SD): %s (%s)\n",
-                  sprintf(fmt, util$mean),
-                  sprintf(fmt, util$sd)))
-      cat(sprintf("  Range: %s to %s\n",
-                  sprintf(fmt, util$min),
-                  sprintf(fmt, util$max)))
+      cat(sprintf(
+        "  Mean (SD): %s (%s)\n",
+        sprintf(fmt, util$mean),
+        sprintf(fmt, util$sd)
+      ))
+      cat(sprintf(
+        "  Range: %s to %s\n",
+        sprintf(fmt, util$min),
+        sprintf(fmt, util$max)
+      ))
     }
   }
   invisible(x)
@@ -327,8 +354,10 @@ print.summary.spax <- function(x, digits = 4, ...) {
 #' plot(result)
 #'
 #' # Plot with custom title and color scheme
-#' plot(result, main = c("Doctor Access", "Nurse Access"),
-#'      col = hcl.colors(100, "YlOrRd"))
+#' plot(result,
+#'   main = c("Doctor Access", "Nurse Access"),
+#'   col = hcl.colors(100, "YlOrRd")
+#' )
 #'
 #' # Plot single layer by name
 #' plot(result, y = "s_doc", main = "Access to Doctors")

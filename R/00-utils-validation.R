@@ -131,8 +131,10 @@
 #' @keywords internal
 .assert_lengths_match <- function(len_x, len_y, name_x = "First input", name_y = "Second input") {
   if (len_x != len_y) {
-    stop(sprintf("Length of %s (%d) must match length of %s (%d)",
-                 name_x, len_x, name_y, len_y))
+    stop(sprintf(
+      "Length of %s (%d) must match length of %s (%d)",
+      name_x, len_x, name_y, len_y
+    ))
   }
   invisible(TRUE)
 }
@@ -159,8 +161,10 @@
 
   # Commpare
   if (!compareGeom(x, y, stopOnError = FALSE)) {
-    stop(sprintf("%s and %s must have the same geometry (resolution, extent, and CRS)",
-                 name_x, name_y))
+    stop(sprintf(
+      "%s and %s must have the same geometry (resolution, extent, and CRS)",
+      name_x, name_y
+    ))
   }
   invisible(TRUE)
 }
@@ -178,9 +182,11 @@
 
   missing <- setdiff(cols, names(df))
   if (length(missing) > 0) {
-    stop(sprintf("Column(s) not found in %s: %s",
-                 df_name,
-                 paste(missing, collapse = ", ")))
+    stop(sprintf(
+      "Column(s) not found in %s: %s",
+      df_name,
+      paste(missing, collapse = ", ")
+    ))
   }
   invisible(TRUE)
 }

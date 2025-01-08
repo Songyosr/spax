@@ -34,8 +34,10 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
       file.exists(c(spax_file, rast_file, names_file))
     ]
     if (length(existing) > 0) {
-      stop("Files exist. Use overwrite = TRUE to replace:\n",
-           paste("  -", existing, collapse = "\n"))
+      stop(
+        "Files exist. Use overwrite = TRUE to replace:\n",
+        paste("  -", existing, collapse = "\n")
+      )
     }
   }
 

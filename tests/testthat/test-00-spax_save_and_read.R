@@ -19,8 +19,10 @@ test_that("save_spax handles directory mode correctly", {
   # Should create directory and save files inside it
   expect_no_error(save_spax(result, test_path, dir = TRUE))
   expect_true(dir.exists(test_path))
-  expect_true(file.exists(file.path(test_path,
-                                    paste0(test_name, "_spax.rds"))))
+  expect_true(file.exists(file.path(
+    test_path,
+    paste0(test_name, "_spax.rds")
+  )))
 
   # Should fail if directory exists and overwrite = FALSE
   expect_error(
