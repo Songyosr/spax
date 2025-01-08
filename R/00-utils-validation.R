@@ -34,6 +34,24 @@
   invisible(TRUE)
 }
 
+#' Validate IFCA object for diagnostic functions
+#' @param x Object to validate
+#' @param check_history Logical; whether to check for iteration history
+#' @param name Name of input for error messages
+#' @keywords internal
+.assert_ifca <- function(x, check_history = TRUE, name = "Input") {
+  .assert_class(x, "spax", name)
+  if (x$type != "iFCA") {
+    stop(name, " must be from spax_ifca()")
+  }
+
+  if (check_history && (is.null(x$iterations) || is.null(x$iterations$history))) {
+    stop("No iteration history found in ", name)
+  }
+
+  invisible(TRUE)
+}
+
 # 2. Basic Value Assertions --------------------------------------------------
 #' Assert values are strictly greater than minimum
 #' @param x Numeric vector to check

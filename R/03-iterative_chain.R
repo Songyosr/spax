@@ -359,7 +359,12 @@ compute_iterative <- function(supply, weights, demand,
 #' If snap = FALSE:
 #'   A spax object containing:
 #'   \describe{
-#'     \item{accessibility}{SpatRaster of accessibility scores}
+#'     \item{accessibility}{SpatRaster with two layers:
+#'       \itemize{
+#'         \item Accessibility: Spatial accessibility scores showing overall service coverage
+#'         \item Service Propensity: Predicted probability of service utilization at each location
+#'       }
+#'     }
 #'     \item{type}{Character string "iFCA"}
 #'     \item{parameters}{List of model parameters including decay_params, lambda, etc.}
 #'     \item{facilities}{data.frame with columns:
@@ -402,7 +407,7 @@ compute_iterative <- function(supply, weights, demand,
 #' )
 #'
 #' # Plot accessibility surface
-#' plot(result$accessibility, main = "Doctor Accessibility (iFCA)")
+#' plot(result, main = c("Doctor Accessibility", "Service Propensity"))
 #'
 #' # Examine facility-level results
 #' head(result$facilities)
@@ -525,8 +530,11 @@ spax_ifca <- function(distance_raster,
 
   # Compute final accessibility using valid weights
   raw_ratios <- final_state[, 2]
-  accessibility <- spread_weighted(raw_ratios, weights, snap = snap)
-  util_prob_surface <- sum(results$util_probs, na.rm = TRUE)
+  accessibility <- c(
+    spread_weighted(raw_ratios, weights, snap = snap),
+    sum(results$util_probs, na.rm = TRUE)
+  )
+  names(accessibility) <- c("Accessibility", "Service Propensity")
 
   # Reintegrate zeros into final values
   utilization <- .help_add_0facilities(final_state[, 1], processed$zero_map)

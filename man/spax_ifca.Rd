@@ -67,7 +67,12 @@ If snap = TRUE:
 If snap = FALSE:
   A spax object containing:
   \describe{
-    \item{accessibility}{SpatRaster of accessibility scores}
+    \item{accessibility}{SpatRaster with two layers:
+      \itemize{
+        \item Accessibility: Spatial accessibility scores showing overall service coverage
+        \item Service Propensity: Predicted probability of service utilization at each location
+      }
+    }
     \item{type}{Character string "iFCA"}
     \item{parameters}{List of model parameters including decay_params, lambda, etc.}
     \item{facilities}{data.frame with columns:
@@ -123,7 +128,7 @@ result <- spax_ifca(
 )
 
 # Plot accessibility surface
-plot(result$accessibility, main = "Doctor Accessibility (iFCA)")
+plot(result, main = c("Doctor Accessibility", "Service Propensity"))
 
 # Examine facility-level results
 head(result$facilities)
