@@ -8,6 +8,7 @@ spax_ifca(
   distance_raster,
   demand,
   supply,
+  supply_names = NULL,
   decay_params = list(method = "gaussian", sigma = 30),
   lambda = 0.5,
   max_iter = 100,
@@ -28,6 +29,8 @@ to one facility. All layers must share the same extent and resolution.}
 
 \item{supply}{Numeric vector of facility capacities. Length must match number
 of layers in distance_raster.}
+
+\item{supply_names}{Optional character vector of facility names. If NULL, use default names}
 
 \item{decay_params}{List of parameters for decay function:
 \itemize{
