@@ -10,3 +10,47 @@ articles:
       - spax-102-data-prep
       - spax-103-dissection
       - spax-104-raster-tradeoff
+
+reference:
+  - title: "Core Accessibility Functions"
+    desc: "Main functions for spatial accessibility analysis"
+    contents:
+      - spax_2sfca
+      - spax_e2sfca
+      - spax_ifca
+      - compute_access
+
+  - title: "Distance & Decay Functions"
+    desc: "Functions for handling distance relationships"
+    contents:
+      - calc_decay
+      - calc_choice
+      - calc_normalize
+
+  - title: "Data Processing Functions"
+    desc: "Functions for processing spatial data"
+    contents:
+      - spread_weighted
+      - gather_weighted
+      - gather_demand
+      - transform_pmf
+
+  - title: "Simulation & Sampling"
+    desc: "Functions for spatial simulation"
+    contents:
+      - sample_pmf
+
+  - title: "Utility Functions"
+    desc: "Helper functions and data access"
+    contents:
+      - read_spax_example
+
+  - title: "Package Data"
+    desc: "Documentation for included datasets"
+    contents:
+      - hos_iscr
+      - hos_iscvec
+      - hc12_hos
+      - hc12_phc
+      - bound0
+      - bound1
