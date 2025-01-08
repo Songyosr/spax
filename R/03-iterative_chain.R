@@ -66,15 +66,13 @@
 #' @return Named list with validated and processed components
 #' @keywords internal
 .help_prep_facilities <- function(supply, distance_raster, names = NULL, snap = FALSE) {
+
   if (!snap) {
     # Basic validation
-    if (!is.numeric(supply)) stop("supply must be numeric")
-    if (!inherits(distance_raster, "SpatRaster")) {
-      stop("distance_raster must be a SpatRaster")
-    }
-    if (length(supply) != nlyr(distance_raster)) {
-      stop("supply length must match number of distance layers")
-    }
+    .assert_numeric(supply, "supply")
+    .assert_class(distance_raster, "SpatRaster", "distance_raster")
+    .assert_lengths_match(length(supply), nlyr(distance_raster),
+                          "supply length", "number of distance layers")
   }
 
   # Create facility mapping
@@ -332,6 +330,7 @@ compute_iterative <- function(supply, weights, demand,
 #'        - Multiple layers (matching max_iter) for dynamic demand
 #' @param supply Numeric vector of facility capacities. Length must match number
 #'        of layers in distance_raster.
+#' @param supply_names Optional character vector of facility names. If NULL, use default names
 #' @param decay_params List of parameters for decay function:
 #'        \itemize{
 #'          \item method: "gaussian", "exponential", "power", or custom function
@@ -452,6 +451,7 @@ compute_iterative <- function(supply, weights, demand,
 spax_ifca <- function(distance_raster,
                       demand,
                       supply,
+                      supply_names = NULL,  # New parameter
                       decay_params = list(method = "gaussian", sigma = 30),
                       lambda = 0.5,
                       max_iter = 100,
@@ -470,8 +470,17 @@ spax_ifca <- function(distance_raster,
     )
   }
 
+  # Generate/validate facility names at the start
+  if (is.null(supply_names)) {
+    supply_names <- paste0("facility_", seq_along(supply))
+  }
+
   # Process facilities and remove any with zero supply
-  processed <- .help_prep_facilities(supply, distance_raster, snap = snap)
+  processed <- .help_prep_facilities(
+    supply = supply,
+    distance_raster = distance_raster,
+    names = supply_names,
+    snap = snap)
 
   # Compute weights using specified decay function
   weights <- do.call(
@@ -526,7 +535,7 @@ spax_ifca <- function(distance_raster,
 
   # Create facilities data.frame
   facilities <- data.frame(
-    id = processed$names,
+    id = supply_names,
     utilization = utilization,
     ratio = ratios,
     attractiveness = attractiveness,
