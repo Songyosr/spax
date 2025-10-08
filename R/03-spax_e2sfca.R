@@ -15,7 +15,7 @@
       stop("supply_cols must be specified when supply is a data.frame")
     }
 
-    .assert_cols_exist(supply, c(id_col, supply_cols), "supply")
+    .chck_cols_exist(supply, c(id_col, supply_cols), "supply")
 
     # Check if id_col values are unique (specific to e2sfca)
     if (!is.null(id_col) && any(duplicated(supply[[id_col]]))) {
@@ -44,23 +44,23 @@
                                  id_col = NULL, supply_cols = NULL,
                                  indicator_names = NULL) {
   # Input type validation
-  .assert_class(demand, "SpatRaster", "demand")
-  .assert_class(demand_weights, "SpatRaster", "demand_weights")
-  .assert_class(access_weights, "SpatRaster", "access_weights")
+  .chck_class(demand, "SpatRaster", "demand")
+  .chck_class(demand_weights, "SpatRaster", "demand_weights")
+  .chck_class(access_weights, "SpatRaster", "access_weights")
 
   # Validate supply and get facility count
   n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
 
   # Validate raster alignments
-  .assert_raster_alignment(demand, demand_weights, "demand", "demand_weights")
-  .assert_raster_alignment(demand, access_weights, "demand", "access_weights")
+  .chck_raster_alignment(demand, demand_weights, "demand", "demand_weights")
+  .chck_raster_alignment(demand, access_weights, "demand", "access_weights")
 
   # Validate weights match facility count
-  .assert_lengths_match(
+  .chck_lengths_match(
     nlyr(demand_weights), n_facilities,
     "demand_weights layers", "facilities"
   )
-  .assert_lengths_match(
+  .chck_lengths_match(
     nlyr(access_weights), n_facilities,
     "access_weights layers", "facilities"
   )
@@ -80,14 +80,14 @@
 .chck_e2sfca <- function(demand, supply, distance, decay_params,
                          demand_normalize, id_col = NULL, supply_cols = NULL) {
   # Check input types
-  .assert_class(demand, "SpatRaster", "demand")
-  .assert_class(distance, "SpatRaster", "distance")
+  .chck_class(demand, "SpatRaster", "demand")
+  .chck_class(distance, "SpatRaster", "distance")
 
   # Validate supply and get facility count
   n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
 
   # Validate decay_params
-  .assert_class(decay_params, "list", "decay_params")
+  .chck_class(decay_params, "list", "decay_params")
   if (is.null(decay_params$method)) {
     stop("decay_params must include 'method'")
   }
@@ -102,10 +102,10 @@
   }
 
   # Validate raster alignment
-  .assert_raster_alignment(demand, distance, "demand", "distance")
+  .chck_raster_alignment(demand, distance, "demand", "distance")
 
   # Validate facility counts match
-  .assert_lengths_match(
+  .chck_lengths_match(
     nlyr(distance), n_facilities,
     "distance layers", "facilities"
   )

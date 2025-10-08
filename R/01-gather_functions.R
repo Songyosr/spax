@@ -5,14 +5,14 @@
 #' @keywords internal
 .chck_gather_weighted <- function(values, weights, na.rm) {
   # Input type validation
-  .assert_class(values, "SpatRaster", "values")
-  .assert_class(weights, "SpatRaster", "weights")
+  .chck_class(values, "SpatRaster", "values")
+  .chck_class(weights, "SpatRaster", "weights")
 
   # Check raster alignment (resolution, extent and CRS)
-  .assert_raster_alignment(values, weights, "values", "weights")
+  .chck_raster_alignment(values, weights, "values", "weights")
 
   # na.rm validation
-  .assert_class(na.rm, "logical", "na.rm")
+  .chck_class(na.rm, "logical", "na.rm")
 
   invisible(TRUE)
 }

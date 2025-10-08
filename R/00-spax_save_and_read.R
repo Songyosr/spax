@@ -9,8 +9,8 @@
 #' @export
 save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
   # Input validation
-  .assert_class(x, "spax", "x")
-  .assert_class(file, "character", "file")
+  .chck_class(x, "spax", "x")
+  .chck_class(file, "character", "file")
 
   # Clean file path and handle directory mode
   base_path <- tools::file_path_sans_ext(file)
@@ -61,7 +61,7 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
 #' @return A spax object
 #' @export
 read_spax <- function(file) {
-  .assert_class(file, "character", "file")
+  .chck_class(file, "character", "file")
 
   file <- tools::file_path_sans_ext(file)
 
@@ -74,6 +74,6 @@ read_spax <- function(file) {
   x <- readRDS(spax_file)
   x$accessibility <- .attach_raster_names(terra::rast(rast_file), file)
 
-  .assert_class(x, "spax", "reconstructed object")
+  .chck_class(x, "spax", "reconstructed object")
   return(x)
 }

@@ -135,7 +135,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
   }
 
   # Check distance can be either numeric, matrix, or SpatRaster
-  .assert_class(distance, c("numeric", "matrix", "SpatRaster"), "distance")
+  .chck_class(distance, c("numeric", "matrix", "SpatRaster"), "distance")
   # if(!is.numeric(distance)) stop("Distance must contain a numeric vector, matrix, or SpatRaster")
 
   # Check method is either a character or function
@@ -146,9 +146,9 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 
     # Sigma validation if provided
     if (!is.null(sigma)) {
-      .assert_numeric(sigma, "sigma")
-      .assert_length(length(sigma), 1, "sigma")
-      .assert_positive(sigma, allow_zero = FALSE, "sigma")
+      .chck_is_numeric(sigma, "sigma")
+      .chck_length(length(sigma), 1, "sigma")
+      .chck_positive(sigma, allow_zero = FALSE, "sigma")
     }
   }
 

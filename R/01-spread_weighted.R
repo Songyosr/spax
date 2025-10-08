@@ -5,7 +5,7 @@
 #' @keywords internal
 .chck_spread_weighted <- function(values, weights, value_cols = NULL) {
   # Check weights
-  .assert_class(weights, "SpatRaster", "weights")
+  .chck_class(weights, "SpatRaster", "weights")
 
   # Handle sf objects first
   if (inherits(values, "sf")) {
@@ -13,19 +13,19 @@
   }
 
   # Check values is one of allowed types
-  .assert_class(values, c("numeric", "matrix", "data.frame"), "values")
+  .chck_class(values, c("numeric", "matrix", "data.frame"), "values")
 
   # Check dimensions based on input type
   if (is.vector(values)) {
-    .assert_lengths_match(length(values), nlyr(weights), "values", "weight layers")
+    .chck_lengths_match(length(values), nlyr(weights), "values", "weight layers")
   } else if (is.matrix(values)) {
-    .assert_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
+    .chck_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
   } else if (is.data.frame(values)) {
     if (is.null(value_cols)) {
       stop("value_cols must be specified when values is a data.frame")
     }
-    .assert_cols_exist(values, value_cols, "values")
-    .assert_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
+    .chck_cols_exist(values, value_cols, "values")
+    .chck_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
   }
 
   invisible(TRUE)

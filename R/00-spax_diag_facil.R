@@ -6,15 +6,15 @@
 #' @keywords internal
 .chck_ifca_facilities <- function(x, relative_cutoff = NULL, plot) {
   # Use shared IFCA validation
-  .assert_ifca(x, check_history = TRUE)
+  .chck_ifca(x, check_history = TRUE)
 
   # Validate additional parameters
   if (!is.null(relative_cutoff)) {
-    .assert_numeric(relative_cutoff, "relative_cutoff")
-    .assert_range(relative_cutoff, 0, 1, "relative_cutoff")
+    .chck_is_numeric(relative_cutoff, "relative_cutoff")
+    .chck_in_range(relative_cutoff, 0, 1, inclusive = TRUE, name = "relative_cutoff")
   }
 
-  .assert_class(plot, "logical", "plot")
+  .chck_class(plot, "logical", "plot")
 
   invisible(TRUE)
 }

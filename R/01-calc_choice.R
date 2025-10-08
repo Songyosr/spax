@@ -2,23 +2,23 @@
 #' @keywords internal
 .chck_calc_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
   # Check weights is SpatRaster
-  .assert_class(weights, "SpatRaster", "weights")
+  .chck_class(weights, "SpatRaster", "weights")
 
   # Check attractiveness if provided
   if (!is.null(attractiveness)) {
-    .assert_numeric(attractiveness, "attractiveness")
-    .assert_positive(attractiveness, allow_zero = TRUE, "attractiveness")
-    .assert_length(length(attractiveness), nlyr(weights), "attractiveness")
+    .chck_is_numeric(attractiveness, "attractiveness")
+    .chck_positive(attractiveness, allow_zero = TRUE, "attractiveness")
+    .chck_length(length(attractiveness), nlyr(weights), "attractiveness")
   }
 
   # Check alpha
-  .assert_numeric(alpha, "alpha")
-  .assert_length(length(alpha), 1, "alpha")
+  .chck_is_numeric(alpha, "alpha")
+  .chck_length(length(alpha), 1, "alpha")
 
   # Check a0
-  .assert_numeric(a0, "a0")
-  .assert_length(length(a0), 1, "a0")
-  .assert_positive(a0, allow_zero = TRUE, "a0")
+  .chck_is_numeric(a0, "a0")
+  .chck_length(length(a0), 1, "a0")
+  .chck_positive(a0, allow_zero = TRUE, "a0")
 
   invisible(TRUE)
 }

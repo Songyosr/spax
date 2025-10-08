@@ -12,9 +12,9 @@
 .chck_spax_ifca <- function(distance_raster, demand, supply, decay_params,
                             lambda, max_iter, tolerance, window_size) {
   # Input type validation
-  .assert_class(distance_raster, "SpatRaster", "distance_raster")
-  .assert_class(demand, "SpatRaster", "demand")
-  .assert_numeric(supply, "supply")
+  .chck_class(distance_raster, "SpatRaster", "distance_raster")
+  .chck_class(demand, "SpatRaster", "demand")
+  .chck_is_numeric(supply, "supply")
 
   # Validate demand layers
   n_layers <- nlyr(demand)
@@ -26,31 +26,31 @@
   }
 
   # Validate decay_params
-  .assert_class(decay_params, "list", "decay_params")
+  .chck_class(decay_params, "list", "decay_params")
   if (is.null(decay_params$method)) {
     stop("decay_params must include 'method'")
   }
 
   # Parameter range validation
-  .assert_numeric(lambda, "lambda")
-  .assert_range(lambda, 0, 1, "lambda")
+  .chck_is_numeric(lambda, "lambda")
+  .chck_in_range(lambda, 0, 1, inclusive = TRUE, name = "lambda")
 
-  .assert_numeric(max_iter, "max_iter")
-  .assert_integer(max_iter, "max_iter")
-  .assert_positive(max_iter, allow_zero = FALSE, "max_iter")
+  .chck_is_numeric(max_iter, "max_iter")
+  .chck_is_integer(max_iter, "max_iter")
+  .chck_positive(max_iter, allow_zero = FALSE, "max_iter")
 
-  .assert_numeric(tolerance, "tolerance")
-  .assert_positive(tolerance, allow_zero = FALSE, "tolerance")
+  .chck_is_numeric(tolerance, "tolerance")
+  .chck_positive(tolerance, allow_zero = FALSE, "tolerance")
 
-  .assert_numeric(window_size, "window_size")
-  .assert_integer(window_size, "window_size")
-  .assert_positive(window_size, allow_zero = FALSE, "window_size")
+  .chck_is_numeric(window_size, "window_size")
+  .chck_is_integer(window_size, "window_size")
+  .chck_positive(window_size, allow_zero = FALSE, "window_size")
 
   # Validate raster alignment
-  .assert_raster_alignment(demand, distance_raster, "demand", "distance_raster")
+  .chck_raster_alignment(demand, distance_raster, "demand", "distance_raster")
 
   # Validate facility counts match
-  .assert_lengths_match(
+  .chck_lengths_match(
     nlyr(distance_raster), length(supply),
     "distance_raster layers", "supply vector"
   )
@@ -69,9 +69,9 @@
 
   if (!snap) {
     # Basic validation
-    .assert_numeric(supply, "supply")
-    .assert_class(distance_raster, "SpatRaster", "distance_raster")
-    .assert_lengths_match(length(supply), nlyr(distance_raster),
+    .chck_is_numeric(supply, "supply")
+    .chck_class(distance_raster, "SpatRaster", "distance_raster")
+    .chck_lengths_match(length(supply), nlyr(distance_raster),
                           "supply length", "number of distance layers")
   }
 

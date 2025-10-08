@@ -9,7 +9,7 @@
   }
 
   # Input type validation - using parent function param name 'x'
-  .assert_class(x, "SpatRaster", "x")
+  .chck_class(x, "SpatRaster", "x")
 
   # Check for all NA values
   if (all(is.na(terra::values(x)))) {
@@ -18,7 +18,7 @@
 
   # Check for negative values and get min in one operation
   min_val <- terra::global(x, "min", na.rm = TRUE)$min
-  .assert_positive(min_val, allow_zero = TRUE, "values in x")
+  .chck_positive(min_val, allow_zero = TRUE, "values in x")
 
   # Check for zero sum
   total <- terra::global(x, "sum", na.rm = TRUE)$sum

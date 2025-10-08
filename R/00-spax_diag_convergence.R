@@ -12,7 +12,7 @@
                                    relative_cutoff = NULL) {
 
   # Validate ifca
-  .assert_ifca(x, check_history = TRUE, name = "x")
+  .chck_ifca(x, check_history = TRUE, name = "x")
 
   # Validate metrics specification
   valid_metrics <- c("speed", "stability", "efficiency")
@@ -24,15 +24,15 @@
   }
 
   # Check plot parameter
-  .assert_class(plot, "logical", "plot")
+  .chck_class(plot, "logical", "plot")
 
   # Check by_facility parameter
-  .assert_class(by_facility, "logical", "by_facility")
+  .chck_class(by_facility, "logical", "by_facility")
 
   # Check relative_cutoff parameter
   if (!is.null(relative_cutoff)) {
-    .assert_numeric(relative_cutoff, "relative_cutoff")
-    .assert_range(relative_cutoff, 0, 1, "relative_cutoff")
+    .chck_is_numeric(relative_cutoff, "relative_cutoff")
+    .chck_in_range(relative_cutoff, 0, 1, inclusive = TRUE, name = "relative_cutoff")
   }
 
 

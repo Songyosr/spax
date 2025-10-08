@@ -86,7 +86,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 .chck_normalize <- function(x, method, ref_value = NULL, a0 = 0) {
   # Input existence check
   if (length(x) == 0) {
-    stop("'x' weights cannot be empty")
+    stop("Input weights cannot be empty")
   }
 
   # Method validation - handle both string methods and custom functions
@@ -97,8 +97,8 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
     }
     # ref_value validation
     if ((method == "reference") && !is.null(ref_value)) {
-      .assert_numeric(ref_value, "ref_value")
-      .assert_length(length(ref_value), 1, "ref_value")
+      .chck_is_numeric(ref_value, "ref_value")
+      .chck_length(length(ref_value), 1, "ref_value")
     }
   }
 
@@ -106,9 +106,9 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
 
   # a0 validation
-  .assert_numeric(a0, "a0")
-  .assert_length(length(a0), 1, "a0")
-  .assert_positive(a0, allow_zero = TRUE, "a0")
+  .chck_is_numeric(a0, "a0")
+  .chck_length(length(a0), 1, "a0")
+  .chck_positive(a0, allow_zero = TRUE, "a0")
 
   invisible(TRUE)
 }
@@ -126,8 +126,8 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
     result <- switch(method,
       "identity" = x,
-      "standard" = terra::ifel(x_sum + a0 > 0, x / (x_sum + a0), NA_real_), # no service = NA
-      "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
+    "standard" = terra::ifel(x_sum + a0 > 0, x / (x_sum + a0), 0 * x),
+    "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
       "reference" = {
         if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
         terra::ifel(ref_value > 0, x / ref_value, NA_real_) # Avoid division by zero
@@ -147,7 +147,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
   switch(method,
     "identity" = x,
-    "standard" = if (x_sum + a0 > 0) x / (x_sum + a0) else rep(NA_real_, length(x)),
+    "standard" = if (x_sum + a0 > 0) x / (x_sum + a0) else x,
     "semi" = if (x_sum + a0 > 1) x / (x_sum + a0) else x,
     "reference" = {
       if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
