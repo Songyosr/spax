@@ -119,8 +119,8 @@ test_that(".chck_compute_access validates inputs correctly", {
       td$supply_df,
       demand_weights,
       access_weights,
-      id_col = "id", # Added this
-      supply_cols = c("doctors", "nurses") # Added this
+      id_col = "id",
+      supply_cols = c("doctors", "nurses")
     ),
     "demand must be one of the following classes: SpatRaster"
   )
@@ -133,8 +133,8 @@ test_that(".chck_compute_access validates inputs correctly", {
       td$supply_df,
       wrong_weights,
       access_weights,
-      id_col = "id", # Added this
-      supply_cols = c("doctors", "nurses") # Added this
+      id_col = "id",
+      supply_cols = c("doctors", "nurses")
     ),
     "Length of demand_weights layers \\(1\\) must match length of facilities \\(2\\)"
   )

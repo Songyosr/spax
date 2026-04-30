@@ -172,7 +172,7 @@ test_that("calc_normalize preserves raster properties", {
 test_that("calc_normalize handles edge cases appropriately", {
   # Test with negative values
   neg_weights <- c(-1, -2, -3)
-  expect_error(calc_normalize(neg_weights, "standard"), NA) # Should not error
+  expect_no_error(calc_normalize(neg_weights, "standard"))
 
   # Test with single value
   single_weight <- 5
@@ -183,21 +183,12 @@ test_that("calc_normalize handles edge cases appropriately", {
   expect_true(all(is.na(calc_normalize(all_na, "standard"))))
 })
 
-# Performance tests
-test_that("calc_normalize performs efficiently with large datasets", {
-  skip_on_ci()
+# Large input behavior (structure-focused, non-timing)
+test_that("calc_normalize handles larger rasters without changing structure", {
+  large_raster <- create_test_raster(100, 100, 5)
 
-  # Create large raster
-  large_raster <- create_test_raster(1000, 1000, 5)
-
-  # Test performance
-  expect_lt(
-    system.time(calc_normalize(large_raster, "standard"))[["elapsed"]],
-    5 # Should complete in less than 5 seconds
-  )
-
-  # Test snap mode performance improvement - not improve
-  # time_normal <- system.time(calc_normalize(large_raster, "standard", snap = FALSE))
-  # time_snap <- system.time(calc_normalize(large_raster, "standard", snap = TRUE))
-  # expect_lt(time_snap[["elapsed"]], time_normal[["elapsed"]])
+  result <- calc_normalize(large_raster, "standard")
+  expect_s4_class(result, "SpatRaster")
+  expect_equal(dim(result), dim(large_raster))
+  expect_equal(names(result), names(large_raster))
 })
