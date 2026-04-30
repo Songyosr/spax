@@ -10,6 +10,7 @@
 
   # Input type validation - using parent function param name 'x'
   .assert_class(x, "SpatRaster", "x")
+  .assert_length(terra::nlyr(x), 1, "x")
 
   # Check for all NA values
   if (all(is.na(terra::values(x)))) {
@@ -22,7 +23,7 @@
 
   # Check for zero sum
   total <- terra::global(x, "sum", na.rm = TRUE)$sum
-  if (total == 0) {
+  if (isTRUE(total == 0)) {
     stop("Sum of all values in 'x' is zero - cannot create PMF")
   }
 

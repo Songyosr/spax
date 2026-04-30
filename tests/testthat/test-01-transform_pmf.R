@@ -50,6 +50,9 @@ test_that("transform_pmf errors on invalid inputs", {
 
   all_zero_rast <- create_test_raster(rep(0, 4), 2, 2)
   expect_error(transform_pmf(all_zero_rast), "Sum of all values in 'x' is zero - cannot create PMF")
+
+  multi_layer <- c(all_zero_rast, all_zero_rast)
+  expect_error(transform_pmf(multi_layer), "x must have length 1")
 })
 
 test_that("transform_pmf preserves relative proportions", {
