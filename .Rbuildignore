@@ -11,3 +11,5 @@
 ^junk/
 ^data-raw$
 ^README.Rmd$
+^\.local-wiki$
+^local-wiki$

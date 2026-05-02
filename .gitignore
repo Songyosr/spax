@@ -13,3 +13,7 @@ docs
 junk/
 data-raw/
 tests/.DS_Store
+
+# Local Obsidian / LLM wiki vault
+.local-wiki/
+local-wiki/
