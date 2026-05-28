@@ -17,3 +17,9 @@ tests/.DS_Store
 # Local Obsidian / LLM wiki vault
 .local-wiki/
 local-wiki/
+
+# Local agent handoff briefs
+AGENTS.md
+CLAUDE.md
+agents.md
+claude.md

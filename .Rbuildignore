@@ -13,3 +13,7 @@
 ^README.Rmd$
 ^\.local-wiki$
 ^local-wiki$
+^AGENTS\.md$
+^CLAUDE\.md$
+^agents\.md$
+^claude\.md$
