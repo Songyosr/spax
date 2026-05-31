@@ -126,12 +126,20 @@
   if (backend == "raster") {
     da <- .field_data(a)
     db <- .field_data(b)
+    # Align b's layers to a's by the full non-I axis *tuple* from index$layer
+    # (DEC-005: join by key, never by raw layer order). Works for one or many
+    # non-I axes, so product-axis fields align correctly too.
     axes <- setdiff(.field_domain(a), "I")
-    if (length(axes) == 1) {
-      fa <- as.character(.field_layer_index(a)[[axes]])
-      fb <- as.character(.field_layer_index(b)[[axes]])
-      if (!setequal(fa, fb)) stop("operands span different axis ids")
-      if (!identical(fa, fb)) db <- db[[match(fa, fb)]]
+    if (length(axes) >= 1) {
+      fa <- .field_layer_index(a)[, axes, drop = FALSE]
+      fb <- .field_layer_index(b)[, axes, drop = FALSE]
+      key_a <- do.call(paste, c(lapply(fa, as.character), sep = "\r"))
+      key_b <- do.call(paste, c(lapply(fb, as.character), sep = "\r"))
+      if (!setequal(key_a, key_b)) stop("combine operands span different axis tuples")
+      if (anyDuplicated(key_a) || anyDuplicated(key_b)) {
+        stop("combine requires unique axis tuples per layer")
+      }
+      if (!identical(key_a, key_b)) db <- db[[match(key_a, key_b)]]
     }
     res <- op(da, db)
     names(res) <- names(da)
@@ -175,6 +183,12 @@
     if (!over %in% setdiff(domain, "I")) {
       stop("`over` must be I or a non-I axis of the field")
     }
+    remaining <- setdiff(domain, c("I", over))
+    if (length(remaining) > 0) {
+      stop("grouped aggregation over one of several non-I axes is not ",
+           "implemented (SPAX-005); remaining axes: ",
+           paste(remaining, collapse = ", "))
+    }
     collapsed <- terra::app(.field_data(field), fun = sum, na.rm = TRUE)
     names(collapsed) <- "L1"
     new_domain <- setdiff(domain, over)
@@ -215,6 +229,10 @@
 .ae_gather <- function(source, weights) {
   .chck_class(source, "spax_raster_field", "source")
   .chck_class(weights, "spax_raster_field", "weights")
+  if (!identical(.field_domain(source), "I") ||
+      terra::nlyr(.field_data(source)) != 1) {
+    stop("`source` must be a single-layer raster field on domain I")
+  }
   axis <- .ae_nonI_axis(weights)
   vals <- .gather_weighted_core(.field_data(source), .field_data(weights),
                                 na.rm = TRUE)

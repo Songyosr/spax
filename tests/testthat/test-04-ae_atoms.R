@@ -172,3 +172,52 @@ test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {
   raw_A <- spread_weighted(raw_R, .field_data(f$kernel))
   expect_equal(unname(terra::values(.field_data(A))), unname(terra::values(raw_A)))
 })
+
+# DEC-005 alignment + product-axis guards (SPAX-002 review) -------------------
+
+.mk_axis_field <- function(ids, vals, axis = "facility") {
+  r <- do.call(c, lapply(vals, function(v) terra::rast(nrows = 2, ncols = 2, vals = v)))
+  names(r) <- paste0("ly", seq_along(vals))
+  frame <- data.frame(layer = names(r), stringsAsFactors = FALSE)
+  frame[[axis]] <- ids
+  .create_spax_raster_field(r, domain = c("I", axis), frame = frame)
+}
+
+.mk_prod_field <- function(tuples, vals) {
+  r <- do.call(c, lapply(vals, function(v) terra::rast(nrows = 2, ncols = 2, vals = v)))
+  names(r) <- paste0("ly", seq_along(vals))
+  frame <- data.frame(
+    layer = names(r), J = tuples$J, mode = tuples$mode, stringsAsFactors = FALSE
+  )
+  .create_spax_raster_field(r, domain = c("I", "J", "mode"), frame = frame)
+}
+
+test_that(".ae_combine aligns single-axis fields by id, not layer order", {
+  a <- .mk_axis_field(c("fac_a", "fac_b"), c(1, 2))
+  b <- .mk_axis_field(c("fac_b", "fac_a"), c(2, 1)) # same id->value, reversed
+  cmb <- .ae_combine(a, b, op = `+`)
+  got <- vapply(1:2, function(k) terra::values(.field_data(cmb))[1, k], numeric(1))
+  expect_equal(unname(got), c(2, 4)) # fac_a 1+1, fac_b 2+2 (layer-order would give 3,3)
+})
+
+test_that(".ae_combine aligns product-axis (I, J, mode) fields by tuple", {
+  tup <- data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus"))
+  a <- .mk_prod_field(tup, c(1, 2, 3, 4))
+  b <- .mk_prod_field(tup[4:1, ], c(4, 3, 2, 1)) # reversed tuple order, same map
+  cmb <- .ae_combine(a, b, op = `+`)
+  got <- vapply(1:4, function(k) terra::values(.field_data(cmb))[1, k], numeric(1))
+  expect_equal(unname(got), c(2, 4, 6, 8)) # tuple-aligned (layer-order would give 5,5,5,5)
+})
+
+test_that(".ae_gather rejects a source that is not single-layer domain I", {
+  f <- mk_fields()
+  expect_error(.ae_gather(f$kernel, f$kernel), "domain I")
+})
+
+test_that(".ae_aggregate rejects grouped product-axis aggregation (SPAX-005)", {
+  a <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus")),
+    c(1, 2, 3, 4)
+  )
+  expect_error(.ae_aggregate(a, over = "mode"), "SPAX-005")
+})
