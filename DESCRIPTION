@@ -2,16 +2,16 @@ Package: spax
 Type: Package
 Title: An R Package for Modularized (Hopefully) Spatial Accessibility Analysis
 Version: 0.2.0
-Authors@R: 
+Authors@R:
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
-Description: A comprehensive toolkit for analyzing spatial accessibility to healthcare 
-    facilities using enhanced two-step floating catchment area (2SFCA) methods. 
-    The package provides functions for calculating catchment areas, processing 
-    population demand, and evaluating healthcare facility accessibility. Key features 
-    include Monte Carlo simulation for uncertainty analysis, flexible distance decay 
-    functions, parallel processing capabilities, and support for multiple supply-side 
-    indicators. Designed for healthcare planning and spatial equity analysis, 
+Description: A comprehensive toolkit for analyzing spatial accessibility to healthcare
+    facilities using enhanced two-step floating catchment area (2SFCA) methods.
+    The package provides functions for calculating catchment areas, processing
+    population demand, and evaluating healthcare facility accessibility. Key features
+    include Monte Carlo simulation for uncertainty analysis, flexible distance decay
+    functions, parallel processing capabilities, and support for multiple supply-side
+    indicators. Designed for healthcare planning and spatial equity analysis,
     but applicable to other spatial accessibility contexts.
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -44,5 +44,5 @@ RoxygenNote: 7.3.2
 URL: https://github.com/songyosr/spax, https://songyosr.github.io/spax/
 BugReports: https://github.com/Songyosr/spax/issues
 VignetteBuilder: knitr
-Depends: 
+Depends:
     R (>= 3.5)

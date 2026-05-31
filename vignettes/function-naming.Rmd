@@ -83,18 +83,18 @@ function_name <- function(
     if (!snap) {
         .chck_function_name(required_param, optional_param)
     }
-    
+
     # 2. Pre-processing
     processed_data <- .help_process_data(required_param)
-    
+
     # 3. Main Computation
     result <- .function_name_core(processed_data, ...)
-    
+
     # 4. Post-processing (skip if snap = TRUE)
     if (!snap) {
         result <- .help_post_process(result)
     }
-    
+
     return(result)
 }
 ```

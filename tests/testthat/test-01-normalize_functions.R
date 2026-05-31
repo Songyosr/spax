@@ -49,7 +49,7 @@ test_that("calc_normalize handles different methods correctly", {
 test_that("calc_normalize throws appropriate errors", {
   expect_error(calc_normalize(simple_weights, "invalid_method"))
   expect_error(calc_normalize("not_numeric", "standard"))
-  expect_error(calc_normalize(numeric(0)), "'x' weights cannot be empty")
+  expect_error(calc_normalize(numeric(0)), "Input weights cannot be empty")
 })
 
 # Tests for standard normalization
@@ -60,8 +60,7 @@ test_that("standard normalization produces correct weights", {
   expect_equal(result, simple_weights / sum(simple_weights))
 
   # Test with zeros
-  # expect_equal(calc_normalize(zero_weights, "standard"), zero_weights)
-  expect_equal(calc_normalize(zero_weights, "standard"), zero_weights * NA)
+  expect_equal(calc_normalize(zero_weights, "standard"), zero_weights)
 
   # Test with NAs
   na_result <- calc_normalize(na_weights, "standard")

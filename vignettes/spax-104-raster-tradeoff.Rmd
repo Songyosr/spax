@@ -69,11 +69,11 @@ One of the biggest advantages of raster operations is that they're naturally vec
 create_test_distance <- function(n_facilities) {
   # Take our original distance raster and replicate it
   base_distance <- hos_iscr[[1]]  # Use first facility as template
-  
+
   # Create a stack with n copies
   test_stack <- rep(base_distance, n_facilities)
   names(test_stack) <- paste0("facility_", 1:n_facilities)
-  
+
   return(test_stack)
 }
 
@@ -81,7 +81,7 @@ create_test_distance <- function(n_facilities) {
 test_decay_scaling <- function(n_facilities) {
   # Create test data
   test_distances <- create_test_distance(n_facilities)
-  
+
   # Time the decay calculation
   start_time <- Sys.time()
   decay_weights <- calc_decay(
@@ -90,7 +90,7 @@ test_decay_scaling <- function(n_facilities) {
     sigma = 30
   )
   end_time <- Sys.time()
-  
+
   # Return timing and data size
   return(list(
     n_facilities = n_facilities,
@@ -107,7 +107,7 @@ scaling_results <- lapply(facility_counts, test_decay_scaling)
 scaling_summary <- tibble(
   'Facilities' = sapply(scaling_results, `[[`, "n_facilities"),
   'Total Cells' = sapply(scaling_results, `[[`, "n_cells"),
-  'Runtime (s)' = sapply(scaling_results, function(x) 
+  'Runtime (s)' = sapply(scaling_results, function(x)
     round(x$runtime, 2))
 ) |> mutate(
   "Time per Cell (ms)" = `Runtime (s)` * 1000 / `Total Cells`,
@@ -161,8 +161,8 @@ facility_distance <- hos_iscr[[1]]
 
 # Calculate decay weights
 decay_weights <- calc_decay(
-  facility_distance, 
-  method = "gaussian", 
+  facility_distance,
+  method = "gaussian",
   sigma = 60
 )
 
@@ -196,14 +196,14 @@ prep_test_data <- function(factor) {
   # Aggregate both population and distance
   pop_agg <- aggregate(pop, fact = factor, fun = sum, na.rm = TRUE)
   dist_agg <- aggregate(hos_iscr, fact = factor, fun = mean, na.rm = TRUE)
-  
+
   return(list(pop = pop_agg, dist = dist_agg))
 }
 
 # Test computation time for actual analysis
 test_computation <- function(test_data) {
   start_time <- Sys.time()
-  
+
   result <- spax_e2sfca(
     demand = test_data$pop,
     supply = hc12_hos |> st_drop_geometry(),
@@ -214,9 +214,9 @@ test_computation <- function(test_data) {
     supply_cols = "s_doc",
     snap = TRUE  # Fast mode for testing
   )
-  
+
   end_time <- Sys.time()
-  
+
   # Return core metrics
   list(
     resolution = res(test_data$pop)[1],
@@ -261,19 +261,19 @@ extract_province_access <- function(spax_result) {
     fun = mean,
     na.rm = TRUE
   )[,2]  # The second column contains the mean value
-  
+
   return(zonal_mean)
 }
 
 # Create provincial comparison across resolutions
 access_comparison <- tibble(
   'Resolution (m)' = sapply(results, function(x) round(x$resolution)),
-  'Mean Provincial Access' = sapply(results, function(x) 
+  'Mean Provincial Access' = sapply(results, function(x)
     round(extract_province_access(x$result), 4))
 ) |> mutate(
   'Difference from Baseline (%)' = round(
-    (`Mean Provincial Access` - first(`Mean Provincial Access`)) / 
-    first(`Mean Provincial Access`) * 100, 
+    (`Mean Provincial Access` - first(`Mean Provincial Access`)) /
+    first(`Mean Provincial Access`) * 100,
     2
   )
 )
@@ -290,8 +290,8 @@ Let's visualize what's happening to our spatial data:
 par(mfrow = c(2, 2))
 for(i in seq_along(results)) {
   # Plot base accessibility surface
-  plot(results[[i]]$result, 
-       main = sprintf("%0.0fm Resolution\n%s cells", 
+  plot(results[[i]]$result,
+       main = sprintf("%0.0fm Resolution\n%s cells",
                      results[[i]]$resolution,
                      format(results[[i]]$ncells, big.mark=",")))
   # Add full region boundary in thin black
