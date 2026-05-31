@@ -15,7 +15,6 @@
          y = "Utilization") +
     theme(legend.position = "right")
 }
-
 #' Create convergence rate plot
 #' @keywords internal
 .plot_convergence_rate <- function(changes, facilities) {
@@ -109,5 +108,4 @@
          y = "Value") +
     geom_text(aes(label = sprintf("%.2f", value)), vjust = -0.5)
 }
-
 

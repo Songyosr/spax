@@ -12,7 +12,6 @@
   invisible(TRUE)
 }
 
-
 #' Assess convergence behavior of iFCA model
 #'
 #' @description
@@ -272,5 +271,4 @@ assess_ifca <- function(model, observed = NULL, names = NULL) {
     class = "ifca_assessment"
   )
 }
-
 
