@@ -150,7 +150,7 @@
   if (backend == "vector") {
     va <- .field_data(a)
     vb <- .field_data(b)
-    if (!all(names(va) %in% names(vb))) stop("operands span different axis ids")
+    if (!setequal(names(va), names(vb))) stop("operands span different axis ids")
     res <- op(va, vb[names(va)])
     names(res) <- names(va)
     return(.create_spax_vector_field(res, domain = .field_domain(a),

@@ -137,6 +137,14 @@ test_that(".ae_ratio divides zero-safely", {
   expect_equal(unname(.field_data(r)), c(5, 0))
 })
 
+test_that(".ae_combine rejects vector fields with extra axis ids", {
+  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
+  b <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
+                                 domain = "facility")
+
+  expect_error(.ae_combine(a, b, op = `+`), "different axis ids")
+})
+
 test_that(".ae_update applies a damped mix", {
   st <- .create_spax_vector_field(c(fac_a = 1, fac_b = 1), domain = "facility")
   tg <- .create_spax_vector_field(c(fac_a = 3, fac_b = 5), domain = "facility")
