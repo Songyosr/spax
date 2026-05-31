@@ -9,9 +9,7 @@ spread_access(
   weights,
   ratio_cols = NULL,
   full_output = FALSE,
-  plot_prefix = NULL,
-  parallel = FALSE,
-  n_cores = NULL
+  plot_prefix = NULL
 )
 }
 \arguments{
@@ -28,10 +26,6 @@ probability-based catchment area}
 \item{full_output}{Logical; whether to return intermediate calculations (default FALSE)}
 
 \item{plot_prefix}{Character string to prepend to output names (default NULL)}
-
-\item{parallel}{Logical; whether to use parallel processing (default FALSE)}
-
-\item{n_cores}{Integer; number of cores for parallel processing (default NULL)}
 }
 \value{
 If full_output = TRUE, returns list containing:
@@ -40,7 +34,7 @@ If full_output = TRUE, returns list containing:
         If full_output = FALSE, returns only access_scores SpatRaster
 }
 \description{
-Specialized version of spread_weighted() for accessibility analysis.
+Specialized version of [spread_weighted()] for accessibility analysis.
 Distributes supply-to-demand ratios across space using probability-based
 catchment areas to calculate accessibility scores.
 }

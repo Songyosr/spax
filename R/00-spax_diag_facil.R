@@ -19,46 +19,10 @@
   invisible(TRUE)
 }
 
-#' Analyze facility-level patterns in IFCA model results
-#'
-#' @description
-#' Evaluates facility-specific behavior in an IFCA model by analyzing utilization
-#' patterns, convergence characteristics, and relative performance metrics.
-#'
-#' @param x A spax object from spax_ifca()
-#' @param relative_cutoff Numeric between 0 and 1; threshold for defining relative
-#'        utilization patterns (e.g., 0.2 means ±20% from mean). Default NULL uses
-#'        quartile-based classification.
-#' @param plot Logical; whether to return facility analysis plots (default = FALSE)
-#'
-#' @return A list containing facility diagnostics:
-#'   \describe{
-#'     \item{patterns}{Relative utilization patterns and classifications}
-#'     \item{convergence}{Facility-specific convergence characteristics}
-#'     \item{plots}{Optional ggplot objects if plot=TRUE}
-#'   }
-#' @export
-check_ifca_facilities <- function(x, relative_cutoff = NULL, plot = FALSE) {
-  # Validation
-  .chck_ifca_facilities(x, relative_cutoff, plot)
-
-  # Core computations
-  results <- list(
-    patterns = .calc_facility_patterns(x$iterations$history, relative_cutoff),
-    convergence = .calc_facility_convergence(x$iterations$history)
-  )
-
-  # Handle plotting if requested
-  if (plot) {
-    results$plots <- list(
-      patterns = .plot_facility_patterns(results$patterns),
-      convergence = .plot_facility_convergence(results$convergence)
-    )
-  }
-
-  class(results) <- c("ifca_facilities", "list")
-  return(results)
-}
+# NOTE (SPAX-001A): a second, shadowed check_ifca_facilities() definition lived here
+# and was removed. The active definition (source-order winner, kept below) reuses
+# check_ifca_convergence() and .calc_facility_extended(). IFCA is frozen, so the
+# surviving definition is preserved as-is rather than refactored.
 
 #' Calculate facility utilization patterns and classifications
 #' @param history Array of iteration history
