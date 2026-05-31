@@ -271,4 +271,3 @@ assess_ifca <- function(model, observed = NULL, names = NULL) {
     class = "ifca_assessment"
   )
 }
-

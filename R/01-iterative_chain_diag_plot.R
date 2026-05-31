@@ -108,4 +108,3 @@
          y = "Value") +
     geom_text(aes(label = sprintf("%.2f", value)), vjust = -0.5)
 }
-
