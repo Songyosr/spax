@@ -131,6 +131,31 @@ read_spax_example <- function(dataset = NULL) {
 NULL
 
 
+## phc_iscr.tif --------------------------------------------------------------
+#' Example Primary Health Center Travel Time Isochrones
+#'
+#' @description
+#' A GeoTIFF containing travel time isochrones for primary health centers in
+#' Thailand's Health Region 12. The data is stored in `inst/extdata` and should
+#' be loaded with `read_spax_example("phc_iscr.tif")`.
+#'
+#' @format A multi-layer GeoTIFF file. Each layer represents travel time to one
+#' primary health center, with layer names restored from the companion
+#' `phc_iscr_names.rds` file.
+#'
+#' @source
+#' Computed using OSRM with OpenStreetMap data.
+#' Primary health center locations from \code{\link{hc12_phc}}.
+#'
+#' @examples
+#' \dontrun{
+#' phc_iscr <- read_spax_example("phc_iscr.tif")
+#' plot(phc_iscr[[1]], main = "Travel Time to First PHC (minutes)")
+#' }
+#' @name phc_iscr
+NULL
+
+
 ## u5pd.tif ------------------------------------------------------------------
 #' Under-5 Population Density in Thailand's Health Region 12
 #'
