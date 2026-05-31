@@ -40,7 +40,7 @@ Suggests:
     osrm,
     bench
 Config/testthat/edition: 3
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://github.com/songyosr/spax, https://songyosr.github.io/spax/
 BugReports: https://github.com/Songyosr/spax/issues
 VignetteBuilder: knitr

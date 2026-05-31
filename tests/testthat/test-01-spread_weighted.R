@@ -189,3 +189,18 @@ test_that("spread_weighted works correctly with package data", {
   # Verify both layers have expected characteristics
   expect_true(all(global(result, "max", na.rm = TRUE)$max > 0))
 })
+
+# SPAX-001A regression: spread_access() used to error because it forwarded
+# parallel/n_cores to a canonical spread_weighted() that does not accept them
+# (duplicate-definition / source-load-order bug). It must now run and agree
+# with spread_weighted() on the same inputs.
+test_that("spread_access works and matches spread_weighted (SPAX-001A regression)", {
+  td <- create_test_data()
+
+  expect_no_error(acc <- spread_access(td$vector_values, td$weights))
+  expect_s4_class(acc, "SpatRaster")
+  expect_equal(
+    terra::values(acc),
+    terra::values(spread_weighted(td$vector_values, td$weights))
+  )
+})

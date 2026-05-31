@@ -336,3 +336,37 @@ test_that("spax_e2sfca preserves snap mode functionality", {
     terra::values(snap_result$accessibility)
   )
 })
+
+# 4. Golden output guards (SPAX-001A) ----------------------------------------
+# Lock the exact E2SFCA / 2SFCA outputs of the canonical spread/gather pipeline
+# so the SPAX-002 atom layer and SPAX-004 compute_fca() refactors can be proven
+# behavior-preserving. Values are recorded on first run into _snaps/.
+
+test_that("E2SFCA golden output is stable (canonical spread)", {
+  td <- create_test_data()
+  res <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_df,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2),
+    demand_normalize = "standard",
+    id_col = "id",
+    supply_cols = c("doctors", "nurses")
+  )
+  vals <- round(as.numeric(terra::values(res$accessibility)), 6)
+  expect_snapshot_value(vals, style = "json2")
+})
+
+test_that("2SFCA golden output is stable (canonical spread)", {
+  td <- create_test_data()
+  res <- spax_2sfca(
+    demand = td$demand,
+    supply = td$supply_df,
+    distance = td$distance,
+    threshold = 3,
+    id_col = "id",
+    supply_cols = c("doctors", "nurses")
+  )
+  vals <- round(as.numeric(terra::values(res$accessibility)), 6)
+  expect_snapshot_value(vals, style = "json2")
+})
