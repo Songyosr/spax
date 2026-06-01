@@ -14,7 +14,8 @@
     "realization",
     "state",
     "mask",
-    "weight"
+    "weight",
+    "template"
   )
 }
 
@@ -705,6 +706,23 @@
   }
   backend_class <- backend_classes[[1]]
   sub("^spax_(.*)_field$", "\\1", backend_class)
+}
+
+#' Raster cell axis accessor
+#'
+#' Current raster backend contract fixes raster cells as `I`. Keep this behind an
+#' accessor so a later cell-axis contract can change one implementation point.
+#' @keywords internal
+.field_cell_axis <- function(field) {
+  .chck_class(field, "spax_raster_field", "field")
+  "I"
+}
+
+#' Raster layer axes accessor
+#' @keywords internal
+.field_layer_axes <- function(field) {
+  .chck_class(field, "spax_raster_field", "field")
+  setdiff(.field_domain(field), .field_cell_axis(field))
 }
 
 #' @keywords internal

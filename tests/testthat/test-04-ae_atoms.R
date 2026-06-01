@@ -21,7 +21,7 @@ mk_fields <- function() {
 
 test_that(".ae_aggregate over I collapses to a vector field (DEC-006)", {
   f <- mk_fields()
-  u <- .ae_aggregate(f$kernel, over = "I")
+  u <- .ae_aggregate(f$kernel, by = "facility")
 
   expect_s3_class(u, "spax_vector_field")
   expect_equal(.field_backend(u), "vector")
@@ -36,7 +36,7 @@ test_that(".ae_aggregate over I collapses to a vector field (DEC-006)", {
 
 test_that(".ae_aggregate over a non-I axis collapses layers to a raster field", {
   f <- mk_fields()
-  a <- .ae_aggregate(f$kernel, over = "facility")
+  a <- .ae_aggregate(f$kernel, by = "I")
 
   expect_s3_class(a, "spax_raster_field")
   expect_equal(.field_domain(a), "I")
@@ -67,7 +67,7 @@ test_that(".ae_combine combines two fields elementwise", {
 
 test_that(".ae_lift broadcasts a vector field onto edges (constant per layer)", {
   f <- mk_fields()
-  lifted <- .ae_lift(f$ratios, to = c("I", "facility"), template = f$kernel)
+  lifted <- .ae_lift(f$ratios, template = f$kernel)
 
   expect_s3_class(lifted, "spax_raster_field")
   expect_equal(terra::nlyr(.field_data(lifted)), 2)
@@ -78,7 +78,7 @@ test_that(".ae_lift broadcasts a vector field onto edges (constant per layer)", 
 
 test_that(".ae_lift replicates a domain-I raster across template layers", {
   f <- mk_fields()
-  lifted <- .ae_lift(f$demand, to = c("I", "facility"), template = f$kernel)
+  lifted <- .ae_lift(f$demand, template = f$kernel)
   expect_equal(terra::nlyr(.field_data(lifted)), 2)
   expect_equal(
     terra::values(.field_data(lifted))[, 1],
@@ -341,13 +341,99 @@ test_that("Ops.spax_field does not auto-lift or allow unsupported Ops", {
 
 test_that(".ae_gather rejects a source that is not single-layer domain I", {
   f <- mk_fields()
-  expect_error(.ae_gather(f$kernel, f$kernel), "domain I")
+  expect_error(.ae_gather(f$kernel, f$kernel), "cell axis")
 })
 
-test_that(".ae_aggregate rejects grouped product-axis aggregation (SPAX-005)", {
+test_that(".ae_aggregate groups product-axis raster fields by retained axes", {
   a <- .mk_prod_field(
     data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus")),
     c(1, 2, 3, 4)
   )
-  expect_error(.ae_aggregate(a, over = "mode"), "SPAX-005")
+  collapsed <- .ae_aggregate(a, by = c("I", "J"))
+  expect_s3_class(collapsed, "spax_raster_field")
+  expect_equal(.field_domain(collapsed), c("I", "J"))
+  expect_equal(.field_axis_values(collapsed, "J"), c("j1", "j2"))
+  got <- vapply(1:2, function(k) terra::values(.field_data(collapsed))[1, k], numeric(1))
+  expect_equal(unname(got), c(3, 7))
+})
+
+test_that(".ae_aggregate can collapse raster cells and retain product layer axes", {
+  a <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus")),
+    c(1, 2, 3, 4)
+  )
+  out <- .ae_aggregate(a, by = c("J", "mode"))
+  expect_s3_class(out, "spax_vector_field")
+  expect_equal(.field_domain(out), c("J", "mode"))
+  expect_equal(unname(.field_data(out)), c(4, 8, 12, 16))
+  expect_equal(
+    .field_index_frame(out)[c("J", "mode")],
+    data.frame(J = c("j1", "j1", "j2", "j2"),
+               mode = c("car", "bus", "car", "bus"))
+  )
+})
+
+test_that(".ae_aggregate groups product-axis vector fields by retained axes", {
+  frame <- data.frame(J = c("j1", "j1", "j2", "j2"),
+                      mode = c("car", "bus", "car", "bus"))
+  v <- .spax_vector_field(c(1, 2, 3, 4), domain = c("J", "mode"),
+                          frame = frame)
+  out <- .ae_aggregate(v, by = "J")
+  expect_s3_class(out, "spax_vector_field")
+  expect_equal(.field_domain(out), "J")
+  expect_equal(.field_axis_values(out, "J"), c("j1", "j2"))
+  expect_equal(unname(.field_data(out)), c(3, 7))
+})
+
+test_that(".ae_lift broadcasts vector fields onto vector templates", {
+  base <- .spax_vector_field(c(j1 = 10, j2 = 20), domain = "J")
+  frame <- data.frame(J = c("j1", "j1", "j2", "j2"),
+                      mode = c("car", "bus", "car", "bus"))
+  template <- .spax_vector_field(rep(NA_real_, 4), domain = c("J", "mode"),
+                                 frame = frame, role = "template")
+  lifted <- .ae_lift(base, template)
+  expect_s3_class(lifted, "spax_vector_field")
+  expect_equal(.field_domain(lifted), c("J", "mode"))
+  expect_equal(unname(.field_data(lifted)), c(10, 10, 20, 20))
+})
+
+test_that(".ae_lift broadcasts raster fields across added layer axes", {
+  r <- do.call(c, lapply(c(1, 2), function(v) terra::rast(nrows = 2, ncols = 2, vals = v)))
+  names(r) <- c("j1", "j2")
+  base <- .spax_raster_field(r, domain = c("I", "J"))
+  template <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus")),
+    c(0, 0, 0, 0)
+  )
+  lifted <- .ae_lift(base, template)
+  expect_s3_class(lifted, "spax_raster_field")
+  got <- vapply(1:4, function(k) terra::values(.field_data(lifted))[1, k], numeric(1))
+  expect_equal(unname(got), c(1, 1, 2, 2))
+})
+
+test_that(".ae_mask applies lower-dimensional soft masks explicitly", {
+  field <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus")),
+    c(10, 20, 30, 40)
+  )
+  mask <- .spax_vector_field(
+    c(1, 0.5, 0),
+    domain = c("J", "mode"),
+    frame = data.frame(J = c("j1", "j1", "j2"),
+                       mode = c("car", "bus", "car"))
+  )
+  expect_error(.ae_mask(field, mask), "missing axis tuples")
+
+  mask <- .spax_vector_field(
+    c(1, 0.5, 0, 0.25),
+    domain = c("J", "mode"),
+    frame = data.frame(J = c("j1", "j1", "j2", "j2"),
+                       mode = c("car", "bus", "car", "bus"))
+  )
+  masked <- .ae_mask(field, mask)
+  got <- vapply(1:4, function(k) terra::values(.field_data(masked))[1, k], numeric(1))
+  expect_equal(unname(got), c(10, 10, 0, 10))
+  expect_error(.ae_mask(field, .spax_vector_field(c(1.5), domain = "J",
+                                                  frame = data.frame(J = "j1"))),
+               "\\[0, 1\\]")
 })

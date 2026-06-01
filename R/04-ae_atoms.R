@@ -17,36 +17,14 @@
 
 # Helpers --------------------------------------------------------------------
 
-#' The single non-I axis of a raster field (errors on 0 or >1)
+#' The single raster layer axis (errors on 0 or >1)
 #' @keywords internal
 .ae_nonI_axis <- function(field) {
-  axes <- setdiff(.field_domain(field), "I")
+  axes <- .field_layer_axes(field)
   if (length(axes) != 1) {
-    stop("expected exactly one non-I axis; got: ", paste(axes, collapse = ", "))
+    stop("expected exactly one layer axis; got: ", paste(axes, collapse = ", "))
   }
   axes
-}
-
-#' Reorder a vector field's values to a raster field's layer order, by shared axis
-#' @keywords internal
-.ae_align_to_layers <- function(vector_field, raster_field) {
-  axes <- .field_domain(vector_field)
-  raster_frame <- .field_layer_index(raster_field)
-  vector_frame <- .field_node_index(vector_field)
-
-  missing_axes <- setdiff(axes, names(raster_frame))
-  if (length(missing_axes) > 0) {
-    stop("vector field axis is not present in the raster field index: ",
-         paste(missing_axes, collapse = ", "))
-  }
-
-  ids <- .ae_tuple_key(raster_frame, axes)
-  vector_ids <- .ae_tuple_key(vector_frame, axes)
-  values <- .field_data(vector_field)
-  if (!all(ids %in% vector_ids)) {
-    stop("vector field is missing axis tuples present in the raster layers")
-  }
-  values[match(ids, vector_ids)]
 }
 
 #' Build a stable composite key from an index frame
@@ -56,6 +34,49 @@
     return(rep("", nrow(frame)))
   }
   do.call(paste, c(lapply(frame[, axes, drop = FALSE], as.character), sep = "\r"))
+}
+
+#' Sum numeric values by index-frame coordinate tuples
+#' @keywords internal
+.ae_sum_by_frame <- function(values, frame, by, na.rm = TRUE) {
+  if (length(by) == 0) {
+    return(list(values = sum(values, na.rm = na.rm), frame = NULL))
+  }
+
+  key <- .ae_tuple_key(frame, by)
+  levels <- unique(key)
+  sums <- vapply(levels, function(k) {
+    sum(values[key == k], na.rm = na.rm)
+  }, numeric(1))
+  out_frame <- frame[match(levels, key), by, drop = FALSE]
+  rownames(out_frame) <- NULL
+  list(values = unname(sums), frame = out_frame)
+}
+
+#' Align vector values to a target frame by the vector field's full domain
+#' @keywords internal
+.ae_align_vector_to_frame <- function(vector_field, target_frame) {
+  axes <- .field_domain(vector_field)
+  missing_axes <- setdiff(axes, names(target_frame))
+  if (length(missing_axes) > 0) {
+    stop("vector field axis is not present in the target index: ",
+         paste(missing_axes, collapse = ", "))
+  }
+
+  ids <- .ae_tuple_key(target_frame, axes)
+  vector_frame <- .field_node_index(vector_field)
+  vector_ids <- .ae_tuple_key(vector_frame, axes)
+  values <- .field_data(vector_field)
+  if (!all(ids %in% vector_ids)) {
+    stop("vector field is missing axis tuples present in the target index")
+  }
+  values[match(ids, vector_ids)]
+}
+
+#' Reorder a vector field's values to a raster field's layer order
+#' @keywords internal
+.ae_align_to_layers <- function(vector_field, raster_field) {
+  .ae_align_vector_to_frame(vector_field, .field_layer_index(raster_field))
 }
 
 #' Build a raster field from already-consistent data + frame (snap construction)
@@ -104,34 +125,64 @@
 
 # Atom: lift -----------------------------------------------------------------
 
-#' Lift a field onto a larger typed domain
+#' Lift a field onto a template field's structure
 #'
-#' Broadcast a field to a target domain using a raster `template` that supplies
-#' the new axis structure (index$layer) and grid geometry. FCA cases:
-#'   - vector field on axis A  -> raster field (I, A): each layer is constant,
-#'     the value for facility f, aligned to the template by join key.
-#'   - raster field on I       -> raster field (I, A): the single layer is
-#'     replicated across the template's layers.
+#' The template supplies backend, domain, geometry, and index frame. Its values
+#' are ignored. Source values are matched on source axes and broadcast over axes
+#' present only in the template.
 #' @keywords internal
-.ae_lift <- function(field, to, template) {
-  .chck_class(template, "spax_raster_field", "template")
-  if (!setequal(.field_domain(template), to)) {
-    stop("template domain must equal the target domain `to`")
+.ae_lift <- function(field, template) {
+  .chck_class(field, "spax_field", "field")
+  .chck_class(template, "spax_field", "template")
+  if (!all(.field_domain(field) %in% .field_domain(template))) {
+    stop("field domain must be a subset of template domain")
   }
+
   tdata <- .field_data(template)
   backend <- .field_backend(field)
+  template_backend <- .field_backend(template)
 
-  if (backend == "vector") {
+  if (template_backend == "vector") {
+    if (backend != "vector") {
+      stop("lifting raster fields to vector templates is not supported")
+    }
+    aligned <- .ae_align_vector_to_frame(field, .field_node_index(template))
+    return(.rewrap_field(template, aligned, role = .field_role(field), meta = list()))
+  }
+
+  if (template_backend == "raster" && backend == "vector") {
     aligned <- .ae_align_to_layers(field, template) # length = nlyr(template)
     lifted <- (tdata * 0) + aligned # constant-per-layer, template geometry/NA
     return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
   }
 
-  if (backend == "raster" && identical(.field_domain(field), "I")) {
+  if (template_backend == "raster" && backend == "raster") {
+    .chck_raster_alignment(.field_data(field)[[1]], tdata[[1]], "field", "template")
     base <- .field_data(field)
-    if (terra::nlyr(base) != 1) stop("expected a single-layer raster on domain I")
-    n <- terra::nlyr(tdata)
-    lifted <- base[[rep(1, n)]]
+
+    source_layer_axes <- .field_layer_axes(field)
+    if (length(source_layer_axes) == 0) {
+      if (terra::nlyr(base) != 1) {
+        stop("cell-axis-only raster fields must have one layer")
+      }
+      lifted <- base[[rep(1, terra::nlyr(tdata))]]
+      return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
+    }
+
+    template_frame <- .field_layer_index(template)
+    missing_axes <- setdiff(source_layer_axes, names(template_frame))
+    if (length(missing_axes) > 0) {
+      stop("raster field layer axis is not present in the template index: ",
+           paste(missing_axes, collapse = ", "))
+    }
+
+    source_frame <- .field_layer_index(field)
+    source_ids <- .ae_tuple_key(source_frame, source_layer_axes)
+    template_ids <- .ae_tuple_key(template_frame, source_layer_axes)
+    if (!all(template_ids %in% source_ids)) {
+      stop("raster field is missing layer tuples present in the template index")
+    }
+    lifted <- base[[match(template_ids, source_ids)]]
     return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
   }
 
@@ -259,42 +310,108 @@ Math.spax_field <- function(x, ...) {
 
 # Atom: aggregate ------------------------------------------------------------
 
-#' Collapse a field over one axis
+#' Collapse a field by retaining selected axes
 #'
-#' Over "I" (raster): per-layer cell sum -> vector field on the non-I axis
-#' (DEC-006: collapsing I changes the backend). Over a non-I axis: sum across
-#' layers -> single-layer raster field on the remaining domain.
+#' `by` names the axes to keep. Every other axis is summed away. `by = NULL`
+#' returns a scalar total.
 #' @keywords internal
-.ae_aggregate <- function(field, over) {
+.ae_aggregate <- function(field, by = NULL) {
+  .chck_class(field, "spax_field", "field")
   backend <- .field_backend(field)
+  domain <- .field_domain(field)
+  if (is.null(by)) {
+    by <- character()
+  }
+  .chck_class(by, "character", "by")
+  if (anyDuplicated(by)) {
+    stop("by must contain unique axis names")
+  }
+  if (!all(by %in% domain)) {
+    stop("by must be NULL or a subset of the field domain")
+  }
+
+  if (setequal(by, domain)) {
+    return(field)
+  }
 
   if (backend == "raster") {
-    domain <- .field_domain(field)
-    if (identical(over, "I")) {
-      axis <- .ae_nonI_axis(field)
-      sums <- terra::global(.field_data(field), "sum", na.rm = TRUE)[[1]]
-      names(sums) <- as.character(.field_layer_index(field)[[axis]])
-      return(.spax_vector_field(sums, domain = axis,
-                                       role = .field_role(field), snap = TRUE))
+    cell_axis <- .field_cell_axis(field)
+    layer_axes <- .field_layer_axes(field)
+    data <- .field_data(field)
+    layer_frame <- .field_layer_index(field)
+
+    if (length(by) == 0) {
+      layer_sums <- terra::global(data, "sum", na.rm = TRUE)[[1]]
+      return(sum(layer_sums, na.rm = TRUE))
     }
-    if (!over %in% setdiff(domain, "I")) {
-      stop("`over` must be I or a non-I axis of the field")
+
+    new_domain <- domain[domain %in% by]
+    if (cell_axis %in% by) {
+      keep_layer_axes <- setdiff(new_domain, cell_axis)
+      if (length(keep_layer_axes) == 0) {
+        collapsed <- terra::app(data, fun = sum, na.rm = TRUE)
+        names(collapsed) <- "tmp1"
+        frame <- data.frame(layer = "tmp1", stringsAsFactors = FALSE)
+        return(.spax_raster_field(
+          collapsed,
+          domain = new_domain,
+          frame = frame,
+          role = .field_role(field)
+        ))
+      }
+
+      group_key <- .ae_tuple_key(layer_frame, keep_layer_axes)
+      groups <- unique(group_key)
+      layers <- lapply(groups, function(k) {
+        idx <- which(group_key == k)
+        if (length(idx) == 1) {
+          data[[idx]]
+        } else {
+          terra::app(data[[idx]], fun = sum, na.rm = TRUE)
+        }
+      })
+      collapsed <- terra::rast(layers)
+      names(collapsed) <- paste0("tmp", seq_along(groups))
+      frame <- layer_frame[match(groups, group_key), keep_layer_axes, drop = FALSE]
+      rownames(frame) <- NULL
+      frame <- data.frame(layer = names(collapsed), frame, stringsAsFactors = FALSE)
+      return(.spax_raster_field(
+        collapsed,
+        domain = new_domain,
+        frame = frame,
+        role = .field_role(field)
+      ))
     }
-    remaining <- setdiff(domain, c("I", over))
-    if (length(remaining) > 0) {
-      stop("grouped aggregation over one of several non-I axes is not ",
-           "implemented (SPAX-005); remaining axes: ",
-           paste(remaining, collapse = ", "))
+
+    missing_layer_axes <- setdiff(by, layer_axes)
+    if (length(missing_layer_axes) > 0) {
+      stop("by axes are not available after collapsing the raster cell axis: ",
+           paste(missing_layer_axes, collapse = ", "))
     }
-    collapsed <- terra::app(.field_data(field), fun = sum, na.rm = TRUE)
-    names(collapsed) <- "L1"
-    new_domain <- setdiff(domain, over)
-    frame <- data.frame(layer = "L1", stringsAsFactors = FALSE)
-    return(.ae_raster(collapsed, new_domain, frame, role = .field_role(field)))
+
+    layer_sums <- terra::global(data, "sum", na.rm = TRUE)[[1]]
+    grouped <- .ae_sum_by_frame(layer_sums, layer_frame, new_domain)
+    return(.spax_vector_field(
+      grouped$values,
+      domain = new_domain,
+      frame = grouped$frame,
+      role = .field_role(field)
+    ))
   }
 
   if (backend == "vector") {
-    return(sum(.field_data(field), na.rm = TRUE))
+    if (length(by) == 0) {
+      return(sum(.field_data(field), na.rm = TRUE))
+    }
+    new_domain <- domain[domain %in% by]
+    grouped <- .ae_sum_by_frame(.field_data(field), .field_node_index(field),
+                                new_domain)
+    return(.spax_vector_field(
+      grouped$values,
+      domain = new_domain,
+      frame = grouped$frame,
+      role = .field_role(field)
+    ))
   }
 
   stop("unsupported aggregate for backend '", backend, "'")
@@ -324,16 +441,17 @@ Math.spax_field <- function(x, ...) {
 .ae_gather <- function(source, weights) {
   .chck_class(source, "spax_raster_field", "source")
   .chck_class(weights, "spax_raster_field", "weights")
-  if (!identical(.field_domain(source), "I") ||
+  cell_axis <- .field_cell_axis(weights)
+  if (!identical(.field_domain(source), cell_axis) ||
       terra::nlyr(.field_data(source)) != 1) {
-    stop("`source` must be a single-layer raster field on domain I")
+    stop("`source` must be a single-layer raster field on the weights cell axis")
   }
-  axis <- .ae_nonI_axis(weights)
+  layer_axes <- .field_layer_axes(weights)
   vals <- .gather_weighted_core(.field_data(source), .field_data(weights),
                                 na.rm = TRUE)
-  names(vals) <- as.character(.field_layer_index(weights)[[axis]])
-  .spax_vector_field(vals, domain = axis, role = "realization",
-                            snap = TRUE)
+  frame <- .field_layer_index(weights)[layer_axes]
+  .spax_vector_field(unname(vals), domain = layer_axes, frame = frame,
+                     role = "realization")
 }
 
 # Verb: spread (recomposed) --------------------------------------------------
@@ -347,10 +465,9 @@ Math.spax_field <- function(x, ...) {
 .ae_spread <- function(source, weights) {
   .chck_class(source, "spax_vector_field", "source")
   .chck_class(weights, "spax_raster_field", "weights")
-  axis <- .ae_nonI_axis(weights)
-  lifted <- .ae_lift(source, to = .field_domain(weights), template = weights)
+  lifted <- .ae_lift(source, template = weights)
   product <- .ae_combine(lifted, weights, op = `*`)
-  out <- .ae_aggregate(product, over = axis)
+  out <- .ae_aggregate(product, by = .field_cell_axis(weights))
   out$role <- "realization"
   out
 }
@@ -387,4 +504,36 @@ Math.spax_field <- function(x, ...) {
   out <- .ae_combine(a, b, op = `+`)
   out$role <- .field_role(state)
   out
+}
+
+# Verb: mask ------------------------------------------------------------------
+
+#' Apply a binary or soft compatibility mask
+#' @keywords internal
+.ae_mask <- function(field, mask) {
+  .chck_class(field, "spax_field", "field")
+  .chck_class(mask, "spax_field", "mask")
+  values <- .field_data(mask)
+  mask_values <- if (inherits(values, "SpatRaster")) {
+    terra::values(values, mat = FALSE)
+  } else {
+    values
+  }
+  if (!(is.logical(mask_values) || is.numeric(mask_values))) {
+    stop("mask values must be logical or numeric")
+  }
+  if (any(is.na(mask_values))) {
+    stop("mask values must not be missing")
+  }
+  if (is.numeric(mask_values) && any(mask_values < 0 | mask_values > 1)) {
+    stop("numeric mask values must be in [0, 1]")
+  }
+
+  if (setequal(.field_domain(mask), .field_domain(field))) {
+    return(.ae_combine(field, mask, op = `*`))
+  }
+  if (all(.field_domain(mask) %in% .field_domain(field))) {
+    return(.ae_combine(field, .ae_lift(mask, template = field), op = `*`))
+  }
+  stop("mask domain must match or be a subset of field domain")
 }
