@@ -196,8 +196,60 @@ test_that("vector field provides minimal axis accessor parity", {
 
   expect_s3_class(field, "spax_vector_field")
   expect_equal(.field_backend(field), "vector")
+  expect_equal(names(.field_data(field)), c("V1", "V2"))
+  expect_equal(
+    .field_node_index(field),
+    data.frame(key = c("V1", "V2"), J = c("H1", "H2"))
+  )
   expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
   expect_error(.create_spax_vector_field(c(10, 20), domain = "J"), "must have names")
+})
+
+test_that("vector field accepts explicit multi-axis frames with partial products", {
+  x <- c(10, 4, 20)
+  frame <- data.frame(
+    J = c("H1", "H1", "H2"),
+    mode = c("car", "walk", "car")
+  )
+
+  field <- .create_spax_vector_field(x, domain = c("J", "mode"), frame = frame)
+
+  expect_s3_class(field, "spax_vector_field")
+  expect_equal(names(.field_data(field)), c("V1", "V2", "V3"))
+  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
+  expect_equal(.field_axis_values(field, "mode"), c("car", "walk"))
+  expect_equal(
+    .field_index_frame(field),
+    data.frame(
+      key = c("V1", "V2", "V3"),
+      J = c("H1", "H1", "H2"),
+      mode = c("car", "walk", "car")
+    )
+  )
+})
+
+test_that("vector field rejects invalid node frames", {
+  expect_error(
+    .create_spax_vector_field(c(10, 4), domain = c("J", "mode")),
+    "multi-axis vector fields"
+  )
+  expect_error(
+    .create_spax_vector_field(c(10, 4), domain = c("J", "mode"),
+                              frame = data.frame(J = "H1", mode = "car")),
+    "one row per vector element"
+  )
+  expect_error(
+    .create_spax_vector_field(c(10, 4), domain = c("J", "mode"),
+                              frame = data.frame(J = c("H1", "H1"),
+                                                 mode = c("car", "car"))),
+    "duplicate coordinate tuples"
+  )
+  expect_error(
+    .create_spax_vector_field(c(10, 4), domain = c("J", "mode"),
+                              frame = data.frame(J = c("H1", NA),
+                                                 mode = c("car", "walk"))),
+    "must not contain missing"
+  )
 })
 
 test_that(".as_spax_field coerces raw rasters and passes through fields", {
@@ -242,4 +294,5 @@ test_that("spax_field print methods expose compact debugging surfaces", {
 
   expect_output(print(raster_field), "backend: raster")
   expect_output(print(vector_field), "backend: vector")
+  expect_output(print(vector_field), "frame:")
 })

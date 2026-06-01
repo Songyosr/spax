@@ -36,7 +36,7 @@
     if (!identical(.field_domain(supply), axis)) {
       stop("`supply` field must use the same axis as the kernels")
     }
-    if (!setequal(names(.field_data(supply)), weight_ids)) {
+    if (!setequal(.field_axis_values(supply, axis), weight_ids)) {
       stop("`supply` field must span the same facility ids as the kernels")
     }
     output_names <- if (is.null(indicator_names)) "supply" else indicator_names

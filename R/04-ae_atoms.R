@@ -30,18 +30,32 @@
 #' Reorder a vector field's values to a raster field's layer order, by shared axis
 #' @keywords internal
 .ae_align_to_layers <- function(vector_field, raster_field) {
-  axis <- .field_domain(vector_field)
-  if (length(axis) != 1) stop("vector field must have a single-axis domain")
-  frame <- .field_layer_index(raster_field)
-  if (!axis %in% names(frame)) {
-    stop("axis '", axis, "' is not an axis of the raster field's index$layer")
+  axes <- .field_domain(vector_field)
+  raster_frame <- .field_layer_index(raster_field)
+  vector_frame <- .field_node_index(vector_field)
+
+  missing_axes <- setdiff(axes, names(raster_frame))
+  if (length(missing_axes) > 0) {
+    stop("vector field axis is not present in the raster field index: ",
+         paste(missing_axes, collapse = ", "))
   }
-  ids <- as.character(frame[[axis]])
+
+  ids <- .ae_tuple_key(raster_frame, axes)
+  vector_ids <- .ae_tuple_key(vector_frame, axes)
   values <- .field_data(vector_field)
-  if (!all(ids %in% names(values))) {
-    stop("vector field is missing ids present in the raster layers")
+  if (!all(ids %in% vector_ids)) {
+    stop("vector field is missing axis tuples present in the raster layers")
   }
-  values[ids]
+  values[match(ids, vector_ids)]
+}
+
+#' Build a stable composite key from an index frame
+#' @keywords internal
+.ae_tuple_key <- function(frame, axes) {
+  if (length(axes) == 0) {
+    return(rep("", nrow(frame)))
+  }
+  do.call(paste, c(lapply(frame[, axes, drop = FALSE], as.character), sep = "\r"))
 }
 
 #' Build a raster field from already-consistent data + frame (snap construction)
@@ -143,9 +157,9 @@
                       role = .field_role(field), meta = .field_meta(field)))
   }
   names(res) <- names(data)
-  .create_spax_vector_field(res, domain = .field_domain(field),
-                            role = .field_role(field), meta = .field_meta(field),
-                            snap = TRUE)
+  .new_spax_vector_field(res, domain = .field_domain(field),
+                         index = .field_index(field),
+                         role = .field_role(field), meta = .field_meta(field))
 }
 
 #' Pointwise arithmetic for same-domain spax_field objects
@@ -219,8 +233,8 @@ Math.spax_field <- function(x, ...) {
     if (length(axes) >= 1) {
       fa <- .field_layer_index(a)[, axes, drop = FALSE]
       fb <- .field_layer_index(b)[, axes, drop = FALSE]
-      key_a <- do.call(paste, c(lapply(fa, as.character), sep = "\r"))
-      key_b <- do.call(paste, c(lapply(fb, as.character), sep = "\r"))
+      key_a <- .ae_tuple_key(fa, axes)
+      key_b <- .ae_tuple_key(fb, axes)
       if (!setequal(key_a, key_b)) stop("combine operands span different axis tuples")
       if (anyDuplicated(key_a) || anyDuplicated(key_b)) {
         stop("combine requires unique axis tuples per layer")
@@ -236,11 +250,21 @@ Math.spax_field <- function(x, ...) {
   if (backend == "vector") {
     va <- .field_data(a)
     vb <- .field_data(b)
-    if (!setequal(names(va), names(vb))) stop("operands span different axis ids")
-    res <- op(va, vb[names(va)])
+    axes <- .field_domain(a)
+    fa <- .field_node_index(a)
+    fb <- .field_node_index(b)
+    key_a <- .ae_tuple_key(fa, axes)
+    key_b <- .ae_tuple_key(fb, axes)
+    if (!setequal(key_a, key_b)) stop("operands span different axis tuples")
+    if (anyDuplicated(key_a) || anyDuplicated(key_b)) {
+      stop("combine requires unique axis tuples per vector element")
+    }
+    if (!identical(key_a, key_b)) vb <- vb[match(key_a, key_b)]
+    res <- op(va, vb)
     names(res) <- names(va)
-    return(.create_spax_vector_field(res, domain = .field_domain(a),
-                                     role = .field_role(a), snap = TRUE))
+    return(.new_spax_vector_field(res, domain = .field_domain(a),
+                                  index = .field_index(a),
+                                  role = .field_role(a), meta = .field_meta(a)))
   }
 
   stop("unsupported combine for backend '", backend, "'")

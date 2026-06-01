@@ -26,7 +26,8 @@ test_that(".ae_aggregate over I collapses to a vector field (DEC-006)", {
   expect_s3_class(u, "spax_vector_field")
   expect_equal(.field_backend(u), "vector")
   expect_equal(.field_domain(u), "facility")
-  expect_equal(names(.field_data(u)), c("fac_a", "fac_b"))
+  expect_equal(names(.field_data(u)), c("V1", "V2"))
+  expect_equal(.field_axis_values(u, "facility"), c("fac_a", "fac_b"))
   expect_equal(
     unname(.field_data(u)),
     unname(terra::global(.field_data(f$kernel), "sum", na.rm = TRUE)[[1]])
@@ -96,7 +97,8 @@ test_that(".ae_gather equals gather_weighted (fused verb)", {
   g <- .ae_gather(f$demand, f$kernel)
 
   expect_s3_class(g, "spax_vector_field")
-  expect_equal(names(.field_data(g)), c("fac_a", "fac_b"))
+  expect_equal(names(.field_data(g)), c("V1", "V2"))
+  expect_equal(.field_axis_values(g, "facility"), c("fac_a", "fac_b"))
   raw <- gather_weighted(.field_data(f$demand), .field_data(f$kernel), simplify = TRUE)
   expect_equal(unname(.field_data(g)), unname(raw))
 })
@@ -108,7 +110,7 @@ test_that(".ae_spread equals spread_weighted (recomposed verb)", {
   expect_s3_class(s, "spax_raster_field")
   expect_equal(.field_domain(s), "I")
 
-  vals_ord <- .field_data(f$ratios)[as.character(.field_layer_index(f$kernel)$facility)]
+  vals_ord <- .ae_align_to_layers(f$ratios, f$kernel)
   raw <- spread_weighted(unname(vals_ord), .field_data(f$kernel))
   expect_equal(unname(terra::values(.field_data(s))), unname(terra::values(raw)))
 })
@@ -125,7 +127,7 @@ test_that(".ae_spread matches spread_weighted at moderate size", {
   R <- .create_spax_vector_field(c(a = 1, b = 2, c = 3), domain = "facility")
 
   s <- .ae_spread(R, bigK)
-  vals_ord <- .field_data(R)[as.character(.field_layer_index(bigK)$facility)]
+  vals_ord <- .ae_align_to_layers(R, bigK)
   raw <- spread_weighted(unname(vals_ord), .field_data(bigK))
   expect_equal(unname(terra::values(.field_data(s))), unname(terra::values(raw)))
 })
@@ -142,7 +144,7 @@ test_that(".ae_combine rejects vector fields with extra axis ids", {
   b <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
                                  domain = "facility")
 
-  expect_error(.ae_combine(a, b, op = `+`), "different axis ids")
+  expect_error(.ae_combine(a, b, op = `+`), "different axis tuples")
 })
 
 test_that("Ops.spax_field aligns vector fields by names", {
@@ -152,7 +154,8 @@ test_that("Ops.spax_field aligns vector fields by names", {
   res <- a + b
 
   expect_s3_class(res, "spax_vector_field")
-  expect_equal(names(.field_data(res)), c("fac_a", "fac_b"))
+  expect_equal(names(.field_data(res)), c("V1", "V2"))
+  expect_equal(.field_axis_values(res, "facility"), c("fac_a", "fac_b"))
   expect_equal(unname(.field_data(res)), c(11, 22))
 })
 
@@ -161,8 +164,8 @@ test_that("Ops.spax_field rejects vector fields with extra or missing ids", {
   b <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
                                  domain = "facility")
 
-  expect_error(a + b, "different axis ids")
-  expect_error(b + a, "different axis ids")
+  expect_error(a + b, "different axis tuples")
+  expect_error(b + a, "different axis tuples")
 })
 
 test_that("Ops.spax_field supports scalar arithmetic in operand order", {
@@ -178,7 +181,7 @@ test_that("Ops.spax_field supports scalar arithmetic in operand order", {
   expect_equal(unname(.field_data(a ^ 2)), c(4, 16))
   expect_equal(unname(.field_data(2 ^ a)), c(4, 16))
   expect_equal(.field_role(a + 1), "state")
-  expect_equal(.field_meta(a + 1), list(source = "test"))
+  expect_equal(.field_meta(a + 1)$source, "test")
 })
 
 test_that("Math.spax_field applies pointwise transforms to vector fields", {
@@ -192,7 +195,7 @@ test_that("Math.spax_field applies pointwise transforms to vector fields", {
   expect_equal(unname(.field_data(logged)), log(c(1, 4)))
   expect_equal(unname(.field_data(rooted)), c(1, 2))
   expect_equal(.field_role(logged), "state")
-  expect_equal(.field_meta(logged), list(source = "test"))
+  expect_equal(.field_meta(logged)$source, "test")
 })
 
 test_that(".ae_update applies a damped mix", {

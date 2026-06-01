@@ -350,6 +350,98 @@
 
 # Vector Field ---------------------------------------------------------------
 
+#' Create stable surrogate vector keys
+#' @keywords internal
+.field_node_keys <- function(n) {
+  paste0("V", seq_len(n))
+}
+
+#' Prepare a vector index frame and re-key vector values
+#' @keywords internal
+.prepare_vector_index <- function(data,
+                                  domain,
+                                  frame = NULL,
+                                  allow_positional = FALSE,
+                                  meta = list()) {
+  n <- length(data)
+  keys <- .field_node_keys(n)
+  provenance <- character()
+
+  if (is.null(frame)) {
+    if (length(domain) != 1) {
+      stop("multi-axis vector fields require an explicit index frame")
+    }
+
+    axis_values <- names(data)
+    if (is.null(axis_values) || any(is.na(axis_values)) || any(axis_values == "")) {
+      if (!allow_positional) {
+        stop("spax_vector_field data must have names unless allow_positional = TRUE")
+      }
+      axis_values <- paste0(domain[[1]], "_", seq_along(data))
+      provenance <- c(provenance, "positional semantic IDs generated")
+    } else {
+      provenance <- c(provenance, "semantic vector names lifted into index$node")
+    }
+
+    frame <- data.frame(key = keys, stringsAsFactors = FALSE)
+    frame[[domain[[1]]]] <- axis_values
+  } else {
+    .chck_class(frame, "data.frame", "index$node")
+    if (nrow(frame) != n) {
+      stop("index$node must have one row per vector element")
+    }
+
+    if ("key" %in% names(frame)) {
+      frame_keys <- as.character(frame$key)
+      if (any(is.na(frame_keys)) || any(frame_keys == "")) {
+        stop("index$node$key must not contain missing or empty values")
+      }
+      if (anyDuplicated(frame_keys)) {
+        stop("index$node$key must contain unique values")
+      }
+      if (!is.null(names(data)) && all(!is.na(names(data))) && all(names(data) != "")) {
+        if (!setequal(names(data), frame_keys)) {
+          stop("index$node$key must match vector names when both are provided")
+        }
+        frame <- frame[match(names(data), frame_keys), , drop = FALSE]
+        rownames(frame) <- NULL
+      }
+    } else {
+      provenance <- c(provenance, "node linkage assumed by row order")
+    }
+
+    frame$key <- keys
+  }
+
+  missing_axes <- setdiff(domain, names(frame))
+  if (length(missing_axes) > 0) {
+    stop("index$node missing axis column(s): ", paste(missing_axes, collapse = ", "))
+  }
+
+  frame$key <- as.character(frame$key)
+  for (axis in domain) {
+    frame[[axis]] <- as.character(frame[[axis]])
+    if (any(is.na(frame[[axis]]) | frame[[axis]] == "")) {
+      stop("index$node$", axis, " must not contain missing or empty values")
+    }
+  }
+
+  if (any(duplicated(frame[domain]))) {
+    stop("index$node contains duplicate coordinate tuples")
+  }
+  if (anyDuplicated(frame$key)) {
+    stop("index$node$key must contain unique values")
+  }
+
+  frame <- frame[c("key", domain, setdiff(names(frame), c("key", domain)))]
+  names(data) <- keys
+  if (length(provenance) > 0) {
+    meta$provenance <- unique(c(meta$provenance, provenance))
+  }
+
+  list(data = data, frame = frame, meta = meta)
+}
+
 #' Validate vector spax_field inputs
 #' @keywords internal
 .chck_spax_vector_field <- function(data,
@@ -362,16 +454,45 @@
   if (!is.atomic(data) || !is.null(dim(data))) {
     stop("data must be an atomic vector")
   }
-  if (length(domain) != 1) {
-    stop("spax_vector_field domain must have length one")
+  if (length(domain) < 1) {
+    stop("spax_vector_field domain must have length at least one")
   }
 
-  axis_values <- names(data)
-  if (is.null(axis_values) || any(is.na(axis_values)) || any(axis_values == "")) {
-    stop("spax_vector_field data must have names")
+  if (is.null(index) || is.null(index$node)) {
+    stop("spax_vector_field requires index$node")
   }
-  if (anyDuplicated(axis_values)) {
-    stop("spax_vector_field data names must be unique")
+
+  frame <- index$node
+  if (nrow(frame) != length(data)) {
+    stop("index$node must have one row per vector element")
+  }
+  if (!"key" %in% names(frame)) {
+    stop("index$node must include a key column")
+  }
+  if (!identical(as.character(frame$key), names(data))) {
+    stop("index$node$key must match vector names")
+  }
+
+  missing_axes <- setdiff(domain, names(frame))
+  if (length(missing_axes) > 0) {
+    stop("index$node missing axis column(s): ", paste(missing_axes, collapse = ", "))
+  }
+
+  for (axis in c("key", domain)) {
+    values <- frame[[axis]]
+    if (!is.character(values)) {
+      stop("index$node$", axis, " must be character")
+    }
+    if (any(is.na(values) | values == "")) {
+      stop("index$node$", axis, " must not contain missing or empty values")
+    }
+  }
+
+  if (anyDuplicated(frame$key)) {
+    stop("index$node$key must contain unique values")
+  }
+  if (any(duplicated(frame[domain]))) {
+    stop("index$node contains duplicate coordinate tuples")
   }
 
   invisible(TRUE)
@@ -399,24 +520,35 @@
 .create_spax_vector_field <- function(data,
                                       domain,
                                       index = NULL,
+                                      frame = NULL,
                                       role = "unknown",
                                       meta = list(),
                                       allow_positional = FALSE,
                                       snap = FALSE) {
-  if (is.null(names(data)) || any(is.na(names(data))) || any(names(data) == "")) {
-    if (!allow_positional) {
-      stop("spax_vector_field data must have names unless allow_positional = TRUE")
-    }
-    names(data) <- paste0(domain[[1]], "_", seq_along(data))
-    meta$provenance <- unique(c(meta$provenance, "positional semantic IDs generated"))
+  if (!is.null(index) && !is.null(index$node) && is.null(frame)) {
+    frame <- index$node
   }
-  names(data) <- as.character(names(data))
+
+  prepared <- .prepare_vector_index(
+    data = data,
+    domain = domain,
+    frame = frame,
+    allow_positional = allow_positional,
+    meta = meta
+  )
+  index <- list(node = prepared$frame)
 
   if (!snap) {
-    .chck_spax_vector_field(data, domain, index, role, meta)
+    .chck_spax_vector_field(
+      data = prepared$data,
+      domain = domain,
+      index = index,
+      role = role,
+      meta = prepared$meta
+    )
   }
 
-  .new_spax_vector_field(data, domain, index, role, meta)
+  .new_spax_vector_field(prepared$data, domain, index, role, prepared$meta)
 }
 
 # Coercion -------------------------------------------------------------------
@@ -456,6 +588,7 @@
     return(.create_spax_vector_field(
       data = x,
       domain = domain,
+      frame = frame,
       role = role,
       allow_positional = allow_positional,
       snap = snap
@@ -515,6 +648,25 @@
 }
 
 #' @keywords internal
+.field_node_index <- function(field) {
+  .chck_class(field, "spax_vector_field", "field")
+  field$index$node
+}
+
+#' Backend-neutral index frame accessor
+#' @keywords internal
+.field_index_frame <- function(field) {
+  .chck_class(field, "spax_field", "field")
+  if (inherits(field, "spax_raster_field")) {
+    return(.field_layer_index(field))
+  }
+  if (inherits(field, "spax_vector_field")) {
+    return(.field_node_index(field))
+  }
+  stop("index frame is not implemented for this field backend")
+}
+
+#' @keywords internal
 .field_axis_values <- function(field, axis) {
   .chck_class(field, "spax_field", "field")
   .chck_class(axis, "character", "axis")
@@ -534,7 +686,8 @@
   }
 
   if (inherits(field, "spax_vector_field")) {
-    return(names(field$data))
+    frame <- .field_node_index(field)
+    return(unique(frame[[axis]]))
   }
 
   stop("axis values are not implemented for this field backend")
@@ -559,8 +712,10 @@ print.spax_field <- function(x, ...) {
     cat("  frame:\n")
     print(utils::head(frame, 6), row.names = FALSE)
   } else if (inherits(x, "spax_vector_field")) {
+    frame <- .field_node_index(x)
     cat("  length:  ", length(.field_data(x)), "\n", sep = "")
-    cat("  ids:     ", paste(utils::head(names(.field_data(x)), 6), collapse = ", "), "\n", sep = "")
+    cat("  frame:\n")
+    print(utils::head(frame, 6), row.names = FALSE)
   }
 
   invisible(x)
