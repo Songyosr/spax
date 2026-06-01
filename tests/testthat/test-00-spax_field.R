@@ -200,6 +200,41 @@ test_that("vector field provides minimal axis accessor parity", {
   expect_error(.create_spax_vector_field(c(10, 20), domain = "J"), "must have names")
 })
 
+test_that(".as_spax_field coerces raw rasters and passes through fields", {
+  r <- make_field_raster(2)
+  names(r) <- c("H1", "H2")
+
+  field <- .as_spax_field(r, domain = c("I", "J"), role = "kernel")
+
+  expect_s3_class(field, "spax_raster_field")
+  expect_equal(.field_domain(field), c("I", "J"))
+  expect_equal(.field_role(field), "kernel")
+  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
+  expect_identical(.as_spax_field(field, domain = c("J", "I")), field)
+  expect_error(.as_spax_field(field, domain = "I"), "field domain")
+})
+
+test_that(".as_spax_field supports positional raw raster and vector doors", {
+  r <- make_field_raster(2)
+  names(r) <- c("lyr.1", "lyr.2")
+  raster_field <- .as_spax_field(
+    r,
+    domain = c("I", "facility"),
+    role = "kernel",
+    allow_positional = TRUE
+  )
+
+  expect_equal(.field_axis_values(raster_field, "facility"),
+               c("facility_1", "facility_2"))
+
+  vector_field <- .as_spax_field(c(H1 = 10, H2 = 20),
+                                 domain = "facility",
+                                 role = "supply")
+
+  expect_s3_class(vector_field, "spax_vector_field")
+  expect_equal(.field_axis_values(vector_field, "facility"), c("H1", "H2"))
+})
+
 test_that("spax_field print methods expose compact debugging surfaces", {
   r <- make_field_raster(1)
   raster_field <- .create_spax_raster_field(r, domain = "I")

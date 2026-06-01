@@ -419,6 +419,52 @@
   .new_spax_vector_field(data, domain, index, role, meta)
 }
 
+# Coercion -------------------------------------------------------------------
+
+#' Coerce raw data or pass through an existing field
+#'
+#' Internal DEC-008 two-door input helper. Raw inputs go through the validated
+#' backend constructors; prepared fields are trusted after a domain check.
+#' @keywords internal
+.as_spax_field <- function(x,
+                           domain,
+                           role = "unknown",
+                           frame = NULL,
+                           allow_positional = FALSE,
+                           snap = FALSE) {
+  .chck_class(domain, "character", "domain")
+
+  if (inherits(x, "spax_field")) {
+    if (!setequal(.field_domain(x), domain)) {
+      stop("field domain must match requested domain")
+    }
+    return(x)
+  }
+
+  if (inherits(x, "SpatRaster")) {
+    return(.create_spax_raster_field(
+      data = x,
+      domain = domain,
+      frame = frame,
+      role = role,
+      allow_positional = allow_positional,
+      snap = snap
+    ))
+  }
+
+  if (is.atomic(x) && is.null(dim(x))) {
+    return(.create_spax_vector_field(
+      data = x,
+      domain = domain,
+      role = role,
+      allow_positional = allow_positional,
+      snap = snap
+    ))
+  }
+
+  stop("unsupported input type for spax_field coercion")
+}
+
 # Accessors ------------------------------------------------------------------
 
 #' @keywords internal

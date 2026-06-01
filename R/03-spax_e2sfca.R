@@ -308,38 +308,6 @@
   )
 }
 
-#' Core computation for accessibility calculation
-#'
-#' @param demand SpatRaster of demand
-#' @param supply_values Matrix of supply values
-#' @param demand_weights SpatRaster of demand-side weights
-#' @param access_weights SpatRaster of accessibility-side weights
-#' @param indicator_names Character vector of names for output layers
-#' @return SpatRaster of accessibility scores
-#' @keywords internal
-.compute_access_core <- function(demand, supply_values, demand_weights,
-                                 access_weights, indicator_names = NULL) {
-  # Calculate demand by site
-  demand_by_site <- gather_demand(demand, demand_weights)
-
-  # Calculate supply-to-demand ratios
-  ratios <- sweep(supply_values, 1, demand_by_site$potential_demand, "/")
-
-  # Calculate accessibility scores
-  result <- spread_weighted(ratios, access_weights)
-
-  # Apply names if provided
-  if (!is.null(indicator_names)) {
-    names(result) <- indicator_names
-  } else {
-    n_measures <- if (is.matrix(ratios)) ncol(ratios) else 1
-    names(result) <- paste0("accessibility_", seq_len(n_measures))
-  }
-
-  return(result)
-}
-
-
 #' Calculate spatial accessibility using weighted surfaces
 #'
 #' @description
@@ -370,25 +338,19 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
     )
   }
 
-  # Process supply data
-  weight_ids <- names(demand_weights)
-  processed_supply <- .help_process_supply(
+  result <- compute_fca(
+    demand = demand,
     supply = supply,
+    demand_kernel = demand_weights,
+    access_kernel = access_weights,
+    demand_normalize = "identity",
     id_col = id_col,
     supply_cols = supply_cols,
-    weight_ids = weight_ids
+    indicator_names = indicator_names,
+    snap = snap
   )
 
-  # Use helper for core computation
-  result <- .compute_access_core(
-    demand = demand,
-    supply_values = processed_supply$values,
-    demand_weights = demand_weights,
-    access_weights = access_weights,
-    indicator_names = indicator_names %||% processed_supply$cols
-  )
-
-  return(result)
+  .fca_result_raster(result)
 }
 
 #' Calculate Enhanced Two-Step Floating Catchment Area (E2SFCA) accessibility scores
@@ -528,24 +490,18 @@ spax_e2sfca <- function(demand, supply, distance,
   # Compute weights using decay function
   weights <- do.call(calc_decay, c(list(distance = distance), decay_params, list(snap = snap)))
 
-  # Process demand weights based on normalization method
-  demand_weights <- calc_normalize(weights, method = demand_normalize, snap = snap)
-
-  # Access weights remain unnormalized
-  access_weights <- weights
-
-
-  # Use compute_access for final calculation
-  result <- compute_access(
+  result <- compute_fca(
     demand = demand,
     supply = supply,
-    demand_weights = demand_weights,
-    access_weights = access_weights,
+    demand_kernel = weights,
+    access_kernel = weights,
+    demand_normalize = demand_normalize,
     id_col = id_col,
     supply_cols = supply_cols,
     indicator_names = indicator_names,
     snap = snap
   )
+  result <- .fca_result_raster(result)
 
   # Process facility information
   if (is.data.frame(supply)) {

@@ -73,26 +73,33 @@ test_that(".help_process_supply handles different input types correctly", {
   expect_equal(vec_result$cols, "supply")
 })
 
-test_that(".compute_access_core calculates correctly", {
+test_that("compute_access returns a SpatRaster through compute_fca", {
   td <- create_test_data()
 
-  # Create test weights
   weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
   demand_weights <- calc_normalize(weights, method = "standard")
   access_weights <- weights
 
-  result <- .compute_access_core(
+  result <- compute_access(
     demand = td$demand,
-    supply_values = td$supply_matrix,
+    supply = td$supply_matrix,
     demand_weights = demand_weights,
     access_weights = access_weights,
     indicator_names = c("doc_access", "nurse_access")
   )
+  field_result <- compute_fca(
+    demand = td$demand,
+    supply = td$supply_matrix,
+    demand_kernel = demand_weights,
+    access_kernel = access_weights,
+    demand_normalize = "identity",
+    indicator_names = c("doc_access", "nurse_access")
+  )
 
-  # Test structure
   expect_s4_class(result, "SpatRaster")
   expect_equal(names(result), c("doc_access", "nurse_access"))
   expect_equal(dim(result)[1:2], c(3, 3))
+  expect_equal(terra::values(result), terra::values(.fca_result_raster(field_result)))
 })
 
 # 2. Test Validation Functions ------------------------------------------------
