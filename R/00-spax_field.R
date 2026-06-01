@@ -89,22 +89,6 @@
   )
 }
 
-#' Create a generic spax_field with validation
-#' @keywords internal
-.create_spax_field <- function(data,
-                               domain,
-                               index = NULL,
-                               role = "unknown",
-                               meta = list(),
-                               subclass = NULL,
-                               snap = FALSE) {
-  if (!snap) {
-    .chck_spax_field(data, domain, index, role, meta)
-  }
-
-  .new_spax_field(data, domain, index, role, meta, subclass)
-}
-
 # Raster Field ---------------------------------------------------------------
 
 #' Create stable surrogate layer keys
@@ -407,6 +391,18 @@
         rownames(frame) <- NULL
       }
     } else {
+      # Unlike raster layers (which carry an intrinsic order the frame may not
+      # match), an unnamed value vector is paired with its frame positionally by
+      # the caller, so row order is the contract, not a guess. Only warn when the
+      # data carries names -- then row order overrides a real second ordering,
+      # the same risky assumption raster warns about (D5: loud about position).
+      if (!is.null(names(data)) &&
+          all(!is.na(names(data))) && all(names(data) != "")) {
+        warning(
+          "index$node has no key column; assuming row order",
+          call. = FALSE
+        )
+      }
       provenance <- c(provenance, "node linkage assumed by row order")
     }
 

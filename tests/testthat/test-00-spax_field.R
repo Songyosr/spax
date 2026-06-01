@@ -228,6 +228,24 @@ test_that("vector field accepts explicit multi-axis frames with partial products
   )
 })
 
+test_that("vector field warns on row-order assumption only for named data", {
+  # Named data + keyless frame: a real second ordering, so warn (parallel to raster).
+  named <- c(H1 = 10, H2 = 20)
+  expect_warning(
+    field <- .create_spax_vector_field(named, domain = "J",
+                                       frame = data.frame(J = c("H1", "H2"))),
+    "assuming row order"
+  )
+  expect_match(.field_meta(field)$provenance, "node linkage assumed", all = FALSE)
+
+  # Unnamed data + keyless frame is the normal positional contract: no warning.
+  expect_no_warning(
+    .create_spax_vector_field(c(10, 4, 20), domain = c("J", "mode"),
+                              frame = data.frame(J = c("H1", "H1", "H2"),
+                                                 mode = c("car", "walk", "car")))
+  )
+})
+
 test_that("vector field rejects invalid node frames", {
   expect_error(
     .create_spax_vector_field(c(10, 4), domain = c("J", "mode")),
