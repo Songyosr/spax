@@ -107,13 +107,12 @@
   !all(grepl("^lyr\\.[0-9]+$", layer_names))
 }
 
-#' Prepare a raster layer frame and re-key raster layers
+#' Resolve a raster layer frame from raw input conventions
 #' @keywords internal
-.prepare_raster_layer_index <- function(data,
+.resolve_raster_layer_frame <- function(data,
                                         domain,
                                         frame = NULL,
-                                        allow_positional = FALSE,
-                                        meta = list()) {
+                                        allow_positional = FALSE) {
   n_layers <- terra::nlyr(data)
   non_i_axes <- setdiff(domain, "I")
   keys <- .field_layer_keys(n_layers)
@@ -182,40 +181,52 @@
     frame$layer <- keys
   }
 
-  missing_axes <- setdiff(non_i_axes, names(frame))
-  if (length(missing_axes) > 0) {
-    stop("index$layer missing axis column(s): ", paste(missing_axes, collapse = ", "))
-  }
+  list(frame = frame, keys = keys, provenance = provenance)
+}
 
+#' Normalize a resolved raster layer frame and attach provenance
+#' @keywords internal
+.normalize_raster_layer_frame <- function(data,
+                                          domain,
+                                          resolved,
+                                          meta = list()) {
+  frame <- resolved$frame
+  keys <- resolved$keys
+  non_i_axes <- setdiff(domain, "I")
   frame$layer <- as.character(frame$layer)
-  for (axis in non_i_axes) {
+  for (axis in intersect(non_i_axes, names(frame))) {
     frame[[axis]] <- as.character(frame[[axis]])
-    if (any(is.na(frame[[axis]]) | frame[[axis]] == "")) {
-      stop("index$layer$", axis, " must not contain missing or empty values")
-    }
   }
-
-  if (length(non_i_axes) > 0) {
-    coordinate_frame <- frame[non_i_axes]
-    duplicate_coordinates <- duplicated(coordinate_frame)
-    if (any(duplicate_coordinates)) {
-      stop("index$layer contains duplicate coordinate tuples")
-    }
-  }
-
-  if (anyDuplicated(frame$layer)) {
-    stop("index$layer$layer must contain unique values")
-  }
+  frame <- frame[c("layer", intersect(non_i_axes, names(frame)),
+                   setdiff(names(frame), c("layer", non_i_axes)))]
 
   names(data) <- keys
-  if (length(provenance) > 0) {
-    meta$provenance <- unique(c(meta$provenance, provenance))
+  if (length(resolved$provenance) > 0) {
+    meta$provenance <- unique(c(meta$provenance, resolved$provenance))
   }
 
   list(data = data, frame = frame, meta = meta)
 }
 
+#' Prepare a raster layer frame and re-key raster layers
+#' @keywords internal
+.prepare_raster_layer_index <- function(data,
+                                        domain,
+                                        frame = NULL,
+                                        allow_positional = FALSE,
+                                        meta = list()) {
+  resolved <- .resolve_raster_layer_frame(
+    data = data,
+    domain = domain,
+    frame = frame,
+    allow_positional = allow_positional
+  )
+  .normalize_raster_layer_frame(data, domain, resolved, meta)
+}
+
 #' Validate raster spax_field inputs
+#'
+#' This is the canonical finished-object validator for raster fields.
 #' @keywords internal
 .chck_spax_raster_field <- function(data,
                                     domain,
@@ -292,14 +303,14 @@
 
 #' Create a raster spax_field
 #' @keywords internal
-.create_spax_raster_field <- function(data,
-                                      domain,
-                                      index = NULL,
-                                      frame = NULL,
-                                      role = "unknown",
-                                      meta = list(),
-                                      allow_positional = FALSE,
-                                      snap = FALSE) {
+.spax_raster_field <- function(data,
+                               domain,
+                               index = NULL,
+                               frame = NULL,
+                               role = "unknown",
+                               meta = list(),
+                               allow_positional = FALSE,
+                               snap = FALSE) {
   if (!is.null(index) && !is.null(index$layer) && is.null(frame)) {
     frame <- index$layer
   }
@@ -340,13 +351,12 @@
   paste0("V", seq_len(n))
 }
 
-#' Prepare a vector index frame and re-key vector values
+#' Resolve a vector node frame from raw input conventions
 #' @keywords internal
-.prepare_vector_index <- function(data,
-                                  domain,
-                                  frame = NULL,
-                                  allow_positional = FALSE,
-                                  meta = list()) {
+.resolve_vector_node_frame <- function(data,
+                                       domain,
+                                       frame = NULL,
+                                       allow_positional = FALSE) {
   n <- length(data)
   keys <- .field_node_keys(n)
   provenance <- character()
@@ -409,36 +419,51 @@
     frame$key <- keys
   }
 
-  missing_axes <- setdiff(domain, names(frame))
-  if (length(missing_axes) > 0) {
-    stop("index$node missing axis column(s): ", paste(missing_axes, collapse = ", "))
-  }
+  list(frame = frame, keys = keys, provenance = provenance)
+}
 
+#' Normalize a resolved vector node frame and attach provenance
+#' @keywords internal
+.normalize_vector_node_frame <- function(data,
+                                         domain,
+                                         resolved,
+                                         meta = list()) {
+  frame <- resolved$frame
+  keys <- resolved$keys
   frame$key <- as.character(frame$key)
-  for (axis in domain) {
+  for (axis in intersect(domain, names(frame))) {
     frame[[axis]] <- as.character(frame[[axis]])
-    if (any(is.na(frame[[axis]]) | frame[[axis]] == "")) {
-      stop("index$node$", axis, " must not contain missing or empty values")
-    }
   }
 
-  if (any(duplicated(frame[domain]))) {
-    stop("index$node contains duplicate coordinate tuples")
-  }
-  if (anyDuplicated(frame$key)) {
-    stop("index$node$key must contain unique values")
-  }
-
-  frame <- frame[c("key", domain, setdiff(names(frame), c("key", domain)))]
+  frame <- frame[c("key", intersect(domain, names(frame)),
+                   setdiff(names(frame), c("key", domain)))]
   names(data) <- keys
-  if (length(provenance) > 0) {
-    meta$provenance <- unique(c(meta$provenance, provenance))
+  if (length(resolved$provenance) > 0) {
+    meta$provenance <- unique(c(meta$provenance, resolved$provenance))
   }
 
   list(data = data, frame = frame, meta = meta)
 }
 
+#' Prepare a vector index frame and re-key vector values
+#' @keywords internal
+.prepare_vector_index <- function(data,
+                                  domain,
+                                  frame = NULL,
+                                  allow_positional = FALSE,
+                                  meta = list()) {
+  resolved <- .resolve_vector_node_frame(
+    data = data,
+    domain = domain,
+    frame = frame,
+    allow_positional = allow_positional
+  )
+  .normalize_vector_node_frame(data, domain, resolved, meta)
+}
+
 #' Validate vector spax_field inputs
+#'
+#' This is the canonical finished-object validator for vector fields.
 #' @keywords internal
 .chck_spax_vector_field <- function(data,
                                     domain,
@@ -513,14 +538,14 @@
 
 #' Create a vector spax_field
 #' @keywords internal
-.create_spax_vector_field <- function(data,
-                                      domain,
-                                      index = NULL,
-                                      frame = NULL,
-                                      role = "unknown",
-                                      meta = list(),
-                                      allow_positional = FALSE,
-                                      snap = FALSE) {
+.spax_vector_field <- function(data,
+                               domain,
+                               index = NULL,
+                               frame = NULL,
+                               role = "unknown",
+                               meta = list(),
+                               allow_positional = FALSE,
+                               snap = FALSE) {
   if (!is.null(index) && !is.null(index$node) && is.null(frame)) {
     frame <- index$node
   }
@@ -570,7 +595,7 @@
   }
 
   if (inherits(x, "SpatRaster")) {
-    return(.create_spax_raster_field(
+    return(.spax_raster_field(
       data = x,
       domain = domain,
       frame = frame,
@@ -581,7 +606,7 @@
   }
 
   if (is.atomic(x) && is.null(dim(x))) {
-    return(.create_spax_vector_field(
+    return(.spax_vector_field(
       data = x,
       domain = domain,
       frame = frame,
@@ -592,6 +617,51 @@
   }
 
   stop("unsupported input type for spax_field coercion")
+}
+
+#' Rebuild a field with new data but unchanged axis structure
+#' @keywords internal
+.rewrap_field <- function(field,
+                          data,
+                          role = .field_role(field),
+                          meta = .field_meta(field)) {
+  .chck_class(field, "spax_field", "field")
+
+  if (inherits(field, "spax_raster_field")) {
+    .chck_is_raster(data, "data")
+    frame <- .field_layer_index(field)
+    if (terra::nlyr(data) != nrow(frame)) {
+      stop("rewrapped raster data must have one layer per index row")
+    }
+    names(data) <- frame$layer
+    return(.new_spax_raster_field(
+      data = data,
+      domain = .field_domain(field),
+      index = .field_index(field),
+      role = role,
+      meta = meta
+    ))
+  }
+
+  if (inherits(field, "spax_vector_field")) {
+    if (!is.atomic(data) || !is.null(dim(data))) {
+      stop("rewrapped vector data must be an atomic vector")
+    }
+    frame <- .field_node_index(field)
+    if (length(data) != nrow(frame)) {
+      stop("rewrapped vector data must have one value per index row")
+    }
+    names(data) <- frame$key
+    return(.new_spax_vector_field(
+      data = data,
+      domain = .field_domain(field),
+      index = .field_index(field),
+      role = role,
+      meta = meta
+    ))
+  }
+
+  stop("rewrap is not implemented for this field backend")
 }
 
 # Accessors ------------------------------------------------------------------

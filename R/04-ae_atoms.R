@@ -61,7 +61,7 @@
 #' Build a raster field from already-consistent data + frame (snap construction)
 #' @keywords internal
 .ae_raster <- function(data, domain, frame, role = "unknown", meta = list()) {
-  .create_spax_raster_field(
+  .spax_raster_field(
     data = data, domain = domain, index = list(layer = frame),
     role = role, meta = meta, snap = TRUE
   )
@@ -118,15 +118,13 @@
   if (!setequal(.field_domain(template), to)) {
     stop("template domain must equal the target domain `to`")
   }
-  frame <- .field_layer_index(template)
   tdata <- .field_data(template)
   backend <- .field_backend(field)
 
   if (backend == "vector") {
     aligned <- .ae_align_to_layers(field, template) # length = nlyr(template)
     lifted <- (tdata * 0) + aligned # constant-per-layer, template geometry/NA
-    names(lifted) <- names(tdata)
-    return(.ae_raster(lifted, to, frame, role = .field_role(field)))
+    return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
   }
 
   if (backend == "raster" && identical(.field_domain(field), "I")) {
@@ -134,8 +132,7 @@
     if (terra::nlyr(base) != 1) stop("expected a single-layer raster on domain I")
     n <- terra::nlyr(tdata)
     lifted <- base[[rep(1, n)]]
-    names(lifted) <- names(tdata)
-    return(.ae_raster(lifted, to, frame, role = .field_role(field)))
+    return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
   }
 
   stop("unsupported lift: backend '", backend, "', domain (",
@@ -152,14 +149,9 @@
   res <- fn(data, ...)
 
   if (.field_backend(field) == "raster") {
-    names(res) <- names(data)
-    return(.ae_raster(res, .field_domain(field), .field_layer_index(field),
-                      role = .field_role(field), meta = .field_meta(field)))
+    return(.rewrap_field(field, res))
   }
-  names(res) <- names(data)
-  .new_spax_vector_field(res, domain = .field_domain(field),
-                         index = .field_index(field),
-                         role = .field_role(field), meta = .field_meta(field))
+  .rewrap_field(field, res)
 }
 
 #' Pointwise arithmetic for same-domain spax_field objects
@@ -242,9 +234,7 @@ Math.spax_field <- function(x, ...) {
       if (!identical(key_a, key_b)) db <- db[[match(key_a, key_b)]]
     }
     res <- op(da, db)
-    names(res) <- names(da)
-    return(.ae_raster(res, .field_domain(a), .field_layer_index(a),
-                      role = .field_role(a)))
+    return(.rewrap_field(a, res))
   }
 
   if (backend == "vector") {
@@ -261,10 +251,7 @@ Math.spax_field <- function(x, ...) {
     }
     if (!identical(key_a, key_b)) vb <- vb[match(key_a, key_b)]
     res <- op(va, vb)
-    names(res) <- names(va)
-    return(.new_spax_vector_field(res, domain = .field_domain(a),
-                                  index = .field_index(a),
-                                  role = .field_role(a), meta = .field_meta(a)))
+    return(.rewrap_field(a, res))
   }
 
   stop("unsupported combine for backend '", backend, "'")
@@ -287,7 +274,7 @@ Math.spax_field <- function(x, ...) {
       axis <- .ae_nonI_axis(field)
       sums <- terra::global(.field_data(field), "sum", na.rm = TRUE)[[1]]
       names(sums) <- as.character(.field_layer_index(field)[[axis]])
-      return(.create_spax_vector_field(sums, domain = axis,
+      return(.spax_vector_field(sums, domain = axis,
                                        role = .field_role(field), snap = TRUE))
     }
     if (!over %in% setdiff(domain, "I")) {
@@ -323,9 +310,7 @@ Math.spax_field <- function(x, ...) {
 .ae_normalize <- function(field, method = "standard") {
   .chck_class(field, "spax_raster_field", "field")
   res <- calc_normalize(.field_data(field), method = method)
-  names(res) <- names(.field_data(field))
-  .ae_raster(res, .field_domain(field), .field_layer_index(field),
-             role = "map")
+  .rewrap_field(field, res, role = "map", meta = list())
 }
 
 # Verb: gather (fused) -------------------------------------------------------
@@ -347,7 +332,7 @@ Math.spax_field <- function(x, ...) {
   vals <- .gather_weighted_core(.field_data(source), .field_data(weights),
                                 na.rm = TRUE)
   names(vals) <- as.character(.field_layer_index(weights)[[axis]])
-  .create_spax_vector_field(vals, domain = axis, role = "realization",
+  .spax_vector_field(vals, domain = axis, role = "realization",
                             snap = TRUE)
 }
 

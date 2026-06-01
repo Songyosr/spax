@@ -7,12 +7,12 @@ mk_fields <- function() {
     terra::rast(nrows = 4, ncols = 4, vals = runif(16))
   )
   names(kern) <- c("fac_a", "fac_b")
-  kernel <- .create_spax_raster_field(kern, domain = c("I", "facility"))
+  kernel <- .spax_raster_field(kern, domain = c("I", "facility"))
 
   dem <- terra::rast(nrows = 4, ncols = 4, vals = runif(16) * 100)
-  demand <- .create_spax_raster_field(dem, domain = "I")
+  demand <- .spax_raster_field(dem, domain = "I")
 
-  ratios <- .create_spax_vector_field(c(fac_a = 1.5, fac_b = 2.5), domain = "facility")
+  ratios <- .spax_vector_field(c(fac_a = 1.5, fac_b = 2.5), domain = "facility")
 
   list(kernel = kernel, demand = demand, ratios = ratios)
 }
@@ -123,8 +123,8 @@ test_that(".ae_spread matches spread_weighted at moderate size", {
     terra::rast(nrows = 40, ncols = 40, vals = runif(1600))
   )
   names(big) <- c("a", "b", "c")
-  bigK <- .create_spax_raster_field(big, domain = c("I", "facility"))
-  R <- .create_spax_vector_field(c(a = 1, b = 2, c = 3), domain = "facility")
+  bigK <- .spax_raster_field(big, domain = c("I", "facility"))
+  R <- .spax_vector_field(c(a = 1, b = 2, c = 3), domain = "facility")
 
   s <- .ae_spread(R, bigK)
   vals_ord <- .ae_align_to_layers(R, bigK)
@@ -133,23 +133,23 @@ test_that(".ae_spread matches spread_weighted at moderate size", {
 })
 
 test_that(".ae_ratio divides zero-safely", {
-  num <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20), domain = "facility")
-  den <- .create_spax_vector_field(c(fac_a = 2, fac_b = 0), domain = "facility")
+  num <- .spax_vector_field(c(fac_a = 10, fac_b = 20), domain = "facility")
+  den <- .spax_vector_field(c(fac_a = 2, fac_b = 0), domain = "facility")
   r <- .ae_ratio(num, den)
   expect_equal(unname(.field_data(r)), c(5, 0))
 })
 
 test_that(".ae_combine rejects vector fields with extra axis ids", {
-  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
-  b <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
+  a <- .spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
+  b <- .spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
                                  domain = "facility")
 
   expect_error(.ae_combine(a, b, op = `+`), "different axis tuples")
 })
 
 test_that("Ops.spax_field aligns vector fields by names", {
-  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
-  b <- .create_spax_vector_field(c(fac_b = 20, fac_a = 10), domain = "facility")
+  a <- .spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
+  b <- .spax_vector_field(c(fac_b = 20, fac_a = 10), domain = "facility")
 
   res <- a + b
 
@@ -160,8 +160,8 @@ test_that("Ops.spax_field aligns vector fields by names", {
 })
 
 test_that("Ops.spax_field rejects vector fields with extra or missing ids", {
-  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
-  b <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
+  a <- .spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
+  b <- .spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
                                  domain = "facility")
 
   expect_error(a + b, "different axis tuples")
@@ -169,7 +169,7 @@ test_that("Ops.spax_field rejects vector fields with extra or missing ids", {
 })
 
 test_that("Ops.spax_field supports scalar arithmetic in operand order", {
-  a <- .create_spax_vector_field(c(fac_a = 2, fac_b = 4), domain = "facility",
+  a <- .spax_vector_field(c(fac_a = 2, fac_b = 4), domain = "facility",
                                  role = "state", meta = list(source = "test"))
 
   expect_equal(unname(.field_data(a + 1)), c(3, 5))
@@ -185,7 +185,7 @@ test_that("Ops.spax_field supports scalar arithmetic in operand order", {
 })
 
 test_that("Math.spax_field applies pointwise transforms to vector fields", {
-  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 4), domain = "facility",
+  a <- .spax_vector_field(c(fac_a = 1, fac_b = 4), domain = "facility",
                                  role = "state", meta = list(source = "test"))
 
   logged <- log(a)
@@ -199,8 +199,8 @@ test_that("Math.spax_field applies pointwise transforms to vector fields", {
 })
 
 test_that(".ae_update applies a damped mix", {
-  st <- .create_spax_vector_field(c(fac_a = 1, fac_b = 1), domain = "facility")
-  tg <- .create_spax_vector_field(c(fac_a = 3, fac_b = 5), domain = "facility")
+  st <- .spax_vector_field(c(fac_a = 1, fac_b = 1), domain = "facility")
+  tg <- .spax_vector_field(c(fac_a = 3, fac_b = 5), domain = "facility")
   up <- .ae_update(st, tg, lambda = 0.5)
   expect_equal(unname(.field_data(up)), c(2, 3))
 
@@ -219,7 +219,7 @@ test_that(".ae_normalize matches calc_normalize", {
 test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {
   # supply S_j, demand D_i, kernel K_ij -> ratios R_j = S_j / U_j -> access A_i.
   f <- mk_fields()
-  supply <- .create_spax_vector_field(c(fac_a = 10, fac_b = 5), domain = "facility")
+  supply <- .spax_vector_field(c(fac_a = 10, fac_b = 5), domain = "facility")
 
   U <- .ae_gather(f$demand, f$kernel)        # potential demand per facility
   R <- .ae_ratio(supply, U)                   # supply-to-demand ratio
@@ -241,7 +241,7 @@ test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {
   names(r) <- paste0("ly", seq_along(vals))
   frame <- data.frame(layer = names(r), stringsAsFactors = FALSE)
   frame[[axis]] <- ids
-  .create_spax_raster_field(r, domain = c("I", axis), frame = frame)
+  .spax_raster_field(r, domain = c("I", axis), frame = frame)
 }
 
 .mk_prod_field <- function(tuples, vals) {
@@ -250,7 +250,7 @@ test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {
   frame <- data.frame(
     layer = names(r), J = tuples$J, mode = tuples$mode, stringsAsFactors = FALSE
   )
-  .create_spax_raster_field(r, domain = c("I", "J", "mode"), frame = frame)
+  .spax_raster_field(r, domain = c("I", "J", "mode"), frame = frame)
 }
 
 test_that(".ae_combine aligns single-axis fields by id, not layer order", {

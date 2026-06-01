@@ -55,7 +55,7 @@
   fields <- lapply(seq_len(ncol(values)), function(k) {
     vals <- values[, k]
     names(vals) <- processed$ids
-    .create_spax_vector_field(vals, domain = axis, role = "supply")
+    .spax_vector_field(vals, domain = axis, role = "supply")
   })
   list(fields = fields, names = output_names)
 }
@@ -119,7 +119,7 @@ compute_fca <- function(demand, supply, demand_kernel, access_kernel,
   names(result) <- supply_fields$names
 
   if (length(access_fields) == 1) {
-    return(.create_spax_raster_field(result, domain = "I",
+    return(.spax_raster_field(result, domain = "I",
                                      role = "realization",
                                      meta = list(output_names = supply_fields$names),
                                      snap = snap))
@@ -130,7 +130,7 @@ compute_fca <- function(demand, supply, demand_kernel, access_kernel,
     measure = supply_fields$names,
     stringsAsFactors = FALSE
   )
-  .create_spax_raster_field(
+  .spax_raster_field(
     result,
     domain = c("I", "measure"),
     frame = frame,

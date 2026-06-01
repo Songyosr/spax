@@ -44,7 +44,7 @@
     facility = names(kernel),
     stringsAsFactors = FALSE
   )
-  .create_spax_raster_field(
+  .spax_raster_field(
     kernel,
     domain = c("I", "facility"),
     frame = frame,
@@ -103,7 +103,7 @@ test_that("compute_fca multi-measure output preserves names and values", {
 test_that("compute_fca raw and field doors are equivalent", {
   td <- .mk_compute_fca_data()
   weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
-  demand_field <- .create_spax_raster_field(td$demand, domain = "I", role = "demand")
+  demand_field <- .spax_raster_field(td$demand, domain = "I", role = "demand")
   kernel_field <- .kernel_field(weights)
 
   raw_result <- compute_fca(
