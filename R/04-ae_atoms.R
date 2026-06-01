@@ -53,6 +53,41 @@
   )
 }
 
+#' Is x a length-one scalar accepted by field Ops?
+#' @keywords internal
+.ae_is_scalar <- function(x) {
+  is.atomic(x) &&
+    is.null(dim(x)) &&
+    length(x) == 1 &&
+    (is.numeric(x) || is.logical(x))
+}
+
+#' Resolve an allowed pointwise arithmetic operator
+#' @keywords internal
+.ae_op_fun <- function(op) {
+  if (!op %in% c("+", "-", "*", "/", "^")) {
+    stop("unsupported spax_field operator: ", op)
+  }
+  get(op, envir = baseenv(), mode = "function")
+}
+
+#' Resolve an allowed pointwise math transform
+#' @keywords internal
+.ae_math_fun <- function(fn) {
+  allowed <- c(
+    "abs", "sign", "sqrt", "floor", "ceiling", "trunc",
+    "exp", "expm1", "log", "log10", "log2", "log1p",
+    "cos", "cosh", "sin", "sinh", "tan", "tanh",
+    "acos", "acosh", "asin", "asinh", "atan", "atanh",
+    "cospi", "sinpi", "tanpi",
+    "gamma", "lgamma", "digamma", "trigamma"
+  )
+  if (!fn %in% allowed) {
+    stop("unsupported spax_field math transform: ", fn)
+  }
+  get(fn, envir = baseenv(), mode = "function")
+}
+
 # Atom: lift -----------------------------------------------------------------
 
 #' Lift a field onto a larger typed domain
@@ -105,11 +140,59 @@
   if (.field_backend(field) == "raster") {
     names(res) <- names(data)
     return(.ae_raster(res, .field_domain(field), .field_layer_index(field),
-                      role = .field_role(field)))
+                      role = .field_role(field), meta = .field_meta(field)))
   }
   names(res) <- names(data)
   .create_spax_vector_field(res, domain = .field_domain(field),
-                            role = .field_role(field), snap = TRUE)
+                            role = .field_role(field), meta = .field_meta(field),
+                            snap = TRUE)
+}
+
+#' Pointwise arithmetic for same-domain spax_field objects
+#' @keywords internal
+#' @method Ops spax_field
+#' @export
+Ops.spax_field <- function(e1, e2) {
+  op <- .ae_op_fun(.Generic)
+
+  if (missing(e2)) {
+    if (!.Generic %in% c("+", "-")) {
+      stop("unsupported unary spax_field operator: ", .Generic)
+    }
+    .chck_class(e1, "spax_field", "e1")
+    if (.Generic == "+") return(e1)
+    return(.ae_transform(e1, function(x) op(x)))
+  }
+
+  e1_is_field <- inherits(e1, "spax_field")
+  e2_is_field <- inherits(e2, "spax_field")
+
+  if (e1_is_field && e2_is_field) {
+    if (.Generic == "^") {
+      stop("field ^ field is not supported; use field ^ scalar or scalar ^ field")
+    }
+    return(.ae_combine(e1, e2, op = op))
+  }
+
+  if (e1_is_field && .ae_is_scalar(e2)) {
+    return(.ae_transform(e1, function(x) op(x, e2)))
+  }
+
+  if (.ae_is_scalar(e1) && e2_is_field) {
+    return(.ae_transform(e2, function(x) op(e1, x)))
+  }
+
+  stop("spax_field arithmetic requires field/scalar or same-domain field/field operands")
+}
+
+#' Pointwise math transforms for spax_field objects
+#' @keywords internal
+#' @method Math spax_field
+#' @export
+Math.spax_field <- function(x, ...) {
+  .chck_class(x, "spax_field", "x")
+  fn <- .ae_math_fun(.Generic)
+  .ae_transform(x, function(data) fn(data, ...))
 }
 
 #' Combine two fields elementwise on a shared domain (binary transform)
@@ -122,6 +205,9 @@
     stop("combine requires matching domains")
   }
   backend <- .field_backend(a)
+  if (!identical(backend, .field_backend(b))) {
+    stop("combine requires matching backends")
+  }
 
   if (backend == "raster") {
     da <- .field_data(a)

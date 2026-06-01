@@ -145,6 +145,56 @@ test_that(".ae_combine rejects vector fields with extra axis ids", {
   expect_error(.ae_combine(a, b, op = `+`), "different axis ids")
 })
 
+test_that("Ops.spax_field aligns vector fields by names", {
+  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
+  b <- .create_spax_vector_field(c(fac_b = 20, fac_a = 10), domain = "facility")
+
+  res <- a + b
+
+  expect_s3_class(res, "spax_vector_field")
+  expect_equal(names(.field_data(res)), c("fac_a", "fac_b"))
+  expect_equal(unname(.field_data(res)), c(11, 22))
+})
+
+test_that("Ops.spax_field rejects vector fields with extra or missing ids", {
+  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 2), domain = "facility")
+  b <- .create_spax_vector_field(c(fac_a = 10, fac_b = 20, fac_c = 30),
+                                 domain = "facility")
+
+  expect_error(a + b, "different axis ids")
+  expect_error(b + a, "different axis ids")
+})
+
+test_that("Ops.spax_field supports scalar arithmetic in operand order", {
+  a <- .create_spax_vector_field(c(fac_a = 2, fac_b = 4), domain = "facility",
+                                 role = "state", meta = list(source = "test"))
+
+  expect_equal(unname(.field_data(a + 1)), c(3, 5))
+  expect_equal(unname(.field_data(1 + a)), c(3, 5))
+  expect_equal(unname(.field_data(a - 1)), c(1, 3))
+  expect_equal(unname(.field_data(1 - a)), c(-1, -3))
+  expect_equal(unname(.field_data(a / 2)), c(1, 2))
+  expect_equal(unname(.field_data(2 / a)), c(1, 0.5))
+  expect_equal(unname(.field_data(a ^ 2)), c(4, 16))
+  expect_equal(unname(.field_data(2 ^ a)), c(4, 16))
+  expect_equal(.field_role(a + 1), "state")
+  expect_equal(.field_meta(a + 1), list(source = "test"))
+})
+
+test_that("Math.spax_field applies pointwise transforms to vector fields", {
+  a <- .create_spax_vector_field(c(fac_a = 1, fac_b = 4), domain = "facility",
+                                 role = "state", meta = list(source = "test"))
+
+  logged <- log(a)
+  rooted <- sqrt(a)
+
+  expect_s3_class(logged, "spax_vector_field")
+  expect_equal(unname(.field_data(logged)), log(c(1, 4)))
+  expect_equal(unname(.field_data(rooted)), c(1, 2))
+  expect_equal(.field_role(logged), "state")
+  expect_equal(.field_meta(logged), list(source = "test"))
+})
+
 test_that(".ae_update applies a damped mix", {
   st <- .create_spax_vector_field(c(fac_a = 1, fac_b = 1), domain = "facility")
   tg <- .create_spax_vector_field(c(fac_a = 3, fac_b = 5), domain = "facility")
@@ -215,6 +265,75 @@ test_that(".ae_combine aligns product-axis (I, J, mode) fields by tuple", {
   cmb <- .ae_combine(a, b, op = `+`)
   got <- vapply(1:4, function(k) terra::values(.field_data(cmb))[1, k], numeric(1))
   expect_equal(unname(got), c(2, 4, 6, 8)) # tuple-aligned (layer-order would give 5,5,5,5)
+})
+
+test_that("Ops.spax_field aligns raster fields by index tuple", {
+  a <- .mk_axis_field(c("fac_a", "fac_b"), c(1, 2))
+  b <- .mk_axis_field(c("fac_b", "fac_a"), c(2, 1))
+
+  res <- a + b
+  got <- vapply(1:2, function(k) terra::values(.field_data(res))[1, k], numeric(1))
+
+  expect_s3_class(res, "spax_raster_field")
+  expect_equal(.field_domain(res), c("I", "facility"))
+  expect_equal(unname(got), c(2, 4))
+})
+
+test_that("Ops.spax_field aligns product-axis raster fields by tuple", {
+  tup <- data.frame(J = c("j1", "j1", "j2", "j2"), mode = c("car", "bus", "car", "bus"))
+  a <- .mk_prod_field(tup, c(1, 2, 3, 4))
+  b <- .mk_prod_field(tup[4:1, ], c(4, 3, 2, 1))
+
+  res <- a + b
+  got <- vapply(1:4, function(k) terra::values(.field_data(res))[1, k], numeric(1))
+
+  expect_s3_class(res, "spax_raster_field")
+  expect_equal(.field_domain(res), c("I", "J", "mode"))
+  expect_equal(unname(got), c(2, 4, 6, 8))
+})
+
+test_that("Ops.spax_field supports raster scalar arithmetic", {
+  f <- mk_fields()
+
+  add <- f$kernel + 1
+  div <- 2 / f$kernel
+  pow <- f$kernel ^ 2
+
+  expect_s3_class(add, "spax_raster_field")
+  expect_equal(.field_domain(add), .field_domain(f$kernel))
+  expect_equal(.field_layer_index(add), .field_layer_index(f$kernel))
+  expect_equal(terra::values(.field_data(add)),
+               terra::values(.field_data(f$kernel) + 1))
+  expect_equal(terra::values(.field_data(div)),
+               terra::values(2 / .field_data(f$kernel)))
+  expect_equal(terra::values(.field_data(pow)),
+               terra::values(.field_data(f$kernel) ^ 2))
+})
+
+test_that("Math.spax_field applies pointwise transforms to raster fields", {
+  f <- mk_fields()
+
+  logged <- log(f$kernel)
+  rooted <- sqrt(f$kernel)
+
+  expect_s3_class(logged, "spax_raster_field")
+  expect_equal(.field_domain(logged), .field_domain(f$kernel))
+  expect_equal(.field_layer_index(logged), .field_layer_index(f$kernel))
+  expect_equal(terra::values(.field_data(logged)),
+               terra::values(log(.field_data(f$kernel))))
+  expect_equal(terra::values(.field_data(rooted)),
+               terra::values(sqrt(.field_data(f$kernel))))
+})
+
+test_that("Ops.spax_field does not auto-lift or allow unsupported Ops", {
+  f <- mk_fields()
+
+  expect_error(f$kernel * f$ratios, "matching domains")
+  expect_error(f$demand * f$ratios, "matching domains")
+  expect_error(f$ratios ^ f$ratios, "field \\^ field is not supported")
+  expect_error(f$ratios == f$ratios, "unsupported spax_field operator")
+  expect_error(f$ratios & TRUE, "unsupported spax_field operator")
+  expect_error(cumsum(f$ratios), "unsupported spax_field math transform")
 })
 
 test_that(".ae_gather rejects a source that is not single-layer domain I", {
