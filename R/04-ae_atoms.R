@@ -79,6 +79,35 @@
   .ae_align_vector_to_frame(vector_field, .field_layer_index(raster_field))
 }
 
+#' Project a vector field onto a raster's layer order as a length-nlyr numeric
+#'
+#' Returns one value per raster layer, aligned by axis-tuple key (never by
+#' position). This is what lets `raster <op> vector` use terra's per-layer
+#' recycling instead of materializing the vector as a raster stack (SPAX-022):
+#' the lift/`(data*0)+v` step is replaced by a plain numeric the op recycles.
+#'
+#' The vector's domain must be a subset of the raster's layer axes (broadcast).
+#' An axis present only on the vector would grow the raster (outer product),
+#' which is not supported here and errors clearly.
+#'
+#' Footgun guard: terra recycles a numeric per layer ONLY when its length is
+#' exactly nlyr; any other length silently recycles per cell. The length is
+#' asserted before it can reach terra arithmetic.
+#' @keywords internal
+.ae_broadcast_vector <- function(vector_field, raster_field) {
+  extra <- setdiff(.field_domain(vector_field), .field_layer_axes(raster_field))
+  if (length(extra) > 0) {
+    stop("cannot broadcast a vector axis absent from the raster layer axes: ",
+         paste(extra, collapse = ", "),
+         " (raster-growing outer products are not supported)")
+  }
+  aligned <- .ae_align_to_layers(vector_field, raster_field)
+  if (length(aligned) != terra::nlyr(.field_data(raster_field))) {
+    stop("internal: broadcast vector length must equal the raster layer count")
+  }
+  aligned
+}
+
 #' Build a raster field from already-consistent data + frame (snap construction)
 #' @keywords internal
 .ae_raster <- function(data, domain, frame, role = "unknown", meta = list()) {
@@ -171,13 +200,32 @@
   }
 
   denom <- denom + a0
-  if (inherits(values, "SpatRaster") || inherits(denom, "SpatRaster")) {
+
+  # Cell-wise denominator (a raster aligned to `values`): keep the ifel form.
+  if (inherits(denom, "SpatRaster")) {
     if (method == "standard") {
       return(terra::ifel(denom > 0, values / denom, 0 * values))
     }
     return(terra::ifel(denom > 1, values / denom, values))
   }
 
+  # Per-layer numeric denominator against a raster: use terra recycling (SPAX-022)
+  # instead of lifting `denom` to a raster. `denom` is length nlyr, one value per
+  # layer, so `values / denom` divides each layer by its scalar.
+  if (inherits(values, "SpatRaster")) {
+    if (method == "standard") {
+      out <- values / ifelse(denom > 0, denom, 1)
+      bad <- which(!(denom > 0))
+      if (length(bad) > 0) {
+        out[[bad]] <- out[[bad]] * 0
+      }
+      return(out)
+    }
+    # semi: where denom <= 1, dividing by 1 leaves the layer unchanged
+    return(values / ifelse(denom > 1, denom, 1))
+  }
+
+  # Plain numeric values (vector backend).
   if (method == "standard") {
     out <- ifelse(denom > 0, values / denom, 0 * values)
   } else {
@@ -230,9 +278,11 @@
     return(.ae_normalize_values(data, denom, method = method, a0 = a0))
   }
 
-  denom <- .ae_aggregate(field, by = by)
-  lifted <- .ae_lift(denom, template = field)
-  .ae_normalize_values(data, .field_data(lifted), method = method, a0 = a0)
+  # Aggregate to a per-group vector, then project onto the raster's layer order
+  # as a length-nlyr numeric (SPAX-022) -- no lift-to-raster of the denominator.
+  denom_field <- .ae_aggregate(field, by = by)
+  aligned <- .ae_broadcast_vector(denom_field, field)
+  .ae_normalize_values(data, aligned, method = method, a0 = a0)
 }
 
 #' Normalize vector fields by retained-axis groups
@@ -359,6 +409,12 @@ Ops.spax_field <- function(e1, e2) {
     if (.Generic == "^") {
       stop("field ^ field is not supported; use field ^ scalar or scalar ^ field")
     }
+    # The user-facing operator stays strict (SPAX-015): no auto-broadcast/lift.
+    # Mixed-domain broadcasting is an internal engine capability reached through
+    # the verbs (.ae_spread etc.) calling .ae_combine directly, not via `*`.
+    if (!setequal(.field_domain(e1), .field_domain(e2))) {
+      stop("combine requires matching domains")
+    }
     return(.ae_combine(e1, e2, op = op))
   }
 
@@ -383,12 +439,37 @@ Math.spax_field <- function(x, ...) {
   .ae_transform(x, function(data) fn(data, ...))
 }
 
-#' Combine two fields elementwise on a shared domain (binary transform)
+#' Combine two fields elementwise (binary transform)
 #'
-#' Same-domain combination; raster operands are aligned layer-wise by their
-#' non-I axis join key before the op, so row order can never silently mismatch.
+#' One align-then-apply path (SPAX-022). Operands are aligned by their axis-tuple
+#' join key (never by raw layer/row order), then the op is applied natively:
+#'
+#'   * raster x raster, same domain -> layer-aligned, terra x terra
+#'   * vector x vector, same domain -> key-aligned, numeric x numeric
+#'   * raster x vector (vector domain subset of the raster's layer axes) ->
+#'     the vector is projected to a length-nlyr numeric and recycled per layer by
+#'     terra. No lift-to-raster materialization; broadcasting is just what
+#'     projection does when an operand is missing an axis.
+#'
+#' Operand order is preserved for non-commutative ops. A vector axis absent from
+#' the raster (raster-growing outer product) is not yet supported.
 #' @keywords internal
 .ae_combine <- function(a, b, op = `*`) {
+  a_raster <- inherits(a, "spax_raster_field")
+  b_raster <- inherits(b, "spax_raster_field")
+  a_vector <- inherits(a, "spax_vector_field")
+  b_vector <- inherits(b, "spax_vector_field")
+
+  # Mixed backend: project the vector onto the raster's layer order and recycle.
+  if (a_raster && b_vector) {
+    aligned <- .ae_broadcast_vector(b, a)
+    return(.rewrap_field(a, op(.field_data(a), aligned)))
+  }
+  if (a_vector && b_raster) {
+    aligned <- .ae_broadcast_vector(a, b)
+    return(.rewrap_field(b, op(aligned, .field_data(b))))
+  }
+
   if (!setequal(.field_domain(a), .field_domain(b))) {
     stop("combine requires matching domains")
   }
@@ -609,15 +690,14 @@ Math.spax_field <- function(x, ...) {
 
 #' Realize a source field onto the demand side (facility -> demand)
 #'
-#' spread(r, W)_i = sum_j W_ij r_j. Recomposed from atoms: lift the per-facility
-#' source onto edges, multiply by the weights, aggregate over the facility axis.
-#' Returns a raster field on domain I.
+#' spread(r, W)_i = sum_j W_ij r_j. The per-facility source is combined directly
+#' with the weights (terra recycles it per layer -- no lift-to-raster, SPAX-022)
+#' and aggregated over the facility axis. Returns a raster field on domain I.
 #' @keywords internal
 .ae_spread <- function(source, weights) {
   .chck_class(source, "spax_vector_field", "source")
   .chck_class(weights, "spax_raster_field", "weights")
-  lifted <- .ae_lift(source, template = weights)
-  product <- .ae_combine(lifted, weights, op = `*`)
+  product <- .ae_combine(weights, source, op = `*`)
   out <- .ae_aggregate(product, by = .field_cell_axis(weights))
   out$role <- "realization"
   out
