@@ -2,12 +2,12 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_normalize}
 \alias{.ae_normalize}
-\title{Convert a weight/kernel field into a mapping kernel}
+\title{Convert a weight/kernel field into a mapping field}
 \usage{
-.ae_normalize(field, method = "standard")
+.ae_normalize(field, by = NULL, method = "standard", a0 = 0)
 }
 \description{
-Wraps the package's calc_normalize() so behavior matches the current engine;
-the domain is unchanged.
+`by` names the axes retained while every other axis competes. The output
+keeps the input field's domain/backend/index and uses role "map".
 }
 \keyword{internal}

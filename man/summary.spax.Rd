@@ -7,7 +7,7 @@
 \method{summary}{spax}(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
 }
 \arguments{
-\item{x}{A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()}
+\item{x}{A spax object created by spax_2sfca() or spax_e2sfca()}
 
 \item{quantiles}{Numeric vector of probabilities for quantile computation}
 

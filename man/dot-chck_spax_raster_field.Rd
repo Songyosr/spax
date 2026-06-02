@@ -13,6 +13,6 @@
 )
 }
 \description{
-Validate raster spax_field inputs
+This is the canonical finished-object validator for raster fields.
 }
 \keyword{internal}

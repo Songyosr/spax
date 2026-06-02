@@ -7,7 +7,7 @@
 \method{print}{spax}(x, ...)
 }
 \arguments{
-\item{x}{A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()}
+\item{x}{A spax object created by spax_2sfca() or spax_e2sfca()}
 
 \item{...}{Currently ignored, for extensibility}
 }

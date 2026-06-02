@@ -8,7 +8,7 @@
 #' Prints a concise summary of a spax object, showing key information about the
 #' accessibility analysis without detailed statistics.
 #'
-#' @param x A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()
+#' @param x A spax object created by spax_2sfca() or spax_e2sfca()
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
@@ -48,16 +48,6 @@ print.spax <- function(x, ...) {
     cat("- Demand normalization:", x$parameters$demand_normalize, "\n")
   }
 
-  # Model-specific information
-  if (!is.null(x$iterations)) {
-    cat("\nModel Details:\n")
-    if (!is.null(x$iterations$convergence)) {
-      cat(sprintf("- Iterations: %d\n", x$iterations$convergence$iterations))
-      cat(sprintf("- Converged: %s\n",
-                  ifelse(x$iterations$convergence$converged, "Yes", "No")))
-    }
-  }
-
   invisible(x)
 }
 
@@ -73,7 +63,7 @@ print.spax <- function(x, ...) {
 #' Provides detailed statistical summaries of accessibility analysis results,
 #' including accessibility scores, facility statistics, and model-specific metrics.
 #'
-#' @param x A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()
+#' @param x A spax object created by spax_2sfca() or spax_e2sfca()
 #' @param quantiles Numeric vector of probabilities for quantile computation
 #' @param ... Currently ignored, for extensibility
 #'
@@ -139,33 +129,11 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     }
   }
 
-  # Calculate model-specific statistics
-  model_stats <- NULL
-  if (!is.null(x$iterations)) {
-    model_stats <- list()
-
-    # Convergence information
-    if (!is.null(x$iterations$convergence)) {
-      model_stats$convergence <- x$iterations$convergence
-    }
-
-    # For iFCA: facility utilization statistics
-    if (x$type == "iFCA" && !is.null(x$facilities$utilization)) {
-      util_stats <- list(
-        min = min(x$facilities$utilization, na.rm = TRUE),
-        max = max(x$facilities$utilization, na.rm = TRUE),
-        mean = mean(x$facilities$utilization, na.rm = TRUE),
-        sd = sd(x$facilities$utilization, na.rm = TRUE)
-      )
-      model_stats$utilization <- util_stats
-    }
-  }
-
   # Create summary object using constructor
   .create_spax_summary(
     accessibility = acc_stats,
     facilities = fac_stats,
-    model_specific = model_stats,
+    model_specific = NULL,
     type = x$type,
     parameters = x$parameters
   )
@@ -240,35 +208,6 @@ print.summary.spax <- function(x, digits = 4, ...) {
     }
   }
 
-  # Model-specific Statistics (if present)
-  if (!is.null(x$model_specific)) {
-    cat("\nModel-specific Statistics:\n")
-    cat("------------------------\n")
-
-    # Convergence information
-    if (!is.null(x$model_specific$convergence)) {
-      conv <- x$model_specific$convergence
-      cat(sprintf("Iterations: %d\n", conv$iterations))
-      cat(sprintf("Converged: %s\n",
-                  ifelse(conv$converged, "Yes", "No")))
-      if (!is.null(conv$final_average)) {
-        cat(sprintf("Final convergence metric: %s\n",
-                    sprintf(fmt, conv$final_average)))
-      }
-    }
-
-    # Utilization statistics for iFCA
-    if (!is.null(x$model_specific$utilization)) {
-      util <- x$model_specific$utilization
-      cat("\nUtilization Statistics:\n")
-      cat(sprintf("  Mean (SD): %s (%s)\n",
-                  sprintf(fmt, util$mean),
-                  sprintf(fmt, util$sd)))
-      cat(sprintf("  Range: %s to %s\n",
-                  sprintf(fmt, util$min),
-                  sprintf(fmt, util$max)))
-    }
-  }
   invisible(x)
 }
 

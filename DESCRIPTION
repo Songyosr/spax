@@ -20,12 +20,10 @@ LazyDataCompression: xz
 Imports:
     terra,
     raster,
-    parallel,
     sf,
     ggplot2,
     stats,
     dplyr,
-    purrr,
     tibble,
     withr,
 Suggests:

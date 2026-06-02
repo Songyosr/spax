@@ -27,22 +27,6 @@
   invisible(TRUE)
 }
 
-#' Validate IFCA-specific spax object
-#' @keywords internal
-.chck_ifca <- function(x, check_history = TRUE, name = "Input") {
-  .chck_class(x, "spax", name)
-
-  if (!identical(x$type, "iFCA")) {
-    stop(name, " must be a result from spax_ifca()")
-  }
-
-  if (check_history && (is.null(x$iterations) || is.null(x$iterations$history))) {
-    stop("No iteration history found in ", name)
-  }
-
-  invisible(TRUE)
-}
-
 # 2. Basic Value Checks --------------------------------------------------------
 #' Check if value is in valid range
 #' @keywords internal

@@ -2,11 +2,11 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_align_to_layers}
 \alias{.ae_align_to_layers}
-\title{Reorder a vector field's values to a raster field's layer order, by shared axis}
+\title{Reorder a vector field's values to a raster field's layer order}
 \usage{
 .ae_align_to_layers(vector_field, raster_field)
 }
 \description{
-Reorder a vector field's values to a raster field's layer order, by shared axis
+Reorder a vector field's values to a raster field's layer order
 }
 \keyword{internal}
