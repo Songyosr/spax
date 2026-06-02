@@ -418,15 +418,54 @@ test_that("Math.spax_field applies pointwise transforms to raster fields", {
                terra::values(sqrt(.field_data(f$kernel))))
 })
 
-test_that("Ops.spax_field does not auto-lift or allow unsupported Ops", {
+test_that("Ops.spax_field broadcasts on subset domains, errors on disjoint (DEC-011)", {
   f <- mk_fields()
 
-  expect_error(f$kernel * f$ratios, "matching domains")
-  expect_error(f$demand * f$ratios, "matching domains")
+  # subset: vector(facility) broadcasts onto raster(I, facility) via the operator
+  out <- f$kernel * f$ratios
+  expect_s3_class(out, "spax_raster_field")
+  expect_equal(.field_domain(out), .field_domain(f$kernel))
+  expect_equal(
+    terra::values(.field_data(out)),
+    terra::values(.field_data(f$kernel) * c(1.5, 2.5))
+  )
+
+  # disjoint domains (I vs facility): no subset relationship -> error
+  expect_error(f$demand * f$ratios, "subset|outer product")
+
+  # still disallowed / unsupported
   expect_error(f$ratios ^ f$ratios, "field \\^ field is not supported")
   expect_error(f$ratios == f$ratios, "unsupported spax_field operator")
   expect_error(f$ratios & TRUE, "unsupported spax_field operator")
   expect_error(cumsum(f$ratios), "unsupported spax_field math transform")
+})
+
+test_that("equal-domain raster combine is cell-by-cell", {
+  f <- mk_fields()
+  out <- f$kernel * f$kernel
+  expect_equal(
+    terra::values(.field_data(out)),
+    terra::values(.field_data(f$kernel) * .field_data(f$kernel))
+  )
+})
+
+test_that(".ae_combine broadcasts a subset-domain raster onto a product-axis raster", {
+  # big: (I, J, mode) 4 layers; small: (I, J) 2 layers -> replicate over mode
+  big <- .mk_prod_field(
+    tuples = list(J = c("j1", "j1", "j2", "j2"), mode = c("m1", "m2", "m1", "m2")),
+    vals = c(1, 2, 3, 4)
+  )
+  sr <- c(terra::rast(nrows = 2, ncols = 2, vals = 10),
+          terra::rast(nrows = 2, ncols = 2, vals = 100))
+  names(sr) <- c("j1", "j2")
+  small <- .spax_raster_field(sr, domain = c("I", "J"))
+
+  out <- .ae_combine(big, small, op = `*`)
+  # J=j1 layers (vals 1,2) * 10 ; J=j2 layers (vals 3,4) * 100
+  expect_equal(
+    unname(as.numeric(terra::global(.field_data(out), "mean")[[1]])),
+    c(1 * 10, 2 * 10, 3 * 100, 4 * 100)
+  )
 })
 
 # SPAX-022: align-and-apply combine (broadcast via terra recycling, no lift) ----
