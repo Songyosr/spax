@@ -409,12 +409,9 @@ Ops.spax_field <- function(e1, e2) {
     if (.Generic == "^") {
       stop("field ^ field is not supported; use field ^ scalar or scalar ^ field")
     }
-    # The user-facing operator stays strict (SPAX-015): no auto-broadcast/lift.
-    # Mixed-domain broadcasting is an internal engine capability reached through
-    # the verbs (.ae_spread etc.) calling .ae_combine directly, not via `*`.
-    if (!setequal(.field_domain(e1), .field_domain(e2))) {
-      stop("combine requires matching domains")
-    }
+    # Operator broadcasts on subset/equal domains (DEC-011, supersedes the
+    # SPAX-015 strict rule). .ae_combine enforces the subset-or-equal contract and
+    # errors on disjoint cross-domain (outer product).
     return(.ae_combine(e1, e2, op = op))
   }
 
@@ -439,40 +436,76 @@ Math.spax_field <- function(x, ...) {
   .ae_transform(x, function(data) fn(data, ...))
 }
 
-#' Combine two fields elementwise (binary transform)
+#' Project a smaller-domain field onto a larger field's slot order
 #'
-#' One align-then-apply path (SPAX-022). Operands are aligned by their axis-tuple
-#' join key (never by raw layer/row order), then the op is applied natively:
+#' Returns a payload to apply against `.field_data(big)`, aligned by axis-tuple key
+#' on the smaller field's domain (broadcast; never by position):
+#'   * big raster, small vector -> length-nlyr numeric (terra recycles per layer)
+#'   * big raster, small raster -> small's layers replicated to big's layer order
+#'   * big vector, small vector -> length-n numeric in big's node order
+#' The smaller field's domain must be a subset of the larger's.
+#' @keywords internal
+.ae_project_onto <- function(small, big) {
+  if (inherits(big, "spax_raster_field")) {
+    if (inherits(small, "spax_vector_field")) {
+      return(.ae_broadcast_vector(small, big))
+    }
+    # small is a raster with fewer layer axes: replicate its layers to big's order
+    small_axes <- .field_layer_axes(small)
+    big_data <- .field_data(big)
+    if (length(small_axes) == 0) {
+      if (terra::nlyr(.field_data(small)) != 1) {
+        stop("cell-axis-only raster operand must have a single layer")
+      }
+      return(.field_data(small)[[rep(1, terra::nlyr(big_data))]])
+    }
+    key_big <- .ae_tuple_key(.field_layer_index(big), small_axes)
+    key_small <- .ae_tuple_key(.field_layer_index(small), small_axes)
+    if (!all(key_big %in% key_small)) {
+      stop("raster operand is missing layer tuples present in the other operand")
+    }
+    return(.field_data(small)[[match(key_big, key_small)]])
+  }
+
+  if (inherits(big, "spax_vector_field")) {
+    return(.ae_align_vector_to_frame(small, .field_node_index(big)))
+  }
+
+  stop("unsupported projection target")
+}
+
+#' Combine two fields elementwise or by broadcast (binary transform)
 #'
-#'   * raster x raster, same domain -> layer-aligned, terra x terra
-#'   * vector x vector, same domain -> key-aligned, numeric x numeric
-#'   * raster x vector (vector domain subset of the raster's layer axes) ->
-#'     the vector is projected to a length-nlyr numeric and recycled per layer by
-#'     terra. No lift-to-raster materialization; broadcasting is just what
-#'     projection does when an operand is missing an axis.
+#' One align-then-apply path (SPAX-022 / DEC-011). Operands are aligned by their
+#' axis-tuple join key (never by raw layer/row order), then the op is applied
+#' natively. The two operands' domains must be subset-or-equal of one another:
 #'
-#' Operand order is preserved for non-commutative ops. A vector axis absent from
-#' the raster (raster-growing outer product) is not yet supported.
+#'   * equal domains -> elementwise (raster x raster layer-aligned; vector x
+#'     vector key-aligned), e.g. (I,facility) * (I,facility) is cell-by-cell.
+#'   * one domain a strict subset -> the smaller is broadcast onto the larger's
+#'     structure (terra recycles a per-layer numeric, or layers are replicated by
+#'     reference) -- no lift-to-raster materialization.
+#'
+#' The larger-domain operand is the template; operand order is preserved for
+#' non-commutative ops. Disjoint domains (a true raster-growing outer product)
+#' are not supported yet and error clearly.
 #' @keywords internal
 .ae_combine <- function(a, b, op = `*`) {
-  a_raster <- inherits(a, "spax_raster_field")
-  b_raster <- inherits(b, "spax_raster_field")
-  a_vector <- inherits(a, "spax_vector_field")
-  b_vector <- inherits(b, "spax_vector_field")
+  da_dom <- .field_domain(a)
+  db_dom <- .field_domain(b)
 
-  # Mixed backend: project the vector onto the raster's layer order and recycle.
-  if (a_raster && b_vector) {
-    aligned <- .ae_broadcast_vector(b, a)
-    return(.rewrap_field(a, op(.field_data(a), aligned)))
-  }
-  if (a_vector && b_raster) {
-    aligned <- .ae_broadcast_vector(a, b)
-    return(.rewrap_field(b, op(aligned, .field_data(b))))
+  # Subset (not equal): broadcast the smaller-domain operand onto the larger.
+  if (!setequal(da_dom, db_dom)) {
+    if (all(db_dom %in% da_dom)) {            # b's domain subset of a's -> a is template
+      return(.rewrap_field(a, op(.field_data(a), .ae_project_onto(b, a))))
+    }
+    if (all(da_dom %in% db_dom)) {            # a's domain subset of b's -> b is template
+      return(.rewrap_field(b, op(.ae_project_onto(a, b), .field_data(b))))
+    }
+    stop("combine requires subset or equal domains; disjoint cross-domain ",
+         "combine (outer product) is not supported")
   }
 
-  if (!setequal(.field_domain(a), .field_domain(b))) {
-    stop("combine requires matching domains")
-  }
   backend <- .field_backend(a)
   if (!identical(backend, .field_backend(b))) {
     stop("combine requires matching backends")

@@ -2,23 +2,24 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_combine}
 \alias{.ae_combine}
-\title{Combine two fields elementwise (binary transform)}
+\title{Combine two fields elementwise or by broadcast (binary transform)}
 \usage{
 .ae_combine(a, b, op = `*`)
 }
 \description{
-One align-then-apply path (SPAX-022). Operands are aligned by their axis-tuple
-join key (never by raw layer/row order), then the op is applied natively:
+One align-then-apply path (SPAX-022 / DEC-011). Operands are aligned by their
+axis-tuple join key (never by raw layer/row order), then the op is applied
+natively. The two operands' domains must be subset-or-equal of one another:
 }
 \details{
-* raster x raster, same domain -> layer-aligned, terra x terra
-  * vector x vector, same domain -> key-aligned, numeric x numeric
-  * raster x vector (vector domain subset of the raster's layer axes) ->
-    the vector is projected to a length-nlyr numeric and recycled per layer by
-    terra. No lift-to-raster materialization; broadcasting is just what
-    projection does when an operand is missing an axis.
+* equal domains -> elementwise (raster x raster layer-aligned; vector x
+    vector key-aligned), e.g. (I,facility) * (I,facility) is cell-by-cell.
+  * one domain a strict subset -> the smaller is broadcast onto the larger's
+    structure (terra recycles a per-layer numeric, or layers are replicated by
+    reference) -- no lift-to-raster materialization.
 
-Operand order is preserved for non-commutative ops. A vector axis absent from
-the raster (raster-growing outer product) is not yet supported.
+The larger-domain operand is the template; operand order is preserved for
+non-commutative ops. Disjoint domains (a true raster-growing outer product)
+are not supported yet and error clearly.
 }
 \keyword{internal}
