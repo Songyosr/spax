@@ -13,6 +13,6 @@
 )
 }
 \description{
-Validate vector spax_field inputs
+This is the canonical finished-object validator for vector fields.
 }
 \keyword{internal}

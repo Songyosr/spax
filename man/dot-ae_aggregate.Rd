@@ -2,13 +2,12 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_aggregate}
 \alias{.ae_aggregate}
-\title{Collapse a field over one axis}
+\title{Collapse a field by retaining selected axes}
 \usage{
-.ae_aggregate(field, over)
+.ae_aggregate(field, by = NULL)
 }
 \description{
-Over "I" (raster): per-layer cell sum -> vector field on the non-I axis
-(DEC-006: collapsing I changes the backend). Over a non-I axis: sum across
-layers -> single-layer raster field on the remaining domain.
+`by` names the axes to keep. Every other axis is summed away. `by = NULL`
+returns a scalar total.
 }
 \keyword{internal}

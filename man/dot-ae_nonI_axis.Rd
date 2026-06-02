@@ -2,11 +2,11 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_nonI_axis}
 \alias{.ae_nonI_axis}
-\title{The single non-I axis of a raster field (errors on 0 or >1)}
+\title{The single raster layer axis (errors on 0 or >1)}
 \usage{
 .ae_nonI_axis(field)
 }
 \description{
-The single non-I axis of a raster field (errors on 0 or >1)
+The single raster layer axis (errors on 0 or >1)
 }
 \keyword{internal}

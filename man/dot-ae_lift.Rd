@@ -2,16 +2,13 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_lift}
 \alias{.ae_lift}
-\title{Lift a field onto a larger typed domain}
+\title{Lift a field onto a template field's structure}
 \usage{
-.ae_lift(field, to, template)
+.ae_lift(field, template)
 }
 \description{
-Broadcast a field to a target domain using a raster `template` that supplies
-the new axis structure (index$layer) and grid geometry. FCA cases:
-  - vector field on axis A  -> raster field (I, A): each layer is constant,
-    the value for facility f, aligned to the template by join key.
-  - raster field on I       -> raster field (I, A): the single layer is
-    replicated across the template's layers.
+The template supplies backend, domain, geometry, and index frame. Its values
+are ignored. Source values are matched on source axes and broadcast over axes
+present only in the template.
 }
 \keyword{internal}
