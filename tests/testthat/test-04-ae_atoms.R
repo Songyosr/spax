@@ -17,6 +17,15 @@ mk_fields <- function() {
   list(kernel = kernel, demand = demand, ratios = ratios)
 }
 
+.mk_prod_field <- function(tuples, vals) {
+  r <- do.call(c, lapply(vals, function(v) terra::rast(nrows = 2, ncols = 2, vals = v)))
+  names(r) <- paste0("ly", seq_along(vals))
+  frame <- data.frame(
+    layer = names(r), J = tuples$J, mode = tuples$mode, stringsAsFactors = FALSE
+  )
+  .spax_raster_field(r, domain = c("I", "J", "mode"), frame = frame)
+}
+
 # Atoms ----------------------------------------------------------------------
 
 test_that(".ae_aggregate over I collapses to a vector field (DEC-006)", {
@@ -209,11 +218,101 @@ test_that(".ae_update applies a damped mix", {
 
 test_that(".ae_normalize matches calc_normalize", {
   f <- mk_fields()
-  n <- .ae_normalize(f$kernel, method = "standard")
+  n <- .ae_normalize(f$kernel, by = "I", method = "standard")
   expect_equal(
     terra::values(.field_data(n)),
     terra::values(calc_normalize(.field_data(f$kernel), method = "standard"))
   )
+})
+
+test_that(".ae_normalize infers raster cell axis when by is omitted", {
+  f <- mk_fields()
+  expect_warning(
+    inferred <- .ae_normalize(f$kernel, method = "standard"),
+    "`by` omitted"
+  )
+  explicit <- .ae_normalize(f$kernel, by = "I", method = "standard")
+  expect_equal(terra::values(.field_data(inferred)),
+               terra::values(.field_data(explicit)))
+})
+
+test_that(".ae_normalize groups product-axis raster fields by mode", {
+  field <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"),
+               mode = c("car", "bus", "car", "bus")),
+    c(1, 2, 3, 4)
+  )
+  normalized <- .ae_normalize(field, by = c("I", "mode"), method = "standard")
+  values <- terra::values(.field_data(normalized))
+
+  expect_s3_class(normalized, "spax_raster_field")
+  expect_equal(.field_domain(normalized), c("I", "J", "mode"))
+  expect_equal(.field_role(normalized), "map")
+  expect_equal(unname(values[1, ]), c(0.25, 1 / 3, 0.75, 2 / 3))
+  expect_equal(values[, 1] + values[, 3], rep(1, nrow(values)))
+  expect_equal(values[, 2] + values[, 4], rep(1, nrow(values)))
+})
+
+test_that(".ae_normalize groups product-axis raster fields by facility", {
+  field <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"),
+               mode = c("car", "bus", "car", "bus")),
+    c(1, 2, 3, 4)
+  )
+  normalized <- .ae_normalize(field, by = c("I", "J"), method = "standard")
+  values <- terra::values(.field_data(normalized))
+
+  expect_equal(unname(values[1, ]), c(1 / 3, 2 / 3, 3 / 7, 4 / 7))
+  expect_equal(values[, 1] + values[, 2], rep(1, nrow(values)))
+  expect_equal(values[, 3] + values[, 4], rep(1, nrow(values)))
+})
+
+test_that(".ae_normalize can normalize raster fields after collapsing cells", {
+  field <- .mk_prod_field(
+    data.frame(J = c("j1", "j1", "j2", "j2"),
+               mode = c("car", "bus", "car", "bus")),
+    c(1, 2, 3, 4)
+  )
+  normalized <- .ae_normalize(field, by = "J", method = "standard")
+  values <- terra::values(.field_data(normalized))
+
+  expect_equal(unname(values[1, ]), c(1 / 12, 2 / 12, 3 / 28, 4 / 28))
+  expect_equal(sum(values[, 1]) + sum(values[, 2]), 1)
+  expect_equal(sum(values[, 3]) + sum(values[, 4]), 1)
+})
+
+test_that(".ae_normalize supports vector fields by retained axes", {
+  frame <- data.frame(J = c("j1", "j1", "j2", "j2"),
+                      mode = c("car", "bus", "car", "bus"))
+  field <- .spax_vector_field(c(1, 2, 3, 4), domain = c("J", "mode"),
+                              frame = frame)
+
+  by_mode <- .ae_normalize(field, by = "mode", method = "standard")
+  expect_s3_class(by_mode, "spax_vector_field")
+  expect_equal(.field_role(by_mode), "map")
+  expect_equal(unname(.field_data(by_mode)), c(0.25, 1 / 3, 0.75, 2 / 3))
+
+  global <- .ae_normalize(field, method = "standard")
+  expect_equal(sum(.field_data(global)), 1)
+  expect_equal(unname(.field_data(global)), c(0.1, 0.2, 0.3, 0.4))
+})
+
+test_that(".ae_normalize handles outside option and semi normalization by group", {
+  frame <- data.frame(J = c("j1", "j1", "j2", "j2"),
+                      mode = c("car", "bus", "car", "bus"))
+  field <- .spax_vector_field(c(1, 2, 3, 4), domain = c("J", "mode"),
+                              frame = frame)
+
+  outside <- .ae_normalize(field, by = "mode", method = "standard", a0 = 1)
+  expect_equal(unname(.field_data(outside)), c(0.2, 2 / 7, 0.6, 4 / 7))
+
+  semi_field <- .spax_vector_field(
+    c(0.2, 0.8, 0.4, 0.8),
+    domain = c("J", "mode"),
+    frame = frame
+  )
+  semi <- .ae_normalize(semi_field, by = "mode", method = "semi")
+  expect_equal(unname(.field_data(semi)), c(0.2, 0.5, 0.4, 0.5))
 })
 
 test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {
@@ -242,15 +341,6 @@ test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {
   frame <- data.frame(layer = names(r), stringsAsFactors = FALSE)
   frame[[axis]] <- ids
   .spax_raster_field(r, domain = c("I", axis), frame = frame)
-}
-
-.mk_prod_field <- function(tuples, vals) {
-  r <- do.call(c, lapply(vals, function(v) terra::rast(nrows = 2, ncols = 2, vals = v)))
-  names(r) <- paste0("ly", seq_along(vals))
-  frame <- data.frame(
-    layer = names(r), J = tuples$J, mode = tuples$mode, stringsAsFactors = FALSE
-  )
-  .spax_raster_field(r, domain = c("I", "J", "mode"), frame = frame)
 }
 
 test_that(".ae_combine aligns single-axis fields by id, not layer order", {

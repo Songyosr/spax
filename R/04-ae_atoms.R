@@ -123,6 +123,137 @@
   get(fn, envir = baseenv(), mode = "function")
 }
 
+#' Resolve and validate normalize arguments
+#' @keywords internal
+.ae_normalize_args <- function(field, by, method, a0) {
+  backend <- .field_backend(field)
+  domain <- .field_domain(field)
+
+  if (is.null(by)) {
+    if (backend == "raster") {
+      by <- .field_cell_axis(field)
+      warning(
+        "`by` omitted for raster normalization; using the raster cell axis",
+        call. = FALSE
+      )
+    } else {
+      by <- character()
+    }
+  }
+
+  .chck_class(by, "character", "by")
+  if (anyDuplicated(by)) {
+    stop("by must contain unique axis names")
+  }
+  if (!all(by %in% domain)) {
+    stop("by must be NULL or a subset of the field domain")
+  }
+
+  .chck_class(method, "character", "method")
+  .chck_length(length(method), 1, "method")
+  valid_methods <- c("identity", "standard", "semi")
+  if (!method %in% valid_methods) {
+    stop("method must be one of: ", paste(valid_methods, collapse = ", "))
+  }
+
+  .chck_is_numeric(a0, "a0")
+  .chck_length(length(a0), 1, "a0")
+  .chck_positive(a0, allow_zero = TRUE, "a0")
+
+  by
+}
+
+#' Apply grouped normalization with a scalar, vector, or raster denominator
+#' @keywords internal
+.ae_normalize_values <- function(values, denom, method, a0 = 0) {
+  if (method == "identity") {
+    return(values)
+  }
+
+  denom <- denom + a0
+  if (inherits(values, "SpatRaster") || inherits(denom, "SpatRaster")) {
+    if (method == "standard") {
+      return(terra::ifel(denom > 0, values / denom, 0 * values))
+    }
+    return(terra::ifel(denom > 1, values / denom, values))
+  }
+
+  if (method == "standard") {
+    out <- ifelse(denom > 0, values / denom, 0 * values)
+  } else {
+    out <- ifelse(denom > 1, values / denom, values)
+  }
+  out
+}
+
+#' Normalize raster layers by cell-retaining groups
+#' @keywords internal
+.ae_normalize_raster_by_cell <- function(field, by, method, a0 = 0) {
+  data <- .field_data(field)
+  layer_frame <- .field_layer_index(field)
+  keep_layer_axes <- setdiff(by, .field_cell_axis(field))
+
+  if (length(keep_layer_axes) == 0) {
+    denom <- sum(data, na.rm = TRUE)
+    return(.ae_normalize_values(data, denom, method = method, a0 = a0))
+  }
+
+  group_key <- .ae_tuple_key(layer_frame, keep_layer_axes)
+  groups <- unique(group_key)
+  layers <- vector("list", terra::nlyr(data))
+
+  for (group in groups) {
+    idx <- which(group_key == group)
+    denom <- if (length(idx) == 1) {
+      data[[idx]]
+    } else {
+      terra::app(data[[idx]], fun = sum, na.rm = TRUE)
+    }
+    normalized <- .ae_normalize_values(data[[idx]], denom, method = method, a0 = a0)
+    for (pos in seq_along(idx)) {
+      layers[[idx[pos]]] <- normalized[[pos]]
+    }
+  }
+
+  out <- terra::rast(layers)
+  names(out) <- names(data)
+  out
+}
+
+#' Normalize raster fields when the retained axes do not include the cell axis
+#' @keywords internal
+.ae_normalize_raster_by_global <- function(field, by, method, a0 = 0) {
+  data <- .field_data(field)
+
+  if (length(by) == 0) {
+    denom <- .ae_aggregate(field, by = character())
+    return(.ae_normalize_values(data, denom, method = method, a0 = a0))
+  }
+
+  denom <- .ae_aggregate(field, by = by)
+  lifted <- .ae_lift(denom, template = field)
+  .ae_normalize_values(data, .field_data(lifted), method = method, a0 = a0)
+}
+
+#' Normalize vector fields by retained-axis groups
+#' @keywords internal
+.ae_normalize_vector <- function(field, by, method, a0 = 0) {
+  values <- .field_data(field)
+  if (length(by) == 0) {
+    denom <- rep(sum(values, na.rm = TRUE), length(values))
+    return(.ae_normalize_values(values, denom, method = method, a0 = a0))
+  }
+
+  frame <- .field_node_index(field)
+  key <- .ae_tuple_key(frame, by)
+  groups <- unique(key)
+  denom_by_group <- vapply(groups, function(group) {
+    sum(values[key == group], na.rm = TRUE)
+  }, numeric(1))
+  denom <- denom_by_group[match(key, groups)]
+  .ae_normalize_values(values, denom, method = method, a0 = a0)
+}
+
 # Atom: lift -----------------------------------------------------------------
 
 #' Lift a field onto a template field's structure
@@ -419,15 +550,35 @@ Math.spax_field <- function(x, ...) {
 
 # Verb: normalize ------------------------------------------------------------
 
-#' Convert a weight/kernel field into a mapping kernel
+#' Convert a weight/kernel field into a mapping field
 #'
-#' Wraps the package's calc_normalize() so behavior matches the current engine;
-#' the domain is unchanged.
+#' `by` names the axes retained while every other axis competes. The output
+#' keeps the input field's domain/backend/index and uses role "map".
 #' @keywords internal
-.ae_normalize <- function(field, method = "standard") {
-  .chck_class(field, "spax_raster_field", "field")
-  res <- calc_normalize(.field_data(field), method = method)
-  .rewrap_field(field, res, role = "map", meta = list())
+.ae_normalize <- function(field, by = NULL, method = "standard", a0 = 0) {
+  .chck_class(field, "spax_field", "field")
+  by <- .ae_normalize_args(field, by, method, a0)
+
+  if (method == "identity") {
+    return(.rewrap_field(field, .field_data(field), role = "map", meta = list()))
+  }
+
+  backend <- .field_backend(field)
+  if (backend == "raster") {
+    data <- if (.field_cell_axis(field) %in% by) {
+      .ae_normalize_raster_by_cell(field, by, method = method, a0 = a0)
+    } else {
+      .ae_normalize_raster_by_global(field, by, method = method, a0 = a0)
+    }
+    return(.rewrap_field(field, data, role = "map", meta = list()))
+  }
+
+  if (backend == "vector") {
+    data <- .ae_normalize_vector(field, by, method = method, a0 = a0)
+    return(.rewrap_field(field, data, role = "map", meta = list()))
+  }
+
+  stop("unsupported normalize for backend '", backend, "'")
 }
 
 # Verb: gather (fused) -------------------------------------------------------

@@ -99,7 +99,11 @@ compute_fca <- function(demand, supply, demand_kernel, access_kernel,
   )
   .fca_check_kernel_pair(demand_kernel, access_kernel)
 
-  demand_kernel <- .ae_normalize(demand_kernel, method = demand_normalize)
+  demand_kernel <- .ae_normalize(
+    demand_kernel,
+    by = .field_cell_axis(demand_kernel),
+    method = demand_normalize
+  )
   potential_demand <- .ae_gather(demand, demand_kernel)
   supply_fields <- .fca_supply_fields(
     supply = supply,

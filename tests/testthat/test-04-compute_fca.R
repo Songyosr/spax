@@ -56,12 +56,14 @@ test_that("compute_fca single-measure output equals the raw FCA core", {
   td <- .mk_compute_fca_data()
   weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
 
-  result <- compute_fca(
-    demand = td$demand,
-    supply = td$supply_vector,
-    demand_kernel = weights,
-    access_kernel = weights,
-    demand_normalize = "standard"
+  expect_no_warning(
+    result <- compute_fca(
+      demand = td$demand,
+      supply = td$supply_vector,
+      demand_kernel = weights,
+      access_kernel = weights,
+      demand_normalize = "standard"
+    )
   )
   expected <- .raw_fca_expected(
     demand = td$demand,
