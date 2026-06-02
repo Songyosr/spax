@@ -2,12 +2,23 @@
 % Please edit documentation in R/04-ae_atoms.R
 \name{.ae_combine}
 \alias{.ae_combine}
-\title{Combine two fields elementwise on a shared domain (binary transform)}
+\title{Combine two fields elementwise (binary transform)}
 \usage{
 .ae_combine(a, b, op = `*`)
 }
 \description{
-Same-domain combination; raster operands are aligned layer-wise by their
-non-I axis join key before the op, so row order can never silently mismatch.
+One align-then-apply path (SPAX-022). Operands are aligned by their axis-tuple
+join key (never by raw layer/row order), then the op is applied natively:
+}
+\details{
+* raster x raster, same domain -> layer-aligned, terra x terra
+  * vector x vector, same domain -> key-aligned, numeric x numeric
+  * raster x vector (vector domain subset of the raster's layer axes) ->
+    the vector is projected to a length-nlyr numeric and recycled per layer by
+    terra. No lift-to-raster materialization; broadcasting is just what
+    projection does when an operand is missing an axis.
+
+Operand order is preserved for non-commutative ops. A vector axis absent from
+the raster (raster-growing outer product) is not yet supported.
 }
 \keyword{internal}

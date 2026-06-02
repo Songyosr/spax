@@ -429,6 +429,83 @@ test_that("Ops.spax_field does not auto-lift or allow unsupported Ops", {
   expect_error(cumsum(f$ratios), "unsupported spax_field math transform")
 })
 
+# SPAX-022: align-and-apply combine (broadcast via terra recycling, no lift) ----
+
+test_that(".ae_combine broadcasts a same-axis vector onto a raster (recycle)", {
+  f <- mk_fields()
+  # raster(I, facility) * vector(facility): each layer scaled by its facility value
+  out <- .ae_combine(f$kernel, f$ratios, op = `*`)
+
+  expect_s3_class(out, "spax_raster_field")
+  expect_equal(.field_domain(out), .field_domain(f$kernel))
+  expect_equal(.field_layer_index(out), .field_layer_index(f$kernel))
+  # equals the raw terra per-layer recycle (the trick we are preserving)
+  expect_equal(
+    terra::values(.field_data(out)),
+    terra::values(.field_data(f$kernel) * c(1.5, 2.5))
+  )
+})
+
+test_that(".ae_combine is operand-order-correct for non-commutative ops", {
+  f <- mk_fields()
+  out <- .ae_combine(f$kernel, f$ratios, op = `/`)   # kernel / ratios (per layer)
+  expect_equal(
+    terra::values(.field_data(out)),
+    terra::values(.field_data(f$kernel) / c(1.5, 2.5))
+  )
+})
+
+test_that(".ae_combine broadcasts a subset-axis vector over a product-axis raster", {
+  # raster domain (I, J, mode) with 4 layers; vector over J only
+  prod <- .mk_prod_field(
+    tuples = list(J = c("j1", "j1", "j2", "j2"), mode = c("m1", "m2", "m1", "m2")),
+    vals = c(1, 2, 3, 4)
+  )
+  vj <- .spax_vector_field(c(j1 = 10, j2 = 100), domain = "J")
+
+  out <- .ae_combine(prod, vj, op = `*`)
+  # layers with J=j1 scaled by 10, J=j2 scaled by 100
+  expect_equal(
+    unname(as.numeric(terra::global(.field_data(out), "mean")[[1]])),
+    c(1 * 10, 2 * 10, 3 * 100, 4 * 100)
+  )
+})
+
+test_that(".ae_combine propagates NA from the raster operand (no lift mask)", {
+  f <- mk_fields()
+  kr <- c(
+    terra::rast(nrows = 4, ncols = 4, vals = runif(16)),
+    terra::rast(nrows = 4, ncols = 4, vals = runif(16))
+  )
+  names(kr) <- c("fac_a", "fac_b")
+  kr[[1]][1] <- NA
+  kernel_na <- .spax_raster_field(kr, domain = c("I", "facility"))
+
+  out <- .ae_combine(kernel_na, f$ratios, op = `*`)
+  na_out <- unname(terra::values(is.na(.field_data(out))))
+  na_in <- unname(terra::values(is.na(kr)))
+  expect_equal(na_out, na_in)   # NA pattern carried by the raster, not imprinted
+})
+
+test_that(".ae_combine refuses a raster-growing outer product (guarded)", {
+  f <- mk_fields()
+  # demand is domain I (no facility layer axis); facility lives only on the vector
+  expect_error(
+    .ae_combine(f$demand, f$ratios, op = `*`),
+    "outer product"
+  )
+})
+
+test_that(".ae_spread no longer lifts and still equals the raw kernel", {
+  f <- mk_fields()
+  spread <- .ae_spread(f$ratios, f$kernel)
+  raw <- .spread_core(c(1.5, 2.5), .field_data(f$kernel))
+  expect_equal(
+    as.numeric(terra::values(.field_data(spread))),
+    as.numeric(terra::values(raw))
+  )
+})
+
 test_that(".ae_gather rejects a source that is not single-layer domain I", {
   f <- mk_fields()
   expect_error(.ae_gather(f$kernel, f$kernel), "cell axis")
