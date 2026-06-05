@@ -12,7 +12,9 @@ calc_decay(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...)
 \item{method}{Character string specifying the decay function or a custom function:
 "gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...)}
 
-\item{sigma}{Parameter controlling the rate of decay}
+\item{sigma}{Parameter controlling the rate of decay. A single number, or a
+SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
+spatially varying catchment (variable-catchment FCA / V2SFCA).}
 
 \item{snap}{Logical; if TRUE, skip input validation}
 
