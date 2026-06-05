@@ -1,0 +1,24 @@
+# Combine two fields elementwise or by broadcast (binary transform)
+
+One align-then-apply path (SPAX-022 / DEC-011). Operands are aligned by
+their axis-tuple join key (never by raw layer/row order), then the op is
+applied natively. The two operands' domains must be subset-or-equal of
+one another:
+
+## Usage
+
+``` r
+.ae_combine(a, b, op = `*`)
+```
+
+## Details
+
+\* equal domains -\> elementwise (raster x raster layer-aligned; vector
+x vector key-aligned), e.g. (I,facility) \* (I,facility) is
+cell-by-cell. \* one domain a strict subset -\> the smaller is broadcast
+onto the larger's structure (terra recycles a per-layer numeric, or
+layers are replicated by reference) – no lift-to-raster materialization.
+
+The larger-domain operand is the template; operand order is preserved
+for non-commutative ops. Disjoint domains (a true raster-growing outer
+product) are not supported yet and error clearly.

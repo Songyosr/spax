@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>1. Getting Started with spax: A Healthcare Accessibility Case Study • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="1. Getting Started with spax: A Healthcare Accessibility Case Study">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,8 @@
     <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-103-dissection.html">3. Under the Hood: Dissecting Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Why Rasters? The Pros, Cons, and Best Practices</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
       </ul>
@@ -61,7 +63,7 @@
       <h1>1. Getting Started with spax: A Healthcare Accessibility Case Study</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/spax-101-intro.Rmd" class="external-link"><code>vignettes/spax-101-intro.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/develop/vignettes/spax-101-intro.Rmd" class="external-link"><code>vignettes/spax-101-intro.Rmd</code></a></small>
       <div class="d-none name"><code>spax-101-intro.Rmd</code></div>
     </div>
 
@@ -132,8 +134,6 @@ lazy-loaded) that showcase healthcare accessibility analysis in action.
 Let’s load the required packages first:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span> <span class="co"># For accessibility analysis</span></span>
-<span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
-<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span> <span class="co"># For raster operations</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/raster" class="external-link">raster</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span> <span class="co"># For vector data handling</span></span>
@@ -149,15 +149,15 @@ Meta’s High Resolution Population Density Maps:</p>
 <span></span>
 <span><span class="co"># Quick view of the data</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span></span>
-<span><span class="co">#&gt; class       : SpatRaster </span></span>
-<span><span class="co">#&gt; dimensions  : 509, 647, 1  (nrow, ncol, nlyr)</span></span>
+<span><span class="co">#&gt; class       : SpatRaster</span></span>
+<span><span class="co">#&gt; size        : 509, 647, 1  (nrow, ncol, nlyr)</span></span>
 <span><span class="co">#&gt; resolution  : 520.4038, 520.4038  (x, y)</span></span>
 <span><span class="co">#&gt; extent      : 505646.5, 842347.8, 620843.7, 885729.2  (xmin, xmax, ymin, ymax)</span></span>
-<span><span class="co">#&gt; coord. ref. : WGS 84 / UTM zone 47N (EPSG:32647) </span></span>
-<span><span class="co">#&gt; source      : u5pd.tif </span></span>
-<span><span class="co">#&gt; name        : tha_children_under_five_2020 </span></span>
-<span><span class="co">#&gt; min value   :                      0.00000 </span></span>
-<span><span class="co">#&gt; max value   :                     83.07421</span></span>
+<span><span class="co">#&gt; coord. ref. : WGS 84 / UTM zone 47N (EPSG:32647)</span></span>
+<span><span class="co">#&gt; source      : u5pd.tif</span></span>
+<span><span class="co">#&gt; name        : tha_children_under_five_2020</span></span>
+<span><span class="co">#&gt; min value   :                            0</span></span>
+<span><span class="co">#&gt; max value   :                    83.074211</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">res</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span> <span class="co"># each cell is ~520m x 520m</span></span>
 <span><span class="co">#&gt; [1] 520.4038 520.4038</span></span></code></pre></div>
 <p>Let’s visualize this with our region boundary:</p>
@@ -165,7 +165,7 @@ Meta’s High Resolution Population Density Maps:</p>
 <code class="sourceCode R"><span><span class="co"># Plot population density</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pop</span>, main <span class="op">=</span> <span class="st">"Under-5 Population Density"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Add region boundary</span></span></code></pre></div>
-<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-3-1.png" width="800"></p>
+<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="800"></p>
 <p>This raster shows us where children under 5 years old are located
 across the region, with brighter colors indicating higher density
 areas.</p>
@@ -205,7 +205,7 @@ areas.</p>
 <span>    title <span class="op">=</span> <span class="st">"Hospital Distribution in Region 12"</span>,</span>
 <span>    subtitle <span class="op">=</span> <span class="st">"Size indicates number of doctors"</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-4-1.png" width="800"></p>
+<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="800"></p>
 </div>
 <div class="section level4">
 <h4 id="distance-and-travel-time">3. Distance and Travel Time<a class="anchor" aria-label="anchor" href="#distance-and-travel-time"></a>
@@ -216,14 +216,14 @@ it takes to reach each facility:</p>
 <code class="sourceCode R"><span><span class="co"># Load the travel time data</span></span>
 <span><span class="va">distance_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"hos_iscr.tif"</span><span class="op">)</span></span>
 <span><span class="va">distance_raster</span></span>
-<span><span class="co">#&gt; class       : SpatRaster </span></span>
-<span><span class="co">#&gt; dimensions  : 509, 647, 77  (nrow, ncol, nlyr)</span></span>
+<span><span class="co">#&gt; class       : SpatRaster</span></span>
+<span><span class="co">#&gt; size        : 509, 647, 77  (nrow, ncol, nlyr)</span></span>
 <span><span class="co">#&gt; resolution  : 520.4038, 520.4038  (x, y)</span></span>
 <span><span class="co">#&gt; extent      : 505646.5, 842347.8, 620843.7, 885729.2  (xmin, xmax, ymin, ymax)</span></span>
-<span><span class="co">#&gt; coord. ref. : WGS 84 / UTM zone 47N (EPSG:32647) </span></span>
-<span><span class="co">#&gt; source      : hos_iscr.tif </span></span>
-<span><span class="co">#&gt; names       :  c172,  c173,  c174,  c175,  c176,  c177, ... </span></span>
-<span><span class="co">#&gt; min values  :   6.0,   3.0,   3.5,   4.0,   4.0,  11.0, ... </span></span>
+<span><span class="co">#&gt; coord. ref. : WGS 84 / UTM zone 47N (EPSG:32647)</span></span>
+<span><span class="co">#&gt; source      : hos_iscr.tif</span></span>
+<span><span class="co">#&gt; names       :  c172,  c173,  c174,  c175,  c176,  c177, ...</span></span>
+<span><span class="co">#&gt; min values  :     6,     3,   3.5,     4,     4,    11, ...</span></span>
 <span><span class="co">#&gt; max values  : 172.5, 172.5, 172.5, 172.5, 172.5, 172.5, ...</span></span>
 <span><span class="co"># Each layer represents travel time to a different facility</span></span>
 <span></span>
@@ -236,7 +236,7 @@ it takes to reach each facility:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning in plot.sf(hc12_hos[1, ], add = TRUE, pch = 16, col = "red"): ignoring</span></span>
 <span><span class="co">#&gt; all but the first attribute</span></span></code></pre></div>
-<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-5-1.png" width="800"></p>
+<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="800"></p>
 </div>
 </div>
 <div class="section level3">
@@ -265,7 +265,7 @@ Catchment Area (E2SFCA) method to analyze access to doctors:</p>
 <span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Access to Doctors"</span>, <span class="st">"Access to Nurses"</span><span class="op">)</span>,</span>
 <span>  fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span> <span class="co"># add region boundary</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-7-1.png" width="800"></p>
+<p><img src="spax-101-intro_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="800"></p>
 <p>And that’s it! We’ve calculated accessibility scores for doctors and
 nurses across the region with the lighter colors indicating better
 access.</p>
@@ -296,7 +296,7 @@ Raster Trade-offs</a></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

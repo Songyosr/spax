@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>2. Preparing Data for Spatial Accessibility Analysis • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="2. Preparing Data for Spatial Accessibility Analysis">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,8 @@
     <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-103-dissection.html">3. Under the Hood: Dissecting Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Why Rasters? The Pros, Cons, and Best Practices</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
       </ul>
@@ -61,7 +63,7 @@
       <h1>2. Preparing Data for Spatial Accessibility Analysis</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/spax-102-data-prep.Rmd" class="external-link"><code>vignettes/spax-102-data-prep.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/develop/vignettes/spax-102-data-prep.Rmd" class="external-link"><code>vignettes/spax-102-data-prep.Rmd</code></a></small>
       <div class="d-none name"><code>spax-102-data-prep.Rmd</code></div>
     </div>
 
@@ -70,8 +72,6 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load required packages</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
-<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
@@ -129,7 +129,7 @@ results in choropleth maps, like this:</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Cases by Province"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_b</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-2-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-2-1.png" class="r-plt" alt="" width="1200"></p>
 <p>But that could sometimes be misleading since in traditional spatial
 analysis, we often allocate demand to only the centroid of each
 area:</p>
@@ -144,7 +144,7 @@ area:</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">centroids</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>size <span class="op">=</span> <span class="va">cases</span><span class="op">)</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Population Data by Region"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-3-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="1200"></p>
 <p>The centroid approach works for vector-centric analysis, but for
 <code>spax</code>, we need to think in terms of continuous surfaces.
 Let’s explore different ways to convert our data</p>
@@ -172,7 +172,7 @@ but in raster format:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">centroid_demand</span>, main <span class="op">=</span> <span class="st">"Centroid-Based Demand"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-4-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="1200"></p>
 <p>As you can see, this approach creates a somewhat odd-looking result -
 all our demand is concentrated in single cells. However, this raster can
 still be used in accessibility analysis, just like the original
@@ -209,7 +209,7 @@ province’s area:</p>
 <code class="sourceCode R"><span><span class="co"># Plot</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">case_raster</span>, main <span class="op">=</span> <span class="st">"Area-Weighted Demand"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-6-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="1200"></p>
 <p>This gives us a more continuous surface, but we should validate that
 our totals still match:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -320,7 +320,7 @@ into:</p>
 <span>    title <span class="op">=</span> <span class="st">"Healthcare Supply Distribution"</span>,</span>
 <span>    subtitle <span class="op">=</span> <span class="st">"Size indicates number of doctors, color shows facility level"</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-10-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-10-1.png" class="r-plt" alt="" width="1200"></p>
 </div>
 <div class="section level3">
 <h3 id="creating-distancetravel-time-surfaces">Creating Distance/Travel Time Surfaces<a class="anchor" aria-label="anchor" href="#creating-distancetravel-time-surfaces"></a>
@@ -352,8 +352,7 @@ surfaces:</p>
 <span><span class="va">euclidean_dist</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/distance.html" class="external-link">distance</a></span><span class="op">(</span></span>
 <span>  <span class="va">template_rast</span>,</span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">facility_point</span><span class="op">)</span></span>
-<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, mask <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; |---------|---------|---------|---------|=========================================                                          </span></span></code></pre></div>
+<span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, mask <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plot the Euclidean distance</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">euclidean_dist</span> <span class="op">/</span> <span class="fl">1000</span>, <span class="co"># Convert to kilometers</span></span>
@@ -361,7 +360,7 @@ surfaces:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">facility_point</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">"red"</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-12-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="1200"></p>
 <p>While simple, this approach ignores real-world travel constraints
 like roads and barriers. It’s most useful for:</p>
 <ul>
@@ -391,6 +390,7 @@ doesn’t generate isochrones directly, we can use tools like the <a href="https
 <span>  breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">15</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span><span class="op">)</span>, <span class="co"># 15-minute intervals</span></span>
 <span>  res <span class="op">=</span> <span class="fl">30</span></span>
 <span><span class="op">)</span></span>
+<span><span class="co">#&gt; 'res' is deprecated, use 'n' instead.</span></span>
 <span></span>
 <span><span class="co"># Transform back to our working CRS</span></span>
 <span><span class="va">example_isochrone</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="va">example_isochrone</span>, <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">st_crs</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span><span class="op">)</span></span>
@@ -398,10 +398,10 @@ doesn’t generate isochrones directly, we can use tools like the <a href="https
 <span><span class="co"># Plot results</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">example_isochrone</span><span class="op">[</span>, <span class="st">"isomax"</span><span class="op">]</span>, main <span class="op">=</span> <span class="st">"Travel Time Isochrone for Hospital C1"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-13-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="1200"></p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">example_isochrone</span><span class="op">[</span><span class="fl">3</span>, <span class="st">"isomax"</span><span class="op">]</span>, main <span class="op">=</span> <span class="st">"Travel Time Isochrone ring for Hospital C1 (45 mins)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-13-2.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-13-2.png" class="r-plt" alt="" width="1200"></p>
 <p>The isochrones show travel time “rings” around our facility. If you
 take on a vector-based approach, you can use functions like <a href="https://r-spatial.github.io/sf/reference/st_contains.html" class="external-link"><code>sf::st_contains()</code></a>
 to determine the population within each isochrone ring.</p>
@@ -430,7 +430,7 @@ format:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">example_raster</span>, main <span class="op">=</span> <span class="st">"Travel Time Isochrone for Hospital C1"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">hc12_hos</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">"red"</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-15-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="1200"></p>
 <blockquote>
 <p>⚠️ <strong>Important Note about OSRM</strong>: By default, the <a href="https://rdrr.io/cran/osrm/man/osrmIsochrone.html" class="external-link"><code>osrm::osrmIsochrone()</code></a>]
 function uses OSRM’s demo server. This is fine for testing, but for real
@@ -535,7 +535,7 @@ projection:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">u5pd</span>, main <span class="op">=</span> <span class="st">"Spatial Alignment Check"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound1</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-17-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="1200"></p>
 </div>
 <div class="section level5">
 <h5 id="value-range-validation">2. Value Range Validation<a class="anchor" aria-label="anchor" href="#value-range-validation"></a>
@@ -546,13 +546,13 @@ projection:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">u5pd</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: [summary] used a sample</span></span>
 <span><span class="co">#&gt;  tha_children_under_five_2020</span></span>
-<span><span class="co">#&gt;  Min.   : 0.00               </span></span>
-<span><span class="co">#&gt;  1st Qu.: 1.40               </span></span>
-<span><span class="co">#&gt;  Median : 3.48               </span></span>
-<span><span class="co">#&gt;  Mean   : 6.03               </span></span>
-<span><span class="co">#&gt;  3rd Qu.: 7.59               </span></span>
-<span><span class="co">#&gt;  Max.   :82.96               </span></span>
-<span><span class="co">#&gt;  NA's   :84773</span></span>
+<span><span class="co">#&gt;  Min.   : 0.000              </span></span>
+<span><span class="co">#&gt;  1st Qu.: 1.396              </span></span>
+<span><span class="co">#&gt;  Median : 3.476              </span></span>
+<span><span class="co">#&gt;  Mean   : 6.032              </span></span>
+<span><span class="co">#&gt;  3rd Qu.: 7.585              </span></span>
+<span><span class="co">#&gt;  Max.   :82.960              </span></span>
+<span><span class="co">#&gt;  NAs    :84773</span></span>
 <span></span>
 <span><span class="co"># Check a few travel time rasters</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
@@ -564,7 +564,7 @@ projection:</p>
 <span><span class="co">#&gt;  Mean   :102.9   Mean   :107.6   Mean   :118.9   Mean   :105.6  </span></span>
 <span><span class="co">#&gt;  3rd Qu.:142.5   3rd Qu.:142.5   3rd Qu.:157.5   3rd Qu.:142.5  </span></span>
 <span><span class="co">#&gt;  Max.   :172.5   Max.   :172.5   Max.   :172.5   Max.   :172.5  </span></span>
-<span><span class="co">#&gt;  NA's   :71579   NA's   :71501   NA's   :74191   NA's   :69709  </span></span>
+<span><span class="co">#&gt;  NAs    :71579   NAs    :71501   NAs    :74191   NAs    :69709  </span></span>
 <span><span class="co">#&gt;       c176            c177            c178            c179      </span></span>
 <span><span class="co">#&gt;  Min.   :  8.5   Min.   : 11.0   Min.   : 11.0   Min.   :  7.5  </span></span>
 <span><span class="co">#&gt;  1st Qu.: 67.5   1st Qu.: 67.5   1st Qu.: 67.5   1st Qu.: 97.5  </span></span>
@@ -572,7 +572,7 @@ projection:</p>
 <span><span class="co">#&gt;  Mean   :107.5   Mean   :107.7   Mean   :110.5   Mean   :120.5  </span></span>
 <span><span class="co">#&gt;  3rd Qu.:142.5   3rd Qu.:142.5   3rd Qu.:157.5   3rd Qu.:157.5  </span></span>
 <span><span class="co">#&gt;  Max.   :172.5   Max.   :172.5   Max.   :172.5   Max.   :172.5  </span></span>
-<span><span class="co">#&gt;  NA's   :70996   NA's   :72338   NA's   :74213   NA's   :75822  </span></span>
+<span><span class="co">#&gt;  NAs    :70996   NAs    :72338   NAs    :74213   NAs    :75822  </span></span>
 <span><span class="co">#&gt;       c180            c181       </span></span>
 <span><span class="co">#&gt;  Min.   :  5.0   Min.   :  8.50  </span></span>
 <span><span class="co">#&gt;  1st Qu.: 97.5   1st Qu.: 67.50  </span></span>
@@ -580,7 +580,7 @@ projection:</p>
 <span><span class="co">#&gt;  Mean   :127.3   Mean   : 96.85  </span></span>
 <span><span class="co">#&gt;  3rd Qu.:157.5   3rd Qu.:127.50  </span></span>
 <span><span class="co">#&gt;  Max.   :172.5   Max.   :172.50  </span></span>
-<span><span class="co">#&gt;  NA's   :76037   NA's   :72831</span></span></code></pre></div>
+<span><span class="co">#&gt;  NAs    :76037   NAs    :72831</span></span></code></pre></div>
 </div>
 <div class="section level5">
 <h5 id="missing-value-analysis">3. Missing Value Analysis<a class="anchor" aria-label="anchor" href="#missing-value-analysis"></a>
@@ -631,7 +631,7 @@ are bad:</p>
 <span><span class="fu">analyze_nas</span><span class="op">(</span><span class="va">hos_iscr</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, <span class="st">"Time from 1st Fac"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Time from 1st Fac:</span></span>
 <span><span class="co">#&gt;    NA cells within boundary: 16841 (15.1% of study area)</span></span></code></pre></div>
-<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-19-1.png" width="1200"></p>
+<p><img src="spax-102-data-prep_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="1200"></p>
 </div>
 <div class="section level4">
 <h4 id="final-reminders">Final reminders:<a class="anchor" aria-label="anchor" href="#final-reminders"></a>
@@ -690,7 +690,7 @@ Raster Trade-offs</a></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

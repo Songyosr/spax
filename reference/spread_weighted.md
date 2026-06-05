@@ -1,0 +1,80 @@
+# Distribute values across weighted surfaces
+
+General-purpose function to distribute values across space using a stack
+of weight rasters. Each input value is spread according to its
+corresponding weight layer.
+
+## Usage
+
+``` r
+spread_weighted(
+  values,
+  weights,
+  value_cols = NULL,
+  full_output = FALSE,
+  name_prefix = NULL,
+  snap = FALSE
+)
+```
+
+## Arguments
+
+- values:
+
+  Numeric vector, matrix, or data.frame of values to distribute: -
+  Vector: Must match number of weight layers - Matrix: Rows match weight
+  layers, columns are different measures - Data.frame: Same as matrix
+  but requires value_cols parameter
+
+- weights:
+
+  Multi-layer SpatRaster where each layer represents one unit's weighted
+  distribution surface
+
+- value_cols:
+
+  Character vector of column names if values is a data.frame
+
+- full_output:
+
+  Logical; whether to return intermediate calculations (default FALSE)
+
+- name_prefix:
+
+  Character string to prepend to output names (default NULL)
+
+- snap:
+
+  Logical; if TRUE, avoid input validation for performance (default
+  FALSE)
+
+## Value
+
+If full_output = TRUE, returns list containing: - total_distribution:
+SpatRaster stack of total distribution per measure - unit_distribution:
+List of unit-specific distribution SpatRasters If full_output = FALSE,
+returns only total_distribution SpatRaster
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Example 1: Basic vector input using package data
+# Spread doctor counts across space using distance-decay weights
+weights <- calc_decay(hos_iscr, method = "gaussian", sigma = 30)
+doc_distribution <- spread_weighted(hc12_hos$s_doc, weights)
+
+# Example 2: Multiple supply measures
+supply_df <- hc12_hos[c("s_doc", "s_nurse")]
+distributions <- spread_weighted(supply_df, weights,
+  value_cols = c("s_doc", "s_nurse")
+)
+
+# Example 3: With full output for detailed analysis
+result <- spread_weighted(hc12_hos$s_doc, weights,
+  full_output = TRUE
+)
+plot(result$total_distribution, main = "Total Distribution")
+plot(result$unit_distribution[[1]], main = "First Unit Distribution")
+} # }
+```

@@ -1,0 +1,84 @@
+# Under-5 Population Density in Thailand's Health Region 12
+
+A raster containing population density estimates for children under five
+years old in Thailand's Health Region 12. The data represents the number
+of children per grid cell, derived from Meta's High Resolution
+Population Density Maps project. Available as external data through
+read_spax_example("u5pd.tif").
+
+Note: As of version 0.2.4, this dataset has been moved to external data
+storage to improve package performance. Please use
+read_spax_example("u5pd.tif") to access this dataset.
+
+## Format
+
+A GeoTIFF file containing a raster with:
+
+- Dimensions:
+
+  865 rows × 1100 columns
+
+- Resolution:
+
+  520.4038 × 520.4038 meters
+
+- Extent:
+
+  505677.7, 842408.5, 620846.3, 885639.2 (xmin, xmax, ymin, ymax)
+
+- CRS:
+
+  WGS 84 / UTM zone 47N (EPSG:32647)
+
+- Values:
+
+  Population density (children per grid cell)
+
+- Range:
+
+  Minimum: 0, Maximum: 33.19188
+
+## Source
+
+Meta. (2024). High Resolution Population Density Maps. Data for Good at
+Meta. Retrieved from
+<https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps>
+
+## Details
+
+This dataset was processed from Meta's High Resolution Population
+Density Maps for Thailand (2020). The original data was aggregated to a
+520.4038-meter resolution to balance spatial detail with computational
+efficiency. Zero values indicate areas with no estimated child
+population, while NA values represent areas outside the region boundary
+or without data coverage.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Load the population density data
+pop <- read_spax_example("u5pd.tif")
+
+# Basic visualization
+plot(pop, main = "Under-5 Population Density")
+
+# Get basic statistics
+terra::global(pop, "sum", na.rm = TRUE) # Total estimated children
+terra::global(pop, c("min", "max"), na.rm = TRUE) # Range of density values
+
+# Convert to probability mass function for spatial sampling
+pmf_result <- transform_pmf(pop, return_total = TRUE)
+pop_pmf <- pmf_result$pmf
+total_pop <- pmf_result$total
+
+# Generate sample points based on density
+samples <- sample_pmf(
+  pop_pmf,
+  method = "poisson",
+  size = total_pop,
+  prob = 0.1, # Example sampling rate
+  iterations = 1
+)
+} # }
+```

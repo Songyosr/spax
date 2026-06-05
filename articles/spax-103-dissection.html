@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>3. Under the Hood: Dissecting Spatial Accessibility Analysis • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="3. Under the Hood: Dissecting Spatial Accessibility Analysis">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,8 @@
     <li><a class="dropdown-item" href="../articles/spax-102-data-prep.html">2. Preparing Data for Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-103-dissection.html">3. Under the Hood: Dissecting Spatial Accessibility Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/spax-104-raster-tradeoff.html">4. Why Rasters? The Pros, Cons, and Best Practices</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
       </ul>
@@ -61,7 +63,7 @@
       <h1>3. Under the Hood: Dissecting Spatial Accessibility Analysis</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/spax-103-dissection.Rmd" class="external-link"><code>vignettes/spax-103-dissection.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/develop/vignettes/spax-103-dissection.Rmd" class="external-link"><code>vignettes/spax-103-dissection.Rmd</code></a></small>
       <div class="d-none name"><code>spax-103-dissection.Rmd</code></div>
     </div>
 
@@ -99,7 +101,7 @@ spax implements, combines these ingredients in two steps:</p>
 <p>First, we calculate how much service capacity is available relative
 to potential demand. For each service location
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>S</mi><mi>j</mi></msub><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>S</mi><mi>j</mi></msub><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">
 R_j = \frac{S_j}{\sum_i P_i W_d(d_{ij})}
 </annotation></semantics></math></p>
 <p>Where:</p>
@@ -113,7 +115,7 @@ is the population at location
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
 </li>
 <li>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W_d(d_{ij})</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>d</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">W_d(d_{ij})</annotation></semantics></math>
 is a weight based on travel time/distance</li>
 <li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>j</mi></msub><annotation encoding="application/x-tex">R_j</annotation></semantics></math>
@@ -128,7 +130,7 @@ to travel.</p>
 </h4>
 <p>Then, we look at it from the population’s perspective. For each
 location i:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">
 A_i = \sum_j R_j W_r(d_{ij})
 </annotation></semantics></math></p>
 <p>Where:</p>
@@ -138,7 +140,7 @@ A_i = \sum_j R_j W_r(d_{ij})
 is the ratio we calculated in Step 1<br>
 </li>
 <li>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>r</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mi>_</mi><mrow><mi>i</mi><mi>j</mi></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W_r(d\_{ij})</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>r</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mi>_</mi><mrow><mi>i</mi><mi>j</mi></mrow><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">W_r(d\_{ij})</annotation></semantics></math>
 is another distance-based weight<br>
 </li>
 <li>
@@ -164,7 +166,7 @@ spax actually computes them:</p>
 <div class="section level4">
 <h4 id="step-1-service-to-population-ratios-raster-form">Step 1: Service-to-Population Ratios Raster Form<a class="anchor" aria-label="anchor" href="#step-1-service-to-population-ratios-raster-form"></a>
 </h4>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mo stretchy="false" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">
 r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}
 </annotation></semantics></math></p>
 <p>Where:</p>
@@ -176,9 +178,9 @@ is the travel time/distance surface from facility
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></p></li>
 <li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝖶</mi><mi>𝖽</mi></msub><annotation encoding="application/x-tex">\mathsf{W_d}</annotation></semantics></math>
 is the demand-side weighting function</p></li>
-<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>⊙</mo><annotation encoding="application/x-tex">\odot</annotation></semantics></math>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>⊙</mi><annotation encoding="application/x-tex">\odot</annotation></semantics></math>
 represents element-wise (Hadamard) multiplication</p></li>
-<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sum()</annotation></semantics></math>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">sum()</annotation></semantics></math>
 is the global sum over the entire surface</p></li>
 <li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math>
 is the supply capacity at facility
@@ -191,7 +193,7 @@ is the resulting ratio for facility
 <div class="section level4">
 <h4 id="step-2-accessibility-scores---raster-form">Step 2: Accessibility Scores - Raster Form<a class="anchor" aria-label="anchor" href="#step-2-accessibility-scores---raster-form"></a>
 </h4>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">
 A = \sum_j r_j \mathsf{W_r}(D_j)
 </annotation></semantics></math></p>
 <p>Where:</p>
@@ -220,8 +222,6 @@ surfaces</li>
 translate into actual code with spax:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
-<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
@@ -247,7 +247,7 @@ translate into actual code with spax:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">distance</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
 <span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression</a></span><span class="op">(</span><span class="st">"Weighted Surface"</span> <span class="op">~</span> <span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">d</span><span class="op">]</span><span class="op">(</span><span class="va">D</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-2-1.png" width="800"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-2-1.png" class="r-plt" alt="" width="800"></p>
 <p>Each theoretical component becomes a raster operation:</p>
 <ul>
 <li>Population Surface
@@ -276,9 +276,9 @@ possible</p>
 </h3>
 <p>Now that we understand the theory, let’s look at how we actually
 calculate those weight functions
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W_d(d_{ij})</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mi>d</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">W_d(d_{ij})</annotation></semantics></math>
 or
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathsf{W_d}(D_j)</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathsf{W_d}(D_j)</annotation></semantics></math>.
 The weight function’s job is simple - take a distance value and return a
 weight between 0 and 1. But how quickly should that weight decay with
 distance?</p>
@@ -311,20 +311,20 @@ how they behave:</p>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_continuous</a></span><span class="op">(</span>limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-3-1.png" width="800"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="800"></p>
 <p>Each function offers a different mathematical perspective on how
 distance affects accessibility:</p>
 <ul>
 <li>Gaussian decay
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = e^{-d^2/(2\sigma^2)}</annotation></semantics></math>):
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = e^{-d^2/(2\sigma^2)}</annotation></semantics></math>):
 Models accessibility like a bell curve, with the greatest change
 happening around that 30-minute mark/</li>
 <li>Exponential decay
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>d</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = e^{-\lambda d}</annotation></semantics></math>):
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msup><mi>e</mi><mrow><mi>−</mi><mi>λ</mi><mi>d</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = e^{-\lambda d}</annotation></semantics></math>):
 Each additional minute of travel reduces accessibility by the same
 percentage/</li>
 <li>Power decay
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>d</mi><mrow><mo>−</mo><mi>β</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = d^{-\beta}</annotation></semantics></math>):
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msup><mi>d</mi><mrow><mi>−</mi><mi>β</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W(d) = d^{-\beta}</annotation></semantics></math>):
 Similar to exponential early on, but maintains higher weights at larger
 distances</li>
 </ul>
@@ -355,7 +355,7 @@ distances</li>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">gaussian_weights</span>, main <span class="op">=</span> <span class="st">"Gaussian Decay"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exponential_weights</span>, main <span class="op">=</span> <span class="st">"Exponential Decay"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">power_weights</span>, main <span class="op">=</span> <span class="st">"Power Decay"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-4-1.png" width="100%"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="100%"></p>
 <p>The beauty of spax’s raster-based approach is that these
 transformations happen all at once - every cell in our distance surface
 gets converted to a weight simultaneously. And because we’re using R’s
@@ -382,7 +382,7 @@ distances and returns weights will work:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">gaussian_weights</span>, main <span class="op">=</span> <span class="st">"Gaussian Decay"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">custom_weights</span>, main <span class="op">=</span> <span class="st">"Custom Decay\n(thresholded Gaussian)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-5-1.png" width="800"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="800"></p>
 </div>
 <div class="section level3">
 <h3 id="managing-competition-weight-normalization">Managing Competition: Weight Normalization<a class="anchor" aria-label="anchor" href="#managing-competition-weight-normalization"></a>
@@ -427,7 +427,7 @@ in:</p>
 <span>  main <span class="op">=</span> <span class="st">"Competition Areas\n(where normalization matters)"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-6-1.png" width="100%"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="100%"></p>
 <p>Think of normalization like adjusting a recipe when ingredients
 overlap. If two hospitals serve the same area:</p>
 <ul>
@@ -449,13 +449,13 @@ gather_weighted() functions. These implement the summations in our
 formulas:</p>
 <ul>
 <li><p>Traditional:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_i P_i W_d(d_{ij})</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_i P_i W_d(d_{ij})</annotation></semantics></math>
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_j R_j W_r(d_{ij})</annotation></semantics></math></p></li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_j R_j W_r(d_{ij})</annotation></semantics></math></p></li>
 <li><p>Raster:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sum(P \odot \mathsf{W_d}(D_j))</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mo stretchy="false" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">sum(P \odot \mathsf{W_d}(D_j))</annotation></semantics></math>
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_j r_j \mathsf{W_r}(D_j)</annotation></semantics></math></p></li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_j r_j \mathsf{W_r}(D_j)</annotation></semantics></math></p></li>
 </ul>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Let's see these operations in action</span></span>
@@ -494,7 +494,7 @@ and
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"Final Accessibility Surface (A)"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-7-1.png" width="800"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="800"></p>
 <p>Think of these operations as: - <code><a href="../reference/gather_weighted.html">gather_weighted()</a></code>:
 Collects weighted values from a surface into facility-specific totals (a
 vector) - <code><a href="../reference/spread_weighted.html">spread_weighted()</a></code>: Distributes facility-specific
@@ -527,24 +527,24 @@ code:</p>
 <tr class="odd">
 <td><ol style="list-style-type: decimal">
 <li>Calculate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>S</mi><mi>j</mi></msub><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">R_j = \frac{S_j}{\sum_i P_i W_d(d_{ij})}</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>S</mi><mi>j</mi></msub><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>P</mi><mi>i</mi></msub><msub><mi>W</mi><mi>d</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">R_j = \frac{S_j}{\sum_i P_i W_d(d_{ij})}</annotation></semantics></math>
 for each facility</li>
 </ol></td>
 <td><ol style="list-style-type: decimal">
 <li>Calculate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>s</mi><mi>j</mi></msub><mrow><mi>s</mi><mi>u</mi><mi>m</mi><mo stretchy="false" form="prefix">(</mo><mi>P</mi><mo>⊙</mo><msub><mi>𝖶</mi><mi>𝖽</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}</annotation></semantics></math>
 for each facility</li>
 </ol></td>
 </tr>
 <tr class="even">
 <td><ol start="2" style="list-style-type: decimal">
 <li>Calculate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">A_i = \sum_j R_j W_r(d_{ij})</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>R</mi><mi>j</mi></msub><msub><mi>W</mi><mi>r</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">A_i = \sum_j R_j W_r(d_{ij})</annotation></semantics></math>
 for each location</li>
 </ol></td>
 <td><ol start="2" style="list-style-type: decimal">
 <li>Calculate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">A = \sum_j r_j \mathsf{W_r}(D_j)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>𝖶</mi><mi>𝗋</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">A = \sum_j r_j \mathsf{W_r}(D_j)</annotation></semantics></math>
 as a surface</li>
 </ol></td>
 </tr>
@@ -588,7 +588,7 @@ as a surface</li>
 <span><span class="co"># Visualize the final result</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">accessibility</span>, main <span class="op">=</span> <span class="st">"E2SFCA Accessibility Surface"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-8-1.png" width="800"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-8-1.png" class="r-plt" alt="" width="800"></p>
 <p>Or we can let <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> handle all of this for
 us:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -605,7 +605,7 @@ us:</p>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span>, main <span class="op">=</span> <span class="st">"E2SFCA Accessibility Scores"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">bound0</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-9-1.png" width="800"></p>
+<p><img src="spax-103-dissection_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="800"></p>
 </div>
 <div class="section level4">
 <h4 id="understanding-the-benefits">Understanding the Benefits<a class="anchor" aria-label="anchor" href="#understanding-the-benefits"></a>
@@ -672,7 +672,7 @@ normalization, and choice-based modeling [Coming Soon]</p></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

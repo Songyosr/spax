@@ -1,0 +1,283 @@
+# spax: Spatial Accessibility Analysis in R
+
+`spax` is an R package designed for advanced spatial accessibility
+analysis, focusing on Two-Step Floating Catchment Area (2SFCA) methods
+and their derivatives. The package offers a fresh perspective on spatial
+accessibility through its raster-based computational approach and
+modular design.
+
+## Features
+
+- **Computational Simplicity**: Raster-based operations translate
+  complex spatial relationships into simple matrix calculations
+- **Modular Design**: Functions work like LEGO bricks - mix and match
+  components to build custom analysis workflows
+- **Complex Demand Handling**: Support for continuous population
+  surfaces, letting you work with high-resolution demand data
+- **Monte Carlo Integration**: Built-in tools for uncertainty analysis
+  and stochastic demand modeling
+
+## Installation
+
+You can install the development version of spax from
+[GitHub](https://github.com/) with:
+
+``` r
+
+# install.packages("pak")
+pak::pak("Songyosr/spax")
+```
+
+## Example
+
+Here’s how spax’s modular design works in practice, analyzing healthcare
+accessibility in Thailand’s Region 12:
+
+``` r
+
+library(spax)
+library(terra)
+library(sf)
+
+# Load example data (already included in package)
+pop <- read_spax_example("u5pd.tif") # Under-5 population density
+distance <- read_spax_example("hos_iscr.tif") # Travel times
+hospitals <- hc12_hos # Hospital locations and capacity
+
+# Calculate accessibility using Enhanced 2SFCA
+result <- spax_e2sfca(
+  demand = pop, # Population density
+  supply = hospitals |> st_drop_geometry(), # Hospital capacity
+  distance = distance, # Travel times
+  decay_params = list(
+    method = "gaussian",
+    sigma = 30 # 30-minute characteristic distance
+  ),
+  demand_normalize = "standard", # Prevent demand inflation
+  id_col = "id",
+  supply_cols = c("s_doc", "s_nurse") # Analyze both doctors and nurses
+)
+
+# Plot results
+plot(result,
+  main = c("Access to Doctors", "Access to Nurses"),
+  fun = function() lines(bound0)
+)
+```
+
+![](reference/figures/README-example-1.png)
+
+``` r
+
+result
+#> Spatial Accessibility Analysis (E2SFCA)
+#> 
+#> Spatial Properties:
+#> - Resolution: 520.404 x 520.404
+#> - Dimensions: 509 x 647
+#> 
+#> Measures: 2
+#> - s_doc
+#> - s_nurse
+#> 
+#> Facilities: 77
+#> 
+#> Parameters:
+#> - Decay function: gaussian (sigma = 30)
+#> - Demand normalization: standard
+summary(result)
+#> 
+#> Summary of Spatial Accessibility Analysis (E2SFCA)
+#> --------------------------------------------- 
+#> 
+#> Accessibility Measures:
+#> 
+#> s_doc:
+#>   Range: 2.14e-10 to 0.1818
+#>   Mean (SD): 0.06002 (0.03767)
+#>   Quantiles:
+#>     Min.:    2.14e-10
+#> 
+#>   Coverage: 33.2% (109362 of 329323 cells)
+#> 
+#> s_nurse:
+#>   Range: 4.172e-10 to 0.2736
+#>   Mean (SD): 0.1066 (0.06332)
+#>   Quantiles:
+#>     Min.:    4.172e-10
+#> 
+#>   Coverage: 33.2% (109362 of 329323 cells)
+#> 
+#> Facility Statistics:
+#> -------------------
+#> Total Facilities: 77
+#> 
+#> s_doc:
+#>   Total Supply: 4669
+#>   Mean (SD): 60.64 (80.09)
+#>   Range: 0 to 522
+#> 
+#> s_nurse:
+#>   Total Supply: 8125
+#>   Mean (SD): 105.5 (159.1)
+#>   Range: 0 to 973
+```
+
+This example demonstrates key features of spax:
+
+- Working with continuous population surfaces (demand)
+
+- Handling multiple supply indicators simultaneously
+
+- Gaussian distance decay for more realistic accessibility modeling
+
+## Getting Started
+
+Check out our vignettes for detailed guidance:
+
+## See Also
+
+- [Getting Started with
+  spax](https://songyosr.github.io/spax/articles/spax-101-intro.html)
+- [Data Preparation
+  Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
+- [Dissecting spax: Understanding the package’s inner
+  workings](https://songyosr.github.io/spax/articles/spax-103-dissection.html)
+- [Understanding Raster
+  Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
+
+## Contributing
+
+Truth is, I’m just getting started with spax. I’d love to have you on
+board to help shape the future of spatial accessibility analysis in R.
+Please feel free to submit a Pull Request. For major changes, please
+open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file
+for details.
+
+# Package index
+
+## Core Accessibility Functions
+
+Main functions for spatial accessibility analysis
+
+- [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md)
+  : Calculate Original Two-Step Floating Catchment Area (2SFCA)
+  accessibility scores
+- [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
+  : Calculate Enhanced Two-Step Floating Catchment Area (E2SFCA)
+  accessibility scores
+- [`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md)
+  : Calculate Modified Two-Step Floating Catchment Area (M2SFCA)
+  accessibility scores
+- [`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md)
+  : Calculate spatial accessibility using weighted surfaces
+
+## Distance & Decay Functions
+
+Functions for handling distance relationships
+
+- [`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md)
+  : Calculate Spatial Distance Decay Weights
+- [`calc_choice()`](https://songyosr.github.io/spax/reference/calc_choice.md)
+  : Compute Spatial Choice Probabilities
+- [`calc_normalize()`](https://songyosr.github.io/spax/reference/calc_normalize.md)
+  : Normalize Spatial Weights
+
+## Data Processing Functions
+
+Functions for processing spatial data
+
+- [`spread_weighted()`](https://songyosr.github.io/spax/reference/spread_weighted.md)
+  : Distribute values across weighted surfaces
+- [`spread_access()`](https://songyosr.github.io/spax/reference/spread_access.md)
+  : Calculate spatial accessibility scores
+- [`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md)
+  : Aggregate weighted values from a raster
+- [`gather_demand()`](https://songyosr.github.io/spax/reference/gather_demand.md)
+  : Calculate demand captured by each service site
+- [`rasterize_demand()`](https://songyosr.github.io/spax/reference/rasterize_demand.md)
+  : Convenience wrapper for Bayesian spatial updating
+- [`transform_pmf()`](https://songyosr.github.io/spax/reference/transform_pmf.md)
+  : Transform input into a probability mass function (PMF)
+- [`transform_demand()`](https://songyosr.github.io/spax/reference/transform_demand.md)
+  : Transform Case Count Data into Spatial Distribution
+
+## Simulation & Sampling
+
+Functions for spatial simulation
+
+- [`sample_pmf()`](https://songyosr.github.io/spax/reference/sample_pmf.md)
+  : Sample Points from Probability Surface with Multiple Realizations
+- [`update_pmf()`](https://songyosr.github.io/spax/reference/update_pmf.md)
+  : Update Probability Mass Function with Likelihood Surface
+- [`transform_likelihood()`](https://songyosr.github.io/spax/reference/transform_likelihood.md)
+  : Transform Input to Likelihood Surface
+
+## Object Methods
+
+Print, summary, and plot methods for spax objects
+
+- [`print(`*`<spax>`*`)`](https://songyosr.github.io/spax/reference/print.spax.md)
+  : Print method for spax objects
+- [`summary(`*`<spax>`*`)`](https://songyosr.github.io/spax/reference/summary.spax.md)
+  : Summary method for spax objects
+- [`print(`*`<summary.spax>`*`)`](https://songyosr.github.io/spax/reference/print.summary.spax.md)
+  : Print function for spax summary objects
+- [`plot(`*`<spax>`*`)`](https://songyosr.github.io/spax/reference/plot.spax.md)
+  : Plot Spatial Accessibility Results
+- [`print(`*`<spax_field>`*`)`](https://songyosr.github.io/spax/reference/print.spax_field.md)
+  : Print a spax_field
+
+## Utility Functions
+
+Helper functions and data access
+
+- [`read_spax_example()`](https://songyosr.github.io/spax/reference/read_spax_example.md)
+  : Read Example Datasets from spax Package
+- [`read_spax()`](https://songyosr.github.io/spax/reference/read_spax.md)
+  : Read a spax object from disk
+- [`save_spax()`](https://songyosr.github.io/spax/reference/save_spax.md)
+  : Save a spax accessibility analysis
+
+## Package Data
+
+Documentation for included datasets
+
+- [`u5pd`](https://songyosr.github.io/spax/reference/u5pd.md) : Under-5
+  Population Density in Thailand's Health Region 12
+- [`hos_iscr`](https://songyosr.github.io/spax/reference/hos_iscr.md) :
+  Example Isochrone Data for Thailand Health Region 12
+- [`hos_iscvec`](https://songyosr.github.io/spax/reference/hos_iscvec.md)
+  : Hospital Travel Time Isochrones (Vector Format)
+- [`phc_iscr`](https://songyosr.github.io/spax/reference/phc_iscr.md) :
+  Example Primary Health Center Travel Time Isochrones
+- [`hc12`](https://songyosr.github.io/spax/reference/hc12.md)
+  [`hc12_phc`](https://songyosr.github.io/spax/reference/hc12.md)
+  [`hc12_hos`](https://songyosr.github.io/spax/reference/hc12.md) :
+  Health Facilities in Thailand's Region 12
+- [`bound0`](https://songyosr.github.io/spax/reference/bound0.md) :
+  Thailand Health Region 12 Boundary Area - Boundary
+- [`bound1`](https://songyosr.github.io/spax/reference/bound1.md) :
+  Thailand Region 12 ADM1 Boundaries with Attributes
+
+# Articles
+
+### Get Started
+
+- [1. Getting Started with spax: A Healthcare Accessibility Case
+  Study](https://songyosr.github.io/spax/articles/spax-101-intro.md):
+- [2. Preparing Data for Spatial Accessibility
+  Analysis](https://songyosr.github.io/spax/articles/spax-102-data-prep.md):
+- [3. Under the Hood: Dissecting Spatial Accessibility
+  Analysis](https://songyosr.github.io/spax/articles/spax-103-dissection.md):
+- [4. Why Rasters? The Pros, Cons, and Best
+  Practices](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.md):
+
+### Package Conventions
+
+- [spax Package Function Naming
+  Convention](https://songyosr.github.io/spax/articles/function-naming.md):

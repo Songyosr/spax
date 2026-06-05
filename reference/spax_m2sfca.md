@@ -1,0 +1,100 @@
+# Calculate Modified Two-Step Floating Catchment Area (M2SFCA) accessibility scores
+
+Implements the Modified Two-Step Floating Catchment Area (M2SFCA) method
+(Delamater, 2013). M2SFCA is identical to \[spax_e2sfca()\] in step 1,
+but in step 2 the supply-to-demand ratios are weighted by the
+\*\*squared\*\* distance decay. This discounts accessibility in
+sub-optimally configured systems – where demand and supply are both far
+apart yet still within the catchment – which standard 2SFCA/E2SFCA
+cannot distinguish.
+
+## Usage
+
+``` r
+spax_m2sfca(
+  demand,
+  supply,
+  distance,
+  decay_params = list(method = "gaussian", sigma = 30),
+  demand_normalize = "identity",
+  id_col = NULL,
+  supply_cols = NULL,
+  indicator_names = NULL,
+  snap = FALSE
+)
+```
+
+## Arguments
+
+- demand:
+
+  SpatRaster representing spatial distribution of demand
+
+- supply:
+
+  vector, matrix, or data.frame containing supply capacity values
+
+- distance:
+
+  SpatRaster stack of travel times/distances to facilities
+
+- decay_params:
+
+  List of parameters for decay function:
+
+  - method: "gaussian", "exponential", "power", or "binary"
+
+  - sigma: decay parameter controlling the rate of distance decay
+
+  - Additional parameters passed to custom decay functions
+
+- demand_normalize:
+
+  Character specifying normalization method:
+
+  - "identity": No normalization (original weights)
+
+  - "standard": Weights sum to 1 (prevents demand inflation)
+
+  - "semi": Normalize only when sum \> 1 (prevents deflation)
+
+- id_col:
+
+  Character; column name for facility IDs if supply is a data.frame
+
+- supply_cols:
+
+  Character vector; names of supply columns if supply is a data.frame
+
+- indicator_names:
+
+  Character vector; custom names for output accessibility layers
+
+- snap:
+
+  Logical; if TRUE enable fast computation mode (default = FALSE)
+
+## Value
+
+A spax object (see \[spax_e2sfca()\]); \`type\` is "M2SFCA".
+
+## Details
+
+Step 1 (unchanged from E2SFCA): \\R_j = S_j / \sum_i P_i W(d\_{ij})\\.
+
+Step 2 (modified): \\A_i = \sum_j R_j \\ W(d\_{ij})^2\\.
+
+M2SFCA is not a separate engine here: it is the shared FCA recipe with
+the access-side kernel squared. It is exactly equivalent to
+\`compute_fca(demand, supply, demand_kernel = W, access_kernel = W^2)\`.
+
+## References
+
+Delamater, P. L. (2013). Spatial accessibility in suboptimally
+configured health care systems: A modified two-step floating catchment
+area (M2SFCA) metric. \*Health & Place\*, \*24\*, 30-43.
+https://doi.org/10.1016/j.healthplace.2013.07.012
+
+## See also
+
+\[spax_e2sfca()\], \[spax_2sfca()\], \[compute_fca()\], \[calc_decay()\]
