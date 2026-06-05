@@ -34,25 +34,43 @@ reference:
     desc: "Functions for processing spatial data"
     contents:
       - spread_weighted
+      - spread_access
       - gather_weighted
       - gather_demand
+      - rasterize_demand
       - transform_pmf
+      - transform_demand
 
   - title: "Simulation & Sampling"
     desc: "Functions for spatial simulation"
     contents:
       - sample_pmf
+      - update_pmf
+      - transform_likelihood
+
+  - title: "Object Methods"
+    desc: "Print, summary, and plot methods for spax objects"
+    contents:
+      - print.spax
+      - summary.spax
+      - print.summary.spax
+      - plot.spax
+      - print.spax_field
 
   - title: "Utility Functions"
     desc: "Helper functions and data access"
     contents:
       - read_spax_example
+      - read_spax
+      - save_spax
 
   - title: "Package Data"
     desc: "Documentation for included datasets"
     contents:
+      - u5pd
       - hos_iscr
       - hos_iscvec
+      - phc_iscr
       - hc12_hos
       - hc12_phc
       - bound0
