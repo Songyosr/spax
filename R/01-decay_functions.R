@@ -8,7 +8,9 @@
 #' @param distance Numeric vector, matrix, or SpatRaster of distances
 #' @param method Character string specifying the decay function or a custom function:
 #'        "gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...)
-#' @param sigma Parameter controlling the rate of decay
+#' @param sigma Parameter controlling the rate of decay. A single number, or a
+#'        SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
+#'        spatially varying catchment (variable-catchment FCA / V2SFCA).
 #' @param snap Logical; if TRUE, skip input validation
 #' @param ... Additional parameters passed to custom decay functions
 #' @return Object of the same class as input containing decay weights
@@ -144,11 +146,26 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
       stop("Invalid method specified")
     }
 
-    # Sigma validation if provided
+    # Sigma validation if provided: a scalar, or a SpatRaster for a variable
+    # catchment (spatially varying sigma), aligned to `distance`.
     if (!is.null(sigma)) {
-      .chck_is_numeric(sigma, "sigma")
-      .chck_length(length(sigma), 1, "sigma")
-      .chck_positive(sigma, allow_zero = FALSE, "sigma")
+      if (inherits(sigma, "SpatRaster")) {
+        if (!inherits(distance, "SpatRaster")) {
+          stop("a SpatRaster `sigma` (variable catchment) requires a SpatRaster `distance`")
+        }
+        .chck_raster_alignment(sigma, distance[[1]], "sigma", "distance")
+        if (!terra::nlyr(sigma) %in% c(1L, terra::nlyr(distance))) {
+          stop("`sigma` raster must have 1 layer or one layer per `distance` layer")
+        }
+        smin <- min(terra::global(sigma, "min", na.rm = TRUE)[[1]])
+        if (is.finite(smin) && smin <= 0) {
+          stop("`sigma` must be positive")
+        }
+      } else {
+        .chck_is_numeric(sigma, "sigma")
+        .chck_length(length(sigma), 1, "sigma")
+        .chck_positive(sigma, allow_zero = FALSE, "sigma")
+      }
     }
   }
 
