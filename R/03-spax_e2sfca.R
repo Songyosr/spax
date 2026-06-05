@@ -404,6 +404,99 @@ spax_e2sfca <- function(demand, supply, distance,
   )
 }
 
+#' Calculate Modified Two-Step Floating Catchment Area (M2SFCA) accessibility scores
+#'
+#' @description
+#' Implements the Modified Two-Step Floating Catchment Area (M2SFCA) method
+#' (Delamater, 2013). M2SFCA is identical to [spax_e2sfca()] in step 1, but in
+#' step 2 the supply-to-demand ratios are weighted by the **squared** distance
+#' decay. This discounts accessibility in sub-optimally configured systems --
+#' where demand and supply are both far apart yet still within the catchment --
+#' which standard 2SFCA/E2SFCA cannot distinguish.
+#'
+#' @inheritParams spax_e2sfca
+#' @return A spax object (see [spax_e2sfca()]); `type` is "M2SFCA".
+#'
+#' @details
+#' Step 1 (unchanged from E2SFCA): \eqn{R_j = S_j / \sum_i P_i W(d_{ij})}.
+#'
+#' Step 2 (modified): \eqn{A_i = \sum_j R_j \, W(d_{ij})^2}.
+#'
+#' M2SFCA is not a separate engine here: it is the shared FCA recipe with the
+#' access-side kernel squared. It is exactly equivalent to
+#' `compute_fca(demand, supply, demand_kernel = W, access_kernel = W^2)`.
+#'
+#' @references
+#' Delamater, P. L. (2013). Spatial accessibility in suboptimally configured
+#' health care systems: A modified two-step floating catchment area (M2SFCA)
+#' metric. *Health & Place*, *24*, 30-43.
+#' https://doi.org/10.1016/j.healthplace.2013.07.012
+#'
+#' @seealso [spax_e2sfca()], [spax_2sfca()], [compute_fca()], [calc_decay()]
+#' @export
+spax_m2sfca <- function(demand, supply, distance,
+                        decay_params = list(method = "gaussian", sigma = 30),
+                        demand_normalize = "identity",
+                        id_col = NULL, supply_cols = NULL,
+                        indicator_names = NULL,
+                        snap = FALSE) {
+  # Validation (M2SFCA takes the same inputs as E2SFCA)
+  if (!snap) {
+    .chck_e2sfca(
+      demand, supply, distance, decay_params,
+      demand_normalize, id_col, supply_cols
+    )
+  }
+
+  # Distance decay weights, shared by both steps
+  weights <- do.call(calc_decay, c(list(distance = distance), decay_params, list(snap = snap)))
+
+  # M2SFCA: step 1 uses W (demand_kernel); step 2 uses W^2 (access_kernel).
+  result <- compute_fca(
+    demand = demand,
+    supply = supply,
+    demand_kernel = weights,
+    access_kernel = weights * weights,
+    demand_normalize = demand_normalize,
+    id_col = id_col,
+    supply_cols = supply_cols,
+    indicator_names = indicator_names,
+    snap = snap
+  )
+  result <- .fca_result_raster(result)
+
+  # Process facility information
+  if (is.data.frame(supply)) {
+    facilities <- data.frame(
+      id = supply[[id_col]],
+      supply[supply_cols]
+    )
+  } else if (is.matrix(supply)) {
+    facilities <- data.frame(
+      id = rownames(supply) %||% paste0("facility_", seq_len(nrow(supply))),
+      as.data.frame(supply)
+    )
+  } else {
+    facilities <- data.frame(
+      id = names(supply) %||% paste0("facility_", seq_along(supply)),
+      supply = supply
+    )
+  }
+
+  # Create spax object
+  .create_spax(
+    accessibility = result,
+    type = "M2SFCA",
+    parameters = list(
+      decay_params = decay_params,
+      demand_normalize = demand_normalize
+    ),
+    facilities = facilities,
+    call = match.call(),
+    snap = snap
+  )
+}
+
 #' Calculate Original Two-Step Floating Catchment Area (2SFCA) accessibility scores
 #'
 #' @description
