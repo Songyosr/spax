@@ -34,7 +34,6 @@ Suggests:
     data.table,
     fasterize,
     tidyverse,
-    pryr,
     osrm,
     bench,
     Matrix

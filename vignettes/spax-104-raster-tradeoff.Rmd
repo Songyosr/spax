@@ -25,7 +25,6 @@ If you've worked through the previous vignettes, you've seen how spax relies hea
 # Load required packages
 library(spax)
 library(terra)
-library(pryr) # for memory tracking
 library(tidyverse)
 library(sf)
 library(bench) # for benchmarking
