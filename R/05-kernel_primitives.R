@@ -87,10 +87,15 @@
 #' @keywords internal
 .k_contract <- function(v, K, over = c("rows", "cols")) {
   over <- match.arg(over)
-  if (over == "rows") {
-    as.vector(crossprod(K, v))   # sum over dim 1; length = ncol(K)
+  out <- if (over == "rows") {
+    crossprod(K, v)              # sum over dim 1; rows = ncol(K)
   } else {
-    as.vector(K %*% v)           # sum over dim 2; length = nrow(K)
+    K %*% v                      # sum over dim 2; rows = nrow(K)
+  }
+  if (NCOL(out) == 1L) {
+    as.vector(out)
+  } else {
+    out
   }
 }
 
@@ -141,14 +146,30 @@
   ids <- names(demand_kernel)
   processed <- .help_process_supply(supply, id_col = id_col,
                                     supply_cols = supply_cols, weight_ids = ids)
-  measures <- if (is.null(indicator_names)) processed$cols else indicator_names
-
-  D  <- terra::values(demand)[, 1]
+  D  <- terra::values(demand, mat = TRUE)     # [I x demand batches]
   Kd <- terra::values(demand_kernel, mat = TRUE)   # [I x J], NA beyond reach
   Ka <- terra::values(access_kernel, mat = TRUE)   # [I x J]
 
+  demand_batches <- names(demand)
+  if (is.null(demand_batches)) {
+    demand_batches <- paste0("demand_", seq_len(ncol(D)))
+  }
+  demand_is_batch <- ncol(D) > 1L
+  supply_is_batch <- ncol(processed$values) > 1L
+  if (demand_is_batch && supply_is_batch) {
+    stop("batching both demand layers and supply measures needs explicit product-axis semantics")
+  }
+  measures <- if (is.null(indicator_names)) {
+    if (demand_is_batch) demand_batches else processed$cols
+  } else {
+    indicator_names
+  }
+
   # gather operates on the active-demand rows only (compaction)
-  keep <- which(is.finite(D) & D > 0)
+  keep <- which(rowSums(is.finite(D) & D > 0) > 0)
+  D0 <- D[keep, , drop = FALSE]
+  D0[!is.finite(D0)] <- 0
+  D0 <- if (ncol(D0) == 1L) D0[, 1] else D0
   Kd0  <- Kd[keep, , drop = FALSE]
   Kd0[is.na(Kd0)] <- 0
   Kd0  <- .k_normalize(Kd0, method = demand_normalize)
@@ -161,12 +182,13 @@
   Ka0[is.na(Ka0)] <- 0
 
   list(
-    D_active          = D[keep],
+    D_active          = D0,
     Kd_active         = Kd0,
     Ka_kept           = Ka0,
     S                 = as.matrix(processed$values),   # [J x measures]
     facility_ids      = ids,
     measures          = measures,
+    demand_batches    = demand_batches,
     demand_kept_index = keep,         # active-demand rows fed to the gather
     access_kept_index = access_kept,  # reachable cells the spread writes back
     template          = demand_kernel[[1]]
@@ -186,7 +208,12 @@
 #' @keywords internal
 .compute_fca_plan <- function(plan) {
   U <- .k_contract(plan$D_active, plan$Kd_active, over = "rows")   # [J]
-  R <- .k_ratio(plan$S, U, zero = 0)                               # [J x measures]
+  if (!is.null(dim(U))) {
+    S <- matrix(plan$S[, 1], nrow = nrow(U), ncol = ncol(U))
+    R <- .k_ratio(S, U, zero = 0)                                  # [J x demand batches]
+  } else {
+    R <- .k_ratio(plan$S, U, zero = 0)                              # [J x measures]
+  }
   A <- plan$Ka_kept %*% R                                          # [reachable cells x measures]
   lapply(seq_len(ncol(A)), function(m) as.vector(A[, m]))
 }

@@ -92,6 +92,50 @@ test_that(".compute_fca_plan batches independent supply measures as matrix algeb
                tolerance = 1e-10)
 })
 
+test_that(".compute_fca_matrix batches independent demand layers", {
+  td <- .mk_fca_matrix_data()
+  weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
+
+  demand_batch <- c(td$demand, td$demand * 2)
+  names(demand_batch) <- c("children", "adults")
+
+  batched <- .compute_fca_matrix(
+    demand = demand_batch, supply = td$supply_vector,
+    demand_kernel = weights, access_kernel = weights,
+    demand_normalize = "standard"
+  )
+  looped <- c(
+    .compute_fca_matrix(
+      demand = demand_batch[[1]], supply = td$supply_vector,
+      demand_kernel = weights, access_kernel = weights,
+      demand_normalize = "standard"
+    ),
+    .compute_fca_matrix(
+      demand = demand_batch[[2]], supply = td$supply_vector,
+      demand_kernel = weights, access_kernel = weights,
+      demand_normalize = "standard"
+    )
+  )
+  names(looped) <- names(demand_batch)
+
+  expect_equal(names(batched), names(demand_batch))
+  expect_equal(terra::values(batched), terra::values(looped), tolerance = 1e-8)
+})
+
+test_that(".fca_compact_plan rejects simultaneous demand and supply batches", {
+  td <- .mk_fca_matrix_data()
+  weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
+  demand_batch <- c(td$demand, td$demand * 2)
+
+  expect_error(
+    .fca_compact_plan(
+      demand_batch, td$supply_matrix, weights, weights,
+      demand_normalize = "standard"
+    ),
+    "product-axis semantics"
+  )
+})
+
 test_that(".compute_fca_matrix equals compute_fca across normalize methods", {
   td <- .mk_fca_matrix_data()
   weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
