@@ -61,6 +61,37 @@ test_that(".compute_fca_matrix equals compute_fca (multi-measure names + values)
   expect_equal(terra::values(matx), terra::values(golden), tolerance = 1e-8)
 })
 
+test_that(".compute_fca_plan batches independent supply measures as matrix algebra", {
+  td <- .mk_fca_matrix_data()
+  weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
+
+  plan <- .fca_compact_plan(
+    td$demand, td$supply_matrix, weights, weights, demand_normalize = "standard"
+  )
+
+  batched <- .compute_fca_plan(plan)
+
+  # Old semantics: one ratio/spread pass per independent supply measure.
+  U <- .k_contract(plan$D_active, plan$Kd_active, over = "rows")
+  looped <- lapply(seq_len(ncol(plan$S)), function(m) {
+    R <- .k_ratio(plan$S[, m], U, zero = 0)
+    .k_contract(R, plan$Ka_kept, over = "cols")
+  })
+
+  # Batched semantics: R[J, M] followed by one Ka %*% R contraction.
+  R <- .k_ratio(plan$S, U, zero = 0)
+  expected_matrix <- plan$Ka_kept %*% R
+
+  expect_equal(length(batched), ncol(plan$S))
+  expect_equal(lapply(batched, as.numeric), lapply(looped, as.numeric),
+               tolerance = 1e-10)
+  expect_equal(lapply(batched, as.numeric),
+               lapply(seq_len(ncol(expected_matrix)), function(m) {
+                 as.numeric(expected_matrix[, m])
+               }),
+               tolerance = 1e-10)
+})
+
 test_that(".compute_fca_matrix equals compute_fca across normalize methods", {
   td <- .mk_fca_matrix_data()
   weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)

@@ -177,17 +177,18 @@
 #'
 #' `gather -> ratio -> spread` as matrix ops. Consumes only the plan's plain
 #' matrices/vectors -- no terra -- and returns one access vector per measure
-#' (over the plan's reachable cells). The kernels in `plan` may be dense base
-#' matrices or `Matrix::` sparse matrices; this loop is identical either way,
-#' which is what lets a non-terra / sparse front-end reuse it unchanged. This
-#' is also the hot loop an AE fixed point would iterate (no rewrap inside).
+#' (over the plan's reachable cells). Multiple supply measures are an
+#' independent batch axis: `S[J, M]` is divided by the shared `U[J]`, then spread
+#' with one matrix-matrix contraction `Ka %*% R`. The kernels in `plan` may be
+#' dense base matrices or `Matrix::` sparse matrices; the same code path handles
+#' both. This is also the hot loop an AE fixed point would iterate (no rewrap
+#' inside).
 #' @keywords internal
 .compute_fca_plan <- function(plan) {
   U <- .k_contract(plan$D_active, plan$Kd_active, over = "rows")   # [J]
-  lapply(seq_len(ncol(plan$S)), function(m) {
-    R <- .k_ratio(plan$S[, m], U, zero = 0)                        # [J]
-    .k_contract(R, plan$Ka_kept, over = "cols")                    # [reachable cells]
-  })
+  R <- .k_ratio(plan$S, U, zero = 0)                               # [J x measures]
+  A <- plan$Ka_kept %*% R                                          # [reachable cells x measures]
+  lapply(seq_len(ncol(A)), function(m) as.vector(A[, m]))
 }
 
 #' Run FCA over the compact matrix substrate (== compute_fca, no raster hot loop)
