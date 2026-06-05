@@ -10,6 +10,9 @@ articles:
       - spax-102-data-prep
       - spax-103-dissection
       - spax-104-raster-tradeoff
+  - title: Package Conventions
+    contents:
+      - function-naming
 
 reference:
   - title: "Core Accessibility Functions"
@@ -17,7 +20,7 @@ reference:
     contents:
       - spax_2sfca
       - spax_e2sfca
-      - spax_ifca
+      - spax_m2sfca
       - compute_access
 
   - title: "Distance & Decay Functions"
