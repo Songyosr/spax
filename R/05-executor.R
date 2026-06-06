@@ -1,19 +1,24 @@
-# SPAX-020 / SPAX-007: private compact-matrix FCA execution path -------------
+# SPAX-020 / SPAX-007: private compact matrix executor ----------------------
 #
 # Engine-instance #1 of the platform (see notes "Spax Platform Vision"): the
 # no-state, single-pass T_theta. The checked spax_field / terra layer decides
 # meaning and geometry; this layer does the repeated numeric work on compact
 # matrices. Public API is unchanged -- these are private, tests/benchmarks only.
 #
-# Atoms as opcodes (named in tensor terms on purpose, not fca_fast_step_*):
-#   .k_scale           row/col scaling = broadcast (diagonal contract) == .ae_lift (broadcast half)
-#   .k_normalize       choice/Huff split over J (3SFCA)             == .ae_normalize by cell axis
-#   .k_contract        contract a vector vs a matrix over one margin == .ae_gather/.ae_spread/.ae_aggregate
-#   .k_ratio           zero-safe elementwise division               == .ae_ratio
-#   .k_rewrap_cells    write a value vector back onto a raster grid  == result rewrap
+# The atom catalog is documentation; a function exists only where there is a
+# contract worth testing. Executor functions are promoted when the operation is:
+# repeated AND (faster as a unit OR carries a guard/stability rule worth
+# centralizing). Pointwise math without a guard stays as plain vectorized R.
+#
+# Executor catalog:
+#   .contract      contract a vector/matrix over one margin via crossprod/%*%
+#   .scale         row/col scaling; broadcast folds into this
+#   .safe_ratio    zero-safe guarded division
+#   .normalize     margin normalization; policy modes live in the planner
+#   .rewrap_cells  compact vector -> raster boundary utility
 #
 # Grouping is not a special case: a group-collapse / split / group-normalize is
-# .k_contract / a broadcast against a 0/1 membership (incidence) matrix. `by =
+# .contract / a broadcast against a 0/1 membership (incidence) matrix. `by =
 # <axis>` later == "contract against that axis's incidence matrix." So product
 # axes (subgroup/mode/supply-class) reuse these primitives with an incidence
 # operand -- no new atoms.
@@ -28,7 +33,7 @@
 # property of what the extractor emits, not of these primitives (see the
 # kernel-density check: hospital ~69% dense, PHC ~13% -> sparse drop-in later).
 
-# Kernel primitives ----------------------------------------------------------
+# Executor primitives --------------------------------------------------------
 
 #' Scale the rows or columns of a matrix by a vector (the `scale`/broadcast atom)
 #'
@@ -37,7 +42,7 @@
 #' half of the grammar. Dense/sparse-clean: a base matrix uses recycling; a
 #' `Matrix::` matrix uses a `Diagonal()` multiply (sparse stays sparse).
 #' @keywords internal
-.k_scale <- function(K, s, margin = c("rows", "cols")) {
+.scale <- function(K, s, margin = c("rows", "cols")) {
   margin <- match.arg(margin)
   if (is.matrix(K)) {
     if (margin == "rows") {
@@ -52,27 +57,6 @@
   if (margin == "rows") D %*% K else K %*% D
 }
 
-#' Row-normalize a kernel matrix by cell (choice/Huff split over facilities)
-#'
-#' Matrix form of `.ae_normalize(kernel, by = cell_axis, method = ...)`, written
-#' as a diagonal row-scaling so it is dense/sparse-clean: each origin row is
-#' scaled by 1/(row sum). `identity` is a no-op; `standard` zeros rows summing to
-#' 0; `semi` only scales rows whose sum exceeds 1 (else leaves them unchanged).
-#' @param K matrix `[I x J]` (base or Matrix; NA already zeroed by the extractor).
-#' @keywords internal
-.k_normalize <- function(K, method = "identity", a0 = 0) {
-  if (method == "identity") {
-    return(K)
-  }
-  rs <- rowSums(K, na.rm = TRUE) + a0
-  factor <- switch(method,
-    standard = ifelse(rs > 0, 1 / rs, 0),  # rows summing to 0 -> zeroed
-    semi     = ifelse(rs > 1, 1 / rs, 1),  # only over-1 rows are scaled
-    stop("unsupported .k_normalize method: ", method)
-  )
-  .k_scale(K, factor, margin = "rows")
-}
-
 #' Contract a vector against a matrix over one margin (the `contract` atom)
 #'
 #' `over = "rows"` sums over dim 1 (gather over origins I): result is one value
@@ -85,7 +69,7 @@
 #' axis->margin mapping is the plan's job (a dense-array backend stores an
 #' explicit axis-to-dimension map); this primitive speaks plain matrix margins.
 #' @keywords internal
-.k_contract <- function(v, K, over = c("rows", "cols")) {
+.contract <- function(v, K, over = c("rows", "cols")) {
   over <- match.arg(over)
   out <- if (over == "rows") {
     crossprod(K, v)              # sum over dim 1; rows = ncol(K)
@@ -101,10 +85,29 @@
 
 #' Zero-safe elementwise ratio (matrix form of `.ae_ratio`)
 #' @keywords internal
-.k_ratio <- function(num, denom, zero = 0) {
+.safe_ratio <- function(num, denom, zero = 0) {
   out <- num / denom
   out[!is.finite(out)] <- zero
   out
+}
+
+#' Normalize a matrix over one margin
+#'
+#' `over = "cols"` sums columns and scales rows; `over = "rows"` sums rows and
+#' scales columns. Policy choices such as "identity" and "semi" belong in the
+#' planner; this executor always divides by the full margin sum with a zero-row
+#' guard.
+#' @keywords internal
+.normalize <- function(x, over = c("rows", "cols")) {
+  over <- match.arg(over)
+  if (over == "cols") {
+    denom <- rowSums(x, na.rm = TRUE)
+    factor <- ifelse(denom > 0, 1 / denom, 0)
+    return(.scale(x, factor, margin = "rows"))
+  }
+  denom <- colSums(x, na.rm = TRUE)
+  factor <- ifelse(denom > 0, 1 / denom, 0)
+  .scale(x, factor, margin = "cols")
 }
 
 #' Write a value vector back onto a raster template
@@ -113,13 +116,27 @@
 #' (the FCA access surface is defined on the full grid). When the output itself
 #' is compacted, pass the kept cell indices and unfilled cells become NA.
 #' @keywords internal
-.k_rewrap_cells <- function(values, template, kept_cell_index = NULL) {
+.rewrap_cells <- function(values, template, kept_cell_index = NULL) {
   if (is.null(kept_cell_index)) {
     return(terra::setValues(template, values))
   }
   v <- rep(NA_real_, terra::ncell(template))
   v[kept_cell_index] <- values
   terra::setValues(template, v)
+}
+
+#' Apply FCA demand-normalization policy to the compact gather kernel
+#' @keywords internal
+.fca_normalize_kernel <- function(K, method = "identity") {
+  method <- match.arg(method, c("identity", "standard", "semi"))
+  if (method == "identity") {
+    return(K)
+  }
+  if (method == "standard") {
+    return(.normalize(K, over = "cols"))
+  }
+  rs <- rowSums(K, na.rm = TRUE)
+  .scale(K, ifelse(rs > 1, 1 / rs, 1), margin = "rows")
 }
 
 # Execution plan (extractor) -------------------------------------------------
@@ -172,7 +189,7 @@
   D0 <- if (ncol(D0) == 1L) D0[, 1] else D0
   Kd0  <- Kd[keep, , drop = FALSE]
   Kd0[is.na(Kd0)] <- 0
-  Kd0  <- .k_normalize(Kd0, method = demand_normalize)
+  Kd0  <- .fca_normalize_kernel(Kd0, method = demand_normalize)
 
   # spread keeps cells reachable by >=1 facility; cells unreachable by every
   # facility stay NA (matches compute_fca's na.rm aggregate, which yields NA for
@@ -207,12 +224,12 @@
 #' inside).
 #' @keywords internal
 .compute_fca_plan <- function(plan) {
-  U <- .k_contract(plan$D_active, plan$Kd_active, over = "rows")   # [J]
+  U <- .contract(plan$D_active, plan$Kd_active, over = "rows")   # [J]
   if (!is.null(dim(U))) {
     S <- matrix(plan$S[, 1], nrow = nrow(U), ncol = ncol(U))
-    R <- .k_ratio(S, U, zero = 0)                                  # [J x demand batches]
+    R <- .safe_ratio(S, U, zero = 0)                                # [J x demand batches]
   } else {
-    R <- .k_ratio(plan$S, U, zero = 0)                              # [J x measures]
+    R <- .safe_ratio(plan$S, U, zero = 0)                            # [J x measures]
   }
   A <- plan$Ka_kept %*% R                                          # [reachable cells x measures]
   lapply(seq_len(ncol(A)), function(m) as.vector(A[, m]))
@@ -236,7 +253,7 @@
   access <- .compute_fca_plan(plan)                              # terra-free core
 
   layers <- lapply(access, function(A) {
-    .k_rewrap_cells(A, plan$template, kept_cell_index = plan$access_kept_index)
+    .rewrap_cells(A, plan$template, kept_cell_index = plan$access_kept_index)
   })
   out <- terra::rast(layers)
   names(out) <- plan$measures

@@ -72,14 +72,14 @@ test_that(".compute_fca_plan batches independent supply measures as matrix algeb
   batched <- .compute_fca_plan(plan)
 
   # Old semantics: one ratio/spread pass per independent supply measure.
-  U <- .k_contract(plan$D_active, plan$Kd_active, over = "rows")
+  U <- .contract(plan$D_active, plan$Kd_active, over = "rows")
   looped <- lapply(seq_len(ncol(plan$S)), function(m) {
-    R <- .k_ratio(plan$S[, m], U, zero = 0)
-    .k_contract(R, plan$Ka_kept, over = "cols")
+    R <- .safe_ratio(plan$S[, m], U, zero = 0)
+    .contract(R, plan$Ka_kept, over = "cols")
   })
 
   # Batched semantics: R[J, M] followed by one Ka %*% R contraction.
-  R <- .k_ratio(plan$S, U, zero = 0)
+  R <- .safe_ratio(plan$S, U, zero = 0)
   expected_matrix <- plan$Ka_kept %*% R
 
   expect_equal(length(batched), ncol(plan$S))
@@ -156,14 +156,14 @@ test_that(".compute_fca_matrix equals compute_fca across normalize methods", {
   }
 })
 
-test_that(".k_contract(over='rows') reproduces the gather (terra::global) reduction", {
+test_that(".contract(over='rows') reproduces the gather (terra::global) reduction", {
   td <- .mk_fca_matrix_data()
   weights <- calc_decay(td$distance, method = "gaussian", sigma = 2)
 
   D <- terra::values(td$demand)[, 1]
   K <- terra::values(weights, mat = TRUE)
 
-  u_matrix <- .k_contract(D, K, over = "rows")
+  u_matrix <- .contract(D, K, over = "rows")
   u_terra  <- gather_weighted(td$demand, weights, simplify = TRUE)
 
   expect_equal(unname(u_matrix), unname(as.numeric(u_terra)), tolerance = 1e-8)
@@ -189,40 +189,57 @@ test_that(".compute_fca_plan is terra-free and a sparse kernel plugs in identica
                tolerance = 1e-10)
 })
 
-test_that(".k_ratio is zero-safe and .k_normalize matches by-cell semantics", {
-  expect_equal(.k_ratio(c(2, 4, 6), c(1, 0, 3), zero = 0), c(2, 0, 2))
+test_that(".safe_ratio is zero-safe and .normalize divides over a margin", {
+  expect_equal(.safe_ratio(c(2, 4, 6), c(1, 0, 3), zero = 0), c(2, 0, 2))
 
   K <- matrix(c(1, 0, 2, 3, 0, 1), nrow = 2)  # rows sum to 1+2+0=3 ... [2 x 3]
   rs <- rowSums(K)
-  # standard: each row divides by its row sum
-  expect_equal(.k_normalize(K, "standard"), sweep(K, 1, rs, "/"))
-  # identity: untouched
-  expect_equal(.k_normalize(K, "identity"), K)
-  # standard zero-row guard
+  cs <- colSums(K)
+  # over = "cols": sum/collapse columns, then divide rows by their row sums
+  expect_equal(.normalize(K, over = "cols"), sweep(K, 1, rs, "/"))
+  # over = "rows": sum/collapse rows, then divide columns by their column sums
+  expect_equal(.normalize(K, over = "rows"), sweep(K, 2, cs, "/"))
+  # zero-row guard
   Z <- rbind(c(0, 0), c(1, 1))
-  expect_equal(.k_normalize(Z, "standard"), rbind(c(0, 0), c(0.5, 0.5)))
+  expect_equal(.normalize(Z, over = "cols"), rbind(c(0, 0), c(0.5, 0.5)))
 })
 
-test_that(".k_scale scales rows/cols identically for base and sparse matrices", {
+test_that(".fca_normalize_kernel keeps normalization policy outside executor", {
+  K <- rbind(c(0.2, 0.3), c(2, 1))
+
+  expect_equal(.fca_normalize_kernel(K, "identity"), K)
+  expect_equal(.fca_normalize_kernel(K, "standard"),
+               rbind(c(0.4, 0.6), c(2 / 3, 1 / 3)))
+  expect_equal(.fca_normalize_kernel(K, "semi"),
+               rbind(c(0.2, 0.3), c(2 / 3, 1 / 3)))
+  expect_error(.fca_normalize_kernel(K, "bad"), "should be one of")
+})
+
+test_that(".scale scales rows/cols identically for base and sparse matrices", {
   skip_if_not_installed("Matrix")
   K  <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)   # [2 x 3]
   sr <- c(10, 100)                              # per row
   sc <- c(2, 3, 4)                              # per col
   Ksp <- Matrix::Matrix(K, sparse = TRUE)
 
-  expect_equal(.k_scale(K, sr, "rows"), sweep(K, 1, sr, "*"))
-  expect_equal(.k_scale(K, sc, "cols"), sweep(K, 2, sc, "*"))
-  expect_equal(unname(as.matrix(.k_scale(Ksp, sr, "rows"))), sweep(K, 1, sr, "*"))
-  expect_equal(unname(as.matrix(.k_scale(Ksp, sc, "cols"))), sweep(K, 2, sc, "*"))
+  expect_equal(.scale(K, sr, "rows"), sweep(K, 1, sr, "*"))
+  expect_equal(.scale(K, sc, "cols"), sweep(K, 2, sc, "*"))
+  expect_equal(unname(as.matrix(.scale(Ksp, sr, "rows"))), sweep(K, 1, sr, "*"))
+  expect_equal(unname(as.matrix(.scale(Ksp, sc, "cols"))), sweep(K, 2, sc, "*"))
 })
 
-test_that(".k_normalize is dense/sparse-clean (diagonal scaling)", {
+test_that(".normalize and FCA normalization policy are dense/sparse-clean", {
   skip_if_not_installed("Matrix")
   K   <- matrix(c(1, 0, 2, 3, 0, 1), nrow = 2)
   Ksp <- Matrix::Matrix(K, sparse = TRUE)
+  for (over in c("rows", "cols")) {
+    expect_equal(unname(as.matrix(.normalize(Ksp, over = over))),
+                 unname(as.matrix(.normalize(K, over = over))),
+                 info = paste("over =", over))
+  }
   for (m in c("identity", "standard", "semi")) {
-    expect_equal(unname(as.matrix(.k_normalize(Ksp, m))),
-                 unname(as.matrix(.k_normalize(K, m))),
-                 info = paste("normalize =", m))
+    expect_equal(unname(as.matrix(.fca_normalize_kernel(Ksp, m))),
+                 unname(as.matrix(.fca_normalize_kernel(K, m))),
+                 info = paste("method =", m))
   }
 })
