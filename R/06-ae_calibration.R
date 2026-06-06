@@ -1,83 +1,22 @@
-# SPAX-008: shared AE calibration helpers ------------------------------------
+# SPAX-008: shared AE fixed-point derivative helpers --------------------------
 
 #' Fixed-point implicit gradient under F(x, theta) = x - T_theta(x)
 #'
-#' `jac_state` is dT/dx and `jac_theta` is dT/dtheta, both evaluated at the
+#' `jac_state` is dT/dx and `jac_param` is dT/dtheta, both evaluated at the
 #' selected fixed point. Returns dx*/dtheta = (I - dT/dx)^(-1) dT/dtheta.
 #' @keywords internal
-implicit_gradient <- function(jac_state, jac_theta) {
+implicit_gradient <- function(jac_state, jac_param) {
   .chck_numeric_matrix(jac_state, "jac_state")
-  .chck_numeric_matrix(jac_theta, "jac_theta")
+  .chck_numeric_matrix(jac_param, "jac_param")
   jac_state <- .coerce_numeric_matrix(jac_state)
-  jac_theta <- .coerce_numeric_matrix(jac_theta)
+  jac_param <- .coerce_numeric_matrix(jac_param)
   if (nrow(jac_state) != ncol(jac_state)) {
     stop("`jac_state` must be square")
   }
-  if (nrow(jac_theta) != nrow(jac_state)) {
-    stop("`jac_theta` must have one row per state element")
+  if (nrow(jac_param) != nrow(jac_state)) {
+    stop("`jac_param` must have one row per state element")
   }
-  solve(diag(nrow(jac_state)) - jac_state, jac_theta)
-}
-
-#' Weighted sum of squared errors
-#'
-#' Computes sum((predicted - observed)^2 / (observed + eta)).
-#' @keywords internal
-wsse_loss <- function(predicted, observed, eta = 1) {
-  .chck_numeric_vector(predicted, "predicted")
-  .chck_numeric_vector(observed, "observed")
-  .chck_nonnegative_scalar(eta, "eta")
-  predicted <- .coerce_numeric_vector(predicted)
-  observed <- .coerce_numeric_vector(observed)
-  eta <- as.numeric(eta)
-  if (length(predicted) != length(observed)) {
-    stop("`predicted` and `observed` must have the same length")
-  }
-  sum((predicted - observed)^2 / (observed + eta))
-}
-
-#' Gradient of WSSE with respect to parameters
-#'
-#' `sensitivity` is d predicted / d theta, with one row per observation and one
-#' column per parameter.
-#' @keywords internal
-wsse_grad <- function(predicted, observed, sensitivity, eta = 1) {
-  .chck_numeric_vector(predicted, "predicted")
-  .chck_numeric_vector(observed, "observed")
-  .chck_numeric_matrix(sensitivity, "sensitivity")
-  .chck_nonnegative_scalar(eta, "eta")
-  predicted <- .coerce_numeric_vector(predicted)
-  observed <- .coerce_numeric_vector(observed)
-  sensitivity <- .coerce_numeric_matrix(sensitivity)
-  eta <- as.numeric(eta)
-  if (length(predicted) != length(observed)) {
-    stop("`predicted` and `observed` must have the same length")
-  }
-  if (nrow(sensitivity) != length(predicted)) {
-    stop("`sensitivity` must have one row per prediction")
-  }
-  weights <- 2 * (predicted - observed) / (observed + eta)
-  as.vector(crossprod(sensitivity, weights))
-}
-
-#' Derivative of log decay weight with respect to sigma
-#' @keywords internal
-decay_dlog_dsigma <- function(method, distance, sigma) {
-  method <- match.arg(method, c("gaussian", "exponential", "power"))
-  .chck_numeric_vector(distance, "distance")
-  .chck_positive_scalar(sigma, "sigma")
-  distance <- .coerce_numeric_vector(distance)
-  sigma <- as.numeric(sigma)
-  if (method == "gaussian") {
-    return(distance^2 / sigma^3)
-  }
-  if (method == "exponential") {
-    return(-distance)
-  }
-  if (any(distance <= 0)) {
-    stop("power decay derivative requires positive `distance`")
-  }
-  -log(distance)
+  solve(diag(nrow(jac_state)) - jac_state, jac_param)
 }
 
 #' Check an analytic Jacobian against finite differences

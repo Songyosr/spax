@@ -1,6 +1,6 @@
 test_that("solve_equilibrium converges a contraction map", {
-  step <- function(x) 0.5 * x + 1
-  fit <- solve_equilibrium(step, x0 = 0, tol = 1e-10, max_iter = 200)
+  map <- function(x) 0.5 * x + 1
+  fit <- solve_equilibrium(map, x0 = 0, tol = 1e-10, max_iter = 200)
 
   expect_s3_class(fit, "ae_equilibrium")
   expect_true(fit$converged)
@@ -11,8 +11,8 @@ test_that("solve_equilibrium converges a contraction map", {
 })
 
 test_that("solve_equilibrium applies damping and reports non-convergence", {
-  step <- function(x) 1
-  fit <- solve_equilibrium(step, x0 = 0, lambda = 0.5, max_iter = 2,
+  map <- function(x) 1
+  fit <- solve_equilibrium(map, x0 = 0, lambda = 0.5, max_iter = 2,
                            tol = 1e-12, warn = FALSE)
   expect_false(fit$converged)
   expect_equal(fit$x_star, 0.75)
@@ -21,16 +21,16 @@ test_that("solve_equilibrium applies damping and reports non-convergence", {
   expect_true(is.na(fit$residual_norm))
 })
 
-test_that("solve_equilibrium can skip repeated step-output checks", {
-  step <- function(x) 0.5 * x + 1
-  fit <- solve_equilibrium(step, x0 = 0, check_step = FALSE,
+test_that("solve_equilibrium can skip repeated map-output checks", {
+  map <- function(x) 0.5 * x + 1
+  fit <- solve_equilibrium(map, x0 = 0, check = FALSE,
                            tol = 1e-10, max_iter = 200)
 
   expect_true(fit$converged)
   expect_equal(fit$x_star, 2, tolerance = 1e-8)
 })
 
-test_that("solve_equilibrium validates step output", {
+test_that("solve_equilibrium validates map output", {
   expect_error(
     solve_equilibrium(function(x) c(x, x), x0 = 1),
     "same length"

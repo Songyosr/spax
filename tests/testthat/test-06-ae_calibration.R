@@ -13,24 +13,24 @@ test_that("implicit_gradient matches fixed-point sensitivity", {
   expect_equal(sens, fd, tolerance = 1e-6)
 })
 
-test_that("wsse_loss and wsse_grad match finite differences", {
+test_that("weighted SSE loss and gradient match finite differences", {
   C <- matrix(c(1, 2, 0, 3, 1, -1), nrow = 3)
   observed <- c(10, 20, 5)
   theta <- c(2, 3)
   pred <- as.vector(C %*% theta)
 
   loss_fn <- function(th) {
-    wsse_loss(as.vector(C %*% th), observed, eta = 1)
+    .weighted_sse_loss(as.vector(C %*% th), observed, eta = 1)
   }
   fd <- fd_jacobian(function(th) loss_fn(th), theta)
-  analytic <- wsse_grad(pred, observed, C, eta = 1)
+  analytic <- .weighted_sse_gradient(pred, observed, C, eta = 1)
 
   expect_equal(as.numeric(loss_fn(theta)),
                sum((pred - observed)^2 / (observed + 1)))
   expect_equal(analytic, as.vector(fd), tolerance = 1e-5)
 })
 
-test_that("decay_dlog_dsigma matches finite differences of log decay", {
+test_that("decay log Jacobian matches finite differences of log decay", {
   d <- c(1.2, 3.4, 5.6)
   sigma <- 2.5
   h <- 1e-6
@@ -48,13 +48,13 @@ test_that("decay_dlog_dsigma matches finite differences of log decay", {
       log(calc_decay(d, method = "power", sigma = sigma - h))
   ) / (2 * h)
 
-  expect_equal(decay_dlog_dsigma("gaussian", d, sigma),
+  expect_equal(.decay_log_jacobian("gaussian", d, sigma),
                as.numeric(fd_gaussian), tolerance = 1e-7)
-  expect_equal(decay_dlog_dsigma("exponential", d, sigma),
+  expect_equal(.decay_log_jacobian("exponential", d, sigma),
                as.numeric(fd_exponential), tolerance = 1e-7)
-  expect_equal(decay_dlog_dsigma("power", d, sigma),
+  expect_equal(.decay_log_jacobian("power", d, sigma),
                as.numeric(fd_power), tolerance = 1e-7)
-  expect_error(decay_dlog_dsigma("power", c(0, 1), sigma), "positive")
+  expect_error(.decay_log_jacobian("power", c(0, 1), sigma), "positive")
 })
 
 test_that("grad_check compares analytic and finite-difference Jacobians", {

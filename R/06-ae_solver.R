@@ -1,16 +1,16 @@
-# SPAX-008: shared AE fixed-point solver -------------------------------------
+# SPAX-008: shared AE inner-equilibrium solver -------------------------------
 
 #' Solve a fixed point with damped Picard iteration
 #'
-#' Solves `x = step(x, ...)` by iterating
-#' `x_next = (1 - lambda) * x + lambda * step(x, ...)`.
+#' Solves `x = map(x, ...)` by iterating
+#' `x_next = (1 - lambda) * x + lambda * map(x, ...)`.
 #' @keywords internal
-solve_equilibrium <- function(step, x0, lambda = 1, tol = 1e-8,
+solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
                               max_iter = 1000, norm = c("max", "l2"),
                               keep_history = TRUE, warn = TRUE,
-                              check_step = TRUE, ...) {
-  if (!is.function(step)) {
-    stop("`step` must be a function")
+                              check = TRUE, ...) {
+  if (!is.function(map)) {
+    stop("`map` must be a function")
   }
   .chck_numeric_vector(x0, "x0")
   x <- .coerce_numeric_vector(x0)
@@ -37,7 +37,7 @@ solve_equilibrium <- function(step, x0, lambda = 1, tol = 1e-8,
   message <- "maximum iterations reached"
 
   for (iter in seq_len(max_iter)) {
-    target <- .solver_step_value(step(x, ...), x, check = check_step)
+    target <- .solver_map_value(map(x, ...), x, check = check)
     x_next <- (1 - lambda) * x + lambda * target
     err <- .solver_norm(x_next - x, norm = norm)
 
@@ -55,7 +55,7 @@ solve_equilibrium <- function(step, x0, lambda = 1, tol = 1e-8,
 
   residual_norm <- NA_real_
   if (converged) {
-    final_target <- .solver_step_value(step(x, ...), x, check = check_step)
+    final_target <- .solver_map_value(map(x, ...), x, check = check)
     residual_norm <- .solver_norm(x - final_target, norm = norm)
   } else if (warn) {
     warning("fixed-point solver did not converge within `max_iter`")
@@ -85,7 +85,7 @@ equilibrium_residual <- function(map, x, ..., check = TRUE) {
   }
   .chck_numeric_vector(x, "x")
   x <- .coerce_numeric_vector(x)
-  x - .solver_step_value(map(x, ...), x, check = check)
+  x - .solver_map_value(map(x, ...), x, check = check)
 }
 
 #' Spectral radius of a square Jacobian
@@ -160,14 +160,14 @@ fd_jacobian_param <- function(map, theta, x, ..., eps = 1e-6,
   out
 }
 
-.solver_step_value <- function(value, x, check = TRUE) {
+.solver_map_value <- function(value, x, check = TRUE) {
   if (!check) {
     return(value)
   }
-  .chck_numeric_vector(value, "step result")
+  .chck_numeric_vector(value, "map result")
   value <- .coerce_numeric_vector(value)
   if (length(value) != length(x)) {
-    stop("`step` must return a numeric vector with the same length as `x0`")
+    stop("`map` must return a numeric vector with the same length as `x0`")
   }
   value
 }
