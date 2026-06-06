@@ -6,8 +6,10 @@
 #' selected fixed point. Returns dx*/dtheta = (I - dT/dx)^(-1) dT/dtheta.
 #' @keywords internal
 implicit_gradient <- function(jac_state, jac_theta) {
-  jac_state <- .ae_numeric_matrix(jac_state, "jac_state")
-  jac_theta <- .ae_numeric_matrix(jac_theta, "jac_theta")
+  .chck_numeric_matrix(jac_state, "jac_state")
+  .chck_numeric_matrix(jac_theta, "jac_theta")
+  jac_state <- .coerce_numeric_matrix(jac_state)
+  jac_theta <- .coerce_numeric_matrix(jac_theta)
   if (nrow(jac_state) != ncol(jac_state)) {
     stop("`jac_state` must be square")
   }
@@ -22,9 +24,12 @@ implicit_gradient <- function(jac_state, jac_theta) {
 #' Computes sum((predicted - observed)^2 / (observed + eta)).
 #' @keywords internal
 wsse_loss <- function(predicted, observed, eta = 1) {
-  predicted <- .ae_numeric_vector(predicted, "predicted")
-  observed <- .ae_numeric_vector(observed, "observed")
-  eta <- .ae_scalar_nonnegative(eta, "eta")
+  .chck_numeric_vector(predicted, "predicted")
+  .chck_numeric_vector(observed, "observed")
+  .chck_nonnegative_scalar(eta, "eta")
+  predicted <- .coerce_numeric_vector(predicted)
+  observed <- .coerce_numeric_vector(observed)
+  eta <- as.numeric(eta)
   if (length(predicted) != length(observed)) {
     stop("`predicted` and `observed` must have the same length")
   }
@@ -37,10 +42,14 @@ wsse_loss <- function(predicted, observed, eta = 1) {
 #' column per parameter.
 #' @keywords internal
 wsse_grad <- function(predicted, observed, sensitivity, eta = 1) {
-  predicted <- .ae_numeric_vector(predicted, "predicted")
-  observed <- .ae_numeric_vector(observed, "observed")
-  sensitivity <- .ae_numeric_matrix(sensitivity, "sensitivity")
-  eta <- .ae_scalar_nonnegative(eta, "eta")
+  .chck_numeric_vector(predicted, "predicted")
+  .chck_numeric_vector(observed, "observed")
+  .chck_numeric_matrix(sensitivity, "sensitivity")
+  .chck_nonnegative_scalar(eta, "eta")
+  predicted <- .coerce_numeric_vector(predicted)
+  observed <- .coerce_numeric_vector(observed)
+  sensitivity <- .coerce_numeric_matrix(sensitivity)
+  eta <- as.numeric(eta)
   if (length(predicted) != length(observed)) {
     stop("`predicted` and `observed` must have the same length")
   }
@@ -55,8 +64,10 @@ wsse_grad <- function(predicted, observed, sensitivity, eta = 1) {
 #' @keywords internal
 decay_dlog_dsigma <- function(method, distance, sigma) {
   method <- match.arg(method, c("gaussian", "exponential", "power"))
-  distance <- .ae_numeric_vector(distance, "distance")
-  sigma <- .ae_scalar_positive(sigma, "sigma")
+  .chck_numeric_vector(distance, "distance")
+  .chck_positive_scalar(sigma, "sigma")
+  distance <- .coerce_numeric_vector(distance)
+  sigma <- as.numeric(sigma)
   if (method == "gaussian") {
     return(distance^2 / sigma^3)
   }
@@ -80,7 +91,8 @@ grad_check <- function(fn, x, analytic_jac, ..., eps = 1e-6,
   } else {
     analytic_jac
   }
-  analytic <- .ae_numeric_matrix(analytic, "analytic_jac")
+  .chck_numeric_matrix(analytic, "analytic_jac")
+  analytic <- .coerce_numeric_matrix(analytic)
   if (!identical(dim(fd), dim(analytic))) {
     stop("analytic and finite-difference Jacobians must have the same dimensions")
   }
@@ -97,21 +109,8 @@ grad_check <- function(fn, x, analytic_jac, ..., eps = 1e-6,
   )
 }
 
-.ae_numeric_matrix <- function(x, name) {
-  if (!is.numeric(x) && !is.matrix(x)) {
-    stop("`", name, "` must be numeric")
-  }
+.coerce_numeric_matrix <- function(x) {
   x <- as.matrix(x)
   storage.mode(x) <- "double"
-  if (!all(is.finite(x))) {
-    stop("`", name, "` must contain only finite values")
-  }
   x
-}
-
-.ae_scalar_nonnegative <- function(x, name) {
-  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x < 0) {
-    stop("`", name, "` must be a nonnegative scalar")
-  }
-  as.numeric(x)
 }

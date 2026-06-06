@@ -18,6 +18,65 @@
   invisible(TRUE)
 }
 
+#' Check if input is a numeric vector
+#' @keywords internal
+.chck_numeric_vector <- function(x, name = "Input", finite = TRUE) {
+  .chck_is_numeric(x, name = name)
+  if (is.null(x) || !is.null(dim(x))) {
+    stop(sprintf("%s must be a numeric vector", name))
+  }
+  if (finite && any(!is.finite(x))) {
+    stop(sprintf("%s must contain only finite values", name))
+  }
+  invisible(TRUE)
+}
+
+#' Check if input is a numeric matrix
+#' @keywords internal
+.chck_numeric_matrix <- function(x, name = "Input", finite = TRUE) {
+  .chck_is_numeric(x, name = name)
+  if (is.null(dim(x)) || length(dim(x)) != 2L) {
+    stop(sprintf("%s must be a numeric matrix", name))
+  }
+  if (finite && any(!is.finite(x))) {
+    stop(sprintf("%s must contain only finite values", name))
+  }
+  invisible(TRUE)
+}
+
+#' Check if input is a positive scalar
+#' @keywords internal
+.chck_positive_scalar <- function(x, name = "Input") {
+  .chck_is_numeric(x, name = name)
+  .chck_length(length(x), 1, name = name)
+  if (!is.finite(x) || x <= 0) {
+    stop(sprintf("%s must be a positive scalar", name))
+  }
+  invisible(TRUE)
+}
+
+#' Check if input is a nonnegative scalar
+#' @keywords internal
+.chck_nonnegative_scalar <- function(x, name = "Input") {
+  .chck_is_numeric(x, name = name)
+  .chck_length(length(x), 1, name = name)
+  if (!is.finite(x) || x < 0) {
+    stop(sprintf("%s must be a nonnegative scalar", name))
+  }
+  invisible(TRUE)
+}
+
+#' Check if input is a positive integer scalar
+#' @keywords internal
+.chck_positive_integer <- function(x, name = "Input") {
+  .chck_is_numeric(x, name = name)
+  .chck_length(length(x), 1, name = name)
+  if (!is.finite(x) || x < 1 || x != as.integer(x)) {
+    stop(sprintf("%s must be a positive integer", name))
+  }
+  invisible(TRUE)
+}
+
 #' Check if value is integer
 #' @keywords internal
 .chck_is_integer <- function(x, name = "Input") {
