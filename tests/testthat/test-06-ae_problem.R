@@ -73,18 +73,19 @@ test_that(".solve_problem reproduces existing SAE equilibrium", {
 
   kernel <- calc_decay(td$distance, method = "gaussian", sigma = theta, snap = TRUE)
   plan <- .sae_compact_plan(td$demand, td$supply, kernel, kappa = 1 / 3)
-  old <- .sae_equilibrium(
-    plan, x0 = c(1, 1), beta = 20, eps = 1e-8,
+  old <- solve_equilibrium(
+    map = .sae_map, x0 = c(1, 1), plan = plan, beta = 20, eps = 1e-8,
     lambda = 0.7, tol = 1e-10, max_iter = 500, check = FALSE
   )
+  old_util <- .sae_state(old$x_star, plan = plan, beta = 20, eps = 1e-8)$utilization
   new <- .solve_problem(
     p, theta = theta, lambda = 0.7, tol = 1e-10,
     max_iter = 500, check = FALSE
   )
 
   expect_true(new$converged)
-  expect_equal(new$x_star, old$serviceability, tolerance = 1e-10)
-  expect_equal(new$utilization, old$utilization, tolerance = 1e-10)
+  expect_equal(new$x_star, old$x_star, tolerance = 1e-10)
+  expect_equal(new$utilization, old_util, tolerance = 1e-10)
 })
 
 test_that(".solve_problem reports spectral radius and contraction by default", {
@@ -113,17 +114,15 @@ test_that(".solve_problem reports spectral radius and contraction by default", {
 
 test_that(".fit_problem_decay records eta and the fitted spectral radius", {
   td <- .mk_ae_problem_data()
-  truth <- .sae_predict_decay(
-    theta = 2, family = "gaussian",
-    demand = td$demand, supply = td$supply, distance = td$distance,
-    kappa = 1 / 3, beta = 20, lambda = 0.7, tol = 1e-10, max_iter = 500
-  )
   problem <- .sae_problem(
     td$demand, td$supply, td$distance,
     family = "gaussian", kappa = 1 / 3, beta = 20
   )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
   fit <- .fit_problem_decay(
-    problem = problem, observed = truth$predicted,
+    problem = problem, observed = observed,
     init = 1.5, lower = 0.5, upper = 4, lambda = 0.7, tol = 1e-10,
     max_iter = 500, eta = 2, control = list(maxit = 20)
   )
@@ -135,19 +134,17 @@ test_that(".fit_problem_decay records eta and the fitted spectral radius", {
 
 test_that(".fit_problem_decay warns when the optimum hits a search bound", {
   td <- .mk_ae_problem_data()
-  truth <- .sae_predict_decay(
-    theta = 2, family = "gaussian",
-    demand = td$demand, supply = td$supply, distance = td$distance,
-    kappa = 1 / 3, beta = 20, lambda = 0.7, tol = 1e-10, max_iter = 500
-  )
   problem <- .sae_problem(
     td$demand, td$supply, td$distance,
     family = "gaussian", kappa = 1 / 3, beta = 20
   )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
   # True optimum is sigma = 2, but the box floor (3) forces a boundary solution.
   expect_warning(
     .fit_problem_decay(
-      problem = problem, observed = truth$predicted,
+      problem = problem, observed = observed,
       init = 4, lower = 3, upper = 8, lambda = 0.7, tol = 1e-10,
       max_iter = 500, control = list(maxit = 20)
     ),
@@ -169,26 +166,17 @@ test_that("problem runners validate theta and initial state without mutation", {
 
 test_that(".fit_problem_decay reproduces SAE decay fitting oracle", {
   td <- .mk_ae_problem_data()
-  truth <- .sae_predict_decay(
-    theta = 2,
-    family = "gaussian",
-    demand = td$demand,
-    supply = td$supply,
-    distance = td$distance,
-    kappa = 1 / 3,
-    beta = 20,
-    lambda = 0.7,
-    tol = 1e-10,
-    max_iter = 500
-  )
   problem <- .sae_problem(
     td$demand, td$supply, td$distance,
     family = "gaussian", kappa = 1 / 3, beta = 20
   )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
 
   fit <- .fit_problem_decay(
     problem = problem,
-    observed = truth$predicted,
+    observed = observed,
     init = 1.5,
     lower = 0.5,
     upper = 4,
@@ -203,30 +191,22 @@ test_that(".fit_problem_decay reproduces SAE decay fitting oracle", {
   expect_equal(fit$convergence, 0)
   expect_lt(fit$wsse, 1e-6)
   expect_equal(fit$theta_hat, 2, tolerance = 1e-3)
-  expect_equal(unname(fit$predicted), unname(truth$predicted), tolerance = 1e-4)
+  expect_equal(unname(fit$predicted), unname(observed), tolerance = 1e-4)
 })
 
 test_that(".fit_problem_decay reproduces HAAE decay fitting oracle", {
   td <- .mk_ae_problem_data()
-  truth <- .haae_predict_decay(
-    theta = 2,
-    family = "gaussian",
-    demand = td$demand,
-    supply = td$supply,
-    distance = td$distance,
-    kappa = 1 / 3,
-    lambda = 0.7,
-    tol = 1e-10,
-    max_iter = 500
-  )
   problem <- .haae_problem(
     td$demand, td$supply, td$distance,
     family = "gaussian", kappa = 1 / 3
   )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
 
   fit <- .fit_problem_decay(
     problem = problem,
-    observed = truth$predicted,
+    observed = observed,
     init = 1.5,
     lower = 0.5,
     upper = 4,
@@ -241,5 +221,5 @@ test_that(".fit_problem_decay reproduces HAAE decay fitting oracle", {
   expect_equal(fit$convergence, 0)
   expect_lt(fit$wsse, 1e-6)
   expect_equal(fit$theta_hat, 2, tolerance = 1e-3)
-  expect_equal(unname(fit$predicted), unname(truth$predicted), tolerance = 1e-4)
+  expect_equal(unname(fit$predicted), unname(observed), tolerance = 1e-4)
 })
