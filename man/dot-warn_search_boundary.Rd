@@ -4,7 +4,7 @@
 \alias{.warn_search_boundary}
 \title{Warn when a calibrated parameter lands on its search-box bound}
 \usage{
-.warn_search_boundary(par, lower, upper)
+.warn_search_boundary(par, lower, upper, name = "parameter")
 }
 \description{
 A boundary optimum usually means the search box, not the model, picked the

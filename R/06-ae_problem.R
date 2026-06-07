@@ -35,14 +35,14 @@
 #' A boundary optimum usually means the search box, not the model, picked the
 #' answer. `par` is the optimized value on the log scale (matching the optimizer).
 #' @keywords internal
-.warn_search_boundary <- function(par, lower, upper) {
+.warn_search_boundary <- function(par, lower, upper, name = "parameter") {
   span <- log(upper) - log(lower)
   tol <- 1e-6 + 1e-3 * span
   if (par <= log(lower) + tol) {
-    warning("fitted sigma reached the lower search bound (", format(lower),
+    warning("fitted ", name, " reached the lower search bound (", format(lower),
             "); widen `lower` or revisit the model.", call. = FALSE)
   } else if (par >= log(upper) - tol) {
-    warning("fitted sigma reached the upper search bound (", format(upper),
+    warning("fitted ", name, " reached the upper search bound (", format(upper),
             "); widen `upper` or revisit the model.", call. = FALSE)
   }
   invisible(NULL)
@@ -370,9 +370,10 @@
   .chck_positive_scalar(lower, "lower")
   .chck_positive_scalar(upper, "upper")
   .chck_nonnegative_scalar(eta, "eta")
-  if (!identical(problem$theta$names, "sigma")) {
-    stop(".fit_problem_decay() currently supports one `sigma` theta")
+  if (length(problem$theta$names) != 1L) {
+    stop(".fit_problem_decay() currently supports a single-parameter theta")
   }
+  pname <- problem$theta$names
   if (lower >= upper) {
     stop("`lower` must be less than `upper`")
   }
@@ -383,7 +384,7 @@
   observed <- .coerce_numeric_vector(observed)
   warm <- NULL
   objective <- function(log_theta) {
-    theta <- c(sigma = exp(log_theta))
+    theta <- stats::setNames(exp(log_theta), pname)
     x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
     fit <- .solve_problem(
       problem,
@@ -415,8 +416,8 @@
     )
   })[["elapsed"]]
 
-  theta_hat <- c(sigma = exp(opt$par))
-  .warn_search_boundary(opt$par, lower, upper)
+  theta_hat <- stats::setNames(exp(opt$par), pname)
+  .warn_search_boundary(opt$par, lower, upper, pname)
   final <- .solve_problem(
     problem,
     theta = theta_hat,
@@ -439,7 +440,7 @@
     list(
       model = problem$model,
       family = problem$metadata$spec$family,
-      theta_hat = unname(theta_hat[["sigma"]]),
+      theta_hat = unname(theta_hat[[pname]]),
       theta = theta_hat,
       loss = loss,
       wsse = loss,
