@@ -4,6 +4,32 @@
 # theta-only work once, then returns a hot-loop step function of state only.
 # This is intentionally private and thin; SAE/HAAE remain the extraction oracles.
 
+#' Canonical theta contract for single decay-parameter AE models
+#'
+#' Single source of truth for the sigma validity bounds. Both the bind closure
+#' and the problem object read this, so the contract cannot drift between them.
+#' @keywords internal
+.decay_theta_contract <- function() {
+  list(names = "sigma", lower = 0, upper = Inf)
+}
+
+#' Require an AE outputs list to carry the contracted keys
+#'
+#' Every bound step's `outputs(x)` must expose `target` and `utilization` so
+#' runners and loss functions can bind to known quantities without defensive
+#' NULL checks.
+#' @keywords internal
+.validate_ae_outputs <- function(outputs) {
+  if (!is.list(outputs)) {
+    stop("AE outputs must be a list")
+  }
+  missing <- setdiff(c("target", "utilization"), names(outputs))
+  if (length(missing) > 0) {
+    stop("AE outputs must include: ", paste(missing, collapse = ", "))
+  }
+  outputs
+}
+
 #' Compile checked raster inputs into a compact interaction substrate
 #' @keywords internal
 .interaction_substrate <- function(demand, supply, distance,
@@ -47,7 +73,8 @@
     family = family,
     kappa = as.numeric(kappa),
     beta = as.numeric(beta),
-    eps = as.numeric(eps)
+    eps = as.numeric(eps),
+    theta = .decay_theta_contract()
   )
 }
 
@@ -66,7 +93,8 @@
     kappa = as.numeric(kappa),
     eps = as.numeric(eps),
     a_min = as.numeric(a_min),
-    a_max = a_max
+    a_max = a_max,
+    theta = .decay_theta_contract()
   )
 }
 
@@ -126,7 +154,7 @@
       lower = 0,
       upper = 1
     ),
-    theta = list(names = "sigma", lower = 0, upper = Inf),
+    theta = spec$theta,
     bind = compiled$bind,
     metadata = list(spec = spec)
   )
@@ -158,7 +186,7 @@
       lower = a_min,
       upper = a_max
     ),
-    theta = list(names = "sigma", lower = 0, upper = Inf),
+    theta = spec$theta,
     bind = compiled$bind,
     metadata = list(spec = spec)
   )
@@ -167,7 +195,7 @@
 .compile_sae_map <- function(spec, substrate) {
   S <- as.vector(substrate$S[, 1])
   bind <- function(theta) {
-    theta <- .coerce_problem_theta(theta, list(names = "sigma", lower = 0, upper = Inf))
+    theta <- .coerce_problem_theta(theta, spec$theta)
     K <- calc_decay(substrate$distance_active, method = spec$family,
                     sigma = theta[["sigma"]], snap = TRUE)
     K[!is.finite(K)] <- 0
@@ -200,7 +228,7 @@
 .compile_haae_map <- function(spec, substrate) {
   S <- as.vector(substrate$S[, 1])
   bind <- function(theta) {
-    theta <- .coerce_problem_theta(theta, list(names = "sigma", lower = 0, upper = Inf))
+    theta <- .coerce_problem_theta(theta, spec$theta)
     K <- calc_decay(substrate$distance_active, method = spec$family,
                     sigma = theta[["sigma"]], snap = TRUE)
     K[!is.finite(K)] <- 0
@@ -296,10 +324,8 @@
     warn = warn,
     check = check
   )
-  fit$outputs <- step$outputs(fit$x_star)
-  if (!is.null(fit$outputs$utilization)) {
-    fit$utilization <- fit$outputs$utilization
-  }
+  fit$outputs <- .validate_ae_outputs(step$outputs(fit$x_star))
+  fit$utilization <- fit$outputs$utilization
   fit
 }
 
