@@ -4,10 +4,10 @@
 # theta-only work once, then returns a hot-loop step function of state only.
 # This is intentionally private and thin; SAE/HAAE remain the extraction oracles.
 
-#' Compile checked raster inputs into a decay-ready compact substrate
+#' Compile checked raster inputs into a compact interaction substrate
 #' @keywords internal
-.decay_substrate <- function(demand, supply, distance,
-                             id_col = NULL, supply_cols = NULL) {
+.interaction_substrate <- function(demand, supply, distance,
+                                   id_col = NULL, supply_cols = NULL) {
   .chck_raster_alignment(demand, distance[[1]], "demand", "distance")
 
   ids <- names(distance)
@@ -108,8 +108,9 @@
                          family = c("gaussian", "exponential", "power"),
                          kappa = 1, beta = 20, eps = 1e-8,
                          id_col = NULL, supply_cols = NULL) {
-  substrate <- .decay_substrate(demand, supply, distance,
-                                id_col = id_col, supply_cols = supply_cols)
+  substrate <- .interaction_substrate(
+    demand, supply, distance, id_col = id_col, supply_cols = supply_cols
+  )
   if (ncol(substrate$S) != 1L) {
     stop("SAE currently supports one supply measure")
   }
@@ -138,8 +139,9 @@
                           kappa = 1, eps = 1e-8, a_min = 1e-6,
                           a_max = Inf, id_col = NULL,
                           supply_cols = NULL) {
-  substrate <- .decay_substrate(demand, supply, distance,
-                                id_col = id_col, supply_cols = supply_cols)
+  substrate <- .interaction_substrate(
+    demand, supply, distance, id_col = id_col, supply_cols = supply_cols
+  )
   if (ncol(substrate$S) != 1L) {
     stop("HAAE currently supports one supply measure")
   }
@@ -301,6 +303,102 @@
   fit
 }
 
+#' Fit one decay parameter for an AE problem by weighted SSE
+#' @keywords internal
+.fit_problem_decay <- function(problem, observed, init, lower, upper,
+                               lambda = 1, tol = 1e-8, max_iter = 1000,
+                               eta = 1, control = list(maxit = 25),
+                               check = FALSE) {
+  .chck_class(problem, "ae_problem", "problem")
+  .chck_numeric_vector(observed, "observed")
+  .chck_positive_scalar(init, "init")
+  .chck_positive_scalar(lower, "lower")
+  .chck_positive_scalar(upper, "upper")
+  .chck_nonnegative_scalar(eta, "eta")
+  if (!identical(problem$theta$names, "sigma")) {
+    stop(".fit_problem_decay() currently supports one `sigma` theta")
+  }
+  if (lower >= upper) {
+    stop("`lower` must be less than `upper`")
+  }
+  if (init < lower || init > upper) {
+    stop("`init` must be inside [`lower`, `upper`]")
+  }
+
+  observed <- .coerce_numeric_vector(observed)
+  warm <- NULL
+  objective <- function(log_theta) {
+    theta <- c(sigma = exp(log_theta))
+    x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
+    fit <- .solve_problem(
+      problem,
+      theta = theta,
+      x0 = x0,
+      lambda = lambda,
+      tol = tol,
+      max_iter = max_iter,
+      keep_history = FALSE,
+      warn = FALSE,
+      check = check
+    )
+    if (!isTRUE(fit$converged) || is.null(fit$utilization)) {
+      return(1e12)
+    }
+    warm <<- fit$x_star
+    .weighted_sse_loss(fit$utilization, observed, eta = eta)
+  }
+
+  elapsed <- system.time({
+    opt <- stats::optim(
+      par = log(init),
+      fn = objective,
+      method = "L-BFGS-B",
+      lower = log(lower),
+      upper = log(upper),
+      control = control
+    )
+  })[["elapsed"]]
+
+  theta_hat <- c(sigma = exp(opt$par))
+  final <- .solve_problem(
+    problem,
+    theta = theta_hat,
+    x0 = if (.state_within_problem_bounds(problem, warm)) warm else NULL,
+    lambda = lambda,
+    tol = tol,
+    max_iter = max_iter,
+    keep_history = TRUE,
+    warn = TRUE,
+    check = check
+  )
+  loss <- .weighted_sse_loss(final$utilization, observed, eta = eta)
+  predicted <- final$utilization
+  names(predicted) <- problem$substrate$facility_ids
+  state_name <- problem$state$name
+  state <- final$x_star
+  names(state) <- problem$substrate$facility_ids
+
+  structure(
+    list(
+      model = problem$model,
+      family = problem$metadata$spec$family,
+      theta_hat = unname(theta_hat[["sigma"]]),
+      theta = theta_hat,
+      loss = loss,
+      wsse = loss,
+      convergence = opt$convergence,
+      message = opt$message,
+      seconds = unname(elapsed),
+      predicted = predicted,
+      state = state,
+      state_name = state_name,
+      equilibrium = final,
+      optim = opt
+    ),
+    class = c("ae_problem_decay_fit", paste0(problem$model, "_problem_decay_fit"))
+  )
+}
+
 .validate_problem_state <- function(problem, x) {
   .chck_numeric_vector(x, "x0")
   x <- .coerce_numeric_vector(x)
@@ -311,6 +409,16 @@
     stop("`x0` is outside the problem state bounds")
   }
   invisible(TRUE)
+}
+
+.state_within_problem_bounds <- function(problem, x) {
+  if (is.null(x)) {
+    return(FALSE)
+  }
+  x <- .coerce_numeric_vector(x)
+  length(x) == length(problem$state$init) &&
+    all(is.finite(x)) &&
+    all(x >= problem$state$lower & x <= problem$state$upper)
 }
 
 .coerce_problem_theta <- function(theta, contract) {

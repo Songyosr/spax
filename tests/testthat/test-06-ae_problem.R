@@ -98,3 +98,80 @@ test_that("problem runners validate theta and initial state without mutation", {
   )
   expect_no_error(.bind_theta(p, 2))
 })
+
+test_that(".fit_problem_decay reproduces SAE decay fitting oracle", {
+  td <- .mk_ae_problem_data()
+  truth <- .sae_predict_decay(
+    theta = 2,
+    family = "gaussian",
+    demand = td$demand,
+    supply = td$supply,
+    distance = td$distance,
+    kappa = 1 / 3,
+    beta = 20,
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500
+  )
+  problem <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+
+  fit <- .fit_problem_decay(
+    problem = problem,
+    observed = truth$predicted,
+    init = 1.5,
+    lower = 0.5,
+    upper = 4,
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    eta = 1,
+    control = list(maxit = 20)
+  )
+
+  expect_s3_class(fit, "ae_problem_decay_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$wsse, 1e-6)
+  expect_equal(fit$theta_hat, 2, tolerance = 1e-3)
+  expect_equal(unname(fit$predicted), unname(truth$predicted), tolerance = 1e-4)
+})
+
+test_that(".fit_problem_decay reproduces HAAE decay fitting oracle", {
+  td <- .mk_ae_problem_data()
+  truth <- .haae_predict_decay(
+    theta = 2,
+    family = "gaussian",
+    demand = td$demand,
+    supply = td$supply,
+    distance = td$distance,
+    kappa = 1 / 3,
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500
+  )
+  problem <- .haae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+
+  fit <- .fit_problem_decay(
+    problem = problem,
+    observed = truth$predicted,
+    init = 1.5,
+    lower = 0.5,
+    upper = 4,
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    eta = 1,
+    control = list(maxit = 20)
+  )
+
+  expect_s3_class(fit, "ae_problem_decay_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$wsse, 1e-6)
+  expect_equal(fit$theta_hat, 2, tolerance = 1e-3)
+  expect_equal(unname(fit$predicted), unname(truth$predicted), tolerance = 1e-4)
+})
