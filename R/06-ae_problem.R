@@ -36,14 +36,22 @@
 #' answer. `par` is the optimized value on the log scale (matching the optimizer).
 #' @keywords internal
 .warn_search_boundary <- function(par, lower, upper, name = "parameter") {
-  span <- log(upper) - log(lower)
-  tol <- 1e-6 + 1e-3 * span
-  if (par <= log(lower) + tol) {
-    warning("fitted ", name, " reached the lower search bound (", format(lower),
-            "); widen `lower` or revisit the model.", call. = FALSE)
-  } else if (par >= log(upper) - tol) {
-    warning("fitted ", name, " reached the upper search bound (", format(upper),
-            "); widen `upper` or revisit the model.", call. = FALSE)
+  par <- as.numeric(par)
+  lower <- as.numeric(lower)
+  upper <- as.numeric(upper)
+  name <- rep(name, length.out = length(par))
+  for (i in seq_along(par)) {
+    span <- log(upper[i]) - log(lower[i])
+    tol <- 1e-6 + 1e-3 * span
+    if (par[i] <= log(lower[i]) + tol) {
+      warning("fitted ", name[i], " reached the lower search bound (",
+              format(lower[i]), "); widen `lower` or revisit the model.",
+              call. = FALSE)
+    } else if (par[i] >= log(upper[i]) - tol) {
+      warning("fitted ", name[i], " reached the upper search bound (",
+              format(upper[i]), "); widen `upper` or revisit the model.",
+              call. = FALSE)
+    }
   }
   invisible(NULL)
 }
@@ -358,51 +366,83 @@
   fit
 }
 
-#' Fit one decay parameter for an AE problem by weighted SSE
+#' Fit a private AE problem by nested fixed point
 #' @keywords internal
-.fit_problem_decay <- function(problem, observed, init, lower, upper,
-                               lambda = 1, tol = 1e-8, max_iter = 1000,
-                               eta = 1, control = list(maxit = 25),
-                               check = FALSE) {
+.fit_problem_nfxp <- function(problem, observed, init, lower, upper,
+                              output = "utilization",
+                              loss = .weighted_sse_loss,
+                              loss_args = list(eta = 1),
+                              lambda = 1, tol = 1e-8, max_iter = 1000,
+                              norm = c("max", "l2"),
+                              control = list(maxit = 25),
+                              check = FALSE, penalty = 1e12) {
   .chck_class(problem, "ae_problem", "problem")
   .chck_numeric_vector(observed, "observed")
-  .chck_positive_scalar(init, "init")
-  .chck_positive_scalar(lower, "lower")
-  .chck_positive_scalar(upper, "upper")
-  .chck_nonnegative_scalar(eta, "eta")
-  if (length(problem$theta$names) != 1L) {
-    stop(".fit_problem_decay() currently supports a single-parameter theta")
+  if (!is.function(loss)) {
+    stop("`loss` must be a function")
   }
-  pname <- problem$theta$names
-  if (lower >= upper) {
+  if (!is.list(loss_args)) {
+    stop("`loss_args` must be a list")
+  }
+  if (!is.character(output) || length(output) != 1L || output == "") {
+    stop("`output` must be a length-one character value")
+  }
+  .chck_positive_scalar(penalty, "penalty")
+  norm <- match.arg(norm)
+
+  expected <- problem$theta$names
+  init <- .coerce_fit_theta(init, expected, "init")
+  lower <- .coerce_fit_theta(lower, expected, "lower")
+  upper <- .coerce_fit_theta(upper, expected, "upper")
+  .coerce_problem_theta(init, problem$theta)
+  .coerce_problem_theta(lower, problem$theta)
+  .coerce_problem_theta(upper, problem$theta)
+  if (any(init <= 0 | lower <= 0 | upper <= 0)) {
+    stop("`init`, `lower`, and `upper` must be positive for log-scale optimization")
+  }
+  if (any(lower >= upper)) {
     stop("`lower` must be less than `upper`")
   }
-  if (init < lower || init > upper) {
+  if (any(init < lower | init > upper)) {
     stop("`init` must be inside [`lower`, `upper`]")
   }
 
   observed <- .coerce_numeric_vector(observed)
   warm <- NULL
   objective <- function(log_theta) {
-    theta <- stats::setNames(exp(log_theta), pname)
-    x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
-    fit <- .solve_problem(
-      problem,
-      theta = theta,
-      x0 = x0,
-      lambda = lambda,
-      tol = tol,
-      max_iter = max_iter,
-      keep_history = FALSE,
-      warn = FALSE,
-      check = check,
-      diagnostics = FALSE
-    )
-    if (!isTRUE(fit$converged) || is.null(fit$utilization)) {
-      return(1e12)
-    }
-    warm <<- fit$x_star
-    .weighted_sse_loss(fit$utilization, observed, eta = eta)
+    tryCatch({
+      theta <- stats::setNames(exp(log_theta), expected)
+      x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
+      fit <- .solve_problem(
+        problem,
+        theta = theta,
+        x0 = x0,
+        lambda = lambda,
+        tol = tol,
+        max_iter = max_iter,
+        norm = norm,
+        keep_history = FALSE,
+        warn = FALSE,
+        check = check,
+        diagnostics = FALSE
+      )
+      if (!isTRUE(fit$converged)) {
+        return(penalty)
+      }
+      predicted <- .problem_fit_output(fit, output, required = FALSE)
+      if (is.null(predicted) || length(predicted) != length(observed)) {
+        return(penalty)
+      }
+      value <- do.call(
+        loss,
+        c(list(predicted = predicted, observed = observed), loss_args)
+      )
+      if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
+        return(penalty)
+      }
+      warm <<- fit$x_star
+      value
+    }, error = function(e) penalty)
   }
 
   elapsed <- system.time({
@@ -416,8 +456,8 @@
     )
   })[["elapsed"]]
 
-  theta_hat <- stats::setNames(exp(opt$par), pname)
-  .warn_search_boundary(opt$par, lower, upper, pname)
+  theta_hat <- stats::setNames(exp(opt$par), expected)
+  .warn_search_boundary(opt$par, lower, upper, expected)
   final <- .solve_problem(
     problem,
     theta = theta_hat,
@@ -425,26 +465,32 @@
     lambda = lambda,
     tol = tol,
     max_iter = max_iter,
+    norm = norm,
     keep_history = TRUE,
     warn = TRUE,
     check = check
   )
-  loss <- .weighted_sse_loss(final$utilization, observed, eta = eta)
-  predicted <- final$utilization
-  names(predicted) <- problem$substrate$facility_ids
+  predicted <- .problem_fit_output(final, output, required = TRUE)
+  loss_value <- do.call(
+    loss,
+    c(list(predicted = predicted, observed = observed), loss_args)
+  )
+  if (!is.numeric(loss_value) || length(loss_value) != 1L || !is.finite(loss_value)) {
+    stop("final loss must be a finite numeric scalar")
+  }
+  predicted <- .name_problem_vector(predicted, problem$substrate$facility_ids)
   state_name <- problem$state$name
-  state <- final$x_star
-  names(state) <- problem$substrate$facility_ids
+  state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
 
   structure(
     list(
       model = problem$model,
       family = problem$metadata$spec$family,
-      theta_hat = unname(theta_hat[[pname]]),
+      theta_hat = theta_hat,
       theta = theta_hat,
-      loss = loss,
-      wsse = loss,
-      eta = eta,
+      loss = as.numeric(loss_value),
+      output = output,
+      loss_args = loss_args,
       convergence = opt$convergence,
       message = opt$message,
       seconds = unname(elapsed),
@@ -455,8 +501,49 @@
       spectral_radius = final$spectral_radius,
       optim = opt
     ),
-    class = c("ae_problem_decay_fit", paste0(problem$model, "_problem_decay_fit"))
+    class = c("ae_problem_nfxp_fit", paste0(problem$model, "_problem_nfxp_fit"))
   )
+}
+
+#' Fit one decay parameter for an AE problem by weighted SSE
+#' @keywords internal
+.fit_problem_decay <- function(problem, observed, init, lower, upper,
+                               lambda = 1, tol = 1e-8, max_iter = 1000,
+                               eta = 1, control = list(maxit = 25),
+                               check = FALSE) {
+  .chck_class(problem, "ae_problem", "problem")
+  .chck_positive_scalar(init, "init")
+  .chck_positive_scalar(lower, "lower")
+  .chck_positive_scalar(upper, "upper")
+  .chck_nonnegative_scalar(eta, "eta")
+  if (length(problem$theta$names) != 1L) {
+    stop(".fit_problem_decay() currently supports a single-parameter theta")
+  }
+  pname <- problem$theta$names
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = stats::setNames(init, pname),
+    lower = stats::setNames(lower, pname),
+    upper = stats::setNames(upper, pname),
+    output = "utilization",
+    loss = .weighted_sse_loss,
+    loss_args = list(eta = eta),
+    lambda = lambda,
+    tol = tol,
+    max_iter = max_iter,
+    control = control,
+    check = check
+  )
+  fit$theta_hat <- unname(fit$theta[[pname]])
+  fit$wsse <- fit$loss
+  fit$eta <- eta
+  class(fit) <- c(
+    "ae_problem_decay_fit",
+    paste0(problem$model, "_problem_decay_fit"),
+    class(fit)
+  )
+  fit
 }
 
 .validate_problem_state <- function(problem, x) {
@@ -479,6 +566,53 @@
   length(x) == length(problem$state$init) &&
     all(is.finite(x)) &&
     all(x >= problem$state$lower & x <= problem$state$upper)
+}
+
+.coerce_fit_theta <- function(x, expected, name) {
+  .chck_numeric_vector(x, name)
+  x <- .coerce_numeric_vector(x)
+  if (is.null(names(x)) || any(names(x) == "")) {
+    if (length(x) != length(expected)) {
+      stop("unnamed `", name, "` must match the theta contract length")
+    }
+    names(x) <- expected
+  }
+  missing <- setdiff(expected, names(x))
+  if (length(missing) > 0) {
+    stop("`", name, "` is missing required parameter(s): ",
+         paste(missing, collapse = ", "))
+  }
+  x[expected]
+}
+
+.problem_fit_output <- function(fit, output, required = TRUE) {
+  if (!is.list(fit$outputs) || !output %in% names(fit$outputs)) {
+    if (required) {
+      stop("problem outputs do not include requested output `", output, "`")
+    }
+    return(NULL)
+  }
+  value <- fit$outputs[[output]]
+  ok <- tryCatch({
+    .chck_numeric_vector(value, output)
+    TRUE
+  }, error = function(e) {
+    if (required) {
+      stop(e$message, call. = FALSE)
+    }
+    FALSE
+  })
+  if (!ok) {
+    return(NULL)
+  }
+  .coerce_numeric_vector(value)
+}
+
+.name_problem_vector <- function(x, ids) {
+  if (!is.null(ids) && length(x) == length(ids)) {
+    names(x) <- ids
+  }
+  x
 }
 
 .coerce_problem_theta <- function(theta, contract) {

@@ -13,6 +13,35 @@
   list(demand = demand, distance = distance, supply = supply)
 }
 
+.mk_two_theta_problem <- function() {
+  contract <- list(
+    names = c("alpha", "beta"),
+    lower = c(0, 0),
+    upper = c(10, 10)
+  )
+  .new_problem(
+    model = "toy",
+    substrate = list(facility_ids = c("facility1", "facility2")),
+    state = list(
+      name = "x",
+      axis = "J",
+      init = c(1, 1),
+      lower = c(0, 0),
+      upper = c(10, 10)
+    ),
+    theta = contract,
+    bind = function(theta) {
+      theta <- .coerce_problem_theta(theta, contract)
+      list(
+        map = function(x) theta,
+        outputs = function(x) list(target = theta, utilization = x),
+        theta = theta
+      )
+    },
+    metadata = list(spec = list(family = "toy"))
+  )
+}
+
 test_that(".sae_problem binds theta and matches existing SAE map helpers", {
   td <- .mk_ae_problem_data()
   theta <- c(sigma = 2)
@@ -132,6 +161,87 @@ test_that(".fit_problem_decay records eta and the fitted spectral radius", {
   expect_lt(fit$spectral_radius, 1)
 })
 
+test_that(".fit_problem_nfxp reproduces SAE generated-data fitting", {
+  td <- .mk_ae_problem_data()
+  problem <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.5),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    control = list(maxit = 20)
+  )
+
+  expect_s3_class(fit, "ae_problem_nfxp_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta["sigma"], c(sigma = 2), tolerance = 1e-3)
+  expect_equal(unname(fit$predicted), unname(observed), tolerance = 1e-4)
+})
+
+test_that(".fit_problem_nfxp reproduces HAAE generated-data fitting", {
+  td <- .mk_ae_problem_data()
+  problem <- .haae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.5),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    control = list(maxit = 20)
+  )
+
+  expect_s3_class(fit, "ae_problem_nfxp_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta["sigma"], c(sigma = 2), tolerance = 1e-3)
+  expect_equal(unname(fit$predicted), unname(observed), tolerance = 1e-4)
+})
+
+test_that(".fit_problem_nfxp supports named multi-parameter theta", {
+  problem <- .mk_two_theta_problem()
+  observed <- c(2, 3)
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(alpha = 1, beta = 1.5),
+    lower = c(alpha = 0.5, beta = 0.5),
+    upper = c(alpha = 4, beta = 4),
+    tol = 1e-10,
+    max_iter = 20,
+    loss_args = list(eta = 1),
+    control = list(maxit = 80)
+  )
+
+  expect_s3_class(fit, "ae_problem_nfxp_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta, c(alpha = 2, beta = 3), tolerance = 1e-3)
+  expect_named(fit$predicted, c("facility1", "facility2"))
+})
+
 test_that(".fit_problem_decay warns when the optimum hits a search bound", {
   td <- .mk_ae_problem_data()
   problem <- .sae_problem(
@@ -162,6 +272,36 @@ test_that("problem runners validate theta and initial state without mutation", {
     "outside the problem state bounds"
   )
   expect_no_error(.bind_theta(p, 2))
+})
+
+test_that(".fit_problem_nfxp validates calibration contracts", {
+  td <- .mk_ae_problem_data()
+  problem <- .sae_problem(td$demand, td$supply, td$distance, family = "gaussian")
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
+
+  expect_error(
+    .fit_problem_nfxp(
+      problem, observed, init = c(alpha = 1), lower = 0.5, upper = 4
+    ),
+    "missing required"
+  )
+  expect_error(
+    .fit_problem_nfxp(problem, observed, init = 1, lower = 0, upper = 4),
+    "positive"
+  )
+  expect_error(
+    .fit_problem_nfxp(problem, observed, init = 1, lower = 2, upper = 1),
+    "less than"
+  )
+  expect_error(
+    .fit_problem_nfxp(
+      problem, observed, init = 1, lower = 0.5, upper = 4,
+      output = "missing", control = list(maxit = 1)
+    ),
+    "requested output"
+  )
 })
 
 test_that(".fit_problem_decay reproduces SAE decay fitting oracle", {
