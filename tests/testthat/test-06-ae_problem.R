@@ -133,6 +133,28 @@ test_that(".fit_problem_decay records eta and the fitted spectral radius", {
   expect_lt(fit$spectral_radius, 1)
 })
 
+test_that(".fit_problem_decay warns when the optimum hits a search bound", {
+  td <- .mk_ae_problem_data()
+  truth <- .sae_predict_decay(
+    theta = 2, family = "gaussian",
+    demand = td$demand, supply = td$supply, distance = td$distance,
+    kappa = 1 / 3, beta = 20, lambda = 0.7, tol = 1e-10, max_iter = 500
+  )
+  problem <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  # True optimum is sigma = 2, but the box floor (3) forces a boundary solution.
+  expect_warning(
+    .fit_problem_decay(
+      problem = problem, observed = truth$predicted,
+      init = 4, lower = 3, upper = 8, lambda = 0.7, tol = 1e-10,
+      max_iter = 500, control = list(maxit = 20)
+    ),
+    "lower search bound"
+  )
+})
+
 test_that("problem runners validate theta and initial state without mutation", {
   td <- .mk_ae_problem_data()
   p <- .sae_problem(td$demand, td$supply, td$distance, family = "gaussian")

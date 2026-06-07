@@ -158,12 +158,20 @@
   }
   # Handle vector input
   else if (is.vector(supply)) {
-    values <- as.matrix(supply)
-    ids <- if (!is.null(weight_ids)) {
-      weight_ids
+    if (!is.null(weight_ids) && !is.null(names(supply))) {
+      # Named vector: match by name so supply order need not match the layers
+      matched_idx <- match(weight_ids, names(supply))
+      if (any(is.na(matched_idx))) {
+        stop("Some weight layer IDs not found in supply data")
+      }
+      supply <- supply[matched_idx]
+      ids <- weight_ids
+    } else if (!is.null(weight_ids)) {
+      ids <- weight_ids
     } else {
-      paste0("facility_", seq_along(supply))
+      ids <- paste0("facility_", seq_along(supply))
     }
+    values <- as.matrix(unname(supply))
     cols <- "supply"
   } else {
     stop("Unsupported supply data type")

@@ -71,6 +71,18 @@ test_that(".help_process_supply handles different input types correctly", {
   )
   expect_equal(vec_result$ids, weight_ids)
   expect_equal(vec_result$cols, "supply")
+
+  # Named vector out of layer order is matched by name, not position
+  shuffled <- c(facility2 = 45, facility1 = 30)
+  named_result <- .help_process_supply(shuffled, weight_ids = weight_ids)
+  expect_equal(named_result$ids, weight_ids)
+  expect_equal(as.numeric(named_result$values), c(30, 45))
+
+  # Missing id is an error, not a silent misalignment
+  expect_error(
+    .help_process_supply(c(facility1 = 30, other = 45), weight_ids = weight_ids),
+    "not found in supply data"
+  )
 })
 
 test_that("compute_access returns a SpatRaster through compute_fca", {

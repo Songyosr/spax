@@ -30,6 +30,24 @@
   outputs
 }
 
+#' Warn when a calibrated parameter lands on its search-box bound
+#'
+#' A boundary optimum usually means the search box, not the model, picked the
+#' answer. `par` is the optimized value on the log scale (matching the optimizer).
+#' @keywords internal
+.warn_search_boundary <- function(par, lower, upper) {
+  span <- log(upper) - log(lower)
+  tol <- 1e-6 + 1e-3 * span
+  if (par <= log(lower) + tol) {
+    warning("fitted sigma reached the lower search bound (", format(lower),
+            "); widen `lower` or revisit the model.", call. = FALSE)
+  } else if (par >= log(upper) - tol) {
+    warning("fitted sigma reached the upper search bound (", format(upper),
+            "); widen `upper` or revisit the model.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Compile checked raster inputs into a compact interaction substrate
 #' @keywords internal
 .interaction_substrate <- function(demand, supply, distance,
@@ -398,6 +416,7 @@
   })[["elapsed"]]
 
   theta_hat <- c(sigma = exp(opt$par))
+  .warn_search_boundary(opt$par, lower, upper)
   final <- .solve_problem(
     problem,
     theta = theta_hat,
