@@ -141,6 +141,85 @@ test_that(".solve_problem reports spectral radius and contraction by default", {
   expect_null(bare$spectral_radius)
 })
 
+test_that(".solve_problem threads optional state history", {
+  td <- .mk_ae_problem_data()
+  p <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  fit <- .solve_problem(
+    p, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10,
+    max_iter = 500, check = FALSE, keep_state_history = TRUE
+  )
+
+  expect_true(fit$converged)
+  expect_equal(ncol(fit$state_history), length(p$state$init))
+  expect_equal(fit$state_history[nrow(fit$state_history), ], fit$x_star)
+})
+
+test_that("problem outputs can be rendered as origin-side surfaces", {
+  td <- .mk_ae_problem_data()
+  terra::values(td$demand) <- c(10, 0, 30, 40)
+  problem <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  solved <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10,
+    max_iter = 500, check = FALSE
+  )
+
+  outputs <- .problem_outputs_at(problem, theta = c(sigma = 2),
+                                 state = solved$x_star)
+  expect_equal(outputs$utilization, solved$outputs$utilization)
+  expect_true("access" %in% .problem_available_surfaces(problem, outputs))
+  expect_false("utilization" %in% .problem_available_surfaces(problem, outputs))
+
+  surface <- .problem_output_surface(
+    problem, theta = c(sigma = 2), state = solved$x_star, output = "access"
+  )
+  expect_s4_class(surface, "SpatRaster")
+  values <- terra::values(surface)[, 1]
+  expect_true(is.na(values[2]))
+  expect_equal(values[problem$substrate$demand_kept_index], outputs$access)
+  expect_error(
+    .problem_output_surface(
+      problem, theta = c(sigma = 2), state = solved$x_star,
+      output = "utilization"
+    ),
+    "not an origin-side surface"
+  )
+  expect_error(
+    .problem_output_surface(
+      problem, theta = c(sigma = 2), state = solved$x_star,
+      output = "missing"
+    ),
+    "requested output"
+  )
+})
+
+test_that("problem surface discovery is model generic", {
+  td <- .mk_ae_problem_data()
+  problem <- .haae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  solved <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10,
+    max_iter = 500, check = FALSE
+  )
+  outputs <- .problem_outputs_at(problem, theta = c(sigma = 2),
+                                 state = solved$x_star)
+
+  expect_true("pooled" %in% .problem_available_surfaces(problem, outputs))
+  expect_s4_class(
+    .problem_output_surface(
+      problem, theta = c(sigma = 2), state = solved$x_star, output = "pooled"
+    ),
+    "SpatRaster"
+  )
+})
+
 test_that(".fit_problem_decay records eta and the fitted spectral radius", {
   td <- .mk_ae_problem_data()
   problem <- .sae_problem(
@@ -188,6 +267,85 @@ test_that(".fit_problem_nfxp reproduces SAE generated-data fitting", {
   expect_lt(fit$loss, 1e-6)
   expect_equal(fit$theta["sigma"], c(sigma = 2), tolerance = 1e-3)
   expect_equal(unname(fit$predicted), unname(observed), tolerance = 1e-4)
+})
+
+test_that(".fit_problem_nfxp stores inspection fields and QoL helpers work", {
+  td <- .mk_ae_problem_data()
+  problem <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.5),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    control = list(maxit = 20)
+  )
+
+  expect_equal(unname(fit$observed), unname(observed))
+  expect_named(fit$observed, c("facility1", "facility2"))
+  expect_true(is.list(fit$outputs))
+  expect_equal(fit$surface_meta$demand_kept_index,
+               problem$substrate$demand_kept_index)
+
+  table <- .ae_fit_facility_table(fit)
+  expect_named(table, c("facility_id", "predicted", "state", "observed",
+                        "residual"))
+  expect_equal(table$residual, table$predicted - table$observed)
+
+  surface <- .fit_output_surface(fit, "access")
+  expect_s4_class(surface, "SpatRaster")
+  expect_equal(
+    terra::values(surface)[problem$substrate$demand_kept_index, 1],
+    fit$outputs$access
+  )
+
+  expect_output(print(fit), "ae_problem_nfxp_fit")
+  expect_output(print(fit$equilibrium), "ae_equilibrium")
+  expect_s3_class(summary(fit), "summary.ae_problem_nfxp_fit")
+  expect_output(print(summary(fit)), "theta")
+
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(plot(fit, type = "fit"))
+  expect_no_error(plot(fit, type = "convergence"))
+  expect_no_error(plot(fit, type = "state"))
+})
+
+test_that("AE QoL methods smoke-test on HAAE fits", {
+  td <- .mk_ae_problem_data()
+  problem <- .haae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  observed <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )$utilization
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.5),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    control = list(maxit = 20)
+  )
+
+  expect_output(print(fit), "haae")
+  expect_s3_class(summary(fit), "summary.ae_problem_nfxp_fit")
+  expect_s4_class(.fit_output_surface(fit, "pooled"), "SpatRaster")
 })
 
 test_that(".fit_problem_nfxp reproduces HAAE generated-data fitting", {

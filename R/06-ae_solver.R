@@ -8,7 +8,7 @@
 solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
                               max_iter = 1000, norm = c("max", "l2"),
                               keep_history = TRUE, warn = TRUE,
-                              check = TRUE, ...) {
+                              check = TRUE, keep_state_history = FALSE, ...) {
   if (!is.function(map)) {
     stop("`map` must be a function")
   }
@@ -30,6 +30,16 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
   } else {
     NULL
   }
+  state_history <- if (isTRUE(keep_state_history)) {
+    matrix(
+      NA_real_,
+      nrow = max_iter,
+      ncol = length(x),
+      dimnames = list(NULL, names(x))
+    )
+  } else {
+    NULL
+  }
 
   converged <- FALSE
   err <- Inf
@@ -44,6 +54,9 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
     if (keep_history) {
       history <- rbind(history, data.frame(iter = iter, error = err))
     }
+    if (isTRUE(keep_state_history)) {
+      state_history[iter, ] <- x_next
+    }
 
     x <- x_next
     if (err <= tol) {
@@ -54,6 +67,10 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
   }
 
   residual_norm <- NA_real_
+  if (isTRUE(keep_state_history)) {
+    state_history <- state_history[seq_len(iter), , drop = FALSE]
+    rownames(state_history) <- as.character(seq_len(iter))
+  }
   if (converged) {
     final_target <- .solver_map_value(map(x, ...), x, check = check)
     residual_norm <- .solver_norm(x - final_target, norm = norm)
@@ -71,6 +88,7 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
       error = err,
       residual_norm = residual_norm,
       history = history,
+      state_history = state_history,
       message = message
     ),
     class = "ae_equilibrium"

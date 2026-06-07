@@ -316,6 +316,41 @@
   .bind_theta(problem, theta)$outputs(x)
 }
 
+#' Evaluate rich outputs for a problem at arbitrary theta and state
+#' @keywords internal
+.problem_outputs_at <- function(problem, theta, state) {
+  .chck_class(problem, "ae_problem", "problem")
+  .validate_problem_state(problem, state)
+  .validate_ae_outputs(.bind_theta(problem, theta)$outputs(state))
+}
+
+#' List model outputs that can be rewrapped onto the demand-cell surface
+#' @keywords internal
+.problem_available_surfaces <- function(problem, outputs) {
+  .chck_class(problem, "ae_problem", "problem")
+  if (!is.list(outputs)) {
+    stop("`outputs` must be a list")
+  }
+  active_n <- length(problem$substrate$demand_kept_index)
+  .surface_output_names(outputs, active_n)
+}
+
+#' Rewrap one origin-side problem output onto the demand raster template
+#' @keywords internal
+.problem_output_surface <- function(problem, theta, state, output) {
+  .chck_class(problem, "ae_problem", "problem")
+  if (!is.character(output) || length(output) != 1L || output == "") {
+    stop("`output` must be a length-one character value")
+  }
+  outputs <- .problem_outputs_at(problem, theta = theta, state = state)
+  .rewrap_problem_surface(
+    outputs = outputs,
+    output = output,
+    template = problem$substrate$template,
+    kept_cell_index = problem$substrate$demand_kept_index
+  )
+}
+
 #' Evaluate the state Jacobian provider at one state and theta
 #' @keywords internal
 .problem_jac_state <- function(problem, x, theta) {
@@ -332,7 +367,8 @@
                            tol = 1e-8, max_iter = 1000,
                            norm = c("max", "l2"),
                            keep_history = TRUE, warn = TRUE,
-                           check = TRUE, diagnostics = TRUE) {
+                           check = TRUE, diagnostics = TRUE,
+                           keep_state_history = FALSE) {
   .chck_class(problem, "ae_problem", "problem")
   step <- .bind_theta(problem, theta)
   if (is.null(x0)) {
@@ -348,7 +384,8 @@
     norm = norm,
     keep_history = keep_history,
     warn = warn,
-    check = check
+    check = check,
+    keep_state_history = keep_state_history
   )
   fit$outputs <- .validate_ae_outputs(step$outputs(fit$x_star))
   fit$utilization <- fit$outputs$utilization
@@ -556,9 +593,12 @@
       convergence = opt$convergence,
       message = opt$message,
       seconds = unname(elapsed),
+      observed = .name_problem_vector(observed, problem$substrate$facility_ids),
       predicted = predicted,
       state = state,
       state_name = state_name,
+      outputs = final$outputs,
+      surface_meta = .problem_surface_meta(problem),
       equilibrium = final,
       spectral_radius = final$spectral_radius,
       optim = opt
@@ -607,6 +647,43 @@
     class(fit)
   )
   fit
+}
+
+#' Rewrap one final-fit origin-side output onto the demand raster template
+#' @keywords internal
+.fit_output_surface <- function(fit, output) {
+  .chck_class(fit, "ae_problem_nfxp_fit", "fit")
+  if (!is.character(output) || length(output) != 1L || output == "") {
+    stop("`output` must be a length-one character value")
+  }
+  .rewrap_problem_surface(
+    outputs = fit$outputs,
+    output = output,
+    template = fit$surface_meta$template,
+    kept_cell_index = fit$surface_meta$demand_kept_index
+  )
+}
+
+#' Facility-level table for an AE calibration fit
+#' @keywords internal
+.ae_fit_facility_table <- function(fit) {
+  .chck_class(fit, "ae_problem_nfxp_fit", "fit")
+  n <- length(fit$predicted)
+  facility_id <- names(fit$predicted)
+  if (is.null(facility_id)) {
+    facility_id <- as.character(seq_len(n))
+  }
+  out <- data.frame(
+    facility_id = facility_id,
+    predicted = as.numeric(fit$predicted),
+    state = as.numeric(fit$state),
+    stringsAsFactors = FALSE
+  )
+  if (!is.null(fit$observed) && length(fit$observed) == n) {
+    out$observed <- as.numeric(fit$observed)
+    out$residual <- out$predicted - out$observed
+  }
+  out
 }
 
 .problem_map_jac_state <- function(step, x, fd_eps = 1e-6) {
@@ -815,6 +892,53 @@
     names(x) <- ids
   }
   x
+}
+
+.problem_surface_meta <- function(problem) {
+  list(
+    template = problem$substrate$template,
+    demand_kept_index = problem$substrate$demand_kept_index
+  )
+}
+
+.rewrap_problem_surface <- function(outputs, output, template, kept_cell_index) {
+  if (is.null(template) || is.null(kept_cell_index)) {
+    stop("surface metadata is not available for this AE object")
+  }
+  if (!is.list(outputs) || !output %in% names(outputs)) {
+    stop("problem outputs do not include requested output `", output, "`")
+  }
+
+  active_n <- length(kept_cell_index)
+  value <- outputs[[output]]
+  surface_names <- .surface_output_names(outputs, active_n)
+  if (!is.numeric(value) || !is.null(dim(value)) || length(value) != active_n) {
+    msg <- paste0("output `", output, "` is not an origin-side surface")
+    if (length(surface_names) > 0) {
+      msg <- paste0(msg, "; available surfaces: ",
+                    paste(surface_names, collapse = ", "))
+    }
+    stop(msg)
+  }
+  .chck_numeric_vector(value, output, finite = FALSE)
+  if (any(!is.finite(value) & !is.na(value))) {
+    stop(output, " must contain only finite or missing values")
+  }
+  out <- .rewrap_cells(.coerce_numeric_vector(value), template, kept_cell_index)
+  names(out) <- output
+  out
+}
+
+.surface_output_names <- function(outputs, active_n) {
+  names(Filter(
+    function(value) {
+      is.numeric(value) &&
+        is.null(dim(value)) &&
+        length(value) == active_n &&
+        all(is.finite(value) | is.na(value))
+    },
+    outputs
+  ))
 }
 
 .coerce_problem_theta <- function(theta, contract) {

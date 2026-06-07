@@ -8,6 +8,7 @@ test_that("solve_equilibrium converges a contraction map", {
   expect_lte(fit$residual_norm, 1e-8)
   expect_true(nrow(fit$history) >= 1)
   expect_equal(names(fit$history), c("iter", "error"))
+  expect_null(fit$state_history)
 })
 
 test_that("solve_equilibrium applies damping and reports non-convergence", {
@@ -28,6 +29,25 @@ test_that("solve_equilibrium can skip repeated map-output checks", {
 
   expect_true(fit$converged)
   expect_equal(fit$x_star, 2, tolerance = 1e-8)
+})
+
+test_that("solve_equilibrium stores state history only when requested", {
+  map <- function(x) c(a = 0.5 * x[["a"]] + 1, b = 0.25 * x[["b"]] + 2)
+  fit <- solve_equilibrium(
+    map,
+    x0 = c(a = 0, b = 0),
+    max_iter = 3,
+    tol = 1e-300,
+    warn = FALSE,
+    keep_history = FALSE,
+    keep_state_history = TRUE
+  )
+
+  expect_null(fit$history)
+  expect_equal(dim(fit$state_history), c(3L, 2L))
+  expect_equal(colnames(fit$state_history), c("a", "b"))
+  expect_equal(fit$state_history[1, ], c(a = 1, b = 2))
+  expect_equal(fit$state_history[3, ], fit$x_star)
 })
 
 test_that("solve_equilibrium validates map output", {
