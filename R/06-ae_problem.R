@@ -471,7 +471,8 @@
         evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
                               diagnostics = FALSE, update_warm = FALSE)
         if (is.null(evaluated)) {
-          return(rep(0, length(log_theta)))
+          return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
+                                       fd_eps = fd_eps))
         }
         sensitivity <- .problem_output_sensitivity(
           problem = problem,
@@ -493,10 +494,14 @@
         )
         if (!is.numeric(grad) || length(grad) != length(log_theta) ||
             any(!is.finite(grad))) {
-          return(rep(0, length(log_theta)))
+          return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
+                                       fd_eps = fd_eps))
         }
         as.numeric(grad) * exp(log_theta)
-      }, error = function(e) rep(0, length(log_theta)))
+      }, error = function(e) {
+        .nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
+                              fd_eps = fd_eps)
+      })
     }
   }
 
@@ -606,14 +611,44 @@
 
 .problem_map_jac_state <- function(step, x, fd_eps = 1e-6) {
   if (is.function(step$jac_state)) {
-    jac <- step$jac_state(x)
-    if (is.list(jac)) {
-      jac <- jac$jac_state
-    }
-    .chck_numeric_matrix(jac, "jac_state")
-    return(.coerce_numeric_matrix(jac))
+    return(.problem_jac_state_matrix(step$jac_state(x)))
   }
   fd_jacobian_state(step$map, x, eps = fd_eps, check = FALSE)
+}
+
+.problem_jac_state_matrix <- function(jac) {
+  if (is.list(jac)) {
+    jac <- jac$jac_state
+  }
+  .chck_numeric_matrix(jac, "jac_state")
+  .coerce_numeric_matrix(jac)
+}
+
+.nfxp_fd_log_gradient <- function(objective, log_theta, lower, upper,
+                                  fd_eps = 1e-6) {
+  .chck_positive_scalar(fd_eps, "fd_eps")
+  log_theta <- .coerce_numeric_vector(log_theta)
+  lower <- .coerce_numeric_vector(lower)
+  upper <- .coerce_numeric_vector(upper)
+  grad <- numeric(length(log_theta))
+  for (i in seq_along(log_theta)) {
+    h <- as.numeric(fd_eps) * max(abs(log_theta[i]), 1)
+    hi <- log_theta
+    lo <- log_theta
+    hi[i] <- min(log_theta[i] + h, upper[i])
+    lo[i] <- max(log_theta[i] - h, lower[i])
+    if (hi[i] > log_theta[i] && lo[i] < log_theta[i]) {
+      grad[i] <- (objective(hi) - objective(lo)) / (hi[i] - lo[i])
+    } else if (hi[i] > log_theta[i]) {
+      grad[i] <- (objective(hi) - objective(log_theta)) / (hi[i] - log_theta[i])
+    } else if (lo[i] < log_theta[i]) {
+      grad[i] <- (objective(log_theta) - objective(lo)) / (log_theta[i] - lo[i])
+    } else {
+      grad[i] <- 0
+    }
+  }
+  grad[!is.finite(grad)] <- 0
+  grad
 }
 
 .problem_map_jac_param <- function(problem, theta, x, step = NULL,
@@ -635,7 +670,22 @@
   fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
 }
 
-.problem_output_jac_state <- function(step, x, output, fd_eps = 1e-6) {
+.problem_output_jac_state <- function(step, x, output, fd_eps = 1e-6,
+                                      jac_state_result = NULL) {
+  if (is.function(step$jac_output_state)) {
+    jac <- step$jac_output_state(x, output = output)
+    .chck_numeric_matrix(jac, "jac_output_state")
+    return(.coerce_numeric_matrix(jac))
+  }
+  if (is.null(jac_state_result) && is.function(step$jac_state)) {
+    jac_state_result <- step$jac_state(x)
+  }
+  jac_name <- paste0("jac_", output)
+  if (is.list(jac_state_result) && jac_name %in% names(jac_state_result)) {
+    jac <- jac_state_result[[jac_name]]
+    .chck_numeric_matrix(jac, jac_name)
+    return(.coerce_numeric_matrix(jac))
+  }
   fn <- function(x_value) {
     .problem_output_from_step(step, x_value, output, required = TRUE)
   }
@@ -655,12 +705,18 @@
                                         output = "utilization",
                                         fd_eps = 1e-6) {
   step <- .bind_theta(problem, theta)
-  jac_state <- .problem_map_jac_state(step, x, fd_eps = fd_eps)
+  jac_state_result <- if (is.function(step$jac_state)) step$jac_state(x) else NULL
+  jac_state <- if (is.null(jac_state_result)) {
+    fd_jacobian_state(step$map, x, eps = fd_eps, check = FALSE)
+  } else {
+    .problem_jac_state_matrix(jac_state_result)
+  }
   jac_param <- .problem_map_jac_param(problem, theta, x, step = step,
                                       fd_eps = fd_eps)
   state_sensitivity <- implicit_gradient(jac_state, jac_param)
   output_jac_state <- .problem_output_jac_state(
-    step, x, output = output, fd_eps = fd_eps
+    step, x, output = output, fd_eps = fd_eps,
+    jac_state_result = jac_state_result
   )
   output_jac_param <- .problem_output_jac_param(
     problem, theta, x, output = output, fd_eps = fd_eps

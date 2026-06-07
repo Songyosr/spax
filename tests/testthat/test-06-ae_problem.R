@@ -258,6 +258,23 @@ test_that(".problem_output_sensitivity supports finite-difference theta Jacobian
   expect_equal(unname(sensitivity), diag(2), tolerance = 1e-5)
 })
 
+test_that(".problem_output_jac_state uses provided output Jacobians", {
+  step <- list(
+    map = function(x) x,
+    outputs = function(x) list(target = x, utilization = x),
+    jac_state = function(x) {
+      list(
+        jac_state = matrix(0, 1, 1),
+        jac_utilization = matrix(9, 1, 1)
+      )
+    }
+  )
+
+  jac <- .problem_output_jac_state(step, x = 1, output = "utilization")
+
+  expect_equal(jac, matrix(9, 1, 1))
+})
+
 test_that(".fit_problem_nfxp supports gradient-backed multi-parameter fitting", {
   problem <- .mk_two_theta_problem()
   observed <- c(2, 3)
@@ -280,6 +297,41 @@ test_that(".fit_problem_nfxp supports gradient-backed multi-parameter fitting", 
   expect_equal(fit$convergence, 0)
   expect_lt(fit$loss, 1e-6)
   expect_equal(fit$theta, c(alpha = 2, beta = 3), tolerance = 1e-3)
+})
+
+test_that(".fit_problem_nfxp falls back when implicit gradients are unavailable", {
+  contract <- list(names = "sigma", lower = 0, upper = 10)
+  problem <- .new_problem(
+    model = "toy",
+    substrate = list(facility_ids = "facility1"),
+    state = list(name = "x", axis = "J", init = 1, lower = 0, upper = 10),
+    theta = contract,
+    bind = function(theta) {
+      theta <- .coerce_problem_theta(theta, contract)
+      list(
+        map = function(x) theta,
+        outputs = function(x) list(target = theta, utilization = x),
+        jac_state = function(x) matrix(Inf, 1, 1),
+        theta = theta
+      )
+    },
+    metadata = list(spec = list(family = "toy"))
+  )
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = 2,
+    init = c(sigma = 4),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 5),
+    gradient = TRUE,
+    control = list(maxit = 40)
+  )
+
+  expect_true(fit$gradient)
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta, c(sigma = 2), tolerance = 1e-3)
 })
 
 test_that(".fit_problem_decay warns when the optimum hits a search bound", {
