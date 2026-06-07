@@ -371,15 +371,20 @@
 .fit_problem_nfxp <- function(problem, observed, init, lower, upper,
                               output = "utilization",
                               loss = .weighted_sse_loss,
+                              loss_grad = .weighted_sse_gradient,
                               loss_args = list(eta = 1),
                               lambda = 1, tol = 1e-8, max_iter = 1000,
                               norm = c("max", "l2"),
                               control = list(maxit = 25),
-                              check = FALSE, penalty = 1e12) {
+                              check = FALSE, penalty = 1e12,
+                              gradient = FALSE, fd_eps = 1e-6) {
   .chck_class(problem, "ae_problem", "problem")
   .chck_numeric_vector(observed, "observed")
   if (!is.function(loss)) {
     stop("`loss` must be a function")
+  }
+  if (isTRUE(gradient) && !is.function(loss_grad)) {
+    stop("`loss_grad` must be a function when `gradient = TRUE`")
   }
   if (!is.list(loss_args)) {
     stop("`loss_args` must be a list")
@@ -388,7 +393,9 @@
     stop("`output` must be a length-one character value")
   }
   .chck_positive_scalar(penalty, "penalty")
+  .chck_positive_scalar(fd_eps, "fd_eps")
   norm <- match.arg(norm)
+  gradient <- isTRUE(gradient)
 
   expected <- problem$theta$names
   init <- .coerce_fit_theta(init, expected, "init")
@@ -409,46 +416,95 @@
 
   observed <- .coerce_numeric_vector(observed)
   warm <- NULL
+  evaluate <- function(log_theta, keep_history = FALSE, warn = FALSE,
+                       diagnostics = FALSE, update_warm = TRUE) {
+    theta <- stats::setNames(exp(log_theta), expected)
+    x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
+    fit <- .solve_problem(
+      problem,
+      theta = theta,
+      x0 = x0,
+      lambda = lambda,
+      tol = tol,
+      max_iter = max_iter,
+      norm = norm,
+      keep_history = keep_history,
+      warn = warn,
+      check = check,
+      diagnostics = diagnostics
+    )
+    if (!isTRUE(fit$converged)) {
+      return(NULL)
+    }
+    predicted <- .problem_fit_output(fit, output, required = FALSE)
+    if (is.null(predicted) || length(predicted) != length(observed)) {
+      return(NULL)
+    }
+    value <- do.call(
+      loss,
+      c(list(predicted = predicted, observed = observed), loss_args)
+    )
+    if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
+      return(NULL)
+    }
+    if (isTRUE(update_warm)) {
+      warm <<- fit$x_star
+    }
+    list(theta = theta, fit = fit, predicted = predicted, loss = as.numeric(value))
+  }
+
   objective <- function(log_theta) {
     tryCatch({
-      theta <- stats::setNames(exp(log_theta), expected)
-      x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
-      fit <- .solve_problem(
-        problem,
-        theta = theta,
-        x0 = x0,
-        lambda = lambda,
-        tol = tol,
-        max_iter = max_iter,
-        norm = norm,
-        keep_history = FALSE,
-        warn = FALSE,
-        check = check,
-        diagnostics = FALSE
-      )
-      if (!isTRUE(fit$converged)) {
+      evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
+                            diagnostics = FALSE, update_warm = TRUE)
+      if (is.null(evaluated)) {
         return(penalty)
       }
-      predicted <- .problem_fit_output(fit, output, required = FALSE)
-      if (is.null(predicted) || length(predicted) != length(observed)) {
-        return(penalty)
-      }
-      value <- do.call(
-        loss,
-        c(list(predicted = predicted, observed = observed), loss_args)
-      )
-      if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
-        return(penalty)
-      }
-      warm <<- fit$x_star
-      value
+      evaluated$loss
     }, error = function(e) penalty)
+  }
+
+  objective_grad <- NULL
+  if (gradient) {
+    objective_grad <- function(log_theta) {
+      tryCatch({
+        evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
+                              diagnostics = FALSE, update_warm = FALSE)
+        if (is.null(evaluated)) {
+          return(rep(0, length(log_theta)))
+        }
+        sensitivity <- .problem_output_sensitivity(
+          problem = problem,
+          theta = evaluated$theta,
+          x = evaluated$fit$x_star,
+          output = output,
+          fd_eps = fd_eps
+        )
+        grad <- do.call(
+          loss_grad,
+          c(
+            list(
+              predicted = evaluated$predicted,
+              observed = observed,
+              sensitivity = sensitivity
+            ),
+            loss_args
+          )
+        )
+        if (!is.numeric(grad) || length(grad) != length(log_theta) ||
+            any(!is.finite(grad))) {
+          return(rep(0, length(log_theta)))
+        }
+        as.numeric(grad) * exp(log_theta)
+      }, error = function(e) rep(0, length(log_theta)))
+    }
   }
 
   elapsed <- system.time({
     opt <- stats::optim(
       par = log(init),
       fn = objective,
+      gr = objective_grad,
       method = "L-BFGS-B",
       lower = log(lower),
       upper = log(upper),
@@ -491,6 +547,7 @@
       loss = as.numeric(loss_value),
       output = output,
       loss_args = loss_args,
+      gradient = gradient,
       convergence = opt$convergence,
       message = opt$message,
       seconds = unname(elapsed),
@@ -528,6 +585,7 @@
     upper = stats::setNames(upper, pname),
     output = "utilization",
     loss = .weighted_sse_loss,
+    loss_grad = .weighted_sse_gradient,
     loss_args = list(eta = eta),
     lambda = lambda,
     tol = tol,
@@ -544,6 +602,94 @@
     class(fit)
   )
   fit
+}
+
+.problem_map_jac_state <- function(step, x, fd_eps = 1e-6) {
+  if (is.function(step$jac_state)) {
+    jac <- step$jac_state(x)
+    if (is.list(jac)) {
+      jac <- jac$jac_state
+    }
+    .chck_numeric_matrix(jac, "jac_state")
+    return(.coerce_numeric_matrix(jac))
+  }
+  fd_jacobian_state(step$map, x, eps = fd_eps, check = FALSE)
+}
+
+.problem_map_jac_param <- function(problem, theta, x, step = NULL,
+                                   fd_eps = 1e-6) {
+  if (is.null(step)) {
+    step <- .bind_theta(problem, theta)
+  }
+  if (is.function(step$jac_param)) {
+    jac <- step$jac_param(x)
+    if (is.list(jac)) {
+      jac <- jac$jac_param
+    }
+    .chck_numeric_matrix(jac, "jac_param")
+    return(.coerce_numeric_matrix(jac))
+  }
+  fn <- function(theta_value) {
+    .bind_theta(problem, theta_value)$map(x)
+  }
+  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
+}
+
+.problem_output_jac_state <- function(step, x, output, fd_eps = 1e-6) {
+  fn <- function(x_value) {
+    .problem_output_from_step(step, x_value, output, required = TRUE)
+  }
+  fd_jacobian(fn, x, eps = fd_eps, check = FALSE)
+}
+
+.problem_output_jac_param <- function(problem, theta, x, output,
+                                      fd_eps = 1e-6) {
+  fn <- function(theta_value) {
+    step <- .bind_theta(problem, theta_value)
+    .problem_output_from_step(step, x, output, required = TRUE)
+  }
+  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
+}
+
+.problem_output_sensitivity <- function(problem, theta, x,
+                                        output = "utilization",
+                                        fd_eps = 1e-6) {
+  step <- .bind_theta(problem, theta)
+  jac_state <- .problem_map_jac_state(step, x, fd_eps = fd_eps)
+  jac_param <- .problem_map_jac_param(problem, theta, x, step = step,
+                                      fd_eps = fd_eps)
+  state_sensitivity <- implicit_gradient(jac_state, jac_param)
+  output_jac_state <- .problem_output_jac_state(
+    step, x, output = output, fd_eps = fd_eps
+  )
+  output_jac_param <- .problem_output_jac_param(
+    problem, theta, x, output = output, fd_eps = fd_eps
+  )
+  output_jac_state %*% state_sensitivity + output_jac_param
+}
+
+.problem_output_from_step <- function(step, x, output, required = TRUE) {
+  outputs <- step$outputs(x)
+  if (!is.list(outputs) || !output %in% names(outputs)) {
+    if (required) {
+      stop("problem outputs do not include requested output `", output, "`")
+    }
+    return(NULL)
+  }
+  value <- outputs[[output]]
+  ok <- tryCatch({
+    .chck_numeric_vector(value, output)
+    TRUE
+  }, error = function(e) {
+    if (required) {
+      stop(e$message, call. = FALSE)
+    }
+    FALSE
+  })
+  if (!ok) {
+    return(NULL)
+  }
+  .coerce_numeric_vector(value)
 }
 
 .validate_problem_state <- function(problem, x) {

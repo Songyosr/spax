@@ -242,6 +242,46 @@ test_that(".fit_problem_nfxp supports named multi-parameter theta", {
   expect_named(fit$predicted, c("facility1", "facility2"))
 })
 
+test_that(".problem_output_sensitivity supports finite-difference theta Jacobians", {
+  problem <- .mk_two_theta_problem()
+  theta <- c(alpha = 2, beta = 3)
+  step <- .bind_theta(problem, theta)
+  x <- step$map(problem$state$init)
+
+  sensitivity <- .problem_output_sensitivity(
+    problem = problem,
+    theta = theta,
+    x = x,
+    output = "utilization"
+  )
+
+  expect_equal(unname(sensitivity), diag(2), tolerance = 1e-5)
+})
+
+test_that(".fit_problem_nfxp supports gradient-backed multi-parameter fitting", {
+  problem <- .mk_two_theta_problem()
+  observed <- c(2, 3)
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(alpha = 1, beta = 1.5),
+    lower = c(alpha = 0.5, beta = 0.5),
+    upper = c(alpha = 4, beta = 4),
+    tol = 1e-10,
+    max_iter = 20,
+    loss_args = list(eta = 1),
+    control = list(maxit = 80),
+    gradient = TRUE
+  )
+
+  expect_s3_class(fit, "ae_problem_nfxp_fit")
+  expect_true(fit$gradient)
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta, c(alpha = 2, beta = 3), tolerance = 1e-3)
+})
+
 test_that(".fit_problem_decay warns when the optimum hits a search bound", {
   td <- .mk_ae_problem_data()
   problem <- .sae_problem(
@@ -301,6 +341,13 @@ test_that(".fit_problem_nfxp validates calibration contracts", {
       output = "missing", control = list(maxit = 1)
     ),
     "requested output"
+  )
+  expect_error(
+    .fit_problem_nfxp(
+      problem, observed, init = 1, lower = 0.5, upper = 4,
+      loss_grad = NULL, gradient = TRUE
+    ),
+    "loss_grad"
   )
 })
 
