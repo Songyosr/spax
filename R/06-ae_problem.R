@@ -215,7 +215,7 @@
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     K <- calc_decay(substrate$distance_active, method = spec$family,
-                    sigma = theta[["sigma"]], snap = TRUE)
+                    sigma = theta[[spec$theta$names]], snap = TRUE)
     K[!is.finite(K)] <- 0
     plan <- substrate
     plan$Kd_active <- K
@@ -248,7 +248,7 @@
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     K <- calc_decay(substrate$distance_active, method = spec$family,
-                    sigma = theta[["sigma"]], snap = TRUE)
+                    sigma = theta[[spec$theta$names]], snap = TRUE)
     K[!is.finite(K)] <- 0
     plan <- substrate
     plan$Kd_active <- K
