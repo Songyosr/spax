@@ -306,7 +306,7 @@
                            tol = 1e-8, max_iter = 1000,
                            norm = c("max", "l2"),
                            keep_history = TRUE, warn = TRUE,
-                           check = TRUE) {
+                           check = TRUE, diagnostics = TRUE) {
   .chck_class(problem, "ae_problem", "problem")
   step <- .bind_theta(problem, theta)
   if (is.null(x0)) {
@@ -326,6 +326,17 @@
   )
   fit$outputs <- .validate_ae_outputs(step$outputs(fit$x_star))
   fit$utilization <- fit$outputs$utilization
+  if (isTRUE(diagnostics) && is.function(step$jac_state)) {
+    rho <- tryCatch({
+      jac <- step$jac_state(fit$x_star)
+      if (is.list(jac)) {
+        jac <- jac$jac_state
+      }
+      spectral_radius(jac)
+    }, error = function(e) NA_real_)
+    fit$spectral_radius <- rho
+    fit$contraction <- if (is.na(rho)) NA else rho < 1
+  }
   fit
 }
 
@@ -365,7 +376,8 @@
       max_iter = max_iter,
       keep_history = FALSE,
       warn = FALSE,
-      check = check
+      check = check,
+      diagnostics = FALSE
     )
     if (!isTRUE(fit$converged) || is.null(fit$utilization)) {
       return(1e12)
@@ -412,6 +424,7 @@
       theta = theta_hat,
       loss = loss,
       wsse = loss,
+      eta = eta,
       convergence = opt$convergence,
       message = opt$message,
       seconds = unname(elapsed),
@@ -419,6 +432,7 @@
       state = state,
       state_name = state_name,
       equilibrium = final,
+      spectral_radius = final$spectral_radius,
       optim = opt
     ),
     class = c("ae_problem_decay_fit", paste0(problem$model, "_problem_decay_fit"))

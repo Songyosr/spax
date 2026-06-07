@@ -14,7 +14,8 @@
   norm = c("max", "l2"),
   keep_history = TRUE,
   warn = TRUE,
-  check = TRUE
+  check = TRUE,
+  diagnostics = TRUE
 )
 }
 \description{

@@ -87,6 +87,52 @@ test_that(".solve_problem reproduces existing SAE equilibrium", {
   expect_equal(new$utilization, old$utilization, tolerance = 1e-10)
 })
 
+test_that(".solve_problem reports spectral radius and contraction by default", {
+  td <- .mk_ae_problem_data()
+  p <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  fit <- .solve_problem(
+    p, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10,
+    max_iter = 500, check = FALSE
+  )
+
+  expect_true(fit$converged)
+  expect_true(is.numeric(fit$spectral_radius))
+  expect_false(is.na(fit$spectral_radius))
+  expect_lt(fit$spectral_radius, 1)
+  expect_identical(fit$contraction, fit$spectral_radius < 1)
+
+  bare <- .solve_problem(
+    p, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10,
+    max_iter = 500, check = FALSE, diagnostics = FALSE
+  )
+  expect_null(bare$spectral_radius)
+})
+
+test_that(".fit_problem_decay records eta and the fitted spectral radius", {
+  td <- .mk_ae_problem_data()
+  truth <- .sae_predict_decay(
+    theta = 2, family = "gaussian",
+    demand = td$demand, supply = td$supply, distance = td$distance,
+    kappa = 1 / 3, beta = 20, lambda = 0.7, tol = 1e-10, max_iter = 500
+  )
+  problem <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20
+  )
+  fit <- .fit_problem_decay(
+    problem = problem, observed = truth$predicted,
+    init = 1.5, lower = 0.5, upper = 4, lambda = 0.7, tol = 1e-10,
+    max_iter = 500, eta = 2, control = list(maxit = 20)
+  )
+
+  expect_equal(fit$eta, 2)
+  expect_true(is.numeric(fit$spectral_radius))
+  expect_lt(fit$spectral_radius, 1)
+})
+
 test_that("problem runners validate theta and initial state without mutation", {
   td <- .mk_ae_problem_data()
   p <- .sae_problem(td$demand, td$supply, td$distance, family = "gaussian")
