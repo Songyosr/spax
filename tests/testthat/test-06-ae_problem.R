@@ -211,10 +211,12 @@ test_that("problem surface discovery is model generic", {
   outputs <- .problem_outputs_at(problem, theta = c(sigma = 2),
                                  state = solved$x_star)
 
+  expect_true("access" %in% .problem_available_surfaces(problem, outputs))
   expect_true("pooled" %in% .problem_available_surfaces(problem, outputs))
+  expect_true(all(outputs$access >= 0 & outputs$access <= 1))
   expect_s4_class(
     .problem_output_surface(
-      problem, theta = c(sigma = 2), state = solved$x_star, output = "pooled"
+      problem, theta = c(sigma = 2), state = solved$x_star, output = "access"
     ),
     "SpatRaster"
   )
@@ -345,7 +347,7 @@ test_that("AE QoL methods smoke-test on HAAE fits", {
 
   expect_output(print(fit), "haae")
   expect_s3_class(summary(fit), "summary.ae_problem_nfxp_fit")
-  expect_s4_class(.fit_output_surface(fit, "pooled"), "SpatRaster")
+  expect_s4_class(.fit_output_surface(fit, "access"), "SpatRaster")
 })
 
 test_that(".fit_problem_nfxp reproduces HAAE generated-data fitting", {

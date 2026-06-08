@@ -41,6 +41,7 @@
   opportunity <- .scale(plan$Kd_active, a, margin = "cols")
   huff_share <- .normalize(opportunity, over = "cols")
   allocation <- huff_share * plan$Kd_active
+  access <- rowSums(allocation)
   utilization <- .contract(plan$D_active, allocation, over = "rows")
   ratio <- plan$kappa_supply / (utilization + as.numeric(eps))
   target <- pmin(pmax(ratio, as.numeric(a_min)), a_max)
@@ -50,6 +51,7 @@
     ratio = ratio,
     utilization = utilization,
     attractiveness = a,
+    access = access,
     allocation = allocation,
     huff_share = huff_share,
     opportunity = opportunity,
@@ -103,4 +105,3 @@
     target = state$target
   )
 }
-
