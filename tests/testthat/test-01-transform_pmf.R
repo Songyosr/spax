@@ -5,6 +5,17 @@ create_test_raster <- function(values, nrows = 3, ncols = 3) {
   return(r)
 }
 
+spax_test_proj_available <- function() {
+  if (!nzchar(Sys.getenv("PROJ_LIB"))) {
+    proj <- system.file("proj", package = "sf")
+    if (nzchar(proj) && file.exists(file.path(proj, "proj.db"))) {
+      Sys.setenv(PROJ_LIB = proj)
+    }
+  }
+  nzchar(Sys.getenv("PROJ_LIB")) &&
+    file.exists(file.path(Sys.getenv("PROJ_LIB"), "proj.db"))
+}
+
 test_that("transform_pmf produces valid PMF from density values", {
   test_values <- c(10, 20, 30, 40)
   density_rast <- create_test_raster(test_values, 2, 2)
@@ -72,6 +83,8 @@ test_that("transform_pmf handles different raster sizes", {
 })
 
 test_that("transform_pmf maintains spatial properties", {
+  skip_if_not(spax_test_proj_available(), "PROJ database unavailable")
+
   test_values <- c(10, 20, 30, 40)
   density_rast <- create_test_raster(test_values, 2, 2)
   terra::ext(density_rast) <- c(0, 100, 0, 100)

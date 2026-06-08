@@ -131,7 +131,12 @@ test_that("sample_pmf evolution works correctly", {
   expect_equal(sum(terra::values(result_indep), na.rm = TRUE), n * iterations)
 
   # No evolution (evolve_prop = 0)
-  result_no_evol <- sample_pmf(pmf, n = n, iterations = iterations, evolve_prop = 0)
+  expect_warning(
+    result_no_evol <- sample_pmf(
+      pmf, n = n, iterations = iterations, evolve_prop = 0
+    ),
+    "evolve_prop = 0"
+  )
   expect_equal(terra::nlyr(result_no_evol), 1)
   expect_equal(sum(terra::values(result_no_evol), na.rm = TRUE), n)
 

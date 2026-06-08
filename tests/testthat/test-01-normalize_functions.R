@@ -11,6 +11,17 @@ create_test_raster <- function(nrow = 3, ncol = 3, nlyr = 2) {
   return(r)
 }
 
+spax_test_proj_available <- function() {
+  if (!nzchar(Sys.getenv("PROJ_LIB"))) {
+    proj <- system.file("proj", package = "sf")
+    if (nzchar(proj) && file.exists(file.path(proj, "proj.db"))) {
+      Sys.setenv(PROJ_LIB = proj)
+    }
+  }
+  nzchar(Sys.getenv("PROJ_LIB")) &&
+    file.exists(file.path(Sys.getenv("PROJ_LIB"), "proj.db"))
+}
+
 # Setup test data
 simple_weights <- c(0.5, 1.0, 1.5, 2.0)
 zero_weights <- c(0, 0, 0, 0)
@@ -155,10 +166,12 @@ test_that("calc_normalize preserves raster properties", {
   ext_result <- as.vector(ext(result))
   expect_equal(ext_result, ext_input)
 
-  # Test CRS preservation
-  crs(input_raster) <- "EPSG:4326"
-  result <- calc_normalize(input_raster, "standard")
-  expect_equal(crs(result), crs(input_raster))
+  # Test CRS preservation when the local PROJ runtime is configured.
+  if (spax_test_proj_available()) {
+    crs(input_raster) <- "EPSG:4326"
+    result <- calc_normalize(input_raster, "standard")
+    expect_equal(crs(result), crs(input_raster))
+  }
 
   # Test multi-layer handling
   three_layer <- create_test_raster(nlyr = 3)

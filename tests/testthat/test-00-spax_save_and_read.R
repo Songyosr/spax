@@ -1,5 +1,17 @@
+.spax_test_proj_available <- function() {
+  if (!nzchar(Sys.getenv("PROJ_LIB"))) {
+    proj <- system.file("proj", package = "sf")
+    if (nzchar(proj) && file.exists(file.path(proj, "proj.db"))) {
+      Sys.setenv(PROJ_LIB = proj)
+    }
+  }
+  nzchar(Sys.getenv("PROJ_LIB")) &&
+    file.exists(file.path(Sys.getenv("PROJ_LIB"), "proj.db"))
+}
+
 test_that("save_spax handles directory mode correctly", {
   skip_if_not_installed("terra")
+  skip_if_not(.spax_test_proj_available(), "PROJ database unavailable")
 
   td <- .create_test_data()
   result <- spax_e2sfca(
@@ -36,6 +48,7 @@ test_that("save_spax handles directory mode correctly", {
 
 test_that("save_spax handles file mode correctly", {
   skip_if_not_installed("terra")
+  skip_if_not(.spax_test_proj_available(), "PROJ database unavailable")
 
   td <- .create_test_data()
   result <- spax_e2sfca(
@@ -66,6 +79,7 @@ test_that("save_spax handles file mode correctly", {
 
 test_that("save_spax and read_spax handle single-layer case correctly", {
   skip_if_not_installed("terra")
+  skip_if_not(.spax_test_proj_available(), "PROJ database unavailable")
 
   # Create test object
   td <- .create_test_data()
@@ -97,6 +111,7 @@ test_that("save_spax and read_spax handle single-layer case correctly", {
 
 test_that("save_spax and read_spax handle multi-layer case correctly", {
   skip_if_not_installed("terra")
+  skip_if_not(.spax_test_proj_available(), "PROJ database unavailable")
 
   # Create test object with multiple supply measures
   td <- .create_test_data()

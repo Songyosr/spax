@@ -11,6 +11,17 @@ create_test_data <- function() {
   )
 }
 
+spax_test_proj_available <- function() {
+  if (!nzchar(Sys.getenv("PROJ_LIB"))) {
+    proj <- system.file("proj", package = "sf")
+    if (nzchar(proj) && file.exists(file.path(proj, "proj.db"))) {
+      Sys.setenv(PROJ_LIB = proj)
+    }
+  }
+  nzchar(Sys.getenv("PROJ_LIB")) &&
+    file.exists(file.path(Sys.getenv("PROJ_LIB"), "proj.db"))
+}
+
 # Helper validation tests ----------------------------------------------------
 
 test_that(".chck_decay validates inputs correctly", {
@@ -250,6 +261,7 @@ test_that("calc_decay handles edge cases", {
 
 test_that("calc_decay preserves raster attributes automatically", {
   skip_if_not_installed("terra")
+  skip_if_not(spax_test_proj_available(), "PROJ database unavailable")
 
   # Create test raster with defined CRS and extent
   r <- terra::rast(matrix(1:100, 10, 10))
