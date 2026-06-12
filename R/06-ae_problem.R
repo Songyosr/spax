@@ -124,6 +124,29 @@
   )
 }
 
+#' Construct a static Huff / aggregate-CLM model spec
+#'
+#' The no-state member of the ladder: attractiveness is exogenous
+#' (`a_j = (kappa * S_j)^beta`), allocation is one Huff pass, and `v0` is the
+#' optional outside-option mass (`0` = pure Huff). Calibrated theta is the
+#' decay parameter only; `kappa`, `beta`, `v0` are spec constants for the MVP.
+#' @keywords internal
+.huff_spec <- function(family = c("gaussian", "exponential", "power"),
+                       kappa = 1, beta = 1, v0 = 0) {
+  family <- match.arg(family)
+  .chck_positive_scalar(kappa, "kappa")
+  .chck_positive_scalar(beta, "beta")
+  .chck_nonnegative_scalar(v0, "v0")
+  list(
+    model = "huff",
+    family = family,
+    kappa = as.numeric(kappa),
+    beta = as.numeric(beta),
+    v0 = as.numeric(v0),
+    theta = .decay_theta_contract()
+  )
+}
+
 #' Create an AE inner problem object
 #' @keywords internal
 .new_problem <- function(model, substrate, state, theta, bind, metadata = list()) {
@@ -152,6 +175,7 @@
   switch(spec$model,
     "sae" = .compile_sae_map(spec, substrate),
     "haae" = .compile_haae_map(spec, substrate),
+    "huff" = .compile_huff_map(spec, substrate),
     stop("unsupported AE model spec")
   )
 }
@@ -211,6 +235,44 @@
       init = rep(1, length(substrate$facility_ids)),
       lower = a_min,
       upper = a_max
+    ),
+    theta = spec$theta,
+    bind = compiled$bind,
+    metadata = list(spec = spec)
+  )
+}
+
+#' Construct a private static Huff / aggregate-CLM problem
+#'
+#' The `dT/dstate = 0` member of the ladder: the map is constant, the
+#' equilibrium is reached in one pass, and the decay parameter enters only
+#' through the allocation output (not the state target). It calibrates through
+#' the shared NFXP runner unchanged.
+#' @keywords internal
+.huff_problem <- function(demand, supply, distance,
+                          family = c("gaussian", "exponential", "power"),
+                          kappa = 1, beta = 1, v0 = 0,
+                          id_col = NULL, supply_cols = NULL) {
+  substrate <- .interaction_substrate(
+    demand, supply, distance, id_col = id_col, supply_cols = supply_cols
+  )
+  if (ncol(substrate$S) != 1L) {
+    stop("static Huff currently supports one supply measure")
+  }
+  spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0)
+  compiled <- .compile_ae_map(spec, substrate)
+  a_init <- .huff_attractiveness(
+    as.vector(substrate$S[, 1]), kappa = kappa, beta = beta
+  )
+  .new_problem(
+    model = "huff",
+    substrate = substrate,
+    state = list(
+      name = "a",
+      axis = "J",
+      init = a_init,
+      lower = 0,
+      upper = Inf
     ),
     theta = spec$theta,
     bind = compiled$bind,
@@ -283,6 +345,45 @@
           a_max = spec$a_max
         )
       },
+      theta = theta,
+      plan = plan
+    )
+  }
+  list(bind = bind)
+}
+
+.compile_huff_map <- function(spec, substrate) {
+  S <- as.vector(substrate$S[, 1])
+  a_fixed <- .huff_attractiveness(S, kappa = spec$kappa, beta = spec$beta)
+  n <- length(a_fixed)
+  n_theta <- length(spec$theta$names)
+  zero_state <- matrix(0, n, n)
+  bind <- function(theta) {
+    theta <- .coerce_problem_theta(theta, spec$theta)
+    K <- calc_decay(substrate$distance_active, method = spec$family,
+                    sigma = theta[[spec$theta$names]], snap = TRUE)
+    K[!is.finite(K)] <- 0
+    plan <- substrate
+    plan$Kd_active <- K
+    plan$S <- S
+    plan$kappa_supply <- spec$kappa * S
+    class(plan) <- c("huff_compact_plan", "fca_compact_plan")
+
+    # State-independent: the full state is fixed by theta (via the kernel) and
+    # the exogenous attractiveness, so compute it once at bind time.
+    state <- .huff_state(a_fixed, plan = plan, v0 = spec$v0)
+    list(
+      map = function(x) state$target,
+      outputs = function(x) state,
+      jac_state = function(x) {
+        list(
+          jac_state = zero_state,
+          jac_utilization = zero_state,
+          utilization = state$utilization,
+          target = state$target
+        )
+      },
+      jac_param = function(x) matrix(0, n, n_theta),
       theta = theta,
       plan = plan
     )
