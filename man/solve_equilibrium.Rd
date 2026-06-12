@@ -14,6 +14,7 @@ solve_equilibrium(
   keep_history = TRUE,
   warn = TRUE,
   check = TRUE,
+  keep_state_history = FALSE,
   ...
 )
 }
