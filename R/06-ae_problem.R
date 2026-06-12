@@ -505,6 +505,12 @@
 }
 
 #' Fit a private AE problem by nested fixed point
+#'
+#' `observed` may be a numeric vector (e.g. facility marginals) or a numeric
+#' matrix (e.g. origin-by-facility flows) matching the shape of the requested
+#' `output`; the state axis stays whatever the problem declares. `NA` cells in
+#' `observed` are treated as unobserved (e.g. suppressed flow cells) and are
+#' excluded from the loss and its gradient.
 #' @keywords internal
 .fit_problem_nfxp <- function(problem, observed, init, lower, upper,
                               output = "utilization",
@@ -517,7 +523,7 @@
                               check = FALSE, penalty = 1e12,
                               gradient = FALSE, fd_eps = 1e-6) {
   .chck_class(problem, "ae_problem", "problem")
-  .chck_numeric_vector(observed, "observed")
+  target <- .fit_target_meta(observed, "observed")
   if (!is.function(loss)) {
     stop("`loss` must be a function")
   }
@@ -552,7 +558,7 @@
     stop("`init` must be inside [`lower`, `upper`]")
   }
 
-  observed <- .coerce_numeric_vector(observed)
+  observed_values <- target$values
   warm <- NULL
   evaluate <- function(log_theta, keep_history = FALSE, warn = FALSE,
                        diagnostics = FALSE, update_warm = TRUE) {
@@ -574,13 +580,14 @@
     if (!isTRUE(fit$converged)) {
       return(NULL)
     }
-    predicted <- .problem_fit_output(fit, output, required = FALSE)
-    if (is.null(predicted) || length(predicted) != length(observed)) {
+    predicted_full <- .problem_fit_output(fit, output, required = FALSE)
+    if (is.null(predicted_full) || !.fit_target_shape_ok(predicted_full, target)) {
       return(NULL)
     }
+    predicted <- as.numeric(predicted_full)[target$mask]
     value <- do.call(
       loss,
-      c(list(predicted = predicted, observed = observed), loss_args)
+      c(list(predicted = predicted, observed = observed_values), loss_args)
     )
     if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
       return(NULL)
@@ -619,12 +626,17 @@
           output = output,
           fd_eps = fd_eps
         )
+        if (nrow(sensitivity) != target$length) {
+          return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
+                                       fd_eps = fd_eps))
+        }
+        sensitivity <- sensitivity[target$mask, , drop = FALSE]
         grad <- do.call(
           loss_grad,
           c(
             list(
               predicted = evaluated$predicted,
-              observed = observed,
+              observed = observed_values,
               sensitivity = sensitivity
             ),
             loss_args
@@ -669,15 +681,25 @@
     warn = TRUE,
     check = check
   )
-  predicted <- .problem_fit_output(final, output, required = TRUE)
+  predicted_full <- .problem_fit_output(final, output, required = TRUE)
+  .check_fit_target_shape(predicted_full, target, output)
+  predicted <- as.numeric(predicted_full)[target$mask]
   loss_value <- do.call(
     loss,
-    c(list(predicted = predicted, observed = observed), loss_args)
+    c(list(predicted = predicted, observed = observed_values), loss_args)
   )
   if (!is.numeric(loss_value) || length(loss_value) != 1L || !is.finite(loss_value)) {
     stop("final loss must be a finite numeric scalar")
   }
-  predicted <- .name_problem_vector(predicted, problem$substrate$facility_ids)
+  if (is.null(target$dim)) {
+    predicted_store <- .name_problem_vector(predicted_full,
+                                            problem$substrate$facility_ids)
+    observed_store <- .name_problem_vector(.coerce_numeric_vector(observed),
+                                           problem$substrate$facility_ids)
+  } else {
+    predicted_store <- predicted_full
+    observed_store <- observed
+  }
   state_name <- problem$state$name
   state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
 
@@ -694,8 +716,11 @@
       convergence = opt$convergence,
       message = opt$message,
       seconds = unname(elapsed),
-      observed = .name_problem_vector(observed, problem$substrate$facility_ids),
-      predicted = predicted,
+      observed = observed_store,
+      predicted = predicted_store,
+      target_dim = target$dim,
+      n_observed = target$n_observed,
+      target_mask = if (all(target$mask)) NULL else target$mask,
       state = state,
       state_name = state_name,
       outputs = final$outputs,
@@ -769,19 +794,31 @@
 #' @keywords internal
 .ae_fit_facility_table <- function(fit) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
-  n <- length(fit$predicted)
-  facility_id <- names(fit$predicted)
+  if (is.null(fit$target_dim)) {
+    predicted <- fit$predicted
+    observed <- fit$observed
+  } else {
+    # Matrix-target fits (e.g. flows): predicted/observed are cell-level, so
+    # the facility-side column is the model's utilization output instead.
+    predicted <- .name_problem_vector(
+      .coerce_numeric_vector(fit$outputs$utilization),
+      names(fit$state)
+    )
+    observed <- NULL
+  }
+  n <- length(predicted)
+  facility_id <- names(predicted)
   if (is.null(facility_id)) {
     facility_id <- as.character(seq_len(n))
   }
   out <- data.frame(
     facility_id = facility_id,
-    predicted = as.numeric(fit$predicted),
+    predicted = as.numeric(predicted),
     state = as.numeric(fit$state),
     stringsAsFactors = FALSE
   )
-  if (!is.null(fit$observed) && length(fit$observed) == n) {
-    out$observed <- as.numeric(fit$observed)
+  if (!is.null(observed) && length(observed) == n) {
+    out$observed <- as.numeric(observed)
     out$residual <- out$predicted - out$observed
   }
   out
@@ -912,7 +949,7 @@
   }
   value <- outputs[[output]]
   ok <- tryCatch({
-    .chck_numeric_vector(value, output)
+    .chck_target_numeric(value, output)
     TRUE
   }, error = function(e) {
     if (required) {
@@ -923,7 +960,8 @@
   if (!ok) {
     return(NULL)
   }
-  .coerce_numeric_vector(value)
+  # Flattened (column-major) so FD Jacobians stack matrix outputs as rows.
+  as.numeric(value)
 }
 
 .validate_problem_state <- function(problem, x) {
@@ -965,6 +1003,76 @@
   x[expected]
 }
 
+#' Validate a calibration value as a finite numeric vector or matrix
+#' @keywords internal
+.chck_target_numeric <- function(x, name = "Input") {
+  .chck_is_numeric(x, name = name)
+  if (!is.null(dim(x)) && length(dim(x)) != 2L) {
+    stop(sprintf("%s must be a numeric vector or matrix", name))
+  }
+  if (any(!is.finite(x))) {
+    stop(sprintf("%s must contain only finite values", name))
+  }
+  invisible(TRUE)
+}
+
+#' Describe a calibration target: shape, observation mask, observed values
+#'
+#' `NA` cells mark unobserved targets (e.g. HSAF flow suppression below 11
+#' cases) and are excluded from the loss; predicted/observed comparison is
+#' over flattened (column-major) values at the observed cells only.
+#' @keywords internal
+.fit_target_meta <- function(observed, name = "observed") {
+  .chck_is_numeric(observed, name = name)
+  if (!is.null(dim(observed)) && length(dim(observed)) != 2L) {
+    stop(sprintf("%s must be a numeric vector or matrix", name))
+  }
+  if (length(observed) == 0L) {
+    stop(sprintf("%s must not be empty", name))
+  }
+  flat <- as.numeric(observed)
+  mask <- !is.na(flat)
+  if (!any(mask)) {
+    stop(sprintf("%s must contain at least one non-missing value", name))
+  }
+  if (any(!is.finite(flat[mask]))) {
+    stop(sprintf("%s non-missing values must be finite", name))
+  }
+  list(
+    dim = dim(observed),
+    length = length(flat),
+    mask = mask,
+    values = flat[mask],
+    n_observed = sum(mask)
+  )
+}
+
+#' Does a predicted output have the same shape as the calibration target?
+#' @keywords internal
+.fit_target_shape_ok <- function(predicted, target) {
+  if (!is.numeric(predicted)) {
+    return(FALSE)
+  }
+  pdim <- dim(predicted)
+  if (is.null(target$dim)) {
+    return(is.null(pdim) && length(predicted) == target$length)
+  }
+  !is.null(pdim) && length(pdim) == 2L && all(pdim == target$dim)
+}
+
+#' Require shape agreement between a predicted output and the target
+#' @keywords internal
+.check_fit_target_shape <- function(predicted, target, output) {
+  if (.fit_target_shape_ok(predicted, target)) {
+    return(invisible(TRUE))
+  }
+  describe <- function(d, n) {
+    if (is.null(d)) paste0("length ", n) else paste0("dim ", paste(d, collapse = " x "))
+  }
+  stop("output `", output, "` (", describe(dim(predicted), length(predicted)),
+       ") does not match `observed` (", describe(target$dim, target$length), ")")
+}
+
 .problem_fit_output <- function(fit, output, required = TRUE) {
   if (!is.list(fit$outputs) || !output %in% names(fit$outputs)) {
     if (required) {
@@ -974,7 +1082,7 @@
   }
   value <- fit$outputs[[output]]
   ok <- tryCatch({
-    .chck_numeric_vector(value, output)
+    .chck_target_numeric(value, output)
     TRUE
   }, error = function(e) {
     if (required) {
@@ -985,7 +1093,11 @@
   if (!ok) {
     return(NULL)
   }
-  .coerce_numeric_vector(value)
+  if (is.null(dim(value))) {
+    .coerce_numeric_vector(value)
+  } else {
+    .coerce_numeric_matrix(value)
+  }
 }
 
 .name_problem_vector <- function(x, ids) {

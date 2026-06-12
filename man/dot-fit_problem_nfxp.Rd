@@ -26,6 +26,10 @@
 )
 }
 \description{
-Fit a private AE problem by nested fixed point
+`observed` may be a numeric vector (e.g. facility marginals) or a numeric
+matrix (e.g. origin-by-facility flows) matching the shape of the requested
+`output`; the state axis stays whatever the problem declares. `NA` cells in
+`observed` are treated as unobserved (e.g. suppressed flow cells) and are
+excluded from the loss and its gradient.
 }
 \keyword{internal}
