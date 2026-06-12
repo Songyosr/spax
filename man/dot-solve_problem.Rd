@@ -15,7 +15,8 @@
   keep_history = TRUE,
   warn = TRUE,
   check = TRUE,
-  diagnostics = TRUE
+  diagnostics = TRUE,
+  keep_state_history = FALSE
 )
 }
 \description{
