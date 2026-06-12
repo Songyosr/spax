@@ -622,3 +622,242 @@ test_that(".fit_problem_decay reproduces HAAE decay fitting oracle", {
   expect_equal(fit$theta_hat, 2, tolerance = 1e-3)
   expect_equal(unname(fit$predicted), unname(observed), tolerance = 1e-4)
 })
+
+# SPAX-026: matrix calibration targets with an observation mask ---------------
+
+.mk_matrix_target_problem <- function() {
+  contract <- list(
+    names = c("alpha", "beta"),
+    lower = c(0, 0),
+    upper = c(10, 10)
+  )
+  weights <- c(1, 2, 3)
+  .new_problem(
+    model = "toy",
+    substrate = list(facility_ids = c("facility1", "facility2")),
+    state = list(
+      name = "x",
+      axis = "J",
+      init = c(1, 1),
+      lower = c(0, 0),
+      upper = c(10, 10)
+    ),
+    theta = contract,
+    bind = function(theta) {
+      theta <- .coerce_problem_theta(theta, contract)
+      list(
+        map = function(x) theta,
+        outputs = function(x) list(
+          target = theta,
+          utilization = x,
+          allocation = outer(weights, as.numeric(theta))
+        ),
+        theta = theta
+      )
+    },
+    metadata = list(spec = list(family = "toy"))
+  )
+}
+
+test_that(".fit_target_meta describes vector and matrix targets with NA masks", {
+  meta <- .fit_target_meta(c(1, NA, 3))
+  expect_null(meta$dim)
+  expect_equal(meta$mask, c(TRUE, FALSE, TRUE))
+  expect_equal(meta$values, c(1, 3))
+  expect_equal(meta$n_observed, 2L)
+
+  m <- matrix(c(1, 2, NA, 4), 2, 2)
+  meta_m <- .fit_target_meta(m)
+  expect_equal(meta_m$dim, c(2L, 2L))
+  expect_equal(meta_m$length, 4L)
+  expect_equal(meta_m$values, c(1, 2, 4))
+
+  expect_error(.fit_target_meta("a"), "must be numeric")
+  expect_error(.fit_target_meta(array(1, c(2, 2, 2))), "vector or matrix")
+  expect_error(.fit_target_meta(c(NA_real_, NA_real_)), "non-missing")
+  expect_error(.fit_target_meta(c(1, Inf)), "finite")
+  expect_error(.fit_target_meta(numeric(0)), "empty")
+})
+
+test_that("J-state problems calibrate against an I x J matrix target", {
+  problem <- .mk_matrix_target_problem()
+  theta0 <- c(alpha = 2, beta = 3)
+  observed <- outer(c(1, 2, 3), as.numeric(theta0))
+  # suppress two cells; both columns stay identified
+  observed[2, 1] <- NA
+  observed[1, 2] <- NA
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(alpha = 1, beta = 1),
+    lower = c(alpha = 0.1, beta = 0.1),
+    upper = c(alpha = 8, beta = 8),
+    output = "allocation",
+    control = list(maxit = 50)
+  )
+
+  # state stayed on J while the target was I x J
+  expect_length(fit$state, 2L)
+  expect_equal(dim(fit$predicted), c(3L, 2L))
+  expect_equal(fit$target_dim, c(3L, 2L))
+  expect_equal(fit$n_observed, 4L)
+  # column-major flatten: cells (2,1) and (1,2) are flat positions 2 and 4
+  expect_equal(fit$target_mask, c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE))
+  expect_equal(unname(fit$theta_hat), unname(theta0), tolerance = 1e-3)
+  expect_lt(fit$loss, 1e-8)
+  # observed kept its matrix shape (with the NA cells)
+  expect_equal(dim(fit$observed), c(3L, 2L))
+  expect_true(is.na(fit$observed[2, 1]))
+})
+
+test_that("matrix-target fits report explicit shape errors", {
+  problem <- .mk_matrix_target_problem()
+  transposed <- t(outer(c(1, 2, 3), c(2, 3)))
+
+  expect_error(
+    .fit_problem_nfxp(
+      problem = problem,
+      observed = transposed,
+      init = c(alpha = 1, beta = 1),
+      lower = c(alpha = 0.1, beta = 0.1),
+      upper = c(alpha = 8, beta = 8),
+      output = "allocation",
+      control = list(maxit = 2)
+    ),
+    "does not match `observed`"
+  )
+
+  expect_error(
+    .fit_problem_nfxp(
+      problem = problem,
+      observed = outer(c(1, 2, 3), c(2, 3)),
+      init = c(alpha = 1, beta = 1),
+      lower = c(alpha = 0.1, beta = 0.1),
+      upper = c(alpha = 8, beta = 8),
+      output = "utilization",
+      control = list(maxit = 2)
+    ),
+    "does not match `observed`"
+  )
+})
+
+test_that("HAAE calibrates against a masked allocation matrix target", {
+  td <- .mk_ae_problem_data()
+  problem <- .haae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  solved <- .solve_problem(
+    problem, theta = c(sigma = 2), lambda = 0.7, tol = 1e-10, max_iter = 500
+  )
+  observed <- solved$outputs$allocation
+  observed[1, 2] <- NA  # one suppressed cell
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.5),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    output = "allocation",
+    lambda = 0.7,
+    tol = 1e-10,
+    max_iter = 500,
+    control = list(maxit = 20)
+  )
+
+  expect_equal(fit$model, "haae")
+  expect_equal(unname(fit$theta_hat["sigma"]), 2, tolerance = 1e-3)
+  expect_lt(fit$loss, 1e-8)
+  expect_equal(fit$n_observed, length(observed) - 1L)
+})
+
+test_that("gradient-mode matrix-target fit agrees with the black-box fit", {
+  td <- .mk_ae_problem_data()
+  problem <- .huff_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  observed <- .solve_problem(problem, theta = c(sigma = 2))$outputs$allocation
+  observed[2, 1] <- NA
+
+  args <- list(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.2),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    output = "allocation",
+    control = list(maxit = 25)
+  )
+  bb <- do.call(.fit_problem_nfxp, args)
+  gd <- do.call(.fit_problem_nfxp, c(args, list(gradient = TRUE)))
+
+  expect_equal(unname(bb$theta_hat["sigma"]), 2, tolerance = 1e-3)
+  expect_equal(unname(gd$theta_hat["sigma"]), unname(bb$theta_hat["sigma"]),
+               tolerance = 1e-3)
+})
+
+test_that("vector targets accept NA cells and keep legacy fit fields", {
+  td <- .mk_ae_problem_data()
+  problem <- .huff_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  full <- .solve_problem(problem, theta = c(sigma = 2))$outputs$utilization
+
+  observed <- full
+  observed[1] <- NA
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.2),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    output = "utilization"
+  )
+  expect_equal(unname(fit$theta_hat["sigma"]), 2, tolerance = 1e-3)
+  expect_equal(fit$n_observed, 1L)
+  expect_equal(fit$target_mask, c(FALSE, TRUE))
+  expect_true(is.na(fit$observed[["facility1"]]))
+
+  # complete vector target: legacy shape of the fit object
+  fit_full <- .fit_problem_nfxp(
+    problem = problem,
+    observed = full,
+    init = c(sigma = 1.2),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    output = "utilization"
+  )
+  expect_null(fit_full$target_dim)
+  expect_null(fit_full$target_mask)
+  expect_equal(fit_full$n_observed, 2L)
+  expect_named(fit_full$predicted, c("facility1", "facility2"))
+  expect_named(fit_full$observed, c("facility1", "facility2"))
+})
+
+test_that("facility table falls back to utilization for matrix-target fits", {
+  td <- .mk_ae_problem_data()
+  problem <- .huff_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3
+  )
+  observed <- .solve_problem(problem, theta = c(sigma = 2))$outputs$allocation
+
+  fit <- .fit_problem_nfxp(
+    problem = problem,
+    observed = observed,
+    init = c(sigma = 1.2),
+    lower = c(sigma = 0.5),
+    upper = c(sigma = 4),
+    output = "allocation"
+  )
+  tab <- .ae_fit_facility_table(fit)
+  expect_equal(nrow(tab), 2L)
+  expect_equal(tab$facility_id, c("facility1", "facility2"))
+  expect_equal(tab$predicted, unname(fit$outputs$utilization), tolerance = 1e-12)
+  expect_false("observed" %in% names(tab))
+  expect_no_error(summary(fit))
+})
