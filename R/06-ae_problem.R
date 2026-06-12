@@ -711,6 +711,7 @@
       theta = theta_hat,
       loss = as.numeric(loss_value),
       output = output,
+      loss_fn = loss,
       loss_args = loss_args,
       gradient = gradient,
       convergence = opt$convergence,
@@ -773,6 +774,154 @@
     class(fit)
   )
   fit
+}
+
+#' Compare calibrated AE problem fits on an identical target and loss
+#'
+#' Builds a tidy comparison table over fits of *different models calibrated
+#' against the same data*: same output name, same observed values and
+#' observation mask, same loss arguments (and the same loss function when the
+#' fits carry one). Reports fit quality and stability diagnostics side by
+#' side; it does not pick a winner.
+#' @keywords internal
+.compare_problem_fits <- function(fits) {
+  if (!is.list(fits) || length(fits) < 2L) {
+    stop("`fits` must be a list of at least two AE problem fits")
+  }
+  if (is.null(names(fits)) || any(!nzchar(names(fits)))) {
+    names(fits) <- vapply(fits, function(f) as.character(f$model), character(1))
+  }
+  if (anyDuplicated(names(fits)) > 0L) {
+    stop("`fits` must have unique labels (name the list entries explicitly)")
+  }
+  for (f in fits) {
+    .chck_class(f, "ae_problem_nfxp_fit", "each element of `fits`")
+  }
+
+  ref <- fits[[1L]]
+  ref_obs <- as.numeric(ref$observed)
+  ref_label <- names(fits)[[1L]]
+  for (i in seq_along(fits)[-1L]) {
+    f <- fits[[i]]
+    label <- names(fits)[[i]]
+    if (!identical(f$output, ref$output)) {
+      stop("fits `", ref_label, "` and `", label,
+           "` target different outputs (`", ref$output, "` vs `", f$output, "`)")
+    }
+    obs <- as.numeric(f$observed)
+    if (!identical(dim(f$observed), dim(ref$observed)) ||
+        length(obs) != length(ref_obs)) {
+      stop("fits `", ref_label, "` and `", label,
+           "` were calibrated against different target shapes")
+    }
+    if (!identical(is.na(obs), is.na(ref_obs))) {
+      stop("fits `", ref_label, "` and `", label,
+           "` use different observation masks")
+    }
+    if (!isTRUE(all.equal(obs[!is.na(obs)], ref_obs[!is.na(ref_obs)]))) {
+      stop("fits `", ref_label, "` and `", label,
+           "` were calibrated against different observed values")
+    }
+    if (!identical(f$loss_args, ref$loss_args)) {
+      stop("fits `", ref_label, "` and `", label,
+           "` use different `loss_args`")
+    }
+    if (is.function(f$loss_fn) && is.function(ref$loss_fn) &&
+        !identical(f$loss_fn, ref$loss_fn)) {
+      stop("fits `", ref_label, "` and `", label,
+           "` use different loss functions")
+    }
+  }
+
+  rows <- lapply(names(fits), function(label) {
+    f <- fits[[label]]
+    predicted <- as.numeric(f$predicted)
+    observed <- as.numeric(f$observed)
+    keep <- !is.na(observed)
+    data.frame(
+      label = label,
+      model = f$model,
+      family = if (is.null(f$family)) NA_character_ else f$family,
+      n_params = length(f$theta),
+      theta = paste(
+        sprintf("%s=%.6g", names(f$theta), as.numeric(f$theta)),
+        collapse = "; "
+      ),
+      loss = f$loss,
+      correlation = stats::cor(predicted[keep], observed[keep]),
+      rmse = sqrt(mean((predicted[keep] - observed[keep])^2)),
+      n_observed = sum(keep),
+      spectral_radius = if (is.null(f$spectral_radius)) NA_real_ else f$spectral_radius,
+      solver_iters = f$equilibrium$iters,
+      solver_converged = isTRUE(f$equilibrium$converged),
+      optim_convergence = f$convergence,
+      gradient = isTRUE(f$gradient),
+      seconds = f$seconds,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+#' Fit several AE problems against one shared target and compare them
+#'
+#' The nested static-vs-feedback question (DEC-012): fit every problem in the
+#' ladder against the *same* observed target with the *same* loss, then put
+#' the legs side by side. Comparability is guaranteed by construction; the
+#' result reports, it does not decide. `init`/`lower`/`upper` are shared
+#' across problems, or a named list keyed by problem label for per-problem
+#' theta contracts. Solver/runner options in `...` are shared by all legs.
+#' @keywords internal
+.fit_problem_ladder <- function(problems, observed, init, lower, upper,
+                                output = "utilization",
+                                loss = .weighted_sse_loss,
+                                loss_grad = .weighted_sse_gradient,
+                                loss_args = list(eta = 1), ...) {
+  if (!is.list(problems) || length(problems) < 2L) {
+    stop("`problems` must be a list of at least two AE problems")
+  }
+  if (is.null(names(problems)) || any(!nzchar(names(problems)))) {
+    names(problems) <- vapply(
+      problems,
+      function(p) as.character(p$model),
+      character(1)
+    )
+  }
+  if (anyDuplicated(names(problems)) > 0L) {
+    stop("`problems` must have unique labels (name the list entries explicitly)")
+  }
+  for (p in problems) {
+    .chck_class(p, "ae_problem", "each element of `problems`")
+  }
+  pick <- function(arg, label, what) {
+    if (is.list(arg)) {
+      if (is.null(names(arg)) || !label %in% names(arg)) {
+        stop("per-problem `", what, "` must be a named list covering problem `",
+             label, "`")
+      }
+      return(arg[[label]])
+    }
+    arg
+  }
+
+  fits <- lapply(names(problems), function(label) {
+    .fit_problem_nfxp(
+      problem = problems[[label]],
+      observed = observed,
+      init = pick(init, label, "init"),
+      lower = pick(lower, label, "lower"),
+      upper = pick(upper, label, "upper"),
+      output = output,
+      loss = loss,
+      loss_grad = loss_grad,
+      loss_args = loss_args,
+      ...
+    )
+  })
+  names(fits) <- names(problems)
+  list(fits = fits, table = .compare_problem_fits(fits))
 }
 
 #' Rewrap one final-fit origin-side output onto the demand raster template
