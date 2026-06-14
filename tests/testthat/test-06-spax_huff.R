@@ -159,3 +159,64 @@ test_that("gradient-mode static Huff fit agrees with the black-box fit", {
   expect_equal(unname(gd$theta_hat["sigma"]), unname(bb$theta_hat["sigma"]),
                tolerance = 1e-2)
 })
+
+# SPAX-032: static CLM — joint (sigma, v0) fit by Poisson likelihood -----------
+
+test_that(".huff_spec promotes v0 into theta when fit_v0 = TRUE", {
+  s1 <- .huff_spec(fit_v0 = FALSE)
+  s2 <- .huff_spec(fit_v0 = TRUE)
+  expect_equal(s1$theta$names, "sigma")
+  expect_equal(s2$theta$names, c("sigma", "v0"))
+  expect_equal(s2$theta$lower, c(0, 0))
+  expect_true(s2$fit_v0)
+})
+
+test_that("fit_v0 problem reads v0 from theta (not the spec constant)", {
+  td <- .mk_huff_data()
+  p <- .huff_problem(td$demand, td$supply, td$distance,
+                     family = "gaussian", kappa = 1 / 3, fit_v0 = TRUE)
+  expect_equal(p$theta$names, c("sigma", "v0"))
+  # outputs at two different v0 differ; map stays state-independent + one-pass
+  o_lo <- .bind_theta(p, c(sigma = 2, v0 = 0.01))$outputs(0)
+  o_hi <- .bind_theta(p, c(sigma = 2, v0 = 5))$outputs(0)
+  expect_lt(sum(o_hi$utilization), sum(o_lo$utilization))   # more outside -> less load
+  fit <- .solve_problem(p, theta = c(sigma = 2, v0 = 1))
+  expect_identical(fit$iters, 1L)
+  expect_equal(fit$spectral_radius, 0)
+})
+
+test_that(".poisson_loss/gradient behave and match FD", {
+  pr <- c(2, 5, 3); ob <- c(2, 4, 3)
+  expect_equal(.poisson_loss(pr, ob), sum(pr - ob * log(pr)), tolerance = 1e-12)
+  # gradient vs finite difference through a toy sensitivity
+  sens <- matrix(c(1, 0.5, -0.2, 0.3, 1, 0.7), nrow = 3)
+  g <- .poisson_gradient(pr, ob, sens)
+  fd <- sapply(1:2, function(k) {
+    h <- 1e-6
+    (.poisson_loss(pr + h * sens[, k], ob) - .poisson_loss(pr - h * sens[, k], ob)) / (2 * h)
+  })
+  expect_equal(g, fd, tolerance = 1e-5)
+})
+
+test_that("joint (sigma, v0) Poisson fit recovers generating parameters", {
+  td <- .mk_huff_data()
+  p <- .huff_problem(td$demand, td$supply, td$distance,
+                     family = "gaussian", kappa = 1 / 3, fit_v0 = TRUE)
+  truth <- c(sigma = 2.5, v0 = 1.2)
+  observed <- .solve_problem(p, theta = truth)$outputs$utilization
+
+  fit <- .fit_problem_nfxp(
+    p, observed = observed,
+    init = c(sigma = 6, v0 = 0.3),
+    lower = c(sigma = 0.2, v0 = 1e-3),
+    upper = c(sigma = 30, v0 = 50),
+    output = "utilization",
+    loss = .poisson_loss, loss_grad = .poisson_gradient,
+    loss_args = list(eps = 1e-9), control = list(maxit = 200)
+  )
+  expect_equal(fit$model, "huff")
+  expect_equal(unname(fit$theta_hat["sigma"]), unname(truth["sigma"]), tolerance = 1e-2)
+  expect_equal(unname(fit$theta_hat["v0"]), unname(truth["v0"]), tolerance = 1e-2)
+  # Poisson MLE matches the predicted total to the observed total
+  expect_equal(sum(fit$predicted), sum(observed), tolerance = 1e-4)
+})
