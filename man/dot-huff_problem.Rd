@@ -12,6 +12,7 @@
   kappa = 1,
   beta = 1,
   v0 = 0,
+  fit_v0 = FALSE,
   id_col = NULL,
   supply_cols = NULL
 )

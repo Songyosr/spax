@@ -8,13 +8,15 @@
   family = c("gaussian", "exponential", "power"),
   kappa = 1,
   beta = 1,
-  v0 = 0
+  v0 = 0,
+  fit_v0 = FALSE
 )
 }
 \description{
 The no-state member of the ladder: attractiveness is exogenous
 (`a_j = (kappa * S_j)^beta`), allocation is one Huff pass, and `v0` is the
-optional outside-option mass (`0` = pure Huff). Calibrated theta is the
-decay parameter only; `kappa`, `beta`, `v0` are spec constants for the MVP.
+optional outside-option mass (`0` = pure Huff). With `fit_v0 = TRUE`, `v0`
+joins the fitted theta (conditional logit; DEC-013); otherwise the decay
+parameter is the only fitted theta and `kappa`, `beta`, `v0` are constants.
 }
 \keyword{internal}
