@@ -126,33 +126,42 @@
 
 #' Theta contract for the static Huff/CLM spec
 #'
-#' `fit_v0 = TRUE` promotes the outside-option mass `v0` from a constant to a
-#' fitted parameter, making the spec a conditional logit estimated jointly in
-#' `(sigma, v0)` (DEC-013). `v0` is bounded `[0, Inf)`; the NFXP runner takes
-#' positive search bounds from the caller.
+#' `fit_v0 = TRUE` promotes the outside-option mass `v0`, and `fit_beta = TRUE`
+#' the supply elasticity `beta` (attractiveness `a_j = (kappa S_j)^beta`), from
+#' constants to fitted parameters — making the spec a conditional logit estimated
+#' jointly in `(sigma, [v0], [beta])` (DEC-013). Appended order is `sigma`, then
+#' `v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
+#' caller.
 #' @keywords internal
-.huff_theta_contract <- function(fit_v0 = FALSE) {
-  if (!isTRUE(fit_v0)) {
-    return(.decay_theta_contract())
+.huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE) {
+  contract <- .decay_theta_contract()
+  append_param <- function(contract, name) {
+    list(
+      names = c(contract$names, name),
+      lower = c(contract$lower, 0),
+      upper = c(contract$upper, Inf)
+    )
   }
-  decay <- .decay_theta_contract()
-  list(
-    names = c(decay$names, "v0"),
-    lower = c(decay$lower, 0),
-    upper = c(decay$upper, Inf)
-  )
+  if (isTRUE(fit_v0)) {
+    contract <- append_param(contract, "v0")
+  }
+  if (isTRUE(fit_beta)) {
+    contract <- append_param(contract, "beta")
+  }
+  contract
 }
 
 #' Construct a static Huff / aggregate-CLM model spec
 #'
 #' The no-state member of the ladder: attractiveness is exogenous
 #' (`a_j = (kappa * S_j)^beta`), allocation is one Huff pass, and `v0` is the
-#' optional outside-option mass (`0` = pure Huff). With `fit_v0 = TRUE`, `v0`
-#' joins the fitted theta (conditional logit; DEC-013); otherwise the decay
-#' parameter is the only fitted theta and `kappa`, `beta`, `v0` are constants.
+#' optional outside-option mass (`0` = pure Huff). With `fit_v0` / `fit_beta`,
+#' the outside option and/or the supply elasticity join the fitted theta
+#' (conditional logit; DEC-013); otherwise they (and `kappa`) are constants.
 #' @keywords internal
 .huff_spec <- function(family = c("gaussian", "exponential", "power"),
-                       kappa = 1, beta = 1, v0 = 0, fit_v0 = FALSE) {
+                       kappa = 1, beta = 1, v0 = 0,
+                       fit_v0 = FALSE, fit_beta = FALSE) {
   family <- match.arg(family)
   .chck_positive_scalar(kappa, "kappa")
   .chck_positive_scalar(beta, "beta")
@@ -164,7 +173,8 @@
     beta = as.numeric(beta),
     v0 = as.numeric(v0),
     fit_v0 = isTRUE(fit_v0),
-    theta = .huff_theta_contract(fit_v0)
+    fit_beta = isTRUE(fit_beta),
+    theta = .huff_theta_contract(fit_v0, fit_beta)
   )
 }
 
@@ -272,7 +282,8 @@
 #' @keywords internal
 .huff_problem <- function(demand, supply, distance,
                           family = c("gaussian", "exponential", "power"),
-                          kappa = 1, beta = 1, v0 = 0, fit_v0 = FALSE,
+                          kappa = 1, beta = 1, v0 = 0,
+                          fit_v0 = FALSE, fit_beta = FALSE,
                           id_col = NULL, supply_cols = NULL) {
   substrate <- .interaction_substrate(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
@@ -281,7 +292,7 @@
     stop("static Huff currently supports one supply measure")
   }
   spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0,
-                     fit_v0 = fit_v0)
+                     fit_v0 = fit_v0, fit_beta = fit_beta)
   compiled <- .compile_ae_map(spec, substrate)
   a_init <- .huff_attractiveness(
     as.vector(substrate$S[, 1]), kappa = kappa, beta = beta
@@ -376,8 +387,7 @@
 
 .compile_huff_map <- function(spec, substrate) {
   S <- as.vector(substrate$S[, 1])
-  a_fixed <- .huff_attractiveness(S, kappa = spec$kappa, beta = spec$beta)
-  n <- length(a_fixed)
+  n <- length(S)
   n_theta <- length(spec$theta$names)
   zero_state <- matrix(0, n, n)
   bind <- function(theta) {
@@ -386,15 +396,20 @@
                     sigma = theta[["sigma"]], snap = TRUE)
     K[!is.finite(K)] <- 0
     v0 <- if (isTRUE(spec$fit_v0)) theta[["v0"]] else spec$v0
+    beta <- if (isTRUE(spec$fit_beta)) theta[["beta"]] else spec$beta
+    a <- .huff_attractiveness(S, kappa = spec$kappa, beta = beta)
     plan <- substrate
     plan$Kd_active <- K
     plan$S <- S
     plan$kappa_supply <- spec$kappa * S
     class(plan) <- c("huff_compact_plan", "fca_compact_plan")
 
-    # State-independent: the full state is fixed by theta (kernel + outside
-    # option) and the exogenous attractiveness, so compute it once at bind time.
-    state <- .huff_state(a_fixed, plan = plan, v0 = v0)
+    # State-independent: the full state is fixed by theta (kernel, outside
+    # option, supply elasticity) and the exogenous attractiveness, so compute
+    # it once at bind time. The output gradient still flows through the FD
+    # output-vs-theta path (output_jac_state is zero), so a theta-dependent
+    # attractiveness needs no special handling.
+    state <- .huff_state(a, plan = plan, v0 = v0)
     list(
       map = function(x) state$target,
       outputs = function(x) state,

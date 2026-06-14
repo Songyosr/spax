@@ -4,12 +4,14 @@
 \alias{.huff_theta_contract}
 \title{Theta contract for the static Huff/CLM spec}
 \usage{
-.huff_theta_contract(fit_v0 = FALSE)
+.huff_theta_contract(fit_v0 = FALSE, fit_beta = FALSE)
 }
 \description{
-`fit_v0 = TRUE` promotes the outside-option mass `v0` from a constant to a
-fitted parameter, making the spec a conditional logit estimated jointly in
-`(sigma, v0)` (DEC-013). `v0` is bounded `[0, Inf)`; the NFXP runner takes
-positive search bounds from the caller.
+`fit_v0 = TRUE` promotes the outside-option mass `v0`, and `fit_beta = TRUE`
+the supply elasticity `beta` (attractiveness `a_j = (kappa S_j)^beta`), from
+constants to fitted parameters — making the spec a conditional logit estimated
+jointly in `(sigma, [v0], [beta])` (DEC-013). Appended order is `sigma`, then
+`v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
+caller.
 }
 \keyword{internal}

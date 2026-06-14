@@ -13,6 +13,7 @@
   beta = 1,
   v0 = 0,
   fit_v0 = FALSE,
+  fit_beta = FALSE,
   id_col = NULL,
   supply_cols = NULL
 )

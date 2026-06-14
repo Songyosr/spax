@@ -220,3 +220,60 @@ test_that("joint (sigma, v0) Poisson fit recovers generating parameters", {
   # Poisson MLE matches the predicted total to the observed total
   expect_equal(sum(fit$predicted), sum(observed), tolerance = 1e-4)
 })
+
+# SPAX-032 (fit_beta): free supply elasticity in the static CLM ----------------
+
+test_that(".huff_theta_contract appends v0 then beta in order", {
+  expect_equal(.huff_theta_contract()$names, "sigma")
+  expect_equal(.huff_theta_contract(fit_v0 = TRUE)$names, c("sigma", "v0"))
+  expect_equal(.huff_theta_contract(fit_beta = TRUE)$names, c("sigma", "beta"))
+  full <- .huff_theta_contract(fit_v0 = TRUE, fit_beta = TRUE)
+  expect_equal(full$names, c("sigma", "v0", "beta"))
+  expect_equal(full$lower, c(0, 0, 0))
+})
+
+test_that("fit_beta problem reads beta from theta and stays one-pass at init", {
+  td <- .mk_huff_data()
+  p <- .huff_problem(td$demand, td$supply, td$distance,
+                     family = "gaussian", kappa = 1 / 3,
+                     fit_v0 = TRUE, fit_beta = TRUE)
+  expect_equal(p$theta$names, c("sigma", "v0", "beta"))
+  # beta reshapes attractiveness: larger beta concentrates load on big facilities
+  u1 <- .bind_theta(p, c(sigma = 2, v0 = 1, beta = 0.5))$outputs(0)$utilization
+  u2 <- .bind_theta(p, c(sigma = 2, v0 = 1, beta = 2.0))$outputs(0)$utilization
+  big <- which.max(td$supply)
+  expect_gt(u2[big] / sum(u2), u1[big] / sum(u1))   # share of the largest facility rises
+  # at beta = spec default the state init equals the bound attractiveness (one pass)
+  p1 <- .huff_problem(td$demand, td$supply, td$distance,
+                      family = "gaussian", kappa = 1 / 3, beta = 1, fit_beta = TRUE)
+  fit <- .solve_problem(p1, theta = c(sigma = 2, beta = 1))
+  expect_identical(fit$iters, 1L)
+  expect_equal(fit$spectral_radius, 0)
+})
+
+test_that("joint (sigma, v0, beta) Poisson fit recovers a non-unit beta", {
+  td <- .mk_huff_data()
+  p <- .huff_problem(td$demand, td$supply, td$distance,
+                     family = "gaussian", kappa = 1 / 3,
+                     fit_v0 = TRUE, fit_beta = TRUE)
+  truth <- c(sigma = 2.5, v0 = 1.0, beta = 1.4)
+  observed <- .solve_problem(p, theta = truth)$outputs$utilization
+
+  fit <- .fit_problem_nfxp(
+    p, observed = observed,
+    init = c(sigma = 5, v0 = 0.5, beta = 0.8),
+    lower = c(sigma = 0.2, v0 = 1e-3, beta = 0.2),
+    upper = c(sigma = 30, v0 = 50, beta = 4),
+    output = "utilization",
+    loss = .poisson_loss, loss_grad = .poisson_gradient,
+    loss_args = list(eps = 1e-9), control = list(maxit = 400)
+  )
+  expect_equal(unname(fit$theta_hat["beta"]), unname(truth["beta"]), tolerance = 2e-2)
+  expect_equal(unname(fit$theta_hat["sigma"]), unname(truth["sigma"]), tolerance = 5e-2)
+  expect_equal(sum(fit$predicted), sum(observed), tolerance = 1e-3)
+})
+
+test_that("fit_beta defaults preserve single-sigma behaviour", {
+  expect_equal(.huff_spec()$theta$names, "sigma")
+  expect_false(isTRUE(.huff_spec()$fit_beta))
+})
