@@ -57,6 +57,12 @@
 }
 
 #' Compile checked raster inputs into a compact interaction substrate
+#'
+#' Select finite positive-demand cells before extracting distances, avoiding a
+#' full distance matrix solely to discard inactive rows. All-active inputs use
+#' the direct matrix reader. Raw cell extraction preserves numeric travel-time
+#' values, missing edges, layer order and the original cell index map. This does
+#' not change the fitting support policy or evaluate omitted prediction cells.
 #' @keywords internal
 .interaction_substrate <- function(demand, supply, distance,
                                    id_col = NULL, supply_cols = NULL) {
@@ -70,10 +76,15 @@
   if (ncol(D) != 1L) {
     stop("AE problems currently support one demand layer")
   }
-  Dist <- terra::values(distance, mat = TRUE)
   keep <- which(is.finite(D[, 1]) & D[, 1] > 0)
   D0 <- D[keep, 1]
-  Dist0 <- Dist[keep, , drop = FALSE]
+  Dist0 <- if (!length(keep)) {
+    matrix(numeric(), nrow = 0L, ncol = length(ids), dimnames = list(NULL, ids))
+  } else if (length(keep) == terra::ncell(distance)) {
+    terra::values(distance, mat = TRUE)
+  } else {
+    terra::extract(distance, keep, raw = TRUE)
+  }
 
   list(
     D_active = D0,

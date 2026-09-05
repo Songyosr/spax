@@ -13,6 +13,10 @@
 )
 }
 \description{
-Compile checked raster inputs into a compact interaction substrate
+Select finite positive-demand cells before extracting distances, avoiding a
+full distance matrix solely to discard inactive rows. All-active inputs use
+the direct matrix reader. Raw cell extraction preserves numeric travel-time
+values, missing edges, layer order and the original cell index map. This does
+not change the fitting support policy or evaluate omitted prediction cells.
 }
 \keyword{internal}
