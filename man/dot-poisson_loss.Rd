@@ -8,8 +8,9 @@
 }
 \description{
 Up to the data constant `sum(log(y!))`, `NLL = sum(mu - y log mu)` with `mu`
-the predicted count. The MLE matches predicted total to observed total, so
-fitting `(sigma, v0)` by this loss identifies the outside-option level from
-the marginal total (DEC-013).
+the predicted count. Jointly fitting `(sigma, v0)` uses both the count total
+and its facility distribution. It does not generally force an exact total
+match; that requires an explicit total-matching constraint or a suitable
+independently fitted scale parameter.
 }
 \keyword{internal}

@@ -18,7 +18,8 @@
 .mk_compare_ladder <- function(td) {
   list(
     huff = .huff_problem(td$demand, td$supply, td$distance,
-                         family = "gaussian", kappa = 1 / 3),
+                         family = "gaussian", kappa = 1 / 3,
+                         allocation = "huff_decay"),
     haae = .haae_problem(td$demand, td$supply, td$distance,
                          family = "gaussian", kappa = 1 / 3)
   )
@@ -81,6 +82,7 @@ test_that("the ladder returns one comparable table over both legs", {
   expect_equal(tab$label, c("huff", "haae"))
   expect_equal(tab$model, c("huff", "haae"))
   expect_equal(tab$family, c("gaussian", "gaussian"))
+  expect_equal(tab$allocation_form, c("huff_decay", NA_character_))
   expect_equal(tab$n_params, c(1L, 1L))
   expect_match(tab$theta, "^sigma=")
   expect_equal(tab$n_observed, c(2L, 2L))

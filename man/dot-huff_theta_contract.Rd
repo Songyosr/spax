@@ -9,8 +9,9 @@
 \description{
 `fit_v0 = TRUE` promotes the outside-option mass `v0`, and `fit_beta = TRUE`
 the supply elasticity `beta` (attractiveness `a_j = (kappa S_j)^beta`), from
-constants to fitted parameters — making the spec a conditional logit estimated
-jointly in `(sigma, [v0], [beta])` (DEC-013). Appended order is `sigma`, then
+constants to fitted parameters, estimated jointly in `(sigma, [v0], [beta])`.
+The default `clm` allocation is the conditional logit (DEC-013).
+Appended order is `sigma`, then
 `v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
 caller.
 }

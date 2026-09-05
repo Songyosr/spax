@@ -128,8 +128,9 @@
 #'
 #' `fit_v0 = TRUE` promotes the outside-option mass `v0`, and `fit_beta = TRUE`
 #' the supply elasticity `beta` (attractiveness `a_j = (kappa S_j)^beta`), from
-#' constants to fitted parameters — making the spec a conditional logit estimated
-#' jointly in `(sigma, [v0], [beta])` (DEC-013). Appended order is `sigma`, then
+#' constants to fitted parameters, estimated jointly in `(sigma, [v0], [beta])`.
+#' The default `clm` allocation is the conditional logit (DEC-013).
+#' Appended order is `sigma`, then
 #' `v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
 #' caller.
 #' @keywords internal
@@ -156,19 +157,24 @@
 #' The no-state member of the ladder: attractiveness is exogenous
 #' (`a_j = (kappa * S_j)^beta`), allocation is one Huff pass, and `v0` is the
 #' optional outside-option mass (`0` = pure Huff). With `fit_v0` / `fit_beta`,
-#' the outside option and/or the supply elasticity join the fitted theta
-#' (conditional logit; DEC-013); otherwise they (and `kappa`) are constants.
+#' the outside option and/or the supply elasticity join the fitted theta;
+#' otherwise they (and `kappa`) are constants. `allocation = "clm"` is the
+#' conditional-logit share (DEC-013); `"huff_decay"` preserves the historical
+#' extra decay factor used for one-pass HAAE comparisons.
 #' @keywords internal
 .huff_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, beta = 1, v0 = 0,
-                       fit_v0 = FALSE, fit_beta = FALSE) {
+                       fit_v0 = FALSE, fit_beta = FALSE,
+                       allocation = c("clm", "huff_decay")) {
   family <- match.arg(family)
+  allocation <- match.arg(allocation)
   .chck_positive_scalar(kappa, "kappa")
   .chck_positive_scalar(beta, "beta")
   .chck_nonnegative_scalar(v0, "v0")
   list(
     model = "huff",
     family = family,
+    allocation = allocation,
     kappa = as.numeric(kappa),
     beta = as.numeric(beta),
     v0 = as.numeric(v0),
@@ -284,7 +290,8 @@
                           family = c("gaussian", "exponential", "power"),
                           kappa = 1, beta = 1, v0 = 0,
                           fit_v0 = FALSE, fit_beta = FALSE,
-                          id_col = NULL, supply_cols = NULL) {
+                          id_col = NULL, supply_cols = NULL,
+                          allocation = c("clm", "huff_decay")) {
   substrate <- .interaction_substrate(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
@@ -292,7 +299,8 @@
     stop("static Huff currently supports one supply measure")
   }
   spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0,
-                     fit_v0 = fit_v0, fit_beta = fit_beta)
+                     fit_v0 = fit_v0, fit_beta = fit_beta,
+                     allocation = match.arg(allocation))
   compiled <- .compile_ae_map(spec, substrate)
   a_init <- .huff_attractiveness(
     as.vector(substrate$S[, 1]), kappa = kappa, beta = beta
@@ -409,7 +417,7 @@
     # it once at bind time. The output gradient still flows through the FD
     # output-vs-theta path (output_jac_state is zero), so a theta-dependent
     # attractiveness needs no special handling.
-    state <- .huff_state(a, plan = plan, v0 = v0)
+    state <- .huff_state(a, plan = plan, v0 = v0, allocation = spec$allocation)
     list(
       map = function(x) state$target,
       outputs = function(x) state,
@@ -745,6 +753,7 @@
     list(
       model = problem$model,
       family = problem$metadata$spec$family,
+      allocation_form = problem$metadata$spec$allocation,
       theta_hat = theta_hat,
       theta = theta_hat,
       loss = as.numeric(loss_value),
@@ -880,6 +889,7 @@
       label = label,
       model = f$model,
       family = if (is.null(f$family)) NA_character_ else f$family,
+      allocation_form = if (is.null(f$allocation_form)) NA_character_ else f$allocation_form,
       n_params = length(f$theta),
       theta = paste(
         sprintf("%s=%.6g", names(f$theta), as.numeric(f$theta)),

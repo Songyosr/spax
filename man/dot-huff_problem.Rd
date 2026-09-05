@@ -15,7 +15,8 @@
   fit_v0 = FALSE,
   fit_beta = FALSE,
   id_col = NULL,
-  supply_cols = NULL
+  supply_cols = NULL,
+  allocation = c("clm", "huff_decay")
 )
 }
 \description{

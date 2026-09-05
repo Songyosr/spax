@@ -66,12 +66,13 @@ test_that(".huff_problem map is state-independent (constant T(x) = a)", {
                matrix(0, length(a), length(a)))
 })
 
-test_that("static Huff utilization is the evaluate-once case of HAAE", {
+test_that("explicit huff_decay is the evaluate-once case of HAAE", {
   td <- .mk_huff_data()
   theta <- c(sigma = 2)
   # classic Huff (beta = 1): attractiveness proportional to supply
   p <- .huff_problem(td$demand, td$supply, td$distance,
-                     family = "gaussian", kappa = 1, beta = 1)
+                     family = "gaussian", kappa = 1, beta = 1,
+                     allocation = "huff_decay")
   step <- .bind_theta(p, theta)
 
   plan <- .mk_huff_plan(td, theta, family = "gaussian", kappa = 1)
@@ -87,15 +88,17 @@ test_that("static Huff utilization is the evaluate-once case of HAAE", {
 
   # kappa is a global scale on attractiveness => cancels in the choice share
   p2 <- .huff_problem(td$demand, td$supply, td$distance,
-                      family = "gaussian", kappa = 1 / 3, beta = 1)
+                      family = "gaussian", kappa = 1 / 3, beta = 1,
+                      allocation = "huff_decay")
   expect_equal(.bind_theta(p2, theta)$outputs(0)$utilization,
                step$outputs(0)$utilization, tolerance = 1e-10)
 })
 
-test_that("static Huff attenuates total demand and access stays in [0, 1]", {
+test_that("explicit huff_decay attenuates demand and access stays in [0, 1]", {
   td <- .mk_huff_data()
   p <- .huff_problem(td$demand, td$supply, td$distance,
-                     family = "gaussian", kappa = 1 / 3)
+                     family = "gaussian", kappa = 1 / 3,
+                     allocation = "huff_decay")
   out <- .bind_theta(p, c(sigma = 2))$outputs(0)
 
   total_demand <- sum(p$substrate$D_active)
@@ -217,7 +220,7 @@ test_that("joint (sigma, v0) Poisson fit recovers generating parameters", {
   expect_equal(fit$model, "huff")
   expect_equal(unname(fit$theta_hat["sigma"]), unname(truth["sigma"]), tolerance = 1e-2)
   expect_equal(unname(fit$theta_hat["v0"]), unname(truth["v0"]), tolerance = 1e-2)
-  # Poisson MLE matches the predicted total to the observed total
+  # Exact recovery of the generated mean also recovers its total.
   expect_equal(sum(fit$predicted), sum(observed), tolerance = 1e-4)
 })
 
@@ -276,4 +279,154 @@ test_that("joint (sigma, v0, beta) Poisson fit recovers a non-unit beta", {
 test_that("fit_beta defaults preserve single-sigma behaviour", {
   expect_equal(.huff_spec()$theta$names, "sigma")
   expect_false(isTRUE(.huff_spec()$fit_beta))
+})
+
+# SPAX-033: explicit allocation forms, with an independent algebra oracle -----
+
+.huff_choice_oracle <- function(distance, demand, supply, theta, family,
+                                allocation = "clm", kappa = 1) {
+  sigma <- theta[["sigma"]]
+  K <- switch(family,
+    gaussian = exp(-distance^2 / (2 * sigma^2)),
+    exponential = exp(-sigma * distance),
+    power = distance^(-sigma)
+  )
+  K[!is.finite(K)] <- 0
+  a <- (kappa * supply)^theta[["beta"]]
+  score <- sweep(K, 2, a, "*")
+  denom <- rowSums(score) + theta[["v0"]]
+  P <- score / denom
+  P[!is.finite(P)] <- 0
+  W <- if (allocation == "clm") P else P * K
+  list(allocation = W, utilization = as.vector(crossprod(W, demand)),
+       share = P, kernel = K, denom = denom)
+}
+
+test_that("default CLM matches choice algebra and accounts for outside mass", {
+  td <- .mk_huff_data()
+  expect_identical(.huff_spec()$allocation, "clm")
+  expect_error(.huff_spec(allocation = "unknown"), "arg")
+  theta <- c(sigma = 2.5, v0 = 4, beta = 1.3)
+  p <- .huff_problem(td$demand, td$supply, td$distance,
+                     fit_v0 = TRUE, fit_beta = TRUE)
+  out <- .solve_problem(p, theta)$outputs
+  oracle <- .huff_choice_oracle(p$substrate$distance_active,
+                               p$substrate$D_active, td$supply, theta, "gaussian")
+  expect_equal(out$allocation, oracle$allocation, tolerance = 1e-12)
+  expect_equal(out$utilization, oracle$utilization, tolerance = 1e-12)
+  expect_equal(out$allocation, out$huff_share, tolerance = 1e-12)
+  expect_equal(out$access + out$outside_share, rep(1, 16), tolerance = 1e-12)
+  G <- as.vector(oracle$kernel %*% (td$supply^theta[["beta"]]))
+  expect_equal(out$access, G / (G + theta[["v0"]]), tolerance = 1e-12)
+
+  no_outside <- .bind_theta(p, c(sigma = 2.5, v0 = 0, beta = 1.3))$outputs(0)
+  expect_equal(sum(no_outside$utilization), sum(p$substrate$D_active),
+               tolerance = 1e-12)
+})
+
+test_that("both allocation forms conserve supported supply and preserve support", {
+  td <- .mk_huff_data()
+  d <- terra::values(td$distance)
+  d[1, ] <- NA_real_  # positive demand, no reachable facility
+  d[, 3] <- NA_real_ # supplied facility with no contact
+  terra::values(td$distance) <- d
+  for (form in c("clm", "huff_decay")) {
+    p <- .huff_problem(td$demand, td$supply, td$distance, v0 = 4,
+                       allocation = form)
+    out <- .solve_problem(p, c(sigma = 2.5))$outputs
+    expect_length(p$substrate$D_active, 16)
+    expect_equal(out$access[1], 0)
+    expect_equal(out$outside_share[1], 1)
+    expect_equal(out$utilization[3], 0)
+    ratio <- ifelse(out$utilization > 0, td$supply / out$utilization, 0)
+    intensity <- as.vector(out$allocation %*% ratio)
+    expect_equal(sum(p$substrate$D_active * intensity),
+                 sum(td$supply[out$utilization > 0]), tolerance = 1e-12)
+    oracle <- .huff_choice_oracle(p$substrate$distance_active,
+                                 p$substrate$D_active, td$supply,
+                                 c(sigma = 2.5, v0 = 4, beta = 1), "gaussian", form)
+    expect_equal(out$allocation, oracle$allocation, tolerance = 1e-12)
+  }
+
+  # Undefined no-opportunity/no-outside choice retains the documented zero guard.
+  p <- .huff_problem(td$demand, td$supply, td$distance)
+  out <- .solve_problem(p, c(sigma = 2.5))$outputs
+  expect_equal(out$allocation[1, ], c(0, 0, 0), ignore_attr = TRUE)
+  expect_equal(out$outside_share[1], 0)
+})
+
+test_that("both forms differentiate sigma, v0 and beta against analytic choice algebra", {
+  td <- .mk_huff_data()
+  for (family in c("gaussian", "exponential", "power")) {
+    theta <- c(sigma = switch(family, gaussian = 2.5, exponential = 0.3, power = 1.2),
+               v0 = 4, beta = 1.3)
+    for (form in c("clm", "huff_decay")) {
+      p <- .huff_problem(td$demand, td$supply, td$distance, family = family,
+                         kappa = 1 / 3, fit_v0 = TRUE, fit_beta = TRUE,
+                         allocation = form)
+      dist <- p$substrate$distance_active
+      D <- p$substrate$D_active
+      oracle <- .huff_choice_oracle(dist, D, td$supply, theta, family, form, 1 / 3)
+      P <- oracle$share
+      dlogK <- switch(family,
+        gaussian = dist^2 / theta[["sigma"]]^3,
+        exponential = -dist,
+        power = -log(dist)
+      )
+      logS <- matrix(log(td$supply / 3), nrow(dist), ncol(dist), byrow = TRUE)
+      deriv <- list(
+        P * (dlogK - rowSums(P * dlogK)),
+        -P / oracle$denom,
+        P * (logS - rowSums(P * logS))
+      )
+      if (form == "huff_decay") {
+        deriv <- lapply(deriv, function(x) x * oracle$kernel)
+        deriv[[1]] <- deriv[[1]] + P * oracle$kernel * dlogK
+      }
+      expected <- vapply(deriv, function(x) as.vector(crossprod(x, D)), numeric(3))
+      got <- .problem_output_sensitivity(p, theta, p$state$init)
+      expect_equal(unname(got), unname(expected), tolerance = 1e-5,
+                   info = paste(family, form))
+      allocation_sens <- .problem_output_sensitivity(p, theta, p$state$init,
+                                                     output = "allocation")
+      expect_equal(unname(allocation_sens), vapply(deriv, as.vector, numeric(length(P))),
+                   tolerance = 1e-5, info = paste(family, form, "allocation"))
+
+      observed <- oracle$utilization * c(0.8, 1.1, 1.2)
+      grad <- .poisson_gradient(oracle$utilization, observed, got)
+      oracle_loss <- function(th) {
+        U <- .huff_choice_oracle(dist, D, td$supply, th, family, form, 1 / 3)$utilization
+        sum(U - observed * log(U))
+      }
+      fd <- vapply(seq_along(theta), function(k) {
+        hi <- lo <- theta
+        hi[k] <- hi[k] + 1e-5
+        lo[k] <- lo[k] - 1e-5
+        (oracle_loss(hi) - oracle_loss(lo)) / 2e-5
+      }, numeric(1))
+      expect_equal(grad, fd, tolerance = 1e-5, info = paste(family, form, "loss"))
+    }
+  }
+})
+
+test_that("allocation form survives fitting and inspection", {
+  td <- .mk_huff_data()
+  fits <- lapply(c("clm", "huff_decay"), function(form) {
+    p <- .huff_problem(td$demand, td$supply, td$distance, v0 = 4, allocation = form)
+    truth <- .solve_problem(p, c(sigma = 2.5))$outputs$utilization
+    fit <- .fit_problem_nfxp(p, observed = truth, init = c(sigma = 2),
+                             lower = c(sigma = 0.5), upper = c(sigma = 4))
+    expect_identical(fit$allocation_form, form)
+    expect_identical(summary(fit)$allocation_form, form)
+    expect_output(print(fit), paste0("allocation_form: ", form))
+    expect_output(print(summary(fit)), paste0("allocation_form: ", form))
+    fit
+  })
+  # One observed target is necessary for a legitimate model comparison.
+  p <- .huff_problem(td$demand, td$supply, td$distance, v0 = 4, allocation = "huff_decay")
+  fits[[2]] <- .fit_problem_nfxp(p, observed = fits[[1]]$observed,
+                                init = c(sigma = 2), lower = c(sigma = 0.5),
+                                upper = c(sigma = 30))
+  expect_equal(.compare_problem_fits(setNames(fits, c("clm", "huff_decay")))$allocation_form,
+               c("clm", "huff_decay"))
 })

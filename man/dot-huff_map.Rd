@@ -4,7 +4,7 @@
 \alias{.huff_map}
 \title{Static Huff map T(a) = a (constant; reaches equilibrium in one pass)}
 \usage{
-.huff_map(a, plan, v0 = 0)
+.huff_map(a, plan, v0 = 0, allocation = c("clm", "huff_decay"))
 }
 \description{
 Static Huff map T(a) = a (constant; reaches equilibrium in one pass)
