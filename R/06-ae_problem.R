@@ -108,6 +108,7 @@
   list(
     model = "sae",
     family = family,
+    deterministic = TRUE,
     output_axes = c(target = "facility", utilization = "facility",
                     serviceability = "facility", adequacy = "facility",
                     access = "origin", allocation = "origin_facility",
@@ -131,6 +132,7 @@
   list(
     model = "haae",
     family = family,
+    deterministic = TRUE,
     output_axes = c(target = "facility", utilization = "facility",
                     attractiveness = "facility", ratio = "facility",
                     access = "origin", pooled = "origin",
@@ -194,6 +196,7 @@
   list(
     model = "huff",
     family = family,
+    deterministic = TRUE,
     output_axes = c(target = "facility", utilization = "facility",
                     attractiveness = "facility", access = "origin",
                     outside_share = "origin", allocation = "origin_facility",
@@ -582,6 +585,18 @@
 #' `output`; the state axis stays whatever the problem declares. `NA` cells in
 #' `observed` are treated as unobserved (e.g. suppressed flow cells) and are
 #' excluded from the loss and its gradient.
+#'
+#' With `reuse = TRUE`, providers declaring `spec$deterministic = TRUE` may
+#' reuse a successful objective's equilibrium for the next gradient request
+#' at exactly the same log parameters. This single-use entry belongs only to
+#' this fitting call; every new objective invalidates it. The gradient is
+#' evaluated at the objective's accepted state rather than refining that state
+#' by another solve. Loss and gradient callbacks still run on every request.
+#' Final history/diagnostics always use a fresh solve. Built-in providers declare
+#' determinism; custom providers remain uncached unless they explicitly do so.
+#' Inputs, provider behavior and controls must remain fixed during fitting;
+#' use `reuse = FALSE` for stateful/mutating providers or callbacks that alter
+#' model behavior. This is not a persistent cache across targets or scenarios.
 #' @keywords internal
 .fit_problem_nfxp <- function(problem, observed, init, lower, upper,
                               output = "utilization",
@@ -592,7 +607,8 @@
                               norm = c("max", "l2"),
                               control = list(maxit = 25),
                               check = FALSE, penalty = 1e12,
-                              gradient = FALSE, fd_eps = 1e-6) {
+                              gradient = FALSE, fd_eps = 1e-6,
+                              reuse = TRUE) {
   .chck_class(problem, "ae_problem", "problem")
   target <- .fit_target_meta(observed, "observed")
   if (!is.function(loss)) {
@@ -611,6 +627,10 @@
   .chck_positive_scalar(fd_eps, "fd_eps")
   norm <- match.arg(norm)
   gradient <- isTRUE(gradient)
+  if (!is.logical(reuse) || length(reuse) != 1L || is.na(reuse)) {
+    stop("`reuse` must be TRUE or FALSE")
+  }
+  reuse <- reuse && gradient && isTRUE(problem$metadata$spec$deterministic)
 
   expected <- problem$theta$names
   init <- .coerce_fit_theta(init, expected, "init")
@@ -631,11 +651,13 @@
 
   observed_values <- target$values
   warm <- NULL
+  paired <- NULL
+  reused_solves <- 0L
   evaluate <- function(log_theta, keep_history = FALSE, warn = FALSE,
-                       diagnostics = FALSE, update_warm = TRUE) {
+                       diagnostics = FALSE, update_warm = TRUE, solved = NULL) {
     theta <- stats::setNames(exp(log_theta), expected)
     x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
-    fit <- .solve_problem(
+    fit <- if (!is.null(solved)) solved else .solve_problem(
       problem,
       theta = theta,
       x0 = x0,
@@ -670,12 +692,15 @@
   }
 
   objective <- function(log_theta) {
+    # Release the old rich outputs before allocating a new parameter point.
+    paired <<- NULL
     tryCatch({
       evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
                             diagnostics = FALSE, update_warm = TRUE)
       if (is.null(evaluated)) {
         return(penalty)
       }
+      if (reuse) paired <<- list(log_theta = as.numeric(log_theta), fit = evaluated$fit)
       evaluated$loss
     }, error = function(e) penalty)
   }
@@ -683,9 +708,17 @@
   objective_grad <- NULL
   if (gradient) {
     objective_grad <- function(log_theta) {
+      solved <- NULL
+      if (!is.null(paired) && identical(as.numeric(log_theta), paired$log_theta) &&
+          identical(warm, paired$fit$x_star)) {
+        solved <- paired$fit
+        reused_solves <<- reused_solves + 1L
+      }
+      # Consume or invalidate the entry even when the gradient falls back.
+      paired <<- NULL
       tryCatch({
         evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
-                              diagnostics = FALSE, update_warm = FALSE)
+                              diagnostics = FALSE, update_warm = FALSE, solved = solved)
         if (is.null(evaluated)) {
           return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
                                        fd_eps = fd_eps))
@@ -740,6 +773,7 @@
 
   theta_hat <- stats::setNames(exp(opt$par), expected)
   .warn_search_boundary(opt$par, lower, upper, expected)
+  paired <- NULL
   final <- .solve_problem(
     problem,
     theta = theta_hat,
@@ -786,6 +820,7 @@
       loss_fn = loss,
       loss_args = loss_args,
       gradient = gradient,
+      evaluation_reuse = list(enabled = reuse, reused_solves = reused_solves),
       convergence = opt$convergence,
       message = opt$message,
       seconds = unname(elapsed),

@@ -22,7 +22,8 @@
   check = FALSE,
   penalty = 1e+12,
   gradient = FALSE,
-  fd_eps = 1e-06
+  fd_eps = 1e-06,
+  reuse = TRUE
 )
 }
 \description{
@@ -31,5 +32,18 @@ matrix (e.g. origin-by-facility flows) matching the shape of the requested
 `output`; the state axis stays whatever the problem declares. `NA` cells in
 `observed` are treated as unobserved (e.g. suppressed flow cells) and are
 excluded from the loss and its gradient.
+}
+\details{
+With `reuse = TRUE`, providers declaring `spec$deterministic = TRUE` may
+reuse a successful objective's equilibrium for the next gradient request
+at exactly the same log parameters. This single-use entry belongs only to
+this fitting call; every new objective invalidates it. The gradient is
+evaluated at the objective's accepted state rather than refining that state
+by another solve. Loss and gradient callbacks still run on every request.
+Final history/diagnostics always use a fresh solve. Built-in providers declare
+determinism; custom providers remain uncached unless they explicitly do so.
+Inputs, provider behavior and controls must remain fixed during fitting;
+use `reuse = FALSE` for stateful/mutating providers or callbacks that alter
+model behavior. This is not a persistent cache across targets or scenarios.
 }
 \keyword{internal}
