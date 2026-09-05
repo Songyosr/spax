@@ -772,6 +772,11 @@
       state = state,
       state_name = state_name,
       outputs = final$outputs,
+      coverage_meta = list(
+        demand = problem$substrate$D_active,
+        supply = problem$substrate$S,
+        facility_ids = problem$substrate$facility_ids
+      ),
       surface_meta = .problem_surface_meta(problem),
       equilibrium = final,
       spectral_radius = final$spectral_radius,
