@@ -97,6 +97,10 @@
   list(
     model = "sae",
     family = family,
+    output_axes = c(target = "facility", utilization = "facility",
+                    serviceability = "facility", adequacy = "facility",
+                    access = "origin", allocation = "origin_facility",
+                    opportunity = "origin_facility"),
     kappa = as.numeric(kappa),
     beta = as.numeric(beta),
     eps = as.numeric(eps),
@@ -116,6 +120,11 @@
   list(
     model = "haae",
     family = family,
+    output_axes = c(target = "facility", utilization = "facility",
+                    attractiveness = "facility", ratio = "facility",
+                    access = "origin", pooled = "origin",
+                    allocation = "origin_facility", huff_share = "origin_facility",
+                    opportunity = "origin_facility"),
     kappa = as.numeric(kappa),
     eps = as.numeric(eps),
     a_min = as.numeric(a_min),
@@ -174,6 +183,10 @@
   list(
     model = "huff",
     family = family,
+    output_axes = c(target = "facility", utilization = "facility",
+                    attractiveness = "facility", access = "origin",
+                    outside_share = "origin", allocation = "origin_facility",
+                    huff_share = "origin_facility", opportunity = "origin_facility"),
     allocation = allocation,
     kappa = as.numeric(kappa),
     beta = as.numeric(beta),
@@ -479,14 +492,14 @@
     stop("`outputs` must be a list")
   }
   active_n <- length(problem$substrate$demand_kept_index)
-  .surface_output_names(outputs, active_n)
+  .surface_output_names(outputs, active_n, problem$metadata$spec$output_axes)
 }
 
 #' Rewrap one origin-side problem output onto the demand raster template
 #' @keywords internal
 .problem_output_surface <- function(problem, theta, state, output) {
   .chck_class(problem, "ae_problem", "problem")
-  if (!is.character(output) || length(output) != 1L || output == "") {
+  if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
     stop("`output` must be a length-one character value")
   }
   outputs <- .problem_outputs_at(problem, theta = theta, state = state)
@@ -494,7 +507,8 @@
     outputs = outputs,
     output = output,
     template = problem$substrate$template,
-    kept_cell_index = problem$substrate$demand_kept_index
+    kept_cell_index = problem$substrate$demand_kept_index,
+    output_axes = problem$metadata$spec$output_axes
   )
 }
 
@@ -579,7 +593,7 @@
   if (!is.list(loss_args)) {
     stop("`loss_args` must be a list")
   }
-  if (!is.character(output) || length(output) != 1L || output == "") {
+  if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
     stop("`output` must be a length-one character value")
   }
   .chck_positive_scalar(penalty, "penalty")
@@ -772,6 +786,7 @@
       state = state,
       state_name = state_name,
       outputs = final$outputs,
+      output_axes = problem$metadata$spec$output_axes,
       coverage_meta = list(
         demand = problem$substrate$D_active,
         supply = problem$substrate$S,
@@ -978,30 +993,37 @@
 }
 
 #' Rewrap one final-fit origin-side output onto the demand raster template
+#'
+#' Declared axes prevent facility vectors being interpreted as surfaces when
+#' their lengths happen to equal the origin count. Older/custom fits without
+#' axis metadata retain legacy shape-based discovery; see `.fit_available_surfaces`.
 #' @keywords internal
 .fit_output_surface <- function(fit, output) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
-  if (!is.character(output) || length(output) != 1L || output == "") {
+  if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
     stop("`output` must be a length-one character value")
   }
   .rewrap_problem_surface(
     outputs = fit$outputs,
     output = output,
     template = fit$surface_meta$template,
-    kept_cell_index = fit$surface_meta$demand_kept_index
+    kept_cell_index = fit$surface_meta$demand_kept_index,
+    output_axes = fit$output_axes
   )
 }
 
 #' Facility-level table for an AE calibration fit
+#'
+#' Always reports predicted facility utilization. Observations/residuals are
+#' included only for utilization-vector targets, not origin or matrix targets.
 #' @keywords internal
 .ae_fit_facility_table <- function(fit) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
-  if (is.null(fit$target_dim)) {
+  if (is.null(fit$target_dim) && identical(fit$output, "utilization")) {
     predicted <- fit$predicted
     observed <- fit$observed
   } else {
-    # Matrix-target fits (e.g. flows): predicted/observed are cell-level, so
-    # the facility-side column is the model's utilization output instead.
+    # Other targets may have origin/edge axes; never relabel them as facilities.
     predicted <- .name_problem_vector(
       .coerce_numeric_vector(fit$outputs$utilization),
       names(fit$state)
@@ -1316,7 +1338,8 @@
   )
 }
 
-.rewrap_problem_surface <- function(outputs, output, template, kept_cell_index) {
+.rewrap_problem_surface <- function(outputs, output, template, kept_cell_index,
+                                     output_axes = NULL) {
   if (is.null(template) || is.null(kept_cell_index)) {
     stop("surface metadata is not available for this AE object")
   }
@@ -1326,8 +1349,8 @@
 
   active_n <- length(kept_cell_index)
   value <- outputs[[output]]
-  surface_names <- .surface_output_names(outputs, active_n)
-  if (!is.numeric(value) || !is.null(dim(value)) || length(value) != active_n) {
+  surface_names <- .surface_output_names(outputs, active_n, output_axes)
+  if (!output %in% surface_names) {
     msg <- paste0("output `", output, "` is not an origin-side surface")
     if (length(surface_names) > 0) {
       msg <- paste0(msg, "; available surfaces: ",
@@ -1344,8 +1367,8 @@
   out
 }
 
-.surface_output_names <- function(outputs, active_n) {
-  names(Filter(
+.surface_output_names <- function(outputs, active_n, output_axes = NULL) {
+  candidates <- names(Filter(
     function(value) {
       is.numeric(value) &&
         is.null(dim(value)) &&
@@ -1354,6 +1377,8 @@
     },
     outputs
   ))
+  if (is.null(output_axes)) return(candidates)
+  intersect(candidates, names(output_axes)[output_axes == "origin"])
 }
 
 .coerce_problem_theta <- function(theta, contract) {
