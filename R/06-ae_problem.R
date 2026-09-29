@@ -63,12 +63,14 @@
 #' the direct matrix reader. Raw cell extraction preserves numeric travel-time
 #' values, missing edges, layer order and the original cell index map. This does
 #' not change the fitting support policy or evaluate omitted prediction cells.
+#' The shared finalizer records this raster route's legacy missing-edge policy
+#' and stores plain template geometry plus cell mapping for safe serialization.
 #' @keywords internal
 .interaction_substrate <- function(demand, supply, distance,
                                    id_col = NULL, supply_cols = NULL) {
   .chck_raster_alignment(demand, distance[[1]], "demand", "distance")
 
-  ids <- names(distance)
+  ids <- .allocation_ids(names(distance), "facility_ids")
   processed <- .help_process_supply(supply, id_col = id_col,
                                     supply_cols = supply_cols,
                                     weight_ids = ids)
@@ -77,7 +79,6 @@
     stop("AE problems currently support one demand layer")
   }
   keep <- which(is.finite(D[, 1]) & D[, 1] > 0)
-  D0 <- D[keep, 1]
   Dist0 <- if (!length(keep)) {
     matrix(numeric(), nrow = 0L, ncol = length(ids), dimnames = list(NULL, ids))
   } else if (length(keep) == terra::ncell(distance)) {
@@ -86,16 +87,11 @@
     terra::extract(distance, keep, raw = TRUE)
   }
 
-  list(
-    D_active = D0,
-    distance_active = Dist0,
-    S = as.matrix(processed$values),
-    facility_ids = ids,
-    origin_ids = as.character(keep),
-    supply_cols = processed$cols,
-    demand_kept_index = keep,
-    template = demand
-  )
+  .finalize_allocation(D[, 1], rep(TRUE, nrow(D)), as.character(seq_len(nrow(D))),
+    as.matrix(processed$values), ids, processed$cols, Dist0, keep,
+    list(source = "raster", missing_demand = "legacy_positive_fit",
+         missing_travel = "legacy_zero", kernel_domain = "legacy_zero"),
+    spatial = list(template = demand, cell_index = seq_len(nrow(D))))
 }
 
 #' Construct an SAE model spec
@@ -254,12 +250,15 @@
 }
 
 #' Construct a private SAE problem
+#'
+#' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
+#' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @keywords internal
-.sae_problem <- function(demand, supply, distance,
+.sae_problem <- function(demand, supply = NULL, distance = NULL,
                          family = c("gaussian", "exponential", "power"),
                          kappa = 1, beta = 20, eps = 1e-8,
                          id_col = NULL, supply_cols = NULL) {
-  substrate <- .interaction_substrate(
+  substrate <- .resolve_allocation(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
@@ -284,13 +283,16 @@
 }
 
 #' Construct a private HAAE problem
+#'
+#' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
+#' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @keywords internal
-.haae_problem <- function(demand, supply, distance,
+.haae_problem <- function(demand, supply = NULL, distance = NULL,
                           family = c("gaussian", "exponential", "power"),
                           kappa = 1, eps = 1e-8, a_min = 1e-6,
                           a_max = Inf, id_col = NULL,
                           supply_cols = NULL) {
-  substrate <- .interaction_substrate(
+  substrate <- .resolve_allocation(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
@@ -321,14 +323,16 @@
 #' equilibrium is reached in one pass, and the decay parameter enters only
 #' through the allocation output (not the state target). It calibrates through
 #' the shared NFXP runner unchanged.
+#' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
+#' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @keywords internal
-.huff_problem <- function(demand, supply, distance,
+.huff_problem <- function(demand, supply = NULL, distance = NULL,
                           family = c("gaussian", "exponential", "power"),
                           kappa = 1, beta = 1, v0 = 0,
                           fit_v0 = FALSE, fit_beta = FALSE,
                           id_col = NULL, supply_cols = NULL,
                           allocation = c("clm", "huff_decay")) {
-  substrate <- .interaction_substrate(
+  substrate <- .resolve_allocation(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
@@ -338,9 +342,7 @@
                      fit_v0 = fit_v0, fit_beta = fit_beta,
                      allocation = match.arg(allocation))
   compiled <- .compile_ae_map(spec, substrate)
-  a_init <- .huff_attractiveness(
-    as.vector(substrate$S[, 1]), kappa = kappa, beta = beta
-  )
+  a_init <- .allocation_supply(substrate, kappa, beta)
   .new_problem(
     model = "huff",
     substrate = substrate,
@@ -361,13 +363,11 @@
   S <- as.vector(substrate$S[, 1])
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
-    K <- calc_decay(substrate$distance_active, method = spec$family,
-                    sigma = theta[[spec$theta$names]], snap = TRUE)
-    K[!is.finite(K)] <- 0
+    K <- .allocation_kernel(substrate, spec$family, theta[[spec$theta$names]])
     plan <- substrate
     plan$Kd_active <- K
     plan$S <- S
-    plan$kappa_supply <- spec$kappa * S
+    plan$kappa_supply <- .allocation_supply(substrate, spec$kappa)
     class(plan) <- c("sae_compact_plan", "fca_compact_plan")
 
     eval <- function(x, full = FALSE) {
@@ -394,13 +394,11 @@
   S <- as.vector(substrate$S[, 1])
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
-    K <- calc_decay(substrate$distance_active, method = spec$family,
-                    sigma = theta[[spec$theta$names]], snap = TRUE)
-    K[!is.finite(K)] <- 0
+    K <- .allocation_kernel(substrate, spec$family, theta[[spec$theta$names]])
     plan <- substrate
     plan$Kd_active <- K
     plan$S <- S
-    plan$kappa_supply <- spec$kappa * S
+    plan$kappa_supply <- .allocation_supply(substrate, spec$kappa)
     class(plan) <- c("haae_compact_plan", "fca_compact_plan")
 
     eval <- function(x, full = FALSE) {
@@ -436,16 +434,14 @@
   zero_state <- matrix(0, n, n)
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
-    K <- calc_decay(substrate$distance_active, method = spec$family,
-                    sigma = theta[["sigma"]], snap = TRUE)
-    K[!is.finite(K)] <- 0
+    K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]])
     v0 <- if (isTRUE(spec$fit_v0)) theta[["v0"]] else spec$v0
     beta <- if (isTRUE(spec$fit_beta)) theta[["beta"]] else spec$beta
-    a <- .huff_attractiveness(S, kappa = spec$kappa, beta = beta)
+    a <- .allocation_supply(substrate, spec$kappa, beta)
     plan <- substrate
     plan$Kd_active <- K
     plan$S <- S
-    plan$kappa_supply <- spec$kappa * S
+    plan$kappa_supply <- .allocation_supply(substrate, spec$kappa)
     class(plan) <- c("huff_compact_plan", "fca_compact_plan")
 
     # State-independent: the full state is fixed by theta (kernel, outside
@@ -548,11 +544,12 @@
   }
   outputs <- .problem_outputs_at(problem, theta = theta, state = state,
                                  requested_outputs = output)
+  meta <- .problem_surface_meta(problem)
   .rewrap_problem_surface(
     outputs = outputs,
     output = output,
-    template = problem$substrate$template,
-    kept_cell_index = problem$substrate$demand_kept_index,
+    template = meta$template,
+    kept_cell_index = .allocation_cell_index(meta),
     output_axes = problem$metadata$spec$output_axes
   )
 }
@@ -884,7 +881,9 @@
       coverage_meta = list(
         demand = problem$substrate$D_active,
         supply = problem$substrate$S,
-        facility_ids = problem$substrate$facility_ids
+        facility_ids = problem$substrate$facility_ids,
+        input_metadata = problem$substrate$input_metadata,
+        input_policy = problem$substrate$input_policy
       ),
       surface_meta = .problem_surface_meta(problem),
       equilibrium = final,
@@ -1108,7 +1107,7 @@
     outputs = fit$outputs,
     output = output,
     template = fit$surface_meta$template,
-    kept_cell_index = fit$surface_meta$demand_kept_index,
+    kept_cell_index = .allocation_cell_index(fit$surface_meta),
     output_axes = fit$output_axes
   )
 }
@@ -1439,9 +1438,12 @@
 }
 
 .problem_surface_meta <- function(problem) {
+  s <- problem$substrate
   list(
-    template = problem$substrate$template,
-    demand_kept_index = problem$substrate$demand_kept_index
+    template = s$template,
+    demand_kept_index = s$demand_kept_index,
+    origin_ids = if (!is.null(s$origin_ids)) s$origin_ids else as.character(s$demand_kept_index),
+    cell_index = if (!is.null(s$cell_index)) s$cell_index[s$demand_kept_index] else NULL
   )
 }
 
@@ -1469,7 +1471,7 @@
   if (any(!is.finite(value) & !is.na(value))) {
     stop(output, " must contain only finite or missing values")
   }
-  out <- .rewrap_cells(.coerce_numeric_vector(value), template, kept_cell_index)
+  out <- .rewrap_cells(.coerce_numeric_vector(value), .allocation_template(template), kept_cell_index)
   names(out) <- output
   out
 }
