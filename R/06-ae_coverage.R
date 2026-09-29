@@ -134,6 +134,11 @@
   }
   outputs <- if (is.null(state)) .solve_problem(problem, theta)$outputs else
     .problem_outputs_at(problem, theta, state)
+  .coverage_from_outputs(problem, theta, outputs, ...)
+}
+
+# Shared static-CLM adapter: report from saved evaluated outputs without solving.
+.coverage_from_outputs <- function(problem, theta, outputs, ...) {
   fit <- structure(list(model = problem$model, family = problem$metadata$spec$family,
                         allocation_form = "clm", theta = theta, outputs = outputs,
                         coverage_meta = list(demand = problem$substrate$D_active,
