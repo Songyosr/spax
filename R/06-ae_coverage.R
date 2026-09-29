@@ -20,6 +20,10 @@
 #' `abar_raw`. `contact_need_floor` applies to aggregates, not individual cells.
 #' Cell/zone values exactly at a floor or classification cut are retained/high.
 #' This first private layer accepts only the corrected static CLM allocation.
+#' The compact table carries canonical `origin_id` and `registry_index`; `cell`
+#' is present only for a validated spatial mapping. Numeric summaries and origin
+#' zone joins do not require a template. Declared input units and policies are
+#' retained separately, without converting the supplied quantities.
 #' @keywords internal
 .ae_coverage <- function(fit, norm = NULL, units = NULL, observed = NULL,
                          rho_floor = 0, contact_need_floor = 0,
@@ -43,12 +47,17 @@
   D <- meta$demand
   S <- as.numeric(meta$supply)
   ids <- meta$facility_ids
-  cells <- fit$surface_meta$demand_kept_index
+  registry <- fit$surface_meta$demand_kept_index
+  origins <- fit$surface_meta$origin_ids
+  if (is.null(origins)) origins <- as.character(registry)
+  cells <- .allocation_cell_index(fit$surface_meta)
   if (!is.matrix(P) || !is.numeric(P) ||
       !identical(dim(P), c(length(D), length(S))) ||
       length(U) != length(S) || length(ids) != length(S) ||
       anyNA(ids) || anyDuplicated(ids) ||
-      length(cells) != length(D) || anyNA(cells) || anyDuplicated(cells)) {
+      length(registry) != length(D) || anyNA(registry) || anyDuplicated(registry) ||
+      length(origins) != length(D) || anyNA(origins) || anyDuplicated(origins) ||
+      (!is.null(cells) && (length(cells) != length(D) || anyNA(cells) || anyDuplicated(cells)))) {
     stop("coverage inputs have incompatible axes or missing support metadata")
   }
   if (!length(D) || any(!is.finite(D) | D <= 0) ||
@@ -68,7 +77,8 @@
   if (is.null(contact_cut)) contact_cut <- sum(D * rho) / sum(D)
   .chck_nonnegative_scalar(contact_cut, "contact_cut")
   if (contact_cut > 1 + 1e-10) stop("contact_cut must be <= 1")
-  cell <- data.frame(cell = cells, demand = D, rho = rho, A = A)
+  cell <- data.frame(origin_id = origins, registry_index = registry, demand = D, rho = rho, A = A)
+  if (!is.null(cells)) cell$cell <- cells
   if (!is.null(norm)) {
     cell$E_post <- pmin(A / norm, 1)
     cell$E_fac <- .contract(pmin(r / norm, 1), P, over = "cols")
@@ -104,7 +114,9 @@
     conservation = list(allocated = total, supported_supply = supply,
                         relative_difference = relative, passed = abs(relative) <= 1e-8,
                         excluded_facilities = sum(!supported)),
-    surface_meta = fit$surface_meta, support = "fitted positive-demand cells"
+    surface_meta = fit$surface_meta,
+    input_metadata = meta$input_metadata, input_policy = meta$input_policy,
+    support = if (is.null(cells)) "fitted positive-demand origins" else "fitted positive-demand cells"
   ), class = "ae_coverage")
   ans$regional <- .coverage_aggregate(ans)
   ans
@@ -126,7 +138,9 @@
                         allocation_form = "clm", theta = theta, outputs = outputs,
                         coverage_meta = list(demand = problem$substrate$D_active,
                                              supply = problem$substrate$S,
-                                             facility_ids = problem$substrate$facility_ids),
+                                             facility_ids = problem$substrate$facility_ids,
+                                             input_metadata = problem$substrate$input_metadata,
+                                             input_policy = problem$substrate$input_policy),
                         surface_meta = .problem_surface_meta(problem)),
                    class = "ae_problem_nfxp_fit")
   .ae_coverage(fit, ...)
@@ -155,8 +169,11 @@
 
 #' Aggregate compact coverage with contact-weighted conditional intensity
 #'
-#' `zones` is NULL for the region, or a data frame with unique `cell` keys and
-#' nonmissing `zone` labels covering every retained cell. It may include cells
+#' `zones` is NULL for the region, or a data frame with unique `origin_id` keys
+#' and nonmissing `zone` labels covering every retained origin. Spatial objects
+#' also accept true raster `cell` keys for compatibility. If both keys are
+#' supplied they must agree. Numeric registry indices are never cell keys.
+#' It may include origins
 #' outside the fitted support, which contribute no records. Input order is
 #' irrelevant. Unknown zone membership is an error, never silently dropped.
 #' Floors are applied after aggregating raw values. All original demand stays
@@ -167,12 +184,25 @@
   d <- x$cells
   group <- rep("region", nrow(d))
   if (!is.null(zones)) {
-    if (!is.data.frame(zones) || !all(c("cell", "zone") %in% names(zones)) ||
-        anyNA(zones$cell) || anyDuplicated(zones$cell) || anyNA(zones$zone)) {
-      stop("zones must contain unique cell keys and nonmissing zone labels")
+    if (!is.data.frame(zones) || !"zone" %in% names(zones) || anyNA(zones$zone)) {
+      stop("zones must contain nonmissing zone labels and origin_id or cell keys")
     }
-    pos <- match(d$cell, zones$cell)
-    if (anyNA(pos)) stop("zones must cover every retained cell")
+    keys <- intersect(c("origin_id", "cell"), names(zones))
+    if (!length(keys)) stop("zones require origin_id or cell keys")
+    positions <- lapply(keys, function(key) {
+      if (!key %in% names(d)) stop("cell zone keys require spatial metadata; use origin_id")
+      if (anyNA(zones[[key]]) || anyDuplicated(zones[[key]]) ||
+          (key == "origin_id" && any(!nzchar(trimws(as.character(zones[[key]])))))) {
+        stop("zones must contain unique ", key, " keys and nonmissing zone labels")
+      }
+      pos <- match(d[[key]], zones[[key]])
+      if (anyNA(pos)) stop("zones must cover every retained origin")
+      pos
+    })
+    if (length(positions) == 2L && !identical(positions[[1]], positions[[2]])) {
+      stop("zone origin_id and cell keys disagree")
+    }
+    pos <- positions[[1]]
     group <- as.character(zones$zone[pos])
   }
   metrics <- intersect(c("rho", "A", "E_post", "E_fac"), names(d))
@@ -190,6 +220,7 @@
 #' prediction support or impute access outside the stored fit support.
 #' Quadrant codes: 1 both-low, 2 capacity-limited, 3 contact-limited, 4 adequate;
 #' unclassified cells are NA. Other output names are numeric cell-table columns.
+#' Numeric-only coverage has no map; provide a spatial mapping at preparation.
 #' @keywords internal
 .coverage_surface <- function(x, output = "A") {
   .chck_class(x, "ae_coverage", "x")
@@ -197,7 +228,7 @@
   values$quadrant <- match(values$quadrant,
                            c("both-low", "capacity-limited", "contact-limited", "adequate"))
   .rewrap_problem_surface(as.list(values), output, x$surface_meta$template,
-                          x$surface_meta$demand_kept_index)
+                          .allocation_cell_index(x$surface_meta))
 }
 
 #' Format a private coverage object
@@ -243,8 +274,10 @@ summary.ae_coverage <- function(object, ...) {
       data.frame(min = NA_real_, q25 = NA_real_, median = NA_real_,
                  mean = NA_real_, q75 = NA_real_, max = NA_real_)
   }
-  shares <- .coverage_aggregate(object, data.frame(cell = object$cells$cell,
-                                                  zone = object$cells$quadrant))
+  key <- if ("origin_id" %in% names(object$cells)) "origin_id" else "cell"
+  zones <- object$cells[key]
+  zones$zone <- object$cells$quadrant
+  shares <- .coverage_aggregate(object, zones)
   shares <- data.frame(quadrant = shares$zone, demand = shares$demand,
                         share = shares$demand / sum(shares$demand))
   structure(list(description = format(object), regional = object$regional,
