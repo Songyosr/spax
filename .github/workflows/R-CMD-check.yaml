@@ -1,0 +1,60 @@
+name: R CMD check
+
+on:
+  pull_request:
+    branches: [codex-assist-main]
+  push:
+    branches: [codex-assist-main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r-check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: "yes"
+      _R_CHECK_FORCE_SUGGESTS_: "true"
+      NOT_CRAN: "true"
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - name: Verify spatial test dependencies
+        shell: Rscript {0}
+        run: |
+          paths <- unique(c(
+            strsplit(sf::sf_proj_info(type = "path"), .Platform$path.sep, fixed = TRUE)[[1]],
+            system.file("proj", package = "sf"), "/usr/share/proj", "/usr/local/share/proj"
+          ))
+          paths <- paths[nzchar(paths) & file.exists(file.path(paths, "proj.db"))]
+          if (!length(paths)) stop("PROJ database is required for spatial tests")
+          Sys.setenv(PROJ_LIB = paths[[1]])
+          cat(paste0("PROJ_LIB=", paths[[1]], "\n"), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+          point <- sf::st_sfc(sf::st_point(c(1, 1)), crs = 4326)
+          stopifnot(all(is.finite(sf::st_coordinates(sf::st_transform(point, 3857)))))
+          stopifnot(requireNamespace("Matrix", quietly = TRUE))
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          # The legacy data-preparation vignette calls a live OSRM demo server.
+          # Keep this package/test gate independent of that external service.
+          args: 'c("--no-manual", "--ignore-vignettes", "--as-cran")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          error-on: '"warning"'
+          upload-results: true
+          artifact-name: r-check-results

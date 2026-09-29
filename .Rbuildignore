@@ -8,6 +8,7 @@
 ^docs$
 ^pkgdown$
 ^\.github$
+^\.git$
 ^junk/
 ^data-raw$
 ^README.Rmd$
