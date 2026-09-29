@@ -459,6 +459,9 @@
         out
       } else NULL,
       state_independent_outputs = if (spec$allocation == "clm") "flow" else NULL,
+      clm_prediction = if (spec$allocation == "clm") list(
+        spec = .clm_prediction_spec(spec), theta = theta
+      ) else NULL,
       jac_state = function(x) {
         list(
           jac_state = zero_state,
@@ -565,6 +568,11 @@
 }
 
 #' Solve an AE problem at fixed theta
+#'
+#' Successful built-in corrected CLM evaluations attach a plain O(J) prediction
+#' snapshot containing the actual specification, theta, aligned supply/load and
+#' declared input policy/units. Requested-location prediction uses this record
+#' after serialization without retaining the problem or original travel matrix.
 #' @param requested_outputs Optional output names to materialize in addition to
 #'   the provider's default outputs. `NULL` retains the legacy output callback.
 #' @keywords internal
@@ -596,6 +604,10 @@
     step, fit$x_star, requested_outputs
   ))
   fit$utilization <- fit$outputs$utilization
+  fit$prediction_snapshot <- .new_clm_prediction_snapshot(problem, step, fit)
+  if (!is.null(fit$prediction_snapshot)) {
+    fit$evaluated_clm <- fit$prediction_snapshot[c("spec", "theta", "facility_ids", "supply")]
+  }
   if (isTRUE(diagnostics) && is.function(step$jac_state)) {
     rho <- tryCatch({
       jac <- step$jac_state(fit$x_star)
@@ -878,6 +890,7 @@
       outputs = final$outputs,
       output_axes = problem$metadata$spec$output_axes,
       output_meanings = problem$metadata$spec$output_meanings,
+      prediction_snapshot = final$prediction_snapshot,
       coverage_meta = list(
         demand = problem$substrate$D_active,
         supply = problem$substrate$S,
