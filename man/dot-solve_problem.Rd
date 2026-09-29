@@ -25,6 +25,9 @@
 the provider's default outputs. \code{NULL} retains the legacy output callback.}
 }
 \description{
-Solve an AE problem at fixed theta
+Successful built-in corrected CLM evaluations attach a plain O(J) prediction
+snapshot containing the actual specification, theta, aligned supply/load and
+declared input policy/units. Requested-location prediction uses this record
+after serialization without retaining the problem or original travel matrix.
 }
 \keyword{internal}
