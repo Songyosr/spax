@@ -91,6 +91,7 @@
     distance_active = Dist0,
     S = as.matrix(processed$values),
     facility_ids = ids,
+    origin_ids = as.character(keep),
     supply_cols = processed$cols,
     demand_kept_index = keep,
     template = demand
@@ -585,6 +586,12 @@
 #' `output`; the state axis stays whatever the problem declares. `NA` cells in
 #' `observed` are treated as unobserved (e.g. suppressed flow cells) and are
 #' excluded from the loss and its gradient.
+#' Named observation axes are matched to declared provider IDs; unnamed axes
+#' retain positional behavior. Callbacks receive canonical target order, so
+#' observation-indexed `loss_args` must already use that order. Saved
+#' `target_alignment` records the canonical IDs and the input permutations.
+#' Unannotated custom providers keep unnamed positional fitting, without
+#' assuming that every fitted vector has facility identity.
 #'
 #' With `reuse = TRUE`, providers declaring `spec$deterministic = TRUE` may
 #' reuse a successful objective's equilibrium for the next gradient request
@@ -610,7 +617,6 @@
                               gradient = FALSE, fd_eps = 1e-6,
                               reuse = TRUE) {
   .chck_class(problem, "ae_problem", "problem")
-  target <- .fit_target_meta(observed, "observed")
   if (!is.function(loss)) {
     stop("`loss` must be a function")
   }
@@ -623,6 +629,7 @@
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
     stop("`output` must be a length-one character value")
   }
+  target <- .bind_problem_target(problem, observed, output)
   .chck_positive_scalar(penalty, "penalty")
   .chck_positive_scalar(fd_eps, "fd_eps")
   norm <- match.arg(norm)
@@ -796,15 +803,8 @@
   if (!is.numeric(loss_value) || length(loss_value) != 1L || !is.finite(loss_value)) {
     stop("final loss must be a finite numeric scalar")
   }
-  if (is.null(target$dim)) {
-    predicted_store <- .name_problem_vector(predicted_full,
-                                            problem$substrate$facility_ids)
-    observed_store <- .name_problem_vector(.coerce_numeric_vector(observed),
-                                           problem$substrate$facility_ids)
-  } else {
-    predicted_store <- predicted_full
-    observed_store <- observed
-  }
+  predicted_store <- .name_bound_target(predicted_full, target)
+  observed_store <- .name_bound_target(target$observed, target)
   state_name <- problem$state$name
   state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
 
@@ -829,6 +829,7 @@
       target_dim = target$dim,
       n_observed = target$n_observed,
       target_mask = if (all(target$mask)) NULL else target$mask,
+      target_alignment = target$alignment,
       state = state,
       state_name = state_name,
       outputs = final$outputs,
@@ -896,6 +897,9 @@
 #' observation mask, same loss arguments (and the same loss function when the
 #' fits carry one). Reports fit quality and stability diagnostics side by
 #' side; it does not pick a winner.
+#' Canonical observation identities must also agree. This helper does not
+#' reorder independently prepared fits. Legacy fits without identity metadata
+#' can still be compared to each other, but not to fits with declared identity.
 #' @keywords internal
 .compare_problem_fits <- function(fits) {
   if (!is.list(fits) || length(fits) < 2L) {
@@ -920,6 +924,10 @@
     if (!identical(f$output, ref$output)) {
       stop("fits `", ref_label, "` and `", label,
            "` target different outputs (`", ref$output, "` vs `", f$output, "`)")
+    }
+    if (!identical(.fit_observation_identity(f), .fit_observation_identity(ref))) {
+      stop("fits `", ref_label, "` and `", label,
+           "` have different or unavailable canonical observation identities")
     }
     obs <- as.numeric(f$observed)
     if (!identical(dim(f$observed), dim(ref$observed)) ||

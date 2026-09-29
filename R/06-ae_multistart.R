@@ -5,6 +5,8 @@
 #' each owns fresh NFXP warm-state/reuse storage. The prepared problem is shared.
 #' Inputs and callback/model behavior must remain fixed across starts for losses
 #' to be comparable. Named `...` arguments pass unchanged to `.fit_problem_nfxp`.
+#' Observations are bound to canonical output IDs once before the start loop;
+#' every start uses that same target and observation mask.
 #'
 #' Selection requires finite loss, parameters and observed predictions, outer
 #' optimizer convergence, and inner convergence with finite residual. Boundary
@@ -27,7 +29,6 @@
                                     loss_tol = 1e-6, parameter_tol = 1e-3,
                                     keep_fits = FALSE) {
   .chck_class(problem, "ae_problem", "problem")
-  target <- .fit_target_meta(observed, "observed")
   expected <- problem$theta$names
   if (!is.matrix(starts) || !is.numeric(starts) || !nrow(starts) ||
       ncol(starts) != length(expected) || any(!is.finite(starts)) ||
@@ -72,6 +73,8 @@
       any(!names(args) %in% allowed))) {
     stop("`...` must contain unique named fitting controls, excluding init and bounds")
   }
+  output <- if ("output" %in% names(args)) args$output else "utilization"
+  target <- .bind_problem_target(problem, observed, output)
 
   n <- nrow(starts)
   theta <- matrix(NA_real_, n, length(expected), dimnames = list(ids, expected))
@@ -93,7 +96,7 @@
     error <- NULL
     start_time <- proc.time()[["elapsed"]]
     fit <- tryCatch(withCallingHandlers(
-      do.call(.fit_problem_nfxp, c(list(problem = problem, observed = observed,
+      do.call(.fit_problem_nfxp, c(list(problem = problem, observed = target,
         init = stats::setNames(starts[i, ], expected), lower = lower, upper = upper), args)),
       warning = function(w) {
         messages <<- c(messages, conditionMessage(w))

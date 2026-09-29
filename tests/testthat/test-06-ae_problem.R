@@ -38,7 +38,8 @@
         theta = theta
       )
     },
-    metadata = list(spec = list(family = "toy"))
+    metadata = list(spec = list(family = "toy",
+      output_axes = c(target = "facility", utilization = "facility")))
   )
 }
 
