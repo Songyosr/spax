@@ -14,7 +14,9 @@ test_that("declared axes disambiguate coincident origin and facility lengths", {
     p <- ctor(f$d, f$S, f$dist)
     state <- p$state$init
     out <- .problem_outputs_at(p, c(sigma = 2), state)
-    expect_setequal(names(p$metadata$spec$output_axes), names(out))
+    # Declared axes include optional outputs even when the default omits them.
+    expect_setequal(names(p$metadata$spec$output_axes),
+                    c(names(out), if (model == "huff") "flow"))
     surfaces <- .problem_available_surfaces(p, out)
     expected <- switch(model, sae = "access", haae = c("access", "pooled"),
                        huff = c("access", "outside_share"))

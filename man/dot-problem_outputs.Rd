@@ -4,7 +4,11 @@
 \alias{.problem_outputs}
 \title{Evaluate rich outputs at one state and theta}
 \usage{
-.problem_outputs(problem, x, theta)
+.problem_outputs(problem, x, theta, requested_outputs = NULL)
+}
+\arguments{
+\item{requested_outputs}{Optional output names to materialize. \code{NULL} keeps
+the provider's existing default outputs.}
 }
 \description{
 Evaluate rich outputs at one state and theta

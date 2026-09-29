@@ -38,6 +38,16 @@ observation-indexed `loss_args` must already use that order. Saved
 `target_alignment` records the canonical IDs and the input permutations.
 Unannotated custom providers keep unnamed positional fitting, without
 assuming that every fitted vector has facility identity.
+Corrected CLM supports requested \code{flow = D_active * allocation}, interpreted
+as expected counts in the caller's demand unit and period. Default fits do
+not save flow; accessors retrieve only outputs saved by the fit. Requesting
+flow does not select a loss: Poisson loss remains an explicit caller choice,
+and fractional expected counts are allowed.
+Probability and expected-count meanings require a valid choice denominator.
+When \code{v0 = 0} and an origin has zero opportunity at every facility, the
+existing convention returns zero inside allocation, outside share and flow.
+This row is not a normalized choice distribution; its missing mass is not
+automatically outside participation or unmet need.
 }
 \details{
 With `reuse = TRUE`, providers declaring `spec$deterministic = TRUE` may
