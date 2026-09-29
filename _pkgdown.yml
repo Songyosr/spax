@@ -13,8 +13,21 @@ articles:
   - title: Package Conventions
     contents:
       - function-naming
+  - title: Experimental Allocation Workflow
+    contents:
+      - allocation-workflow
 
 reference:
+  - title: "Experimental Allocation Workflow"
+    desc: "Checked inputs, static CLM fitting, fixed-parameter scenarios and requested predictions"
+    contents:
+      - prepare_allocation
+      - clm_allocation
+      - fit_allocation
+      - evaluate_allocation
+      - predict_allocation
+      - allocation-fit-methods
+
   - title: "Core Accessibility Functions"
     desc: "Main functions for spatial accessibility analysis"
     contents:

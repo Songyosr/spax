@@ -1,0 +1,148 @@
+---
+title: "A generated allocation fit and capacity scenario"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{A generated allocation fit and capacity scenario}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This workflow is experimental. Its model family is corrected static CLM with an
+explicit outside option; a broader recipe interface is not part of this example.
+
+This example allocates mutually exclusive service requests to facilities or an
+outside category during one reference period. Demand is request opportunities,
+supply is service slots, and travel is minutes. Supply affects attraction and
+proportional capacity attribution in this toy model. Attributed capacity is
+neither delivered service nor a hard limit on facility utilization. The outside
+category is not automatically unmet need.
+
+```{r setup}
+library(spax)
+origin_ids <- paste0("o", 1:8)
+facility_ids <- paste0("f", 1:4)
+demand <- setNames(c(1200, 800, 1000, 900, 1500, 1100, 0, NA), origin_ids)
+supply <- setNames(c(80, 60, 90, 70), facility_ids)
+travel <- outer(c(2, 7, 13, 18, 23, 29, 10, 21), c(3, 11, 20, 28),
+                function(origin, facility) abs(origin - facility) + 2)
+dimnames(travel) <- list(origin_ids, facility_ids)
+units <- list(demand_units = "requests", demand_period = "one_reference_period",
+              supply_units = "service_slots", supply_period = "one_reference_period",
+              travel_units = "minutes")
+```
+
+For a reproducible demonstration, generate rounded expected facility counts
+using a declared travel scale and outside weight. These are synthetic counts,
+not empirical evidence for any travel family or feedback mechanism.
+
+```{r generated-counts}
+active <- which(is.finite(demand) & demand > 0)
+weights <- sweep(exp(-travel[active, ]^2 / (2 * 9^2)), 2, supply, "*")
+probability <- weights / (rowSums(weights) + 30)
+observed <- setNames(round(colSums(probability * demand[active])), facility_ids)
+observed <- observed[c("f3", "f1", "f4", "f2")] # names determine alignment
+```
+
+Preparation records positive, zero and unknown demand separately. Only finite
+positive demand contributes to fitted facility loads. Strict numeric preparation
+rejects unknown active travel unless its policy is explicitly changed.
+
+```{r prepare-and-fit}
+prepared <- prepare_allocation(demand, supply, travel,
+  missing_demand = "exclude", metadata = units)
+model <- clm_allocation(prepared, family = "gaussian", fit_v0 = TRUE)
+starts <- rbind(near = c(sigma = 8, v0 = 25),
+                short = c(sigma = 5, v0 = 60),
+                long = c(sigma = 15, v0 = 15))
+fit <- fit_allocation(model, observed, starts,
+  lower = c(sigma = 1, v0 = 1), upper = c(sigma = 30, v0 = 150),
+  output = "utilization", loss = "poisson", gradient = TRUE,
+  control = list(maxit = 150))
+summary(fit)
+coef(fit)
+fitted(fit)
+```
+
+The output includes eligible and failed starts, boundaries, messages and
+disagreement among the supplied starts. Agreement is a numerical diagnostic,
+not proof of a global optimum or parameter identification. Choosing expected
+counts as the target does not choose a likelihood; Poisson is explicit here.
+Joint Poisson fitting does not impose exact total matching.
+
+Evaluate at the selected parameters, then request predictions for every origin.
+Requested demand multiplies predicted probabilities into expected counts. It
+does not change the saved facility loads. Origin o7 has known zero demand;
+o8 has unknown demand. Their contact probabilities may still be available.
+
+```{r evaluate-and-predict}
+baseline <- evaluate_allocation(model, theta = coef(fit))
+baseline$coverage$regional
+prediction <- predict_allocation(baseline, travel, demand = demand,
+  outputs = c("rho", "A", "abar", "flow"))
+prediction$validity
+data.frame(origin_id = origin_ids, rho = prediction$outputs$rho,
+           A = prediction$outputs$A, abar = prediction$outputs$abar)
+prediction$outputs$flow
+```
+
+Probability validity, demand availability and capacity attribution have
+different conditions. Unknown travel can invalidate a normalized choice row.
+A facility with positive supply and zero saved load can have valid contact
+probability at a new origin while its unqualified capacity attribution remains
+unknown. The prediction result preserves these distinctions.
+
+Here rho is the inside-contact probability. With facility load U and supply S,
+A is the sum over facilities of P times S/U: attributed slots per request
+opportunity. For rho above zero, abar=A/rho is attributed slots per inside-contact
+request. These are capacity-attribution measures under the stated model; flow is
+the expected request count D times P. Requested demand and travel must use the
+saved reference period and units. The interface does not convert units.
+
+Change one facility's capacity by preparing and evaluating a new system at the
+same theta. This is a model-based fixed-parameter scenario, not an estimated
+causal intervention effect. Changing supply updates attraction, allocation and
+facility loads as well as proportional capacity attribution.
+
+```{r capacity-scenario}
+scenario_supply <- supply
+scenario_supply["f2"] <- 1.2 * scenario_supply["f2"]
+scenario_inputs <- prepare_allocation(demand, scenario_supply, travel,
+  missing_demand = "exclude", metadata = units)
+scenario_model <- clm_allocation(scenario_inputs, family = "gaussian", fit_v0 = TRUE)
+scenario <- evaluate_allocation(scenario_model, theta = coef(fit))
+scenario_prediction <- predict_allocation(scenario, travel, demand = demand,
+  outputs = c("rho", "A", "abar"))
+data.frame(origin_id = origin_ids,
+  baseline_contact = prediction$outputs$rho,
+  scenario_contact = scenario_prediction$outputs$rho,
+  baseline_attribution = prediction$outputs$A,
+  scenario_attribution = scenario_prediction$outputs$A)
+```
+
+The evaluated source contains a small prediction snapshot. Saving it does not
+require retaining the original model closure or travel matrix. A fresh process
+can read the saved source and predict from a new requested travel matrix.
+
+```{r save-and-reload}
+saved <- tempfile(fileext = ".rds")
+saveRDS(scenario, saved)
+restored <- readRDS(saved)
+restored_prediction <- predict_allocation(restored, travel, demand = demand,
+  outputs = c("rho", "A", "abar"))
+stopifnot(identical(restored_prediction, scenario_prediction))
+unlink(saved)
+```
+
+An optional map needs an explicit mapping from origin IDs to raster cells.
+This synthetic grid has no geographic interpretation. Mapping is separate
+from origin registry order, and map construction does not change load support.
+
+```{r optional-map, fig.width=5, fig.height=3}
+template <- terra::rast(nrows = 2, ncols = 4, xmin = 0, xmax = 4,
+                        ymin = 0, ymax = 2, crs = "EPSG:3857")
+spatial <- list(template = template,
+  cell_index = setNames(c(6, 2, 8, 1, 7, 3, 4, 5), origin_ids))
+contact_map <- predict_allocation(restored, travel, outputs = "rho",
+  spatial = spatial, type = "raster")
+terra::plot(contact_map)
+```
