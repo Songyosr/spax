@@ -67,6 +67,8 @@
 #' substrate is shared. Each point owns fresh solver/reuse state; `warm_start`
 #' carries only the preceding eligible nuisance estimate into the next outer
 #' optimization. Supplied order is retained.
+#' Observations are bound to canonical output IDs once before the point loop;
+#' nuisance-parameter wrappers preserve that identity and observation mask.
 #'
 #' `init`, `lower`, and `upper` name the complete original theta. Named `...`
 #' arguments are ordinary `.fit_problem_nfxp()` controls. Failed, nonconverged,
@@ -127,7 +129,8 @@
       any(!names(args) %in% allowed))) {
     stop("`...` must contain unique named fitting controls, excluding init and bounds")
   }
-  target <- .fit_target_meta(observed, "observed")
+  output <- if ("output" %in% names(args)) args$output else "utilization"
+  target <- .bind_problem_target(problem, observed, output)
   n <- length(values)
   ids <- names(values)
   if (is.null(ids)) ids <- paste0("point", seq_len(n))
@@ -154,7 +157,7 @@
     error <- NULL
     start_time <- proc.time()[["elapsed"]]
     fit <- tryCatch(withCallingHandlers(
-      do.call(.fit_problem_nfxp, c(list(problem = subproblem, observed = observed,
+      do.call(.fit_problem_nfxp, c(list(problem = subproblem, observed = target,
         init = next_init, lower = lower[nuisance], upper = upper[nuisance]), args)),
       warning = function(w) {
         messages <<- c(messages, conditionMessage(w))
