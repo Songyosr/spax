@@ -16,8 +16,13 @@
   warn = TRUE,
   check = TRUE,
   diagnostics = TRUE,
-  keep_state_history = FALSE
+  keep_state_history = FALSE,
+  requested_outputs = NULL
 )
+}
+\arguments{
+\item{requested_outputs}{Optional output names to materialize in addition to
+the provider's default outputs. \code{NULL} retains the legacy output callback.}
 }
 \description{
 Solve an AE problem at fixed theta

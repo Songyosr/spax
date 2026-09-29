@@ -201,7 +201,15 @@
     output_axes = c(target = "facility", utilization = "facility",
                     attractiveness = "facility", access = "origin",
                     outside_share = "origin", allocation = "origin_facility",
-                    huff_share = "origin_facility", opportunity = "origin_facility"),
+                    huff_share = "origin_facility", opportunity = "origin_facility",
+                    if (allocation == "clm") c(flow = "origin_facility")),
+    output_meanings = if (allocation == "clm") c(
+      allocation = "inside_choice_probability",
+      huff_share = "inside_choice_probability",
+      access = "inside_probability_mass",
+      outside_share = "outside_choice_probability",
+      utilization = "expected_count", flow = "expected_count"
+    ) else NULL,
     allocation = allocation,
     kappa = as.numeric(kappa),
     beta = as.numeric(beta),
@@ -442,13 +450,19 @@
 
     # State-independent: the full state is fixed by theta (kernel, outside
     # option, supply elasticity) and the exogenous attractiveness, so compute
-    # it once at bind time. The output gradient still flows through the FD
-    # output-vs-theta path (output_jac_state is zero), so a theta-dependent
-    # attractiveness needs no special handling.
+    # it once at bind time. Optional flow is materialized only when requested.
     state <- .huff_state(a, plan = plan, v0 = v0, allocation = spec$allocation)
     list(
       map = function(x) state$target,
       outputs = function(x) state,
+      outputs_requested = if (spec$allocation == "clm") function(x, requested_outputs) {
+        out <- state
+        if ("flow" %in% requested_outputs) {
+          out$flow <- .clm_flow(state$allocation, substrate$D_active)
+        }
+        out
+      } else NULL,
+      state_independent_outputs = if (spec$allocation == "clm") "flow" else NULL,
       jac_state = function(x) {
         list(
           jac_state = zero_state,
@@ -466,6 +480,14 @@
 }
 
 #' Bind theta once and return the state-only inner-loop step
+#'
+#' Providers keep the required `outputs(x)` callback. An optional
+#' `outputs_requested(x, requested_outputs)` callback adds requested outputs
+#' while retaining `target` and `utilization`. Without it, requests read the
+#' legacy outputs. `state_independent_outputs` explicitly names outputs whose
+#' partial derivative with respect to state is zero for every valid state and
+#' theta. Only these outputs bypass implicit state differentiation; the promise
+#' is the provider's responsibility and is never inferred from a model name.
 #' @keywords internal
 .bind_theta <- function(problem, theta) {
   .chck_class(problem, "ae_problem", "problem")
@@ -473,9 +495,10 @@
   if (!is.function(bound$map)) {
     stop("bound AE step must provide a `map` function")
   }
-  if (!is.function(bound$outputs)) {
+  if (!is.function(bound[["outputs", exact = TRUE]])) {
     stop("bound AE step must provide an `outputs` function")
   }
+  .validate_output_capabilities(bound, problem$metadata$spec$output_axes)
   structure(bound, class = c("ae_bound_step", paste0(problem$model, "_bound_step")))
 }
 
@@ -486,17 +509,23 @@
 }
 
 #' Evaluate rich outputs at one state and theta
+#' @param requested_outputs Optional output names to materialize. `NULL` keeps
+#'   the provider's existing default outputs.
 #' @keywords internal
-.problem_outputs <- function(problem, x, theta) {
-  .bind_theta(problem, theta)$outputs(x)
+.problem_outputs <- function(problem, x, theta, requested_outputs = NULL) {
+  .problem_step_outputs(.bind_theta(problem, theta), x, requested_outputs)
 }
 
 #' Evaluate rich outputs for a problem at arbitrary theta and state
+#' @param requested_outputs Optional output names to materialize. `NULL` keeps
+#'   the provider's existing default outputs.
 #' @keywords internal
-.problem_outputs_at <- function(problem, theta, state) {
+.problem_outputs_at <- function(problem, theta, state, requested_outputs = NULL) {
   .chck_class(problem, "ae_problem", "problem")
   .validate_problem_state(problem, state)
-  .validate_ae_outputs(.bind_theta(problem, theta)$outputs(state))
+  .validate_ae_outputs(.problem_step_outputs(
+    .bind_theta(problem, theta), state, requested_outputs
+  ))
 }
 
 #' List model outputs that can be rewrapped onto the demand-cell surface
@@ -517,7 +546,8 @@
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
     stop("`output` must be a length-one character value")
   }
-  outputs <- .problem_outputs_at(problem, theta = theta, state = state)
+  outputs <- .problem_outputs_at(problem, theta = theta, state = state,
+                                 requested_outputs = output)
   .rewrap_problem_surface(
     outputs = outputs,
     output = output,
@@ -538,13 +568,15 @@
 }
 
 #' Solve an AE problem at fixed theta
+#' @param requested_outputs Optional output names to materialize in addition to
+#'   the provider's default outputs. `NULL` retains the legacy output callback.
 #' @keywords internal
 .solve_problem <- function(problem, theta, x0 = NULL, lambda = 1,
                            tol = 1e-8, max_iter = 1000,
                            norm = c("max", "l2"),
                            keep_history = TRUE, warn = TRUE,
                            check = TRUE, diagnostics = TRUE,
-                           keep_state_history = FALSE) {
+                           keep_state_history = FALSE, requested_outputs = NULL) {
   .chck_class(problem, "ae_problem", "problem")
   step <- .bind_theta(problem, theta)
   if (is.null(x0)) {
@@ -563,7 +595,9 @@
     check = check,
     keep_state_history = keep_state_history
   )
-  fit$outputs <- .validate_ae_outputs(step$outputs(fit$x_star))
+  fit$outputs <- .validate_ae_outputs(.problem_step_outputs(
+    step, fit$x_star, requested_outputs
+  ))
   fit$utilization <- fit$outputs$utilization
   if (isTRUE(diagnostics) && is.function(step$jac_state)) {
     rho <- tryCatch({
@@ -592,6 +626,16 @@
 #' `target_alignment` records the canonical IDs and the input permutations.
 #' Unannotated custom providers keep unnamed positional fitting, without
 #' assuming that every fitted vector has facility identity.
+#' Corrected CLM supports requested `flow = D_active * allocation`, interpreted
+#' as expected counts in the caller's demand unit and period. Default fits do
+#' not save flow; accessors retrieve only outputs saved by the fit. Requesting
+#' flow does not select a loss: Poisson loss remains an explicit caller choice,
+#' and fractional expected counts are allowed.
+#' Probability and expected-count meanings require a valid choice denominator.
+#' When `v0 = 0` and an origin has zero opportunity at every facility, the
+#' existing convention returns zero inside allocation, outside share and flow.
+#' This row is not a normalized choice distribution; its missing mass is not
+#' automatically outside participation or unmet need.
 #'
 #' With `reuse = TRUE`, providers declaring `spec$deterministic = TRUE` may
 #' reuse a successful objective's equilibrium for the next gradient request
@@ -675,7 +719,8 @@
       keep_history = keep_history,
       warn = warn,
       check = check,
-      diagnostics = diagnostics
+      diagnostics = diagnostics,
+      requested_outputs = output
     )
     if (!isTRUE(fit$converged)) {
       return(NULL)
@@ -791,7 +836,8 @@
     norm = norm,
     keep_history = TRUE,
     warn = TRUE,
-    check = check
+    check = check,
+    requested_outputs = output
   )
   predicted_full <- .problem_fit_output(final, output, required = TRUE)
   .check_fit_target_shape(predicted_full, target, output)
@@ -834,6 +880,7 @@
       state_name = state_name,
       outputs = final$outputs,
       output_axes = problem$metadata$spec$output_axes,
+      output_meanings = problem$metadata$spec$output_meanings,
       coverage_meta = list(
         demand = problem$substrate$D_active,
         supply = problem$substrate$S,
@@ -1198,6 +1245,11 @@
                                         output = "utilization",
                                         fd_eps = 1e-6) {
   step <- .bind_theta(problem, theta)
+  if (output %in% step[["state_independent_outputs", exact = TRUE]]) {
+    # The provider explicitly promises no dependence on the solved state.
+    # Avoid constructing an output-by-state matrix of structural zeros.
+    return(.problem_output_jac_param(problem, theta, x, output, fd_eps))
+  }
   jac_state_result <- if (is.function(step$jac_state)) step$jac_state(x) else NULL
   jac_state <- if (is.null(jac_state_result)) {
     fd_jacobian_state(step$map, x, eps = fd_eps, check = FALSE)
@@ -1218,7 +1270,8 @@
 }
 
 .problem_output_from_step <- function(step, x, output, required = TRUE) {
-  outputs <- step$outputs(x)
+  outputs <- .problem_step_outputs(step, x, requested_outputs = output,
+                                   required = required)
   if (!is.list(outputs) || !output %in% names(outputs)) {
     if (required) {
       stop("problem outputs do not include requested output `", output, "`")
