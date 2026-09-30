@@ -220,6 +220,10 @@
   }
   score_norm <- sqrt(max(as.numeric(crossprod(score, range$inverse %*% score)), 0))
   if (score_norm > 1e-3) reasons <- c(reasons, "insufficient_fit_precision")
+  # The declared confirmation study failed grouped facility-total coverage.
+  # Retain covariance/rank diagnostics, but do not turn this unvalidated design
+  # or the uncorrected research comparator into regular reported intervals.
+  reasons <- c(reasons, .allocation_interval_scope(observation, group_adjustment))
   dimnames(covariance) <- list(parameters, parameters)
   structure(list(theta = theta, parameters = parameters, observation = observation,
     covariance_log = covariance, information = range, jacobian_log = jacobian,
@@ -240,6 +244,15 @@
     class = "allocation_inference")
 }
 
+.allocation_interval_scope <- function(observation, group_adjustment) {
+  reasons <- character()
+  if (observation$sampling == "independent_groups") {
+    if (observation$output == "utilization") reasons <- c(reasons, "grouped_totals_not_validated")
+    if (!identical(group_adjustment, "HC3")) reasons <- c(reasons, "uncorrected_group_comparator")
+  }
+  reasons
+}
+
 .allocation_delta <- function(inference, values, gradient_log,
                               transform = "identity", level = .95,
                               fixed_input = rep(FALSE, length(values)), support_tol = 1e-4) {
@@ -257,7 +270,11 @@
       any(!transform %in% c("identity", "log", "logit"))) stop("invalid quantity transforms")
   if (!is.numeric(level) || length(level) != 1L || !is.finite(level) || level <= 0 || level >= 1) stop("invalid interval level")
   if (!is.numeric(support_tol) || length(support_tol) != 1L || !is.finite(support_tol) || support_tol <= 0 || support_tol >= 1) stop("invalid support tolerance")
-  critical <- if (!inference$valid_regular_interval) NA_real_ else
+  # Recheck the scope when reading a saved pre-restriction diagnostic object.
+  scope <- .allocation_interval_scope(inference$observation, inference$diagnostics$group_adjustment)
+  valid <- isTRUE(inference$valid_regular_interval) && !length(scope)
+  reasons <- unique(c(inference$reasons, scope))
+  critical <- if (!valid) NA_real_ else
     if (is.finite(inference$degrees_freedom))
       stats::qt((1 + level) / 2, inference$degrees_freedom) else stats::qnorm((1 + level) / 2)
   table <- data.frame(quantity = ids, estimate = as.numeric(values), standard_error = NA_real_,
@@ -277,8 +294,8 @@
     }
     if (fraction > support_tol) { table$status[i] <- "unsupported_local_direction"; next }
     if (magnitude == 0) { table$status[i] <- "zero_first_order_gradient"; next }
-    if (!inference$valid_regular_interval) {
-      table$status[i] <- paste(inference$reasons, collapse = ";"); next
+    if (!valid) {
+      table$status[i] <- paste(reasons, collapse = ";"); next
     }
     if ((transform[i] == "log" && value <= 0) ||
         (transform[i] == "logit" && (value <= 0 || value >= 1))) {

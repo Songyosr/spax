@@ -51,6 +51,13 @@ test_that("inference aligns masked counts and dependence declarations by IDs", {
   independent <- solve(B)%*%crossprod(adjusted)%*%solve(B)
   expect_equal(unname(hc3$covariance_log),unname(independent),tolerance=1e-7)
   expect_identical(hc3$diagnostics$group_adjustment,"HC3")
+  expect_true(hc3$valid_regular_interval)
+  expect_false(ia$valid_regular_interval)
+  expect_true("uncorrected_group_comparator" %in% ia$reasons)
+  stale <- ia; stale$valid_regular_interval <- TRUE; stale$reasons <- character()
+  stale_q <- .allocation_estimands(stale,function(theta,z) c(sigma=unname(theta[1])))$table
+  expect_identical(stale_q$status,"uncorrected_group_comparator")
+  expect_true(is.na(stale_q$lower))
   expect_lt(max(hc3$diagnostics$group_max_leverage),1)
   expect_null(ia$base$outputs$allocation); expect_null(ia$perturbations[[1]]$plus$outputs$flow)
   expect_equal(predict_allocation(ia$base,f$d,outputs="rho")$outputs$rho,
@@ -102,6 +109,8 @@ test_that("co-location preserves aggregate support while distinguishing totals a
   grouped <- .allocation_inference(f$model,fit,.inference_observation(f,y,sampling="independent_groups",groups=groups))
   expect_equal(grouped$diagnostics$rank,1)
   expect_true(all(is.finite(grouped$covariance_log)))
+  expect_false(grouped$valid_regular_interval)
+  expect_true("grouped_totals_not_validated" %in% grouped$reasons)
   expect_identical(.allocation_estimands(grouped,callback,c("log","log","logit","identity"),
     c(FALSE,FALSE,FALSE,TRUE))$table$status[1:2],rep("unsupported_local_direction",2))
   flow_fit <- .inference_fit(f,f$y,"flow")
@@ -139,11 +148,11 @@ test_that("paired scenario inference uses the difference gradient and one covari
   groups <- setNames(rep(paste0("g",1:8),each=3),names(f$S))
   few <- .allocation_inference(f$model,fit,.inference_observation(f,y,sampling="independent_groups",groups=groups))
   expect_false(few$valid_regular_interval); expect_equal(few$diagnostics$independent_groups,8)
-  expect_true(all(.allocation_estimands(few,callback)$table$status=="few_independent_groups"))
+  expect_true(all(grepl("few_independent_groups",.allocation_estimands(few,callback)$table$status)))
   one <- setNames(rep("one",length(f$S)),names(f$S))
   one_info <- .allocation_inference(f$model,fit,.inference_observation(f,y,sampling="independent_groups",groups=one))
   expect_no_warning(one_q <- .allocation_estimands(one_info,callback))
-  expect_true(all(one_q$table$status=="few_independent_groups"))
+  expect_true(all(grepl("few_independent_groups",one_q$table$status)))
   bounded <- fit; bounded$boundary[,] <- TRUE
   bi <- .allocation_inference(f$model,bounded,.inference_observation(f,y))
   expect_true("parameter_boundary"%in%bi$reasons)
@@ -151,4 +160,24 @@ test_that("paired scenario inference uses the difference gradient and one covari
   expect_error(.allocation_inference(f$model,floored,.inference_observation(f,y)),"loss conflict")
   unnamed <- fit; unnamed$best$loss_args <- list(1e9)
   expect_error(.allocation_inference(f$model,unnamed,.inference_observation(f,y)),"unweighted Poisson fit")
+})
+test_that("grouped total covariances remain diagnostics without regular intervals", {
+  f <- .inference_fixture(); y <- colSums(f$y); fit <- .inference_fit(f,y)
+  callback <- function(theta,z) c(sigma=unname(theta[1]),rho=sum(z$utilization)/sum(f$D))
+  groups <- setNames(names(f$S),names(f$S))
+  for (adjustment in c("HC3","none")) {
+    info <- .allocation_inference(f$model,fit,
+      .inference_observation(f,y,sampling="independent_groups",groups=groups),group_adjustment=adjustment)
+    expect_equal(info$diagnostics$rank,2)
+    expect_true(all(is.finite(info$covariance_log)))
+    expect_false(info$valid_regular_interval)
+    q <- .allocation_estimands(info,callback,c("log","logit"))$table
+    expect_true(all(grepl("grouped_totals_not_validated",q$status)))
+    expect_true(all(is.na(q$standard_error) & is.na(q$lower) & is.na(q$upper)))
+    stale <- info; stale$valid_regular_interval <- TRUE; stale$reasons <- character()
+    restored <- unserialize(serialize(stale,NULL))
+    q <- .allocation_estimands(restored,callback,c("log","logit"))$table
+    expect_true(all(grepl("grouped_totals_not_validated",q$status)))
+    expect_true(all(is.na(q$standard_error) & is.na(q$lower) & is.na(q$upper)))
+  }
 })
