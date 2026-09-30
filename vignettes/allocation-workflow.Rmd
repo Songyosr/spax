@@ -146,3 +146,193 @@ contact_map <- predict_allocation(restored, travel, outputs = "rho",
   spatial = spatial, type = "raster")
 terra::plot(contact_map)
 ```
+
+## Facility-count bootstrap on a larger generated network
+
+The four-facility example above explains preparation and prediction support. For
+uncertainty, use a separate generated network of 80 origins and 40 facilities.
+The observation unit is one facility total during the declared period. Here the
+counts are generated independently from a Poisson law. Independence across
+facilities is an explicit assumption; it does not follow merely from mutually
+exclusive allocation destinations. In an application, that law needs its own
+justification.
+
+```{r bootstrap-generated-inputs}
+i <- seq_len(80)
+j <- seq_len(40)
+boot_travel <- sqrt(
+  outer(seq(2, 58, length.out = 80), seq(4, 56, length.out = 40), "-")^2 +
+  outer(8 * sin(i * .73), 7 * sin(j * 1.31), "-")^2) + 2
+dimnames(boot_travel) <- list(paste0("origin", i), paste0("facility", j))
+boot_demand <- setNames(80 + 35 * (1 + sin(i * .23)), rownames(boot_travel))
+boot_supply <- setNames(rep(c(5, 7, 6, 8, 9), 8), colnames(boot_travel))
+truth <- c(sigma = 12, v0 = 45)
+boot_score <- exp(-boot_travel^2 / (2 * truth[["sigma"]]^2)) *
+  rep(boot_supply, each = length(boot_demand))
+boot_probability <- boot_score / (rowSums(boot_score) + truth[["v0"]])
+set.seed(2490001)
+boot_observed <- setNames(rpois(40, colSums(boot_probability * boot_demand)),
+  names(boot_supply))
+boot_inputs <- prepare_allocation(boot_demand, boot_supply, boot_travel,
+  metadata = units)
+boot_model <- clm_allocation(boot_inputs, family = "gaussian", fit_v0 = TRUE)
+boot_starts <- rbind(short = c(sigma = 8, v0 = 25),
+  medium = c(sigma = 15, v0 = 70), wide = c(sigma = 25, v0 = 15))
+boot_fit <- fit_allocation(boot_model, boot_observed, boot_starts,
+  lower = c(sigma = 2, v0 = 1), upper = c(sigma = 60, v0 = 500),
+  output = "utilization", loss = "poisson", gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+as.data.frame(boot_fit)
+summary(boot_fit)
+```
+
+The fit table contains saved parameter estimates. Diagnostic plotting delegates
+to the selected fit and does not refit the model.
+
+```{r selected-fit-plot, fig.width=5, fig.height=4}
+plot(boot_fit, type = "fit")
+```
+
+Prepare a supply-only scenario that increases the second facility's capacity by
+20%. Each bootstrap draw evaluates both baseline and changed supply at the same
+parameters. This pairs the contrast while allowing attraction, allocation and
+loads to respond to supply. It does not estimate a causal intervention effect.
+
+```{r paired-bootstrap}
+boot_scenario_supply <- boot_supply
+boot_scenario_supply["facility2"] <- 1.2 * boot_scenario_supply["facility2"]
+boot_scenario_inputs <- prepare_allocation(boot_demand, boot_scenario_supply,
+  boot_travel, metadata = units)
+boot_scenario <- clm_allocation(boot_scenario_inputs, family = "gaussian",
+  fit_v0 = TRUE)
+observation <- list(event = "allocated service requests",
+  period = "one_reference_period", sampling = "independent_facilities")
+boot <- bootstrap_allocation(boot_model, boot_fit, observation,
+  scenario = boot_scenario, seed = 20260930)
+summary(boot)
+as.data.frame(boot)
+head(as.data.frame(boot, type = "draws"))
+head(as.data.frame(boot, type = "starts"))
+```
+
+The procedure makes 399 predetermined attempts. It resamples facility
+observation contributions while keeping all facilities in the allocation
+denominator. It retains unsuccessful attempts and successful inner-boundary
+fits; it does not replace failed attempts until a desired success count is
+reached. Inspect the actual and planned denominators and each saved quantity's
+status. An eligible interval requires a complete run of all 399 attempts, at least
+380 finite successful values and an eligible original fit. A refused original
+may have zero attempted draws and
+still preserve its point estimates and diagnostic reasons.
+
+These are pointwise percentile bootstrap intervals conditional on the declared observation
+assumption, fixed demand, supply, travel, included facilities and mean model.
+Generated-study acceptance does not establish an application's observation law
+or guarantee exact 95% coverage. Regional A is supported raw supply per retained
+demand and has no sampling interval. Supply at facilities without a finite edge
+on retained demand support is excluded from attributed capacity; the summary
+displays total, attributed and unsupported supply separately. The grouped-total HC3 refusal
+is unchanged; this facility bootstrap is a separate supported procedure.
+
+```{r bootstrap-plot, fig.width=6, fig.height=4}
+plot(boot, quantity = "regional_rho", type = "interval")
+```
+
+Coverage extraction returns saved regional or cell tables. The cells are the
+retained positive-demand origins, with canonical origin IDs; extraction does not
+expand prediction support or create spatial uncertainty intervals. Unit and
+support declarations remain attached as attributes, so keep them when exporting
+tables to a format that drops R attributes.
+
+```{r saved-coverage-tables}
+boot_evaluated <- evaluate_allocation(boot_model, coef(boot_fit))
+regional_table <- as.data.frame(boot_evaluated$coverage)
+cell_table <- as.data.frame(boot_evaluated$coverage, type = "cells")
+regional_table
+head(cell_table)
+attr(cell_table, "input_metadata")
+```
+
+CSV files make these saved tables available to other software. They do not
+retain R attributes or result classes. Keep an RDS bundle alongside them to
+preserve observation declarations, units, support, reporting settings and the
+complete saved results. The estimates and draws include `delta_contacts`, the
+paired change in expected inside contacts under the supply scenario.
+
+```{r export-saved-results}
+export_dir <- tempfile("allocation-results-")
+dir.create(export_dir)
+export_tables <- list(estimates = as.data.frame(boot),
+  draws = as.data.frame(boot, type = "draws"),
+  starts = as.data.frame(boot, type = "starts"),
+  parameters = as.data.frame(boot_fit, type = "parameters"),
+  regional = regional_table, cells = cell_table)
+for (name in names(export_tables)) {
+  write.csv(export_tables[[name]], file.path(export_dir, paste0(name, ".csv")),
+    row.names = FALSE)
+}
+bundle_path <- file.path(export_dir, "allocation-results.rds")
+saveRDS(list(bootstrap = boot, fit = boot_fit, coverage = boot_evaluated$coverage,
+  tables = export_tables,
+  metadata = list(observation = boot$observation,
+    input_metadata = attr(cell_table, "input_metadata"),
+    support = attr(cell_table, "support"),
+    reporting_settings = attr(cell_table, "reporting_settings"))), bundle_path)
+list.files(export_dir)
+as.data.frame(boot)[as.data.frame(boot)$quantity == "delta_contacts", ]
+```
+
+The optional map remains a point prediction. This artificial 8-by-10 grid has no
+geographic meaning; a bootstrap of regional quantities does not provide cellwise
+or simultaneous map intervals.
+
+```{r generated-point-map, fig.width=5, fig.height=4}
+boot_template <- terra::rast(nrows = 8, ncols = 10, xmin = 0, xmax = 10,
+  ymin = 0, ymax = 8, crs = "EPSG:3857")
+boot_spatial <- list(template = boot_template,
+  cell_index = setNames(seq_len(80), names(boot_demand)))
+boot_contact_map <- predict_allocation(boot_evaluated, boot_travel,
+  outputs = "rho", spatial = boot_spatial, type = "raster")
+terra::plot(boot_contact_map, main = "Generated point contact probability")
+```
+
+Finally, inspect the saved results in a new R process using the installed
+package. This check reads saved tables and summaries without solving or drawing
+another bootstrap sample, and exercises printing and plotting after reload.
+
+```{r fresh-installed-reload}
+child_path <- tempfile(fileext = ".R")
+literal <- function(x) paste(capture.output(dput(x)), collapse = "\n")
+writeLines(c(
+  paste0(".libPaths(c(", literal(dirname(find.package("spax"))), ", .libPaths()))"),
+  "library(spax)",
+  paste0("saved <- readRDS(", literal(bundle_path), ")"),
+  "stopifnot(identical(as.data.frame(saved$bootstrap), saved$tables$estimates))",
+  "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'draws'), saved$tables$draws))",
+  "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'starts'), saved$tables$starts))",
+  "stopifnot(identical(as.data.frame(saved$fit), saved$tables$parameters))",
+  "stopifnot(identical(as.data.frame(saved$coverage), saved$tables$regional))",
+  "stopifnot(identical(as.data.frame(saved$coverage, type = 'cells'), saved$tables$cells))",
+  "stopifnot(identical(saved$bootstrap$observation, saved$metadata$observation))",
+  "stopifnot(identical(attr(saved$tables$cells, 'input_metadata'), saved$metadata$input_metadata))",
+  "stopifnot(inherits(summary(saved$bootstrap), 'summary.ae_allocation_bootstrap'))",
+  "stopifnot(inherits(summary(saved$fit), 'summary.ae_multistart_fit'))",
+  "print(saved$bootstrap)",
+  "print(summary(saved$bootstrap))",
+  "print(summary(saved$fit))",
+  "print(as.data.frame(saved$bootstrap))",
+  "plot_path <- tempfile(fileext = '.pdf')",
+  "grDevices::pdf(plot_path)",
+  "plot(saved$bootstrap, quantity = 'regional_rho')",
+  "plot(saved$bootstrap, quantity = 'regional_rho', type = 'draws')",
+  "plot(saved$fit, type = 'fit')",
+  "grDevices::dev.off()",
+  "stopifnot(file.info(plot_path)$size > 0)",
+  "unlink(plot_path)",
+  "cat('Fresh installed saved-result inspection passed\\n')"
+), child_path)
+rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+status <- system2(rscript, c("--vanilla", shQuote(child_path)))
+stopifnot(status == 0L)
+unlink(child_path)
+```

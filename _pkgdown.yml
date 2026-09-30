@@ -28,6 +28,10 @@ reference:
       - predict_allocation
       - bootstrap_allocation
       - allocation-fit-methods
+      - allocation-result-tables
+      - allocation-bootstrap-methods
+      - print.summary.ae_multistart_fit
+      - plot.ae_multistart_fit
 
   - title: "Core Accessibility Functions"
     desc: "Main functions for spatial accessibility analysis"

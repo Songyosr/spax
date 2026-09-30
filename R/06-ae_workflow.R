@@ -203,13 +203,14 @@ fitted.ae_multistart_fit <- function(object, ...) {
 #' @exportS3Method base::summary
 summary.ae_multistart_fit <- function(object, ...) {
   .chck_class(object, "ae_multistart_fit", "object")
-  list(status = object$status, selected_start = object$best_start,
+  structure(list(status = object$status, selected_start = object$best_start,
        selected = if (!is.null(object$best)) summary(object$best) else NULL,
        starts = object$table, boundary = object$boundary,
        disagreement = list(loss = object$loss_disagreement,
                            parameter = object$parameter_disagreement,
                            tolerances = object$tolerances),
-       warnings = object$warnings, errors = object$errors)
+       warnings = object$warnings, errors = object$errors),
+    class = "summary.ae_multistart_fit")
 }
 
 #' Evaluate a declared allocation model at supplied fixed parameters
