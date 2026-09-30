@@ -27,7 +27,8 @@ test_that("inference aligns masked counts and dependence declarations by IDs", {
   groups <- setNames(colnames(y),colnames(y))
   a <- .inference_observation(f,y,"flow","independent_groups",groups)
   b <- .inference_observation(f,y[30:1,24:1],"flow","independent_groups",rev(groups))
-  ia <- .allocation_inference(f$model,fit,a); ib <- .allocation_inference(f$model,fit,b)
+  ia <- .allocation_inference(f$model,fit,a,group_adjustment="none")
+  ib <- .allocation_inference(f$model,fit,b,group_adjustment="none")
   expect_identical(ia$covariance_log,ib$covariance_log)
   expect_identical(ia$fitted_mean,ib$fitted_mean)
   tampered <- a; tampered$target$values <- rev(tampered$target$values)
@@ -40,6 +41,17 @@ test_that("inference aligns masked counts and dependence declarations by IDs", {
   score <- J*((obs-mu)/mu); meat <- crossprod(rowsum(score,a$labels[a$target$mask],reorder=FALSE))
   B <- crossprod(J/sqrt(mu)); V <- solve(B)%*%meat%*%solve(B)*23/22
   expect_equal(unname(ia$covariance_log),unname(V),tolerance=1e-7)
+  hc3 <- .allocation_inference(f$model,fit,a)
+  W <- J/sqrt(mu); residual <- (obs-mu)/sqrt(mu)
+  labels <- a$labels[a$target$mask]
+  adjusted <- t(vapply(unique(labels),function(label) {
+    sel <- labels==label; block <- W[sel,,drop=FALSE]
+    as.numeric(crossprod(block,solve(diag(sum(sel))-block%*%solve(B)%*%t(block),residual[sel])))
+  },numeric(ncol(W))))
+  independent <- solve(B)%*%crossprod(adjusted)%*%solve(B)
+  expect_equal(unname(hc3$covariance_log),unname(independent),tolerance=1e-7)
+  expect_identical(hc3$diagnostics$group_adjustment,"HC3")
+  expect_lt(max(hc3$diagnostics$group_max_leverage),1)
   expect_null(ia$base$outputs$allocation); expect_null(ia$perturbations[[1]]$plus$outputs$flow)
   expect_equal(predict_allocation(ia$base,f$d,outputs="rho")$outputs$rho,
     predict_allocation(fit,f$d,outputs="rho")$outputs$rho)
@@ -86,12 +98,30 @@ test_that("co-location preserves aggregate support while distinguishing totals a
   expect_identical(q$table$status[1:2],rep("unsupported_local_direction",2))
   expect_lt(q$table$null_fraction[3],1e-4)
   expect_identical(q$table$status[4],"fixed_input_identity")
+  groups <- setNames(names(f$S),names(f$S))
+  grouped <- .allocation_inference(f$model,fit,.inference_observation(f,y,sampling="independent_groups",groups=groups))
+  expect_equal(grouped$diagnostics$rank,1)
+  expect_true(all(is.finite(grouped$covariance_log)))
+  expect_identical(.allocation_estimands(grouped,callback,c("log","log","logit","identity"),
+    c(FALSE,FALSE,FALSE,TRUE))$table$status[1:2],rep("unsupported_local_direction",2))
   flow_fit <- .inference_fit(f,f$y,"flow")
   flow_info <- .allocation_inference(f$model,flow_fit,.inference_observation(f,f$y,"flow"))
   expect_equal(flow_info$diagnostics$rank,2)
   expect_error(.allocation_estimands(info,function(theta,z) c(a=1,a=2)),"unique named")
   wrong <- q$gradient_log[4:1,,drop=FALSE]
   expect_error(.allocation_delta(info,setNames(q$table$estimate,q$table$quantity),wrong),"quantity and parameter order")
+})
+test_that("a dominant group cannot produce regular HC3 intervals", {
+  f <- .inference_fixture(); S <- f$S; S[6:24] <- 1e-9
+  f$model <- clm_allocation(prepare_allocation(f$D,S,f$d),fit_v0=TRUE)
+  y <- round(evaluate_allocation(f$model,f$truth)$utilization)
+  fit <- .inference_fit(f,y)
+  groups <- setNames(c(rep("dominant",5),paste0("g",6:24)),names(S))
+  info <- .allocation_inference(f$model,fit,.inference_observation(f,y,sampling="independent_groups",groups=groups))
+  expect_equal(info$diagnostics$independent_groups,20)
+  expect_true("dominant_group_leverage"%in%info$reasons)
+  expect_false(info$valid_regular_interval)
+  expect_true(any(info$diagnostics$group_max_leverage>=1-1e-8))
 })
 test_that("paired scenario inference uses the difference gradient and one covariance", {
   f <- .inference_fixture(); y <- colSums(f$y); fit <- .inference_fit(f,y)

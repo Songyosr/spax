@@ -74,10 +74,12 @@
 }
 
 .allocation_inference <- function(model, fit, observation, fd_eps = 1e-5,
-                                  rank_tol = 1e-4, min_groups = 20L) {
+                                  rank_tol = 1e-4, min_groups = 20L,
+                                  group_adjustment = c("HC3", "none")) {
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
   .chck_class(observation, "allocation_observation", "observation")
+  group_adjustment <- match.arg(group_adjustment)
   for (z in list(fd_eps, rank_tol)) {
     if (!is.numeric(z) || length(z) != 1L || !is.finite(z) || z <= 0 || z >= 1) {
       stop("fd_eps and rank_tol must be finite scalars strictly between zero and one")
@@ -164,23 +166,50 @@
     (positive_attraction & colSums(is.finite(model$substrate$distance_active)) > 0)[mask]
   if (!any(positive)) stop("no positive-mean observation information")
   range <- .allocation_information_range(jacobian[positive, , drop = FALSE], mu[positive], rank_tol)
+  if (range$rank == 0L) stop("no locally sensitive positive-mean count information")
   score_rows <- jacobian[positive, , drop = FALSE] * ((y[positive] - mu[positive]) / mu[positive])
   score <- colSums(score_rows)
   covariance <- range$inverse
-  degrees <- Inf; groups <- NULL; leverage <- NULL; reasons <- character()
+  degrees <- Inf; groups <- NULL; leverage <- NULL; max_leverage <- NULL
+  meat_rank <- NA_integer_; reasons <- character()
   if (observation$sampling == "independent_groups") {
     informative <- rowSums(abs(jacobian[positive, , drop = FALSE])) > 0
     labels <- observation$labels[mask][positive][informative]
     groups <- rowsum(score_rows[informative, , drop = FALSE], labels, reorder = FALSE)
     g <- nrow(groups); degrees <- g - 1
+    meat_rank <- qr(groups)$rank
     if (g < min_groups) reasons <- c(reasons, "few_independent_groups")
     covariance <- if (g > 1) range$inverse %*% crossprod(groups) %*% range$inverse * g / (g - 1) else
       matrix(NA_real_, length(theta), length(theta))
-    leverage <- vapply(rownames(groups), function(label) {
+    # Q whitens the estimable information range. Group leverage is evaluated
+    # in this small space; no observation-by-observation hat matrix is built.
+    Q <- sweep(range$range, 2, sqrt(range$eigenvalues[seq_len(range$rank)]), "/")
+    adjusted <- matrix(NA_real_, g, range$rank)
+    leverage <- max_leverage <- setNames(numeric(g), rownames(groups))
+    for (index in seq_len(g)) {
+      label <- rownames(groups)[index]
       block <- jacobian[positive, , drop = FALSE][informative, , drop = FALSE][labels == label, , drop = FALSE] /
         sqrt(mu[positive][informative][labels == label])
-      sum(diag(range$inverse %*% crossprod(block)))
-    }, numeric(1))
+      H <- crossprod(block %*% Q)
+      leverage[index] <- sum(diag(H))
+      max_leverage[index] <- max(eigen(H, symmetric = TRUE, only.values = TRUE)$values)
+      if (group_adjustment == "HC3" && g >= min_groups) {
+        if (max_leverage[index] >= 1 - 1e-8) {
+          reasons <- unique(c(reasons, "dominant_group_leverage"))
+        } else {
+          adjusted[index, ] <- solve(diag(range$rank) - H,
+            as.numeric(crossprod(Q, groups[index, ])))
+        }
+      }
+    }
+    if (group_adjustment == "HC3" && g >= min_groups) {
+      # Weighted block HC3: its (G-1)/G meat normalization cancels the
+      # conventional G/(G-1) factor. This is a local linearization, not an
+      # exact nonlinear leave-group-out refit or a finite-sample theorem.
+      covariance <- if (all(is.finite(adjusted))) Q %*% crossprod(adjusted) %*% t(Q) else
+        matrix(NA_real_, length(theta), length(theta))
+      meat_rank <- if (all(is.finite(adjusted))) qr(adjusted)$rank else NA_integer_
+    }
   }
   boundary <- any(fit$boundary[match(fit$best_start, rownames(fit$boundary)), ])
   if (boundary) reasons <- c(reasons, "parameter_boundary")
@@ -200,8 +229,11 @@
       parameter_count = length(parameters), n_observed = length(mu), n_positive_mean = sum(positive),
       score_norm = score_norm, independent_groups = if (is.null(groups)) NA_integer_ else nrow(groups),
       group_leverage = leverage,
+      group_max_leverage = max_leverage,
+      group_adjustment = if (is.null(groups)) NA_character_ else group_adjustment,
       group_sizes = if (is.null(groups)) NULL else table(labels),
-      meat_rank = if (is.null(groups)) NA_integer_ else qr(groups)$rank,
+      raw_score_rank = if (is.null(groups)) NA_integer_ else qr(groups)$rank,
+      meat_rank = meat_rank,
       mean_pearson = if (sum(positive) > range$rank)
         sum((y[positive] - mu[positive])^2 / mu[positive]) / (sum(positive) - range$rank) else NA_real_,
       scope = "local first-order information; fixed prepared inputs; pointwise intervals")),
