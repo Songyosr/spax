@@ -23,6 +23,7 @@ Imports:
     sf,
     ggplot2,
     stats,
+    tools,
     dplyr,
     tibble,
     withr,
