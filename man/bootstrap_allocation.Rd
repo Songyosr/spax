@@ -56,9 +56,12 @@ Exactly 399 attempts use the original explicit starts and positive bounds,
 with fixed numerical controls. Failed attempts are retained without replacement.
 Successful inner boundary estimates remain in the distribution. Original mean
 boundaries, local rank deficiency or insufficient fit precision refuse intervals;
-percentile intervals require at least 380 finite successful values per quantity.
-Coverage evidence is limited to the SPAX-048 generated design, not a general
-guarantee of exact 95 percent coverage or empirical observation-law validity.
+percentile intervals require a complete run of 399 attempts and at least
+380 finite successful values per quantity. Incomplete results retain their
+point estimates and diagnostics but withhold intervals.
+Coverage validation in generated 80-origin/40-facility designs under tested
+fixed-input laws is not a universal guarantee of exact 95 percent coverage
+or validation of an application's observation law.
 }
 \seealso{
 Other experimental allocation workflow:

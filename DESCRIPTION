@@ -1,18 +1,19 @@
 Package: spax
 Type: Package
-Title: An R Package for Modularized (Hopefully) Spatial Accessibility Analysis
+Title: Spatial Accessibility and Allocation Modeling
 Version: 0.2.0
 Authors@R:
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
-Description: A comprehensive toolkit for analyzing spatial accessibility to healthcare
-    facilities using enhanced two-step floating catchment area (2SFCA) methods.
-    The package provides functions for calculating catchment areas, processing
-    population demand, and evaluating healthcare facility accessibility. Key features
-    include Monte Carlo simulation for uncertainty analysis, flexible distance decay
-    functions, parallel processing capabilities, and support for multiple supply-side
-    indicators. Designed for healthcare planning and spatial equity analysis,
-    but applicable to other spatial accessibility contexts.
+Description: Spatial accessibility analysis using floating catchment area (FCA)
+    methods and experimental static conditional-logit allocation models with an
+    outside option.
+    FCA functions produce accessibility surfaces for independent supply indicators.
+    The allocation workflow provides checked numeric preparation, observation-based
+    calibration, requested-location prediction and fixed-parameter supply scenarios.
+    Saved results retain input declarations, support information and fit diagnostics.
+    A conditional facility-case bootstrap is available for a restricted Gaussian
+    allocation model and an explicitly declared observation process.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: TRUE
