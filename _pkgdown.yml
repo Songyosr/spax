@@ -3,7 +3,7 @@ template:
   bootstrap: 5
 
 articles:
-  - title: Get Started
+  - title: Public FCA Guides
     navbar: ~
     contents:
       - spax-101-intro
@@ -18,8 +18,21 @@ articles:
       - allocation-workflow
 
 reference:
+  - title: "Package Overview and Compatibility"
+    desc: "Choose a workflow, preserve input meaning and reuse saved results safely"
+    contents:
+      - spax-package
+
+  - title: "Public FCA Accessibility"
+    desc: "Raster accessibility surfaces with model-specific normalization and independent supply indicators"
+    contents:
+      - spax_2sfca
+      - spax_e2sfca
+      - spax_m2sfca
+      - compute_access
+
   - title: "Experimental Allocation Workflow"
-    desc: "Checked inputs, static CLM fitting, fixed-parameter scenarios and requested predictions"
+    desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"
     contents:
       - prepare_allocation
       - clm_allocation
@@ -32,14 +45,6 @@ reference:
       - allocation-bootstrap-methods
       - print.summary.ae_multistart_fit
       - plot.ae_multistart_fit
-
-  - title: "Core Accessibility Functions"
-    desc: "Main functions for spatial accessibility analysis"
-    contents:
-      - spax_2sfca
-      - spax_e2sfca
-      - spax_m2sfca
-      - compute_access
 
   - title: "Distance & Decay Functions"
     desc: "Functions for handling distance relationships"
@@ -60,14 +65,14 @@ reference:
       - transform_demand
 
   - title: "Simulation & Sampling"
-    desc: "Functions for spatial simulation"
+    desc: "Spatial probability and demand sampling helpers; distinct from allocation bootstrap intervals"
     contents:
       - sample_pmf
       - update_pmf
       - transform_likelihood
 
-  - title: "Object Methods"
-    desc: "Print, summary, and plot methods for spax objects"
+  - title: "FCA Object Methods"
+    desc: "Print, summary, and plot methods for public FCA spax objects"
     contents:
       - print.spax
       - summary.spax
@@ -83,7 +88,7 @@ reference:
       - save_spax
 
   - title: "Package Data"
-    desc: "Documentation for included datasets"
+    desc: "Included example data and source attribution; consult original sources for reuse terms"
     contents:
       - u5pd
       - hos_iscr
