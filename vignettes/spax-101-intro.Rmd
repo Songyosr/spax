@@ -1,161 +1,109 @@
 ---
-title: "1. Getting Started with spax: A Healthcare Accessibility Case Study"
+title: "1. Getting started with an FCA accessibility surface"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{1. Getting Started with spax: A Healthcare Accessibility Case Study}
+  %\VignetteIndexEntry{1. Getting started with an FCA accessibility surface}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.width = 8,
-  fig.height = 4.5,
-  dpi = 100
-)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
+  fig.height = 4, dpi = 100)
+library(spax)
 ```
 
-# Getting Started with `spax`
+Floating catchment area (FCA) methods combine demand, facility supply and travel
+weights to produce an accessibility index. This example uses the existing
+`spax_e2sfca()` interface and a small generated grid. It needs no download,
+routing server or research dataset. For a fitted allocation model with an
+outside option, start with [Choosing a model](model-choice.html).
 
-Ever wondered how to measure whether people can actually reach the services they need? That's where spatial accessibility analysis comes in. While there are many ways to approach this challenge, the `spax` package offers a fresh perspective with its raster-based tools.
+## Declare the inputs and units
 
-## What Makes spax Different?
+Demand is a **count per cell**, not a density per square kilometre. Supply is
+weekly service slots. Distances below are illustrative travel minutes computed
+from straight-line separation at a constant 500 metres per minute; they are not
+road-network estimates. The projected grid is synthetic and has no geographic
+interpretation.
 
-Most accessibility tools work with points and distance matrices - think dots on a map connected by lines. `spax` takes a different approach:
-
--   **Raster-First**: At the expense of memory (lol), `spax` Built around continuous surfaces rather than discrete points, making it perfect for working with high-resolution population data or complex service areas
-
--   **Modular Design**: Chain together functions to build custom workflows - like LEGO bricks for spatial analysis
-
--   **Performance-Focused**: Optimized for large spatial datasets, because sometimes you need to analyze an entire region
-
--   **Uncertainty-Aware**: Because the real world isn't deterministic, `spax` includes tools for Monte Carlo simulation and sensitivity analysis
-
-## The Building Blocks
-
-Every spatial accessibility analysis needs three key ingredients:
-
-1.  **Demand** refers to the size and location of the population requiring services. It can be represented as a population density map or as aggregated values at administrative unit centroids (e.g., the number of elderly residents in each neighborhood).
-
-2.  **Supply** represents the capacity and location of service providers. This could be the number of doctors at each hospital, the number of seats available in schools, or even the stock of happy-hour cocktails at your favorite bar 🍸.
-
-3.  **Distance**: connects the dots between demand and supply. It defines the effort needed to bridge the two, whether through travel time or physical separation. Distances can be stored in matrices, calculated from coordinates, or derived from travel-time rasters, offering insights into the accessibility of supply to those in need.
-
-Let's see how these look in practice using our example dataset from Thailand's Health Region 12.
-
-## Working with Example Data
-
-> 📝 **Data Note**: The example dataset comes from Thailand's Health Region 12, combining hospital records, Meta's population density maps, and OSRM-computed travel times.
-
-The package includes several integrated datasets (already lazy-loaded) that showcase healthcare accessibility analysis in action. Let's load the required packages first:
-
-```{r setup, warning = FALSE, message = FALSE}
-library(spax) # For accessibility analysis
-library(terra) # For raster operations
-library(raster)
-library(sf) # For vector data handling
-library(tidyverse) # For data manipulation + plotting
+```{r generated-inputs}
+demand <- terra::rast(nrows = 6, ncols = 8, xmin = 0, xmax = 8000,
+  ymin = 0, ymax = 6000, crs = "EPSG:3857")
+terra::values(demand) <- 20 + (seq_len(terra::ncell(demand)) %% 7) * 5
+names(demand) <- "weekly_requests"
+xy <- terra::xyFromCell(demand, seq_len(terra::ncell(demand)))
+facilities <- data.frame(id = c("clinic_a", "clinic_b", "clinic_c"),
+  x = c(1500, 4500, 7000), y = c(1000, 5000, 2500),
+  slots = c(250, 300, 200))
+travel_values <- vapply(seq_len(nrow(facilities)), function(j) {
+  sqrt((xy[, 1] - facilities$x[j])^2 + (xy[, 2] - facilities$y[j])^2) / 500
+}, numeric(nrow(xy)))
+travel <- terra::rast(demand, nlyrs = nrow(facilities))
+terra::values(travel) <- travel_values
+names(travel) <- facilities$id
+stopifnot(terra::compareGeom(demand, travel),
+  identical(names(travel), facilities$id))
 ```
 
-### 1. Understanding Demand
+Each travel layer names its facility. Supply can be reordered when it is a data
+frame with explicit IDs; an unnamed supply vector or matrix requires the caller
+to maintain the correct facility order. Keep an external record of the demand,
+supply and travel units: the legacy FCA result does not have the allocation
+workflow's structured unit declarations.
 
-Our example uses under-5 population density data aggregated from Meta's High Resolution Population Density Maps:
+## Calculate and inspect the surface
 
-```{r}
-# Load the population density data
-pop <- read_spax_example("u5pd.tif") # Under-5 population density
+We explicitly choose `demand_normalize = "identity"`: the distance weights are
+used unchanged in the demand denominator. With Gaussian scale 5 minutes, a
+distance of 5 minutes has weight `exp(-1/2)`, not zero.
 
-# Quick view of the data
-print(pop)
-res(pop) # each cell is ~520m x 520m
+```{r calculate}
+result <- spax_e2sfca(demand, facilities[c(3, 1, 2), ], travel,
+  decay_params = list(method = "gaussian", sigma = 5),
+  demand_normalize = "identity", id_col = "id", supply_cols = "slots")
+print(result)
+summary(result)
+plot(result, main = "FCA index: weekly slots per weekly request")
 ```
 
-Let's visualize this with our region boundary:
+The result is a `spax` object. Its `accessibility` member is a `SpatRaster`;
+`facilities` records supply and `parameters` records the decay and normalization
+choices. This index has supply-per-demand units. It is not a contact probability,
+an observed service rate, or the CLM contact measure `rho`.
 
-```{r}
-# Plot population density
-plot(pop, main = "Under-5 Population Density")
-plot(vect(bound0), add = TRUE) # Add region boundary
+```{r inspect-and-check}
+head(terra::as.data.frame(result$accessibility, xy = TRUE, na.rm = FALSE))
+result$parameters
+# Independent check of the declared identity-normalized FCA calculation.
+W <- exp(-travel_values^2 / (2 * 5^2))
+D <- terra::values(demand, mat = FALSE)
+load <- colSums(W * D)
+expected <- drop(W %*% (facilities$slots / load))
+stopifnot(isTRUE(all.equal(
+  terra::values(result$accessibility, mat = FALSE), expected,
+  check.attributes = FALSE, tolerance = 1e-10)))
 ```
 
-This raster shows us where children under 5 years old are located across the region, with brighter colors indicating higher density areas.
+The spatial summary describes raster cells; it is not automatically weighted by
+demand. If your question concerns the average request, calculate and label that
+weighted summary explicitly.
 
-### 2. Exploring Supply
-
-For healthcare supply, we have detailed information about hospitals (`hc12_hos`)
-
-```{r}
-# Look at hospital data
-head(hc12_hos)
-
-# Visualize hospital distribution and capacity
-ggplot() +
-  geom_sf(data = bound0, fill = "grey95", color = "grey70") +
-  geom_sf(data = hc12_hos, aes(color = hoslvl, size = s_doc)) +
-  scale_size_continuous(name = "Number of Doctors") +
-  scale_color_viridis_d(name = "Hospital Level") +
-  theme_minimal() +
-  labs(
-    title = "Hospital Distribution in Region 12",
-    subtitle = "Size indicates number of doctors"
-  )
+```{r weighted-summary}
+data.frame(request_weighted_index = weighted.mean(expected, D),
+  total_slots_per_request = sum(facilities$slots) / sum(D))
 ```
 
-### 3. Distance and Travel Time
+The equality here follows from using the same weights on both sides with
+identity normalization, positive facility loads and this fully observed domain.
+Do not transfer it to other normalizations or incomplete support without
+checking their equations.
 
-The package includes pre-computed travel time data showing how long it takes to reach each facility:
+## Continue
 
-```{r}
-# Load the travel time data
-distance_raster <- read_spax_example("hos_iscr.tif")
-distance_raster
-# Each layer represents travel time to a different facility
-
-
-# Look at travel time to one facility
-plot(distance_raster[[1]],
-  main = "Travel Time to Hospital C1 (minutes)"
-)
-plot(vect(bound0), add = TRUE)
-plot(hc12_hos[1, ], add = TRUE, pch = 16, col = "red")
-```
-
-## Quick Start: Basic Accessibility Analysis
-
-Now that we understand our data, let's put it all together for a basic accessibility analysis. We'll use the Enhanced Two-Step Floating Catchment Area (E2SFCA) method to analyze access to doctors:
-
-```{r}
-# Calculate accessibility scores
-result <- spax_e2sfca(
-  demand = pop, # Population density
-  supply = hc12_hos |> st_drop_geometry(), # Hospital capacity
-  distance = distance_raster, # Travel times
-  decay_params = list( # How access decays with distance
-    method = "gaussian",
-    sigma = 30 # 30-minute characteristic distance
-  ),
-  demand_normalize = "standard", # Prevent demand inflation
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse") # Analyze doctors and nurses
-)
-```
-
-```{r}
-# Visualize the results
-plot(result,
-  main = c("Access to Doctors", "Access to Nurses"),
-  fun = function() lines(bound0) # add region boundary
-)
-```
-
-And that's it! We've calculated accessibility scores for doctors and nurses across the region with the lighter colors indicating better access.
-
-## What's Next?
-
-This introduction just scratches the surface of what `spax` can do. For more advanced topics, check out:
-
-- [Data Preparation Guide](https://songyosr.github.io/spax/articles/spax-102-data-prep.html)
-- [Dissecting spax: Understanding the package's inner workings](https://songyosr.github.io/spax/articles/spax-103-dissection.html)
-- [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html)
+- [Prepare counts, IDs and travel](spax-102-data-prep.html), including unknown
+  values and an explicitly optional live-routing example.
+- [Inspect the FCA calculation](spax-103-dissection.html) and its alternatives.
+- [Choose resolution and output size](spax-104-raster-tradeoff.html).
+- [Fit a static allocation model](allocation-workflow.html) when expected
+  utilization, explicit outside contact and supported uncertainty are required.

@@ -6,6 +6,7 @@ articles:
   - title: Public FCA Guides
     navbar: ~
     contents:
+      - model-choice
       - spax-101-intro
       - spax-102-data-prep
       - spax-103-dissection
