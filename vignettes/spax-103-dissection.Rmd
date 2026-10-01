@@ -1,462 +1,121 @@
 ---
-title: "3. Under the Hood: Dissecting Spatial Accessibility Analysis"
+title: "3. Understanding the FCA calculation"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{3. Under the Hood: Dissecting Spatial Accessibility Analysis}
+  %\VignetteIndexEntry{3. Understanding the FCA calculation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.width = 8,
-  fig.height = 5,
-  dpi = 100
-)
-```
-
-# Okay, Time for Some Theory!
-
-We've been avoiding this moment for two whole vignettes, but there's no escaping it anymore - we need to talk about theory. Don't worry though! Like any good recipe, spatial accessibility analysis is just a matter of combining simple ingredients in the right way.
-
-Let's peek under the hood of spax to understand:
-
--   How spatial accessibility is actually calculated
--   Why we chose certain approaches over others
--   How theory translates into actual code
-
-## The Recipe for Spatial Accessibility
-
-At its heart, spatial accessibility tries to answer a deceptively simple question: "How easily can people reach the services they need?" This involves three key ingredients:
-
-1.  People who need services (demand)
-2.  Places that provide services (supply)
-3.  The effort needed to connect them (distance/time)
-
-The Enhanced Two-Step Floating Catchment Area (E2SFCA) method, which spax implements, combines these ingredients in two steps:
-
-### Step 1: Service-to-Population Ratios
-
-First, we calculate how much service capacity is available relative to potential demand. For each service location $j$:
-
-$$
-R_j = \frac{S_j}{\sum_i P_i W_d(d_{ij})}
-$$
-
-Where:
-
--   $S_j$is the service capacity (like number of doctors)
--   $P_i$ is the population at location $i$
--   $W_d(d_{ij})$ is a weight based on travel time/distance
--   $R_j$ is the resulting service-to-population ratio
-
-Think of this like calculating the "doctor-to-patient ratio" for each hospital, but with a twist – patients are weighted by how far they have to travel.
-
-### Step 2: Accessibility Scores
-
-Then, we look at it from the population's perspective. For each location i:
-
-$$
-A_i = \sum_j R_j W_r(d_{ij})
-$$
-
-Where:
-
--   $R_j$ is the ratio we calculated in Step 1\
--   $W_r(d\_{ij})$ is another distance-based weight\
--   $A_i$ is the final accessibility score
-
-This tells us how much service capacity people can reach, accounting for both distance and competition from other users.
-
-## Rasterized formulas: A Different Perspective
-
-While these formulas are traditionally written in terms of points $i$ and $j$, our raster-based implementation thinks in terms of surfaces (\~every point $i$ simultaneously). Let's rewrite these equations to better reflect how spax actually computes them:
-
-### Step 1: Service-to-Population Ratios Raster Form
-
-$$
-r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}
-$$
-
-Where:
-
--   $P$ is the population density surface
-
--   $D_j$ is the travel time/distance surface from facility $j$
-
--   $\mathsf{W_d}$ is the demand-side weighting function
-
--   $\odot$ represents element-wise (Hadamard) multiplication
-
--   $sum()$ is the global sum over the entire surface
-
--   $s_j$ is the supply capacity at facility $j$
-
--   $r_j$ is the resulting ratio for facility $j$
-
-### Step 2: Accessibility Scores - Raster Form
-
-$$
-A = \sum_j r_j \mathsf{W_r}(D_j)
-$$
-
-Where:
-
--   $A$ is now a complete accessibility surface rather than point-specific values.
-
--   $\mathsf{W_r}$ is the ratio-side weighting function
-
-This raster-based formulation:
-
--   Eliminates the need to iterate over demand points $i$
--   Takes advantage of efficient matrix operations
--   Better reflects how `spax` works with continuous surfaces
-
-## From Formulas to Functions
-
-Let's see how these formulas - both traditional and raster-based - translate into actual code with spax:
-
-```{r warning = F, message = F}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
+  fig.height = 4, dpi = 100)
 library(spax)
-library(terra)
-library(sf)
-library(tidyverse)
-
-# Load our example data
-pop <- read_spax_example("u5pd.tif") # Population density
-hospitals <- hc12_hos # Hospital locations
-distance <- read_spax_example("hos_iscr.tif") # Travel times
 ```
 
-```{r}
-# Let's look at the basic components for one hospital
-example_hospital <- hospitals[1, ]
+An FCA calculation has two kernels: one determines weighted demand at each
+facility, and the other returns each facility's supply-to-demand ratio to
+origins. Let demand be D_i, supply be S_j, demand weights be G_ij and access
+weights be H_ij. The calculation is
 
-# Plot the fundamental surfaces
-par(mfrow = c(1, 3))
+\[
+L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
+\]
 
-# Population surface (P)
-plot(pop, main = expression("Population Surface" ~ (P)))
+The public FCA implementation uses zero for the facility ratio when its weighted
+demand denominator is zero. That is a computational convention, not evidence
+that unused capacity is physically absent. This example has positive loads and
+fully observed inputs, so it does not invoke that convention.
 
-# Distance surface for facility j (D[j])
-plot(distance[[1]], main = expression("Distance Surface" ~ (D[j])))
+## A small network with explicit IDs
 
-# Weighted surface (W[d](D[j]))
-plot(calc_decay(distance[[1]], method = "gaussian", sigma = 30),
-  main = expression("Weighted Surface" ~ (W[d](D[j])))
-)
+```{r inputs}
+demand <- terra::rast(nrows = 2, ncols = 3, xmin = 0, xmax = 3,
+  ymin = 0, ymax = 2, crs = "EPSG:3857")
+terra::values(demand) <- c(30, 20, 40, 10, 35, 25)
+distance <- terra::rast(demand, nlyrs = 3)
+travel <- cbind(a = c(2, 4, 8, 3, 6, 10),
+  b = c(8, 3, 5, 9, 4, 7), c = c(11, 8, 2, 10, 7, 3))
+terra::values(distance) <- travel
+names(distance) <- colnames(travel)
+supply <- c(a = 18, b = 25, c = 15) # weekly slots
 ```
 
-Each theoretical component becomes a raster operation:
+Travel is minutes, demand is weekly requests and supply is weekly slots. The
+grid is only a display template; its coordinates did not generate these travel
+times. A travel layer's facility ID must agree with the corresponding supply ID.
 
--   Population Surface ($P$): A single raster showing population density/
--   Distance Surfaces ($D_j$): A stack of rasters, one per facility/
--   Weight Function ($\mathsf{W_d}, \mathsf{W_r}$): Applied using `calc_decay()`
+## Decay and normalization are separate choices
 
-The real power comes in how spax chains these operations together efficiently. Rather than iterating over individual points, we: - Process entire surfaces at once - Use optimized matrix operations - Take advantage of parallel processing (via `terra`) where possible
+For Gaussian decay, W_ij = exp(-d_ij^2/(2 sigma^2)). The same sigma has the travel
+unit; it is neither a catchment boundary nor a fitted parameter in this example.
 
-# Building Blocks: Core Operations in spax
-
-## Distance Decay: From Theory to Practice
-
-Now that we understand the theory, let's look at how we actually calculate those weight functions $W_d(d_{ij})$ or $\mathsf{W_d}(D_j)$. The weight function's job is simple - take a distance value and return a weight between 0 and 1. But how quickly should that weight decay with distance?
-
-`spax` implements three classical decay functions (+ a binary decay), each offering different mathematical properties. Let's align them at a common reference point (50% decay at 30 minutes) to see how they behave:
-
-```{r}
-# Create example data with functions aligned at 50% decay at 30 minutes
-example <- data.frame(x = seq(1, 160, 2))
-
-example <- example |>
-  mutate(
-    gaussian_exp = calc_decay(x, method = "gaussian", sigma = 30),
-    exponential_exp = calc_decay(x, method = "exponential", sigma = 0.0196),
-    power_exp = calc_decay(x, method = "power", sigma = 0.1945)
-  )
-
-# Plot
-ggplot(example, aes(x = x)) +
-  geom_line(aes(y = gaussian_exp, color = "Gaussian")) +
-  geom_line(aes(y = exponential_exp, color = "Exponential")) +
-  geom_line(aes(y = power_exp, color = "Power")) +
-  labs(
-    title = "Distance Decay Functions",
-    subtitle = "All functions aligned at 50% decay at 30 minutes",
-    x = "Distance (minutes)",
-    y = "Weight",
-    color = "Function"
-  ) +
-  scale_y_continuous(limits = c(0, 1)) +
-  theme_minimal()
+```{r kernels}
+weights <- calc_decay(distance, method = "gaussian", sigma = 5)
+standard <- calc_normalize(weights, method = "standard")
+semi <- calc_normalize(weights, method = "semi")
+data.frame(cell = seq_len(terra::ncell(demand)),
+  raw_sum = rowSums(terra::values(weights)),
+  standard_sum = rowSums(terra::values(standard)),
+  semi_sum = rowSums(terra::values(semi)))
 ```
 
-Each function offers a different mathematical perspective on how distance affects accessibility:
+For raster weights and no outside weight, `identity` leaves the kernel unchanged;
+`standard` divides each cell's weights by their sum when that sum is positive;
+`semi` divides only when the sum exceeds 1. These choices change G and therefore
+the denominator L. Normalization is a model choice, not a universal correction
+for an error. In `spax_e2sfca()`, `demand_normalize` acts on the demand-side
+weights; the access-side weights remain W.
 
--   Gaussian decay ($W(d) = e^{-d^2/(2\sigma^2)}$): Models accessibility like a bell curve, with the greatest change happening around that 30-minute mark/
--   Exponential decay ($W(d) = e^{-\lambda d}$): Each additional minute of travel reduces accessibility by the same percentage/
--   Power decay ($W(d) = d^{-\beta}$): Similar to exponential early on, but maintains higher weights at larger distances
+## Compose the public operations
 
-Let's see how these functions transform our distance surfaces:
+Here G=H=W and normalization is explicitly `identity`. The named output of
+`gather_weighted()` is aligned before spreading: `spread_weighted()` uses
+positional values and does not perform an ID join for us.
 
-```{r fig.width=10, fig.height=8, out.width='100%'}
-# Extract one distance surface to explore
-D_j <- distance[[1]] # Distance surface to our example hospital
-
-# Calculate weights using different decay functions
-gaussian_weights <- calc_decay(D_j,
-  method = "gaussian",
-  sigma = 30
-)
-
-exponential_weights <- calc_decay(D_j,
-  method = "exponential",
-  sigma = 0.0196
-)
-
-power_weights <- calc_decay(D_j,
-  method = "power",
-  sigma = 0.1945
-)
-
-# Visualize how different functions handle distance
-par(mfrow = c(2, 2))
-plot(D_j, main = "Original Distance Surface (D_j)")
-plot(gaussian_weights, main = "Gaussian Decay")
-plot(exponential_weights, main = "Exponential Decay")
-plot(power_weights, main = "Power Decay")
-```
-
-The beauty of spax's raster-based approach is that these transformations happen all at once - every cell in our distance surface gets converted to a weight simultaneously. And because we're using R's vectorized operations under the hood, this works just as efficiently whether we're looking at one facility or a hundred.
-
-Want to create your own decay function? Any function that takes distances and returns weights will work:
-
-```{r}
-# Custom decay combining distance threshold with Gaussian decay
-custom_decay <- function(distance, sigma = 30, threshold = 40) {
-  gaussian <- exp(-distance^2 / (2 * sigma^2))
-  gaussian[distance > threshold] <- 0 # Hard cutoff at threshold
-  return(gaussian)
+```{r compose}
+weighted_demand <- gather_weighted(demand, weights, simplify = TRUE)
+ratio <- supply[names(weighted_demand)] / weighted_demand
+access <- spread_weighted(unname(ratio[names(weights)]), weights)
+wrapped <- spax_e2sfca(demand, rev(supply), distance,
+  decay_params = list(method = "gaussian", sigma = 5),
+  demand_normalize = "identity")
+custom <- compute_access(demand, supply, weights, weights)
+W <- exp(-travel^2 / (2 * 5^2))
+D <- terra::values(demand, mat = FALSE)
+manual <- drop(W %*% (supply / colSums(W * D)))
+for (answer in list(access, wrapped$accessibility, custom)) {
+  stopifnot(isTRUE(all.equal(terra::values(answer, mat = FALSE), manual,
+    tolerance = 1e-10, check.attributes = FALSE)))
 }
-
-# Use it just like the built-in functions
-custom_weights <- calc_decay(D_j,
-  method = custom_decay,
-  sigma = 30,
-  threshold = 60
-)
-
-# Plot
-par(mfrow = c(1, 2))
-plot(gaussian_weights, main = "Gaussian Decay")
-plot(custom_weights, main = "Custom Decay\n(thresholded Gaussian)")
+plot(wrapped, main = "Identity-normalized FCA index")
 ```
 
-## Managing Competition: Weight Normalization
+The wrapper, public component path and independent matrix calculation agree for
+these declared inputs. The check verifies this calculation; it does not imply
+that every accessibility model is mathematically equivalent.
 
-Remember how we talked about counting patients in Step 1? Here's where things get tricky. If we don't handle overlapping service areas carefully, we might count the same population multiple times. This is where `calc_normalize()` and `calc_choice()` comes in:
+## Change the model explicitly
 
-```{r fig.width=10, fig.height=8, out.width='100%'}
-# Create weight surfaces for two nearby facilities
-W1 <- calc_decay(distance[[1]], method = "gaussian", sigma = 30)
-W2 <- calc_decay(distance[[2]], method = "gaussian", sigma = 30)
-facility_weights <- c(W1, W2)
+`spax_2sfca()` uses a binary travel threshold. `spax_m2sfca()` uses W on the
+demand side and W squared on the access side. Neither change is a fitted
+statistical comparison.
 
-# Compare different normalization approaches
-standard_norm <- calc_normalize(facility_weights, method = "standard")
-semi_norm <- calc_normalize(facility_weights, method = "semi")
-
-# Visualize the effect of normalization
-par(mfrow = c(2, 2))
-plot(sum(facility_weights),
-  main = "Raw Weight Sum\n(potential double-counting)"
-)
-plot(vect(bound0), add = TRUE)
-
-# --
-plot(sum(standard_norm),
-  main = "Standard Normalization\n(sums to 1)"
-)
-plot(vect(bound0), add = TRUE)
-
-# --
-plot(sum(semi_norm),
-  main = "Semi-normalization\n(prevents inflation)"
-)
-plot(vect(bound0), add = TRUE)
-
-# Show where normalization matters most
-overlap_areas <- sum(facility_weights) > 1
-plot(overlap_areas,
-  main = "Competition Areas\n(where normalization matters)"
-)
-plot(vect(bound0), add = TRUE)
+```{r alternatives}
+binary <- spax_2sfca(demand, supply, distance, threshold = 6)
+modified <- spax_m2sfca(demand, supply, distance,
+  decay_params = list(method = "gaussian", sigma = 5),
+  demand_normalize = "identity")
+modified_manual <- drop((W^2) %*% (supply / colSums(W * D)))
+stopifnot(isTRUE(all.equal(terra::values(modified$accessibility, mat = FALSE),
+  modified_manual, tolerance = 1e-10, check.attributes = FALSE)))
+data.frame(cell = seq_along(D), E2SFCA = manual,
+  M2SFCA = modified_manual, binary_FCA = terra::values(binary$accessibility, mat = FALSE))
 ```
 
-Think of normalization like adjusting a recipe when ingredients overlap. If two hospitals serve the same area:
-
--   Standard normalization: Forces weights to sum to 1, effectively splitting demand between facilities
--   Semi-normalization: Only adjusts weights where facilities actually compete (sum \> 1)
--   No normalization: Allows double-counting, which might be appropriate for truly independent services
-
-In our raster formulation, this becomes a simple operation on surfaces rather than complex point-wise calculations.
-
-## Spreading and Gathering: The Core Operations
-
-Now for the real workhorses of spax: the spread_weighted() and gather_weighted() functions. These implement the summations in our formulas:
-
--   Traditional: $\sum_i P_i W_d(d_{ij})$ and $\sum_j R_j W_r(d_{ij})$
-
--   Raster: $sum(P \odot \mathsf{W_d}(D_j))$ and $\sum_j r_j \mathsf{W_r}(D_j)$
-
-```{r}
-# Let's see these operations in action
-# First, calculate potential demand for our facilities
-potential_demand <- gather_weighted(
-  pop, # Population surface (P)
-  standard_norm, # Normalized weights (W_d)
-  simplify = FALSE
-)
-
-print("Potential demand by facility:")
-head(potential_demand)
-
-# Now calculate and spread accessibility
-supply_ratios <- potential_demand |>
-  mutate(
-    ratio = hospitals$s_doc[match(unit_id, hospitals$id)] / weighted_sum
-  )
-
-print("Supply ratios:")
-head(supply_ratios)
-
-accessibility <- spread_weighted(
-  supply_ratios, # Facility-specific ratios (r_j)
-  facility_weights, # Weight surfaces (W_r)
-  value_cols = "ratio"
-)
-
-plot(accessibility, main = "Final Accessibility Surface (A)")
-plot(vect(bound0), add = TRUE)
-```
-
-Think of these operations as: - `gather_weighted()`: Collects weighted values from a surface into facility-specific totals (a vector) - `spread_weighted()`: Distributes facility-specific values back across their service areas surface
-
-## Putting It All Together
-
-## Putting It All Together
-
-Now that we understand each component, let's see how `spax_e2sfca()` orchestrates them into a complete accessibility analysis. We'll follow both the formula and the actual code:
-
-### The Complete Workflow
-
-+----------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| Traditional                                                                | Raster                                                                             |
-+============================================================================+====================================================================================+
-| 1.  Calculate $R_j = \frac{S_j}{\sum_i P_i W_d(d_{ij})}$ for each facility | 1.  Calculate $r_j = \frac{s_j}{sum(P \odot \mathsf{W_d}(D_j))}$ for each facility |
-+----------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| 2.  Calculate $A_i = \sum_j R_j W_r(d_{ij})$ for each location             | 2.  Calculate $A = \sum_j r_j \mathsf{W_r}(D_j)$ as a surface                      |
-+----------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-
-Let's see this step by step:
-
-```{r}
-# Step 1a: Create distance decay weights
-facility_weights <- calc_decay(
-  distance, # Distance surfaces (D_j)
-  method = "gaussian",
-  sigma = 30
-)
-
-# Step 1b: Normalize weights to handle competition
-demand_weights <- calc_normalize(
-  facility_weights, # W_d(D_j)
-  method = "standard" # Prevents double-counting
-)
-
-# Step 1c: Calculate potential demand for each facility
-potential_demand <- gather_weighted(
-  pop, # Population surface (P)
-  demand_weights, # Normalized weights
-  simplify = FALSE
-)
-
-# Step 1d: Calculate supply-to-demand ratios
-supply_ratios <- potential_demand |>
-  mutate(
-    ratio = hospitals$s_doc[match(unit_id, hospitals$id)] / weighted_sum
-  )
-
-# Step 2: Calculate final accessibility surface
-accessibility <- spread_weighted(
-  supply_ratios, # Facility ratios (r_j)
-  facility_weights, # Access-side weights (W_r)
-  value_cols = "ratio"
-)
-
-# Visualize the final result
-plot(accessibility, main = "E2SFCA Accessibility Surface")
-plot(vect(bound0), add = TRUE)
-```
-
-Or we can let `spax_e2sfca()` handle all of this for us:
-
-```{r}
-# The same calculation in one function call
-result <- spax_e2sfca(
-  demand = pop,
-  supply = hospitals |> st_drop_geometry(),
-  distance = distance,
-  decay_params = list(method = "gaussian", sigma = 30),
-  demand_normalize = "standard",
-  id_col = "id",
-  supply_cols = "s_doc"
-)
-
-plot(result, main = "E2SFCA Accessibility Scores")
-plot(vect(bound0), add = TRUE)
-```
-
-### Understanding the Benefits
-
-This modular design offers several advantages:
-
-1.  **Flexibility**: Each component can be customized:
-
-    -   Different decay functions
-
-    -   Alternative normalization approaches
-
-2.  **Efficiency**:
-
-    -   Operations are vectorized across entire surfaces
-
-    -   Memory usage is optimized for large datasets
-
-    -   Parallel processing where beneficial
-
-3.  **Transparency**:
-
-    -   Each step is clear and inspectable
-
-    -   Results can be validated at any stage
-
-    -   Intermediate outputs available for analysis
-
-4.  **Extensibility**:
-
-    -   New components can be added easily
-
-    -   Custom workflows can be built from basic pieces
-
-    -   Alternative accessibility measures can be implemented
-
-## What's Next?
-
-Now that you understand how spax works under the hood, you might want to explore:
-
--   [Understanding Raster Trade-offs](https://songyosr.github.io/spax/articles/spax-104-raster-tradeoff.html): Learn about the memory and performance implications of our raster-based approach
-
--   Advanced Topics in Accessibility: Demand adjustment, normalization, and choice-based modeling [Coming Soon]
-
+In a corrected static CLM, supply-weighted attraction and an outside option
+instead define choice probabilities. Expected facility loads and contact
+probabilities then have explicit allocation meanings. An FCA index must not be
+relabeled as a CLM probability. [Choosing a model](model-choice.html) explains
+the distinction; [the allocation walkthrough](allocation-workflow.html) shows
+fitting and checking the separate model.

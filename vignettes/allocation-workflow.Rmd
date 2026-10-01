@@ -10,6 +10,20 @@ vignette: >
 This workflow is experimental. Its model family is corrected static CLM with an
 explicit outside option; a broader recipe interface is not part of this example.
 
+For model selection and the existing public FCA interface, begin with
+[Choosing an FCA index or an allocation model](model-choice.html). The
+[preparation guide](spax-102-data-prep.html) explains counts, units, IDs and
+missing travel; [saved-result inspection](function-naming.html) describes the
+standard R methods used below. An FCA accessibility index and CLM contact
+probability retain their different meanings.
+
+The first section is a small fit and prediction example. The second section
+executes the complete 399-attempt facility bootstrap, including scenario
+evaluation, tables, plots and a fresh installed R process. It is intentionally
+more expensive and needs no network connection. Allow it to finish before
+starting another resource-intensive validation; shortening the attempt count
+would not demonstrate the supported interval procedure.
+
 This example allocates mutually exclusive service requests to facilities or an
 outside category during one reference period. Demand is request opportunities,
 supply is service slots, and travel is minutes. Supply affects attraction and
@@ -18,6 +32,7 @@ neither delivered service nor a hard limit on facility utilization. The outside
 category is not automatically unmet need.
 
 ```{r setup}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(spax)
 origin_ids <- paste0("o", 1:8)
 facility_ids <- paste0("f", 1:4)

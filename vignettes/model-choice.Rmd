@@ -1,0 +1,139 @@
+---
+title: "Choosing an FCA index or an allocation model"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Choosing an FCA index or an allocation model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
+  fig.height = 4, dpi = 100)
+library(spax)
+```
+
+Choose a model by the quantity you need and the observations that can support
+it. spax retains its public floating catchment area (FCA) workflow and adds an
+experimental corrected static conditional-logit allocation workflow with an
+explicit outside option. Existing FCA calls remain valid; they do not need to
+be rewritten as allocation fits.
+
+| Question | Starting point | What the output means |
+|:--|:--|:--|
+| How is weighted supply distributed relative to weighted demand? | `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()` | A model-specific supply-per-demand accessibility index |
+| How are request opportunities allocated among facilities and outside contact? | `prepare_allocation()` then `clm_allocation()` | Choice probabilities and expected loads under a declared model |
+| Which parameters fit observed utilization or flows? | `fit_allocation()` with an explicit loss and starts | A calibrated mean model plus optimization diagnostics |
+| What changes under a supply scenario at the same parameters? | Reprepare and `evaluate_allocation()` | A model-based contrast, not an estimated causal effect |
+| What can be predicted at additional locations? | `predict_allocation()` | Requested outputs with probability, demand and capacity validity flags |
+| Are facility-count bootstrap intervals available? | `bootstrap_allocation()` after an eligible fit and observation declaration | Conditional pointwise intervals when the supported procedure's gates pass |
+
+An FCA index is not a contact probability. A fitted model is not automatically
+identified or empirically validated. A regional interval is not a cellwise map
+interval. These distinctions remain even when both workflows use the same
+travel data.
+
+## One generated system, two explicit calculations
+
+This six-origin, three-facility system declares demand as weekly requests,
+supply as weekly slots and travel as minutes. Its small raster is a display
+template without geographic meaning. All values are generated locally.
+
+```{r shared-inputs}
+origin_ids <- paste0("o", 1:6)
+facility_ids <- c("a", "b", "c")
+D <- setNames(c(300, 200, 400, 100, 350, 250), origin_ids)
+S <- c(a = 180, b = 250, c = 150)
+T <- cbind(a = c(2, 4, 8, 3, 6, 10),
+  b = c(8, 3, 5, 9, 4, 7), c = c(11, 8, 2, 10, 7, 3))
+rownames(T) <- origin_ids
+grid <- terra::rast(nrows = 2, ncols = 3, xmin = 0, xmax = 3,
+  ymin = 0, ymax = 2, crs = "EPSG:3857")
+demand_raster <- terra::setValues(grid, unname(D))
+travel_raster <- terra::rast(grid, nlyrs = length(S))
+terra::values(travel_raster) <- T
+names(travel_raster) <- facility_ids
+```
+
+The FCA call uses unchanged Gaussian weights in both steps. Its existing API
+and result class are preserved.
+
+```{r fca}
+fca <- spax_e2sfca(demand_raster, rev(S), travel_raster,
+  decay_params = list(method = "gaussian", sigma = 5),
+  demand_normalize = "identity")
+summary(fca)
+plot(fca, main = "FCA supply-per-demand index")
+```
+
+The static CLM instead forms a facility score S_j times its decay weight and
+divides by the sum of scores plus the outside weight v0. Each row includes an
+outside probability, so the inside probabilities can sum to less than 1. Supply
+affects attraction here; it is not a hard utilization ceiling.
+
+```{r allocation}
+metadata <- list(demand_units = "requests", demand_period = "week",
+  supply_units = "slots", supply_period = "week", travel_units = "minutes")
+inputs <- prepare_allocation(D, S, T, metadata = metadata)
+model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+theta <- c(sigma = 5, v0 = 50)
+fixed <- evaluate_allocation(model, theta)
+prediction <- predict_allocation(fixed, T, demand = D,
+  outputs = c("rho", "A", "abar", "flow"))
+data.frame(origin_id = origin_ids,
+  FCA_index = terra::values(fca$accessibility, mat = FALSE),
+  CLM_contact = prediction$outputs$rho,
+  CLM_attribution = prediction$outputs$A)
+as.data.frame(fixed$coverage)
+```
+
+Here `rho` is inside-contact probability. `A` is proportional capacity
+attribution per request opportunity, and `abar = A/rho` is attribution per
+inside contact where defined. `flow = D * P` is expected request count, and
+facility utilization is its column sum. Capacity attribution is not delivered
+service. The table places distinct measures beside one another; it is not an
+equivalence check or a ranking of model quality.
+
+## Calibrate only after declaring the target
+
+For illustration, round this model's expected facility totals to generate a
+target. These counts are synthetic and supply no evidence that the model is
+correct for an application. The observed vector is deliberately permuted; names
+bind it to the canonical facility IDs.
+
+```{r small-fit}
+observed <- setNames(round(colSums(prediction$outputs$flow)), facility_ids)
+starts <- rbind(near = c(sigma = 4, v0 = 40), far = c(sigma = 8, v0 = 80))
+fit <- fit_allocation(model, rev(observed), starts,
+  lower = c(sigma = 1, v0 = 1), upper = c(sigma = 20, v0 = 200),
+  output = "utilization", loss = "poisson", gradient = TRUE)
+stopifnot(identical(fit$status, "selected"))
+as.data.frame(fit, type = "parameters")
+summary(fit)
+```
+
+The six experimental verbs are **prepare, declare, fit, evaluate, predict and
+bootstrap**. They are separate steps so that a chosen fixed model can be
+evaluated without fitting, while an eligible fit can be inspected without
+refitting. An outside option does not automatically represent unmet need, and
+Poisson fitting does not impose exact total matching.
+
+This tiny example is not an uncertainty demonstration. Continue to the
+[full allocation workflow](allocation-workflow.html) for the generated
+80-origin, 40-facility example with all 399 bootstrap attempts, at least 380
+finite successful values per reported quantity, paired supply scenarios and
+fresh-process saved-result inspection. Observation declarations and original-fit
+eligibility remain required; a bootstrap is not available for every fit.
+
+## Carry these checks across workflows
+
+Use stable facility IDs, declare counts versus densities and reference periods,
+and check travel geometry and units before computing. Keep zero demand, unknown
+demand and absent travel edges distinct. Legacy FCA reductions and experimental
+allocation preparation have different missing-data policies; sharing a file
+does not prove that their included support is the same.
+
+For details, read [data preparation](spax-102-data-prep.html),
+[the FCA calculation](spax-103-dissection.html),
+[resolution and cost](spax-104-raster-tradeoff.html), and
+[saved-result inspection](function-naming.html).
