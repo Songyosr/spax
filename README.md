@@ -18,6 +18,10 @@ CLM interface.
 
 ## Install the experimental branch
 
+Use R 4.4.0 or newer. This is the supported dependency and testing floor
+for this development branch. Existing public FCA calling semantics are
+unchanged.
+
 The allocation workflow described here is on `codex-assist-main`.
 Install that branch explicitly rather than relying on the repository’s
 default branch:

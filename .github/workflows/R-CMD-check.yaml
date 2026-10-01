@@ -1,10 +1,10 @@
 name: R CMD check
 
-on:
+"on":
   pull_request:
-    branches: [codex-assist-main]
+    branches: [develop, codex-assist-main]
   push:
-    branches: [codex-assist-main]
+    branches: [develop, codex-assist-main]
   workflow_dispatch:
 
 permissions:
@@ -16,45 +16,237 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    name: ${{ matrix.config.id }} (R ${{ matrix.config.r }})
+    runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        config:
+          - {id: linux-release, os: ubuntu-latest, r: release}
+          - {id: windows-release, os: windows-latest, r: release}
+          - {id: macos-release, os: macos-latest, r: release}
+          - {id: linux-devel, os: ubuntu-latest, r: devel}
+          - {id: linux-minimum, os: ubuntu-latest, r: '4.4.0'}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: "yes"
       _R_CHECK_FORCE_SUGGESTS_: "true"
-      NOT_CRAN: "true"
+      _R_CHECK_CRAN_INCOMING_: "true"
+      _R_CHECK_LIMIT_CORES_: "true"
+      NOT_CRAN: "false"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      MAKEFLAGS: "-j1"
+      SPAX_REQUESTED_R: ${{ matrix.config.r }}
+      SPAX_CHECK_CELL: ${{ matrix.config.id }}
 
     steps:
       - uses: actions/checkout@v6
-      - uses: r-lib/actions/setup-pandoc@v2
       - uses: r-lib/actions/setup-r@v2
+        id: setup_r
         with:
-          r-version: release
+          r-version: ${{ matrix.config.r }}
+          Ncpus: '1'
           use-public-rspm: true
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-tinytex@v2
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            any::sessioninfo
+            any::digest
+          dependencies: '"all"'
           needs: check
-      - name: Verify spatial test dependencies
+      - name: Prepare required PDF manual fonts
         shell: Rscript {0}
         run: |
-          paths <- unique(c(
-            strsplit(sf::sf_proj_info(type = "path"), .Platform$path.sep, fixed = TRUE)[[1]],
-            system.file("proj", package = "sf"), "/usr/share/proj", "/usr/local/share/proj"
-          ))
-          paths <- paths[nzchar(paths) & file.exists(file.path(paths, "proj.db"))]
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "spax-ci-evidence")
+          dir.create(evidence, recursive = TRUE, showWarnings = FALSE)
+          kpse <- Sys.which("kpsewhich")
+          pdftex <- Sys.which("pdflatex")
+          if (any(!nzchar(c(kpse, pdftex)))) {
+            stop("kpsewhich and pdflatex are required for PDF manual checks")
+          }
+          metrics <- c("pcrr8t.tfm", "pcrr8c.tfm")
+          locate <- function(metric) {
+            path <- suppressWarnings(system2(kpse, shQuote(metric),
+                                              stdout = TRUE, stderr = TRUE))
+            status <- attr(path, "status")
+            if ((!is.null(status) && status != 0L) || length(path) != 1L ||
+                !file.exists(path[[1]])) return("")
+            normalizePath(path[[1]], winslash = "/", mustWork = TRUE)
+          }
+          paths <- vapply(metrics, locate, character(1))
+          install_status <- NA_integer_
+          if (any(!nzchar(paths))) {
+            # R's manual compiler does not install missing fonts automatically.
+            install_status <- tinytex::tlmgr(c("install", "courier"))
+            paths <- vapply(metrics, locate, character(1))
+          }
+          hashes <- vapply(paths, function(path) {
+            if (nzchar(path)) digest::digest(file = path, algo = "sha256") else NA_character_
+          }, character(1))
+          write.csv(data.frame(metric = metrics, path = unname(paths),
+                               sha256 = unname(hashes)),
+                    file.path(evidence, "manual-fonts.csv"), row.names = FALSE)
+          writeLines(c(paste("Courier installation status:", install_status),
+                       paste("tinytex R package:", utils::packageVersion("tinytex")),
+                       system2(pdftex, "--version", stdout = TRUE)),
+                     file.path(evidence, "manual-tools.txt"))
+          if (!is.na(install_status) && install_status != 0L) {
+            stop("Courier installation failed; see saved manual tool evidence")
+          }
+          if (any(!nzchar(paths))) stop("Courier metrics are required for PDF manual checks")
+      - name: Verify supported R, document tools and spatial dependencies
+        env:
+          # setup-r defaults to NOT_CRAN=true; this gate must exercise CRAN mode.
+          NOT_CRAN: "false"
+        shell: Rscript {0}
+        run: |
+          stopifnot(getRversion() >= "4.4.0")
+          if (Sys.getenv("SPAX_REQUESTED_R") == "4.4.0") {
+            stopifnot(as.character(getRversion()) == "4.4.0")
+          }
+          stopifnot(utils::packageVersion("testthat") >= "3.2.0")
+          stopifnot(Sys.getenv("NOT_CRAN") == "false",
+                    Sys.getenv("_R_CHECK_FORCE_SUGGESTS_") == "true",
+                    Sys.getenv("_R_CHECK_CRAN_INCOMING_") == "true")
+          stopifnot(rmarkdown::pandoc_available(), nzchar(Sys.which("pdflatex")))
+          sf_paths <- tryCatch(sf::sf_proj_info(type = "path"),
+                               error = function(e) character())
+          paths <- c(Sys.getenv(c("PROJ_DATA", "PROJ_LIB")), sf_paths,
+                     system.file("proj", package = "sf"),
+                     system.file("proj", package = "terra"),
+                     "/usr/share/proj", "/usr/local/share/proj", "/opt/homebrew/share/proj")
+          paths <- unique(unlist(strsplit(paths, .Platform$path.sep, fixed = TRUE)))
+          paths <- paths[!is.na(paths) & nzchar(paths) & file.exists(file.path(paths, "proj.db"))]
           if (!length(paths)) stop("PROJ database is required for spatial tests")
-          Sys.setenv(PROJ_LIB = paths[[1]])
-          cat(paste0("PROJ_LIB=", paths[[1]], "\n"), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+          proj <- normalizePath(paths[[1]], winslash = "/", mustWork = TRUE)
+          Sys.setenv(PROJ_DATA = proj, PROJ_LIB = proj)
           point <- sf::st_sfc(sf::st_point(c(1, 1)), crs = 4326)
           stopifnot(all(is.finite(sf::st_coordinates(sf::st_transform(point, 3857)))))
-          stopifnot(requireNamespace("Matrix", quietly = TRUE))
+          raster <- terra::rast(nrows = 1, ncols = 1, xmin = 0, xmax = 1,
+                                ymin = 0, ymax = 1, crs = "EPSG:3857")
+          stopifnot(nzchar(terra::crs(raster)))
+          sparse <- Matrix::sparseMatrix(i = 1:2, j = 1:2, x = c(2, 3), dims = c(2, 2))
+          stopifnot(identical(as.numeric(sparse %*% c(5, 7)), c(10, 21)))
+          cat(paste0(c("PROJ_DATA=", "PROJ_LIB="), proj, "\n"),
+              file = Sys.getenv("GITHUB_ENV"), append = TRUE, sep = "")
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "spax-ci-evidence")
+          dir.create(evidence, recursive = TRUE, showWarnings = FALSE)
+          writeLines(c(paste("Requested R:", Sys.getenv("SPAX_REQUESTED_R")),
+                       paste("Actual R:", as.character(getRversion())),
+                       paste("PROJ database:", proj),
+                       capture.output(sf::sf_extSoftVersion())),
+                     file.path(evidence, "preflight.txt"))
+      - name: Record actual R and dependency versions
+        if: ${{ always() && steps.setup_r.outcome == 'success' }}
+        env:
+          NOT_CRAN: "false"
+        shell: Rscript {0}
+        run: |
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "spax-ci-evidence")
+          dir.create(evidence, recursive = TRUE, showWarnings = FALSE)
+          writeLines(c(paste("Matrix cell:", Sys.getenv("SPAX_CHECK_CELL")),
+                       paste("Requested R:", Sys.getenv("SPAX_REQUESTED_R")),
+                       paste("Actual R:", R.version.string),
+                       paste("Source commit:", system2("git", c("rev-parse", "HEAD"), stdout = TRUE)),
+                       capture.output(utils::sessionInfo())),
+                     file.path(evidence, "session-info.txt"))
+          installed <- as.data.frame(utils::installed.packages(), stringsAsFactors = FALSE)
+          installed <- installed[order(installed$Package, installed$Version),
+                                 c("Package", "Version", "Built", "LibPath")]
+          utils::write.csv(installed, file.path(evidence, "dependency-versions.csv"), row.names = FALSE)
+          policy <- c("NOT_CRAN", "_R_CHECK_FORCE_SUGGESTS_", "_R_CHECK_CRAN_INCOMING_",
+                      "_R_CHECK_LIMIT_CORES_", "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                      "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS", "MAKEFLAGS")
+          writeLines(paste(policy, Sys.getenv(policy), sep = "="), file.path(evidence, "check-policy.txt"))
+          if (!requireNamespace("digest", quietly = TRUE)) {
+            writeLines("Dependency setup did not provide digest; source hashes unavailable.",
+                       file.path(evidence, "source-before-unavailable.txt"))
+            quit(status = 0)
+          }
+          tracked <- sort(system2("git", "ls-files", stdout = TRUE))
+          hashes <- data.frame(path = tracked, bytes = file.info(tracked)$size,
+            sha256 = unname(vapply(tracked, function(path)
+              digest::digest(file = path, algo = "sha256", serialize = FALSE), character(1))))
+          identity <- c(commit = system2("git", c("rev-parse", "HEAD"), stdout = TRUE),
+                        tree = system2("git", c("rev-parse", shQuote("HEAD^{tree}")), stdout = TRUE))
+          status <- system2("git", c("status", "--porcelain", "--untracked-files=no"), stdout = TRUE)
+          saveRDS(list(identity = identity, status = status, hashes = hashes),
+                  file.path(evidence, "source-before.rds"), version = 2)
+          utils::write.csv(hashes, file.path(evidence, "source-before.csv"), row.names = FALSE)
+          writeLines(c(paste(names(identity), identity, sep = "="), status),
+                     file.path(evidence, "source-before-status.txt"))
       - uses: r-lib/actions/check-r-package@v2
+        id: package_check
+        env:
+          NOT_CRAN: "false"
+          _R_CHECK_FORCE_SUGGESTS_: "true"
+          _R_CHECK_CRAN_INCOMING_: "true"
         with:
-          # The legacy data-preparation vignette calls a live OSRM demo server.
-          # Keep this package/test gate independent of that external service.
-          args: 'c("--no-manual", "--ignore-vignettes", "--as-cran")'
-          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--as-cran")'
+          build_args: 'character()'
           error-on: '"warning"'
           upload-results: true
-          artifact-name: r-check-results
+          artifact-name: r-check-${{ matrix.config.id }}-${{ matrix.config.r }}
+      - name: Record source preservation and check artifact hashes
+        if: ${{ always() && steps.setup_r.outcome == 'success' }}
+        env:
+          SPAX_CHECK_OUTCOME: ${{ steps.package_check.outcome }}
+        shell: Rscript {0}
+        run: |
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "spax-ci-evidence")
+          dir.create(evidence, recursive = TRUE, showWarnings = FALSE)
+          if (!requireNamespace("digest", quietly = TRUE)) {
+            writeLines("Dependency setup did not provide digest; artifact hashes unavailable.",
+                       file.path(evidence, "artifact-hashes-unavailable.txt"))
+            if (Sys.getenv("SPAX_CHECK_OUTCOME") == "success") {
+              stop("A successful check requires SHA256 artifact evidence")
+            }
+            quit(status = 0)
+          }
+          hash_files <- function(paths) data.frame(path = paths, bytes = file.info(paths)$size,
+            sha256 = unname(vapply(paths, function(path)
+              digest::digest(file = path, algo = "sha256", serialize = FALSE), character(1))))
+          tracked <- sort(system2("git", "ls-files", stdout = TRUE))
+          after <- hash_files(tracked)
+          identity <- c(commit = system2("git", c("rev-parse", "HEAD"), stdout = TRUE),
+                        tree = system2("git", c("rev-parse", shQuote("HEAD^{tree}")), stdout = TRUE))
+          status <- system2("git", c("status", "--porcelain", "--untracked-files=no"), stdout = TRUE)
+          utils::write.csv(after, file.path(evidence, "source-after.csv"), row.names = FALSE)
+          writeLines(c(paste(names(identity), identity, sep = "="), status),
+                     file.path(evidence, "source-after-status.txt"))
+          files <- sort(list.files("check", full.names = TRUE, recursive = TRUE,
+                                   all.files = TRUE, no.. = TRUE))
+          files <- files[!file.info(files)$isdir]
+          utils::write.csv(hash_files(files), file.path(evidence, "check-artifact-sha256.csv"), row.names = FALSE)
+          prior <- file.path(evidence, "source-before.rds")
+          unchanged <- FALSE
+          if (file.exists(prior)) {
+            before <- readRDS(prior)
+            unchanged <- identical(identity, before$identity) &&
+              identical(status, before$status) && identical(after, before$hashes)
+          }
+          writeLines(c(paste0("check_step_outcome=", Sys.getenv("SPAX_CHECK_OUTCOME")),
+                       paste0("tracked_source_unchanged=", unchanged),
+                       paste0("check_artifact_files=", length(files))),
+                     file.path(evidence, "preservation-status.txt"))
+          if (file.exists(prior)) stopifnot(unchanged)
+          if (Sys.getenv("SPAX_CHECK_OUTCOME") == "success") {
+            stopifnot(unchanged, any(grepl("[.]tar[.]gz$", files)),
+                      any(basename(files) == "00check.log"))
+          }
+      - name: Upload R and dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: r-environment-${{ matrix.config.id }}-${{ matrix.config.r }}
+          path: ${{ runner.temp }}/spax-ci-evidence
+          if-no-files-found: warn

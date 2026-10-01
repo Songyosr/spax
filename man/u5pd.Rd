@@ -22,11 +22,9 @@ Retrieved from \url{https://dataforgood.facebook.com/dfg/tools/high-resolution-p
 A raster containing population density estimates for children under five years old
 in Thailand's Health Region 12. The data represents the number of children per
 grid cell, derived from Meta's High Resolution Population Density Maps project.
-Available as external data through read_spax_example("u5pd.tif").
-
-Note: As of version 0.2.4, this dataset has been moved to external data storage
-to improve package performance. Please use read_spax_example("u5pd.tif") to
-access this dataset.
+The GeoTIFF is bundled in the package's \code{inst/extdata} directory and is
+not a lazy-loaded R object. Use \code{read_spax_example("u5pd.tif")} to load
+it as a \code{terra::SpatRaster}; no download is required.
 }
 \details{
 This dataset was processed from Meta's High Resolution Population Density Maps
