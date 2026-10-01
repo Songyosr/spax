@@ -63,6 +63,46 @@ jobs:
             any::digest
           dependencies: '"all"'
           needs: check
+      - name: Prepare required PDF manual fonts
+        shell: Rscript {0}
+        run: |
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "spax-ci-evidence")
+          dir.create(evidence, recursive = TRUE, showWarnings = FALSE)
+          kpse <- Sys.which("kpsewhich")
+          pdftex <- Sys.which("pdflatex")
+          if (any(!nzchar(c(kpse, pdftex)))) {
+            stop("kpsewhich and pdflatex are required for PDF manual checks")
+          }
+          metrics <- c("pcrr8t.tfm", "pcrr8c.tfm")
+          locate <- function(metric) {
+            path <- suppressWarnings(system2(kpse, shQuote(metric),
+                                              stdout = TRUE, stderr = TRUE))
+            status <- attr(path, "status")
+            if ((!is.null(status) && status != 0L) || length(path) != 1L ||
+                !file.exists(path[[1]])) return("")
+            normalizePath(path[[1]], winslash = "/", mustWork = TRUE)
+          }
+          paths <- vapply(metrics, locate, character(1))
+          install_status <- NA_integer_
+          if (any(!nzchar(paths))) {
+            # R's manual compiler does not install missing fonts automatically.
+            install_status <- tinytex::tlmgr(c("install", "courier"))
+            paths <- vapply(metrics, locate, character(1))
+          }
+          hashes <- vapply(paths, function(path) {
+            if (nzchar(path)) digest::digest(file = path, algo = "sha256") else NA_character_
+          }, character(1))
+          write.csv(data.frame(metric = metrics, path = unname(paths),
+                               sha256 = unname(hashes)),
+                    file.path(evidence, "manual-fonts.csv"), row.names = FALSE)
+          writeLines(c(paste("Courier installation status:", install_status),
+                       paste("tinytex R package:", utils::packageVersion("tinytex")),
+                       system2(pdftex, "--version", stdout = TRUE)),
+                     file.path(evidence, "manual-tools.txt"))
+          if (!is.na(install_status) && install_status != 0L) {
+            stop("Courier installation failed; see saved manual tool evidence")
+          }
+          if (any(!nzchar(paths))) stop("Courier metrics are required for PDF manual checks")
       - name: Verify supported R, document tools and spatial dependencies
         env:
           # setup-r defaults to NOT_CRAN=true; this gate must exercise CRAN mode.
