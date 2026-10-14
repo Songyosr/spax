@@ -88,6 +88,16 @@ reference:
       - read_spax
       - save_spax
 
+  - title: "Cornwall GP Example Data"
+    desc: "Open data for NHS Cornwall and Isles of Scilly GP practices; see inst/COPYRIGHTS for sources and licences"
+    contents:
+      - cornwall_gp
+      - cornwall_lsoa
+      - cornwall_flows
+      - cornwall_travel
+      - cornwall_pop
+      - cornwall_gp_travel
+
   - title: "Package Data"
     desc: "Included example data and source attribution; consult original sources for reuse terms"
     contents:

@@ -5,6 +5,12 @@
 The changes below are available on `codex-assist-main`. They are not a new stable
 release; record the source commit when reproducing an analysis.
 
+* New open example data for the 55 GP practices of NHS Cornwall and Isles of
+  Scilly: `cornwall_gp`, `cornwall_lsoa`, `cornwall_flows`, `cornwall_travel`,
+  and the `cornwall_pop.tif` and `cornwall_gp_travel.tif` grids read with
+  `read_spax_example()`. All sources are openly licensed (Open Government
+  Licence v3.0, Creative Commons Attribution); see `inst/COPYRIGHTS`. The data
+  are rebuilt reproducibly by `data-raw/cornwall_gp.R` from pinned sources.
 * The supported minimum is R 4.4.0, with testthat 3.2.0 for tests. This is the
   dependency and testing policy for the development branch. CI targets release R
   on Linux, Windows and macOS, plus Linux R-devel and the exact minimum R version.
