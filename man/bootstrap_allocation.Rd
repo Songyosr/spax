@@ -21,8 +21,8 @@ kappa=beta=1, and known travel on its retained demand support.}
 the unweighted built-in Poisson objective. Fractional or partial observations,
 flow targets, other kernels and custom objectives are outside this method.}
 
-\item{observation}{Named list declaring nonblank `event`, `period` (including
-an explicit unresolved reference date), and `sampling="independent_facilities"`.
+\item{observation}{Named list declaring nonblank \code{event}, \code{period} (including
+an explicit unresolved reference date), and \code{sampling="independent_facilities"}.
 Non-overlapping registration alone does not establish independence.}
 
 \item{scenario}{Optional checked CLM whose prepared system changes supply only.
@@ -36,14 +36,14 @@ are saved atomically and resumed after exact input/settings/version checks.
 Completed failures are never retried; incomplete runs retain actual counts.}
 }
 \value{
-An `ae_allocation_bootstrap` with compact draws, multiplicities, all
-  start diagnostics, assumptions, failure reasons and conditional percentile
-  intervals for sigma, v0, regional contact and optional paired change in modeled
-  contacts. Regional attributed capacity per need is a fixed-input identity
-  without an interval: it includes supply with at least one known finite edge
-  on retained demand support. Unsupported positive supply is disclosed in
-  `capacity_support`; total supplied capacity can exceed attributed capacity.
-  Scientific refusals are inspectable results; invalid inputs error.
+An \code{ae_allocation_bootstrap} with compact draws, multiplicities, all
+start diagnostics, assumptions, failure reasons and conditional percentile
+intervals for sigma, v0, regional contact and optional paired change in modeled
+contacts. Regional attributed capacity per need is a fixed-input identity
+without an interval: it includes supply with at least one known finite edge
+on retained demand support. Unsupported positive supply is disclosed in
+\code{capacity_support}; total supplied capacity can exceed attributed capacity.
+Scientific refusals are inspectable results; invalid inputs error.
 }
 \description{
 This experimental operation runs separately from fitting. It resamples facility
@@ -64,7 +64,7 @@ fixed-input laws is not a universal guarantee of exact 95 percent coverage
 or validation of an application's observation law.
 }
 \seealso{
-Other experimental allocation workflow:
+Other experimental allocation workflow: 
 \code{\link{clm_allocation}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},

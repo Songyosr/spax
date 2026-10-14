@@ -521,6 +521,7 @@
 #'   Scientific refusals are inspectable results; invalid inputs error.
 #' @family experimental allocation workflow
 #' @export
+#' @md
 bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
   .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint, attempts = 399L)
 }

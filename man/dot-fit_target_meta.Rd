@@ -7,7 +7,7 @@
 .fit_target_meta(observed, name = "observed")
 }
 \description{
-`NA` cells mark unobserved targets (e.g. HSAF flow suppression below 11
+\code{NA} cells mark unobserved targets (e.g. HSAF flow suppression below 11
 cases) and are excluded from the loss; predicted/observed comparison is
 over flattened (column-major) values at the observed cells only.
 }

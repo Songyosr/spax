@@ -8,6 +8,7 @@
 #' present, are reduced to the nuisance columns; output sensitivities continue
 #' to use the standard problem machinery.
 #' @keywords internal
+#' @md
 .fix_problem_parameter <- function(problem, parameter, value) {
   .chck_class(problem, "ae_problem", "problem")
   expected <- problem$theta$names
@@ -81,6 +82,7 @@
 #' freedom; none is inferred here. Fixing a nuisance value to satisfy an
 #' external moment or total is a different estimator and is not this helper.
 #' @keywords internal
+#' @md
 .profile_problem <- function(problem, observed, parameter, values,
                              init, lower, upper, ...,
                              warm_start = TRUE, keep_fits = FALSE) {

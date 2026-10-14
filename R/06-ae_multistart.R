@@ -25,6 +25,7 @@
 #' retain compact parameters and diagnostics. This is a finite search over the
 #' supplied starts, not a guarantee of a global optimum or identified parameters.
 #' @keywords internal
+#' @md
 .fit_problem_multistart <- function(problem, observed, starts, lower, upper, ...,
                                     loss_tol = 1e-6, parameter_tol = 1e-3,
                                     keep_fits = FALSE) {
@@ -165,6 +166,7 @@
 #' @method print ae_multistart_fit
 #' @keywords internal
 #' @export
+#' @md
 print.ae_multistart_fit <- function(x, ...) {
   cat("<ae_multistart_fit>\n")
   cat("eligible starts: ", sum(x$table$eligible), " / ", nrow(x$table), "\n", sep = "")

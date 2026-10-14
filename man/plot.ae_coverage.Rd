@@ -8,6 +8,6 @@
 }
 \description{
 Coverage plots E_post when a norm is set, otherwise A. Adequacy plots the
-reported (floored) abar. `all` draws the four named panels.
+reported (floored) abar. \code{all} draws the four named panels.
 }
 \keyword{internal}
