@@ -28,6 +28,23 @@ release; record the source commit when reproducing an analysis.
   points. `transform_demand(full_output = TRUE)` no longer requires an
   undocumented `id` column, and `transform_demand()` now warns when an area
   covers no grid cell, because its count would be dropped.
+* Fixes in the FCA and PMF tools:
+  * `rasterize_demand()` without a `prior` now uses the documented uniform
+    prior over the template. It previously used the observations' own PMF,
+    so the posterior was proportional to the squared counts.
+  * `update_pmf(normalize = FALSE, density = TRUE)` no longer scales the
+    posterior twice.
+  * `calc_normalize()` on a SpatRaster accepts a numeric `ref_value` for the
+    `"reference"` method; it previously failed inside `terra::ifel()`. The
+    documentation now states that rasters are normalized cell by cell
+    across layers.
+  * `calc_decay()` accepts integer distances such as `1:5`.
+  * `summary.spax()` keeps every requested quantile (it kept only the first),
+    and custom quantiles print with percentage labels.
+  * `sample_pmf()` rejects a negative, fractional or missing `n` instead of
+    returning an empty raster or drawing a truncated count, and an all-NA
+    input gets the PMF error instead of a base R error.
+  * `spax_2sfca()` validates `threshold` with a message that names it.
 * `fit_allocation()` and `bootstrap_allocation()` no longer force a full
   garbage collection before every fit: the internal fit timer used
   `system.time()`, which collects garbage first by default. Results are
