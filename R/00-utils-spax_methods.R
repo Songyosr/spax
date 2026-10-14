@@ -94,7 +94,8 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
       max = stats$max,
       mean = stats$mean,
       sd = stats$sd,
-      quantiles = as.vector(quants[[1]]),
+      quantiles = stats::setNames(as.numeric(quants[1, ]),
+                                  paste0(100 * quantiles, "%")),
       coverage = list(
         cells_total = n_cells,
         cells_covered = n_covered,
@@ -174,7 +175,10 @@ print.summary.spax <- function(x, digits = 4, ...) {
 
     # Quantiles with labels
     cat("  Quantiles:\n")
-    quant_labels <- c("Min.", "1st Qu.", "Median", "3rd Qu.", "Max.")
+    quant_labels <- names(measure$quantiles)
+    if (identical(quant_labels, c("0%", "25%", "50%", "75%", "100%"))) {
+      quant_labels <- c("Min.", "1st Qu.", "Median", "3rd Qu.", "Max.")
+    }
     for (i in seq_along(measure$quantiles)) {
       cat(sprintf("    %-8s %s\n",
                   paste0(quant_labels[i], ":"),

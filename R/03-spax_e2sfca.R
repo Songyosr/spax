@@ -607,6 +607,10 @@ spax_m2sfca <- function(demand, supply, distance,
 spax_2sfca <- function(demand, supply, distance, threshold,
                        id_col = NULL, supply_cols = NULL,
                        snap = FALSE) {
+  if (!snap && (!is.numeric(threshold) || length(threshold) != 1 ||
+                !is.finite(threshold) || threshold <= 0)) {
+    stop("threshold must be a single positive number")
+  }
   # Create decay parameters for binary catchment
   decay_params <- list(
     method = "binary",

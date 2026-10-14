@@ -131,10 +131,11 @@ test_that("FCA wrappers reject invalid supply, decay and geometry", {
                "same geometry")
   expect_error(e2(c(facility1 = 10), decay_params = decay),
                "must match length of facilities")
-  # The threshold is validated as the binary kernel's sigma and the message
-  # names that internal parameter, so only the refusal is pinned here.
-  expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance, threshold = -1))
-  expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance, threshold = "a"))
+  for (threshold in list(-1, "a", c(1, 2), Inf)) {
+    expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance,
+                            threshold = threshold),
+                 "threshold must be a single positive number")
+  }
 
   weights <- calc_decay(td$distance, "gaussian", sigma = 2)
   expect_error(compute_access("not_a_raster", td$supply_vector, weights, weights),
@@ -162,10 +163,15 @@ test_that("spax objects print, summarise and plot their accessibility", {
   expect_equal(unlist(nurses[c("min", "max", "mean", "sd")]),
                c(min = min(v, na.rm = TRUE), max = max(v, na.rm = TRUE),
                  mean = mean(v, na.rm = TRUE), sd = sd(v, na.rm = TRUE)))
+  expect_equal(nurses$quantiles,
+               stats::quantile(v, c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE))
   expect_equal(nurses$coverage$proportion, 8 / 9)
   expect_equal(s$facilities$count, 2)
   expect_equal(s$facilities$supply$doctors$total, 25)
   expect_output(expect_invisible(print(s)), "E2SFCA(.|\n)*doctors(.|\n)*nurses")
+  expect_output(print(s), "Median")
+  # Custom probabilities are labelled by percentage.
+  expect_output(print(summary(result, quantiles = c(0.1, 0.9))), "10%:(.|\n)*90%:")
 
   withr::local_pdf(NULL)
   expect_no_error(plot(result))
