@@ -41,8 +41,9 @@ test_that("raster layer frames come from explicit frames or allowed positions", 
     index = list(layer = product),
     role = "distance"
   )
-  expect_equal(.field_layer_index(field),
-               transform(product, layer = paste0("L", 1:4)))
+  # Raw layer names give way to the field's own keys.
+  expect_equal(names(.field_data(field)), .field_layer_index(field)$layer)
+  expect_equal(.field_layer_index(field)[-1], product[-1])
   expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
   expect_equal(.field_axis_values(field, "mode"), c("car", "walk"))
 
@@ -72,8 +73,7 @@ test_that("a keyed layer frame binds by join; a keyless one by row order", {
     r, domain = c("I", "J"),
     frame = data.frame(layer = c("H2", "H1"), J = c("valH2", "valH1"))
   )
-  expect_equal(.field_layer_index(keyed),
-               data.frame(layer = c("L1", "L2"), J = c("valH1", "valH2")))
+  expect_equal(.field_layer_index(keyed)$J, c("valH1", "valH2"))
   expect_error(
     .spax_raster_field(r, domain = c("I", "J"),
                        frame = data.frame(layer = c("H1", "H3"), J = c("a", "b"))),
@@ -113,9 +113,9 @@ test_that("vector fields bind node frames by key or by position", {
     c(10, 4, 20), domain = c("J", "mode"),
     frame = data.frame(J = c("H1", "H1", "H2"), mode = c("car", "walk", "car"))
   )
-  expect_equal(.field_index_frame(partial),
-               data.frame(key = c("V1", "V2", "V3"), J = c("H1", "H1", "H2"),
-                          mode = c("car", "walk", "car")))
+  expect_equal(names(.field_data(partial)), .field_index_frame(partial)$key)
+  expect_equal(.field_index_frame(partial)[-1],
+               data.frame(J = c("H1", "H1", "H2"), mode = c("car", "walk", "car")))
   expect_equal(.field_axis_values(partial, "mode"), c("car", "walk"))
 
   # A key column is a join key against the value names.
@@ -123,8 +123,7 @@ test_that("vector fields bind node frames by key or by position", {
     c(a = 10, b = 20), domain = "J",
     frame = data.frame(key = c("b", "a"), J = c("Hb", "Ha"))
   )
-  expect_equal(.field_node_index(keyed),
-               data.frame(key = c("V1", "V2"), J = c("Ha", "Hb")))
+  expect_equal(.field_node_index(keyed)$J, c("Ha", "Hb"))
 
   # Named values with a keyless frame override a real ordering: warn.
   expect_warning(
@@ -219,7 +218,8 @@ test_that(".rewrap_field keeps the structure and rekeys new data", {
   raster_rewrapped <- .rewrap_field(raster_field, raster_data, role = "map")
 
   expect_s3_class(raster_rewrapped, "spax_raster_field")
-  expect_equal(names(.field_data(raster_rewrapped)), c("L1", "L2"))
+  expect_equal(names(.field_data(raster_rewrapped)),
+               .field_layer_index(raster_field)$layer)
   expect_equal(.field_index_frame(raster_rewrapped),
                .field_index_frame(raster_field))
   expect_equal(.field_role(raster_rewrapped), "map")
@@ -228,7 +228,8 @@ test_that(".rewrap_field keeps the structure and rekeys new data", {
 
   vector_field <- .spax_vector_field(c(H1 = 10, H2 = 20), domain = "J")
   vector_rewrapped <- .rewrap_field(vector_field, c(11, 21))
-  expect_equal(.field_data(vector_rewrapped), c(V1 = 11, V2 = 21))
+  expect_equal(.field_data(vector_rewrapped),
+               setNames(c(11, 21), .field_node_index(vector_field)$key))
   expect_equal(.field_index_frame(vector_rewrapped),
                .field_index_frame(vector_field))
   expect_error(.rewrap_field(vector_field, c(1, 2, 3)), "one value per index row")
