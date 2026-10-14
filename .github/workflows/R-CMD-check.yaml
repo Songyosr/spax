@@ -63,7 +63,7 @@ jobs:
             any::digest
           dependencies: '"all"'
           needs: check
-      - name: Prepare required PDF manual fonts
+      - name: Prepare required PDF manual tools (fonts, makeindex)
         shell: Rscript {0}
         run: |
           evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "spax-ci-evidence")
@@ -103,6 +103,61 @@ jobs:
             stop("Courier installation failed; see saved manual tool evidence")
           }
           if (any(!nzchar(paths))) stop("Courier metrics are required for PDF manual checks")
+          # TinyTeX-1 (the setup-tinytex default) does not ship makeindex. Without it
+          # the indexed manual fails under texinfo's texi2dvi (Linux/macOS) and under
+          # R's texi2dvi emulation (Windows). R <= 4.6 Rd2pdf retries once, so Linux
+          # and macOS silently built a manual without an index; R-devel removed that
+          # retry and Windows emulation fails both attempts.
+          makeindex_cmd <- Sys.getenv("MAKEINDEX", "makeindex")
+          makeindex <- Sys.which(makeindex_cmd)
+          makeindex_install_status <- NA_integer_
+          if (!nzchar(makeindex)) {
+            makeindex_install_status <- tinytex::tlmgr(c("install", "makeindex"))
+            makeindex <- Sys.which(makeindex_cmd)
+          }
+          smoke_dir <- tempfile("makeindex-smoke")
+          dir.create(smoke_dir)
+          writeLines("\\indexentry{spax}{1}", file.path(smoke_dir, "smoke.idx"))
+          old_wd <- setwd(smoke_dir)
+          smoke_ok <- FALSE
+          smoke_out <- tryCatch({
+            out <- if (nzchar(makeindex)) {
+              suppressWarnings(system2(makeindex, "smoke.idx", stdout = TRUE, stderr = TRUE))
+            } else "makeindex not found"
+            smoke_status <- attr(out, "status")
+            smoke_ok <- nzchar(makeindex) && (is.null(smoke_status) || smoke_status == 0L) &&
+              file.exists("smoke.ind") && any(grepl("spax", readLines("smoke.ind")))
+            out
+          }, error = function(e) paste("makeindex error:", conditionMessage(e)),
+          finally = setwd(old_wd))
+          texi2dvi_opt <- getOption("texi2dvi")
+          texi2dvi_cmd <- if (identical(texi2dvi_opt, "emulation")) "" else if (
+            is.null(texi2dvi_opt) || !nzchar(texi2dvi_opt) || texi2dvi_opt == "texi2dvi") {
+            cmd <- Sys.which("texi2dvi")
+            if (.Platform$OS.type == "windows" && !nzchar(cmd)) Sys.which("texify") else cmd
+          } else if (nzchar(Sys.which(texi2dvi_opt))) texi2dvi_opt else ""
+          texi2dvi_route <- if (!nzchar(texi2dvi_cmd)) "emulation" else if (
+            .Platform$OS.type == "windows") "texify/texi2dvi program" else "texi2dvi script"
+          rd2pdf_retry <- tryCatch(
+            sum(grepl("try(texi2pdf(", deparse(tools:::..Rd2pdf), fixed = TRUE)) > 1L,
+            error = function(e) NA)
+          manual_env <- c("R_TEXI2DVICMD", "MAKEINDEX", "TEXINDY")
+          writeLines(c(paste("makeindex installation status:", makeindex_install_status),
+                       paste("makeindex path:", makeindex),
+                       paste("makeindex sha256:", if (nzchar(makeindex))
+                         digest::digest(file = makeindex, algo = "sha256") else NA_character_),
+                       paste("makeindex smoke passed:", smoke_ok),
+                       paste("R:", R.version.string, "svn rev", R.version[["svn rev"]]),
+                       paste("getOption(texi2dvi):", format(texi2dvi_opt)),
+                       paste0(manual_env, "=", Sys.getenv(manual_env, unset = "<unset>")),
+                       paste("indexed Rd2pdf route:", texi2dvi_route, unname(texi2dvi_cmd)),
+                       paste("Rd2pdf retries texi2pdf:", rd2pdf_retry),
+                       smoke_out),
+                     file.path(evidence, "manual-makeindex.txt"))
+          if (!is.na(makeindex_install_status) && makeindex_install_status != 0L) {
+            stop("makeindex installation failed; see saved manual tool evidence")
+          }
+          if (!smoke_ok) stop("makeindex must run for indexed PDF manual checks")
       - name: Verify supported R, document tools and spatial dependencies
         env:
           # setup-r defaults to NOT_CRAN=true; this gate must exercise CRAN mode.
@@ -117,7 +172,8 @@ jobs:
           stopifnot(Sys.getenv("NOT_CRAN") == "false",
                     Sys.getenv("_R_CHECK_FORCE_SUGGESTS_") == "true",
                     Sys.getenv("_R_CHECK_CRAN_INCOMING_") == "true")
-          stopifnot(rmarkdown::pandoc_available(), nzchar(Sys.which("pdflatex")))
+          stopifnot(rmarkdown::pandoc_available(), nzchar(Sys.which("pdflatex")),
+                    nzchar(Sys.which(Sys.getenv("MAKEINDEX", "makeindex"))))
           sf_paths <- tryCatch(sf::sf_proj_info(type = "path"),
                                error = function(e) character())
           paths <- c(Sys.getenv(c("PROJ_DATA", "PROJ_LIB")), sf_paths,
@@ -238,10 +294,27 @@ jobs:
                        paste0("tracked_source_unchanged=", unchanged),
                        paste0("check_artifact_files=", length(files))),
                      file.path(evidence, "preservation-status.txt"))
+          rcheck <- file.path("check", "spax.Rcheck")
+          manual_log <- file.path(rcheck, "spax-manual.log")
+          rdlatex_log <- file.path(rcheck, "Rdlatex.log")
+          read_log <- function(path) if (file.exists(path)) readLines(path, warn = FALSE) else character()
+          # The final LaTeX pass reads Rd2.ind when the index was built; R <= 4.6
+          # Rd2pdf can otherwise report OK after makeindex failed.
+          missing_index <- grep("^No file Rd2[.]ind[.]", read_log(manual_log),
+                                value = TRUE, useBytes = TRUE)
+          index_failures <- grep("makeindex failed|unable to run 'makeindex'|Error in texi2dvi",
+                                 read_log(rdlatex_log), value = TRUE, useBytes = TRUE)
+          index_ok <- file.exists(manual_log) && file.exists(rdlatex_log) &&
+            !length(missing_index) && !length(index_failures)
+          writeLines(c(paste0("manual_log_present=", file.exists(manual_log)),
+                       paste0("rdlatex_log_present=", file.exists(rdlatex_log)),
+                       paste0("indexed_manual_built=", index_ok),
+                       missing_index, index_failures),
+                     file.path(evidence, "manual-index-status.txt"))
           if (file.exists(prior)) stopifnot(unchanged)
           if (Sys.getenv("SPAX_CHECK_OUTCOME") == "success") {
             stopifnot(unchanged, any(grepl("[.]tar[.]gz$", files)),
-                      any(basename(files) == "00check.log"))
+                      any(basename(files) == "00check.log"), index_ok)
           }
       - name: Upload R and dependency evidence
         if: always()
