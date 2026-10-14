@@ -11,7 +11,9 @@ docs
 
 # Ignore junk folder
 junk/
-data-raw/
+# data-raw is local except tracked, reproducible build scripts
+data-raw/*
+!data-raw/cornwall_gp.R
 tests/.DS_Store
 
 # Local Obsidian / LLM wiki vault
