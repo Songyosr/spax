@@ -226,4 +226,5 @@ are openly licensed third-party material (Open Government Licence v3.0
 and Creative Commons Attribution), which the MIT license does not cover.
 The installed notice file, `system.file("COPYRIGHTS", package = "spax")`
 (source `inst/COPYRIGHTS`), lists each source and its required
-attribution.
+attribution; the exact Creative Commons version of the travel-friction
+source is still unconfirmed.

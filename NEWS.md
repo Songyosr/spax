@@ -22,6 +22,12 @@ release; record the source commit when reproducing an analysis.
 
   The package is about 1 MB instead of about 27 MB. Analyses that need the old
   objects should load them from a saved copy of an earlier spax version.
+* `transform_pmf()`, `transform_likelihood()` and `transform_demand()` now accept
+  SpatVector input. Their column check read a one-column data frame, so every
+  column was rejected; the extent check also rejected single and collinear
+  points. `transform_demand(full_output = TRUE)` no longer requires an
+  undocumented `id` column, and `transform_demand()` now warns when an area
+  covers no grid cell, because its count would be dropped.
 * The `update_pmf()`, `transform_demand()` and `calc_normalize()` examples now
   run; the first two previously referred to an undefined object.
 * The allocation-workflow vignette now loads its full 399-attempt bootstrap

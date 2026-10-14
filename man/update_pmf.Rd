@@ -36,26 +36,19 @@ beliefs and observed data.
 \examples{
 pop <- read_spax_example("cornwall_pop.tif")
 
-# Point counts: residents registered with a GP outside Cornwall, placed at
-# each small area's population-weighted centroid
-areas <- sf::st_drop_geometry(cornwall_lsoa)
-cases <- sf::st_as_sf(areas, coords = c("cent_x", "cent_y"), crs = 27700) |>
-  sf::st_transform(4326) |>
-  terra::vect()
+# Group small areas into larger units (LSOA names end in a letter; dropping it
+# gives the containing MSOA) so every unit covers several grid cells
+areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas$msoa <- sub("[A-Z]$", "", areas$name)
+msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
 
-# Create prior from population
+# Likelihood from a rate, not a count: the share of residents registered
+# with a GP outside Cornwall (counts would double-count population)
+msoa$out_rate <- msoa$sum_registered_out / msoa$sum_registered
+likelihood <- transform_likelihood(msoa, value_col = "out_rate", template = pop)
+
+# Prior from population; the posterior is proportional to population times
+# the out-of-area rate
 prior <- transform_pmf(pop)
-
-# Create likelihood from the point counts
-likelihood <- transform_likelihood(
-  cases,
-  value_col = "registered_out",
-  template = pop
-)
-
-# Update prior with likelihood
 posterior <- update_pmf(prior, likelihood)
-
-# Get density surface
-density <- update_pmf(prior, likelihood, density = TRUE)
 }

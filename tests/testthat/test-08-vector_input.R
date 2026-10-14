@@ -62,3 +62,16 @@ test_that("transform_demand accepts polygon area totals", {
   expect_error(transform_demand(areas, value_col = "label", pmf = pmf),
                "must be numeric")
 })
+
+test_that("transform_demand warns when an area covers no grid cell", {
+  template <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4,
+                          ymin = 0, ymax = 4, crs = "EPSG:3857")
+  terra::values(template) <- 1
+  areas <- terra::vect(c("POLYGON ((0 0, 2 0, 2 4, 0 4, 0 0))",
+                         "POLYGON ((2.1 0.1, 2.2 0.1, 2.2 0.2, 2.1 0.2, 2.1 0.1))"),
+                       crs = "EPSG:3857")
+  areas$cases <- c(10, 30)
+  expect_warning(transform_demand(areas, value_col = "cases",
+                                  pmf = transform_pmf(template)),
+                 "cover no grid cell")
+})
