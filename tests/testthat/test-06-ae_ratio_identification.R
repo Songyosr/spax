@@ -4,7 +4,10 @@ ratio_identification_fixture <- function(gamma_truth = 0) {
   travel <- sqrt(outer(seq(1, 40, length.out = 24), seq(4, 36, length.out = 6), "-")^2 +
     outer(5 * sin(i * .9), 4 * cos(j * 1.7), "-")^2) + 1
   dimnames(travel) <- list(paste0("o", i), paste0("f", j))
-  demand <- setNames(400 + 150 * (1 + sin(i * .4)), rownames(travel))
+  # Large enough counts that a feedback gain of 0.8 is detectable: across 16
+  # seeds the ratio gain exceeded 3 in every feedback draw (min 4.1) and in
+  # no null draw (max 2.9).
+  demand <- setNames(1600 + 600 * (1 + sin(i * .4)), rownames(travel))
   supply <- setNames(c(4, 9, 3, 7, 5, 6), colnames(travel))
   inputs <- prepare_allocation(demand, supply, travel)
   truth <- c(sigma = 9, v0 = 0.5, feedback_scale = 1 + gamma_truth)
@@ -12,11 +15,13 @@ ratio_identification_fixture <- function(gamma_truth = 0) {
   mu <- .solve_problem(problem, truth, lambda = 0.4, tol = 1e-12, max_iter = 5000)$outputs$flow
   observed <- withr::with_seed(42, matrix(stats::rpois(length(mu), mu), nrow(mu),
                                            dimnames = dimnames(travel)))
-  list(inputs = inputs, observed = observed, travel = travel, demand = demand)
+  list(inputs = inputs, observed = observed, travel = travel, demand = demand,
+       supply = supply)
 }
 
 # gamma_upper = 2 keeps the feedback solves cheap. A bounded fit can only lose
-# likelihood, so its gain is a lower bound on the unbounded gain.
+# likelihood, so its gain is a lower bound on the unbounded gain; the null test
+# checks that the bound is inactive.
 ratio_identification_run <- function(f) {
   .ratio_identification(f$inputs, f$observed,
     starts = rbind(a = c(sigma = 6, v0 = 1), b = c(sigma = 14, v0 = 0.2)),
@@ -44,6 +49,7 @@ test_that("ratio identification reports nested fits and the free-model bound", {
   # Without feedback the ratio gain stays below a likelihood-ratio statistic
   # of 6 (2 x gain), which the feedback test below must exceed.
   expect_lt(res$gain[res$model == "ratio"], 3)
+  expect_false(res$boundary[res$model == "ratio"])
   expect_match(attr(res, "note"), "cannot be separated")
 })
 
@@ -65,15 +71,15 @@ test_that("the free-attractiveness fit reaches a stationary point of the CLM lik
     mu <- f$demand * w / (rowSums(w) + exp(p[J + 1]))
     sum(mu - f$observed * log(mu))
   }
-  p <- c(log(free$attractiveness[-1]), log(free$sigma), log(free$v0))
-  expect_equal(loss(p), free$loss, tolerance = 1e-10)
-  h <- 1e-5
-  grad <- vapply(seq_along(p), function(k) {
+  fd_grad <- function(p, h = 1e-5) vapply(seq_along(p), function(k) {
     e <- replace(numeric(length(p)), k, h)
     (loss(p + e) - loss(p - e)) / (2 * h)
   }, numeric(1))
-  # Gradients away from the optimum are of order 10-1000 here.
-  expect_lt(max(abs(grad)), 1e-3)
+  p <- c(log(free$attractiveness[-1]), log(free$sigma), log(free$v0))
+  start <- c(log(f$supply[-1]), log(8), log(0.6))
+  expect_equal(loss(p), free$loss, tolerance = 1e-10)
+  # At the optimum the gradient is under a millionth of its size at the start.
+  expect_lt(max(abs(fd_grad(p))), 1e-5 * max(abs(fd_grad(start))))
   expect_true(free$converged)
 })
 

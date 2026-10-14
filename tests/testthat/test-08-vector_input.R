@@ -9,6 +9,7 @@ vector_fixture <- function() {
 }
 
 test_that("vector input accepts a numeric column", {
+  skip_if_no_proj()
   f <- vector_fixture()
   expect_invisible(.chck_vector_input(f$points, "cases", f$template))
 
@@ -21,6 +22,7 @@ test_that("vector input accepts a numeric column", {
 })
 
 test_that("vector input accepts single and collinear points inside the template", {
+  skip_if_no_proj()
   f <- vector_fixture()
   one <- terra::vect(cbind(1.5, 2.5), atts = data.frame(cases = 3), crs = "EPSG:3857")
   expect_invisible(.chck_vector_input(one, "cases", f$template))
@@ -32,6 +34,7 @@ test_that("vector input accepts single and collinear points inside the template"
 })
 
 test_that("vector input rejects non-numeric columns and disjoint extents", {
+  skip_if_no_proj()
   f <- vector_fixture()
   expect_error(.chck_vector_input(f$points, "label", f$template),
                "must contain numeric values")
@@ -44,6 +47,7 @@ test_that("vector input rejects non-numeric columns and disjoint extents", {
 })
 
 test_that("transform_demand accepts polygon area totals", {
+  skip_if_no_proj()
   template <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4,
                           ymin = 0, ymax = 4, crs = "EPSG:3857")
   terra::values(template) <- 1
@@ -64,6 +68,7 @@ test_that("transform_demand accepts polygon area totals", {
 })
 
 test_that("transform_demand warns when an area covers no grid cell", {
+  skip_if_no_proj()
   template <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4,
                           ymin = 0, ymax = 4, crs = "EPSG:3857")
   terra::values(template) <- 1
