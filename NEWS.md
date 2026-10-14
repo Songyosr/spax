@@ -36,6 +36,16 @@ release; record the source commit when reproducing an analysis.
     because z-scores are not a likelihood, as is an all-missing template.
   * `update_pmf(normalize = FALSE, density = TRUE)` no longer scales the
     posterior twice.
+  * Point input to `transform_pmf()`, `transform_likelihood()` and
+    `rasterize_demand()` now adds up points that fall in the same cell; only
+    the last point's value was kept, so counts were lost. Polygon values are
+    still copied to every cell they cover.
+  * `transform_pmf()` and `update_pmf()` accept multi-layer rasters and
+    normalize each layer separately; they previously failed with "the
+    condition has length > 1".
+  * `sample_pmf()` takes `size` from the total of raw density input, as
+    documented, when only `prob` is given; a PMF input still needs `size`.
+  * `calc_normalize(ref_value = NA)` gives a clear error.
   * `calc_normalize()` on a SpatRaster accepts a numeric `ref_value` for the
     `"reference"` method; it previously failed inside `terra::ifel()`. The
     documentation now states that rasters are normalized cell by cell

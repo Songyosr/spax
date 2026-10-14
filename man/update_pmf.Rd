@@ -11,7 +11,8 @@ update_pmf(prior, likelihood, normalize = TRUE, density = FALSE, snap = FALSE)
 
 \item{likelihood}{SpatRaster containing likelihood surface}
 
-\item{normalize}{Logical; if TRUE ensure output sums to 1 (default TRUE)}
+\item{normalize}{Logical; if TRUE ensure output sums to 1 (default TRUE),
+each layer of a multi-layer posterior separately}
 
 \item{density}{Logical; if TRUE return density surface instead of PMF}
 

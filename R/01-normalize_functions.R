@@ -106,6 +106,9 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
     if ((method == "reference") && !is.null(ref_value)) {
       .chck_is_numeric(ref_value, "ref_value")
       .chck_length(length(ref_value), 1, "ref_value")
+      if (is.na(ref_value)) {
+        stop("ref_value must not be missing")
+      }
     }
   }
 

@@ -106,17 +106,28 @@
 #' @return Invisible TRUE if valid, error otherwise
 #' @keywords internal
 .chck_pmf_validity <- function(x, tolerance = 1e-10) {
-  # Check for negative values
+  # Check for negative values (in any layer)
   min_val <- terra::global(x, "min", na.rm = TRUE)$min
-  if (min_val < 0) {
+  if (any(min_val < 0, na.rm = TRUE)) {
     stop("PMF cannot contain negative values")
   }
 
-  # Check sum to 1
+  # Check that every layer sums to 1
   sum_val <- terra::global(x, "sum", na.rm = TRUE)$sum
-  if (abs(sum_val - 1) > tolerance) {
-    stop(sprintf("PMF must sum to 1 (current sum: %f)", sum_val))
+  bad <- which(!is.finite(sum_val) | abs(sum_val - 1) > tolerance)
+  if (length(bad)) {
+    stop(sprintf("PMF must sum to 1 (current sum: %f)", sum_val[bad[1]]))
   }
 
   invisible(TRUE)
+}
+
+#' Rasterize vector values onto a template
+#'
+#' Points that fall in the same cell add up; a polygon's value is copied to
+#' every cell it covers.
+#' @keywords internal
+.rasterize_values <- function(x, template, value_col) {
+  fun <- if (all(terra::geomtype(x) == "points")) "sum" else "last"
+  terra::rasterize(x, template, field = value_col, fun = fun)
 }

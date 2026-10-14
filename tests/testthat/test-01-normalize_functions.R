@@ -79,6 +79,8 @@ test_that("calc_normalize validates its inputs unless snapped", {
                "ref_value must be numeric")
   expect_error(calc_normalize(x, "reference", ref_value = c(1, 2)),
                "ref_value must have length 1")
+  expect_error(calc_normalize(x, "reference", ref_value = NA_real_),
+               "ref_value must not be missing")
   expect_error(calc_normalize(x, a0 = -1), "a0 must be >= 0")
   expect_error(calc_normalize(x, a0 = "a"), "a0 must be numeric")
   expect_error(calc_normalize(x, a0 = c(1, 2)), "a0 must have length 1")

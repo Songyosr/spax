@@ -13,8 +13,9 @@ test_that("sample_pmf validates its inputs", {
 
   expect_error(sample_pmf(as.matrix(terra::values(pmf)), n = 10),
                "must be a SpatRaster")
-  expect_error(sample_pmf(pmf, method = "poisson"),
-               "Either n or both size and prob")
+  expect_error(sample_pmf(pmf, method = "poisson"), "Either n or prob")
+  # size comes from the total only for raw density input
+  expect_error(sample_pmf(pmf, prob = 0.1), "size must be given when x is already a PMF")
   expect_error(sample_pmf(pmf, size = 100, prob = 1.5), "prob must be between 0 and 1")
   expect_error(sample_pmf(pmf, n = 10, evolve_prop = 2),
                "evolve_prop must be between 0 and 1")
@@ -63,6 +64,18 @@ test_that("each realization holds the drawn number of samples", {
     "Using total population"
   )
   expect_equal(layer_sums(custom), 30)
+
+  # Raw density with only prob: the total is the size parameter.
+  raw <- sample_test_pmf(normalized = FALSE)
+  expect_message(
+    from_total <- sample_pmf(raw, prob = 0.5, method = "binomial", seed = seed),
+    "Using total population"
+  )
+  expect_equal(
+    layer_sums(from_total),
+    layer_sums(sample_pmf(sample_test_pmf(), size = sum(terra::values(raw)),
+                          prob = 0.5, method = "binomial", seed = seed))
+  )
 })
 
 test_that("zero cells are NA unless replace_0 = FALSE", {

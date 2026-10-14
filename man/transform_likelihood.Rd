@@ -15,7 +15,8 @@ transform_likelihood(
 )
 }
 \arguments{
-\item{x}{SpatRaster or SpatVector containing observed values}
+\item{x}{SpatRaster or SpatVector containing observed values. Point values
+in the same cell add up; a polygon's value is copied to every cell it covers.}
 
 \item{value_col}{Character; name of column if x is SpatVector}
 

@@ -13,7 +13,8 @@
 #'
 #' @param prior SpatRaster containing prior PMF
 #' @param likelihood SpatRaster containing likelihood surface
-#' @param normalize Logical; if TRUE ensure output sums to 1 (default TRUE)
+#' @param normalize Logical; if TRUE ensure output sums to 1 (default TRUE),
+#'   each layer of a multi-layer posterior separately
 #' @param density Logical; if TRUE return density surface instead of PMF
 #' @param snap Logical; if TRUE skip validation
 #' @return SpatRaster containing either:

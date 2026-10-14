@@ -37,6 +37,14 @@ test_that("transform_pmf divides a raster by its total", {
   expect_named(with_total, c("pmf", "total"))
   expect_equal(with_total$total, 100)
   expect_equal(terra::values(with_total$pmf), terra::values(pmf))
+
+  # Each layer of a multi-layer raster is a separate PMF.
+  two <- toy_rast(c(1, 3, 2, 2), 2, 1, nlyr = 2)
+  both <- transform_pmf(two, return_total = TRUE)
+  expect_equal(unname(terra::values(both$pmf)), cbind(c(0.25, 0.75), c(0.5, 0.5)))
+  expect_equal(both$total, c(4, 4))
+  expect_error(transform_pmf(toy_rast(c(1, 3, 0, 0), 2, 1, nlyr = 2)),
+               "Sum of all values")
 })
 
 test_that("transform_pmf rejects inputs that cannot form a PMF", {
@@ -98,6 +106,17 @@ test_that("vector input is rasterised onto the template", {
                       atts = data.frame(cases = c(1, 3)), crs = "EPSG:3857")
   expect_equal(sort(terra::values(transform_pmf(line, "cases", f$template))),
                c(0.25, 0.75))
+
+  # Points in the same cell add up instead of keeping only the last one.
+  shared <- terra::vect(cbind(c(0.2, 0.8, 2.5), c(0.5, 0.5, 1.5)),
+                        atts = data.frame(cases = c(2, 5, 1)), crs = "EPSG:3857")
+  cells <- f$cells[1:2]
+  expect_equal(terra::values(transform_pmf(shared, "cases", f$template))[, 1],
+               on_cells(cells, c(7, 1) / 8))
+  expect_equal(terra::values(transform_likelihood(shared, "cases",
+                                                  template = f$template,
+                                                  method = "sum"))[, 1],
+               on_cells(cells, c(7, 1) / 8))
 })
 
 test_that("vector input needs a numeric column and an overlapping template", {
@@ -139,6 +158,11 @@ test_that("update_pmf multiplies the prior by the likelihood", {
   # with or without normalizing first.
   expect_equal(posterior(density = TRUE), product)
   expect_equal(posterior(normalize = FALSE, density = TRUE), product)
+  # A multi-layer likelihood gives one normalized posterior per layer.
+  layered <- c(likelihood, toy_rast(c(2, 2, 3, 2), 2, 2))
+  product2 <- c(0.2, 0.4, 0.9, 0.8)
+  expect_equal(unname(terra::values(update_pmf(prior, layered))),
+               cbind(product / sum(product), product2 / sum(product2)))
 
   expect_error(update_pmf(c(0.5, 0.5), likelihood), "must be a SpatRaster")
   expect_error(update_pmf(prior, toy_rast(1, 3, 3)), "same resolution")

@@ -79,6 +79,10 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
         message("Using total population ", format(round(size), scientific = FALSE), " as size parameter")
       }
     }
+    if (is.null(n) && is.character(method) && is.null(size)) {
+      stop("size must be given when x is already a PMF; it is taken from the ",
+           "total only for raw density input")
+    }
   } else {
     # Quick check in snap mode
     sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
@@ -177,8 +181,9 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
       stop("iterations must be a positive integer")
     }
 
-    if (is.null(n) && is.character(method) && (is.null(size) || is.null(prob))) {
-      stop("Either n or both size and prob must be specified for built-in methods")
+    if (is.null(n) && is.character(method) && is.null(prob)) {
+      stop("Either n or prob (with size, unless x holds raw density) must be ",
+           "specified for built-in methods")
     }
 
     if (!is.null(prob) && (prob < 0 || prob > 1)) {
