@@ -21,11 +21,12 @@ An `sf` object with 7 features and the following attributes:
 }
 }
 \source{
-Royal Thai Survey Department (RTSD) administrative level 1 boundaries,
-distributed by UN OCHA through the
-[Humanitarian Data Exchange (HDX)](https://data.humdata.org/dataset/cod-ab-tha)
-(release dated 2022-01-21), subset to Health Region 12 and reprojected to
-EPSG:32647. The current HDX listing is licensed CC BY-IGO 3.0; see
+Royal Thai Survey Department (RTSD) administrative level 1 boundaries
+(file tha_admbnda_adm1_rtsd_20220121, published 2022-01-21), distributed by
+UN OCHA as a Common Operational Dataset, originally through the COD/FOD
+Registry on HumanitarianResponse.info and now through the
+\href{https://data.humdata.org/dataset/cod-ab-tha}{Humanitarian Data Exchange (HDX)};
+subset to Health Region 12 and reprojected to EPSG:32647. The current HDX listing is licensed CC BY-IGO 3.0; see
 \code{system.file("COPYRIGHTS", package = "spax")} for attribution and terms.
 }
 \usage{

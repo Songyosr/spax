@@ -12,10 +12,12 @@ Satun, Trang, Phatthalung, Pattani, Yala and Narathiwat).
 
 Administrative boundaries: data/bound0.rda, data/bound1.rda
 ------------------------------------------------------------
-Source: Thailand administrative level 1 boundaries, Royal Thai Survey
-Department (RTSD), distributed by UN OCHA through the Common Operational
-Datasets (COD-AB) on the Humanitarian Data Exchange,
-https://data.humdata.org/dataset/cod-ab-tha (release dated 2022-01-21).
+Source: Thailand administrative level 1 boundaries (file
+tha_admbnda_adm1_rtsd_20220121, published 2022-01-21), Royal Thai Survey
+Department (RTSD), distributed by UN OCHA as a Common Operational Dataset
+(COD-AB), originally through the COD/FOD Registry on
+HumanitarianResponse.info and now through the Humanitarian Data Exchange,
+https://data.humdata.org/dataset/cod-ab-tha.
 Modifications: subset to Health Region 12, selected columns, reprojected to
 EPSG:32647; bound0 is the dissolved outer boundary of bound1.
 Licence: the current HDX listing of this dataset is licensed under Creative
@@ -27,21 +29,28 @@ the 2022 release used here refer instead to the COD/FOD Registry terms of use.
 Under-five population: inst/extdata/u5pd.tif
 --------------------------------------------
 Source: Meta Data for Good and the Center for International Earth Science
-Information Network (CIESIN), High Resolution Population Density Maps,
-Thailand, children under five, 2020, distributed through the Humanitarian
-Data Exchange. Underlying imagery: Maxar Technologies.
-Modifications: aggregated by summation to a 520.4038 m grid, reprojected to
-EPSG:32647, cropped and masked to Health Region 12.
-Licence: Creative Commons Attribution 4.0 International (CC BY 4.0),
-https://creativecommons.org/licenses/by/4.0/.
+Information Network (CIESIN), Columbia University, High Resolution
+Population Density Maps, Thailand, children under five, 2020, downloaded
+from the Humanitarian Data Exchange,
+https://data.humdata.org/dataset/thailand-high-resolution-population-density-maps-demographic-estimates.
+Source imagery (c) 2016 Maxar.
+Modifications: aggregated by summation (factor 17.5), reprojected to
+EPSG:32647 on a 520.4038 m grid by bilinear resampling (cell values are
+therefore approximate counts), cropped and masked to Health Region 12.
+Licence: listed on HDX as Creative Commons Attribution (CC BY), without a
+version; Meta's current distribution of these maps states CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/. The licence version of the
+downloaded file has not been confirmed.
 
 
 Health facilities: data/hc12_hos.rda, data/hc12_phc.rda
 -------------------------------------------------------
 Source: Office of the Permanent Secretary, Ministry of Public Health
-(Thailand), Government Open Data Services, https://opendata.moph.go.th,
-retrieved 2024-12-19 (facility GIS points; provider statistics for B.E. 2563;
-health-volunteer statistics for B.E. 2565).
+(Thailand), Government Open Data Services, https://opendata.moph.go.th;
+preparation script dated 2024-12-19. Facility GIS points, provider and
+service-population statistics were requested for B.E. 2563, and
+health-volunteer statistics, as written, for B.E. 2565. API responses were
+not archived.
 Modifications: subset to Health Region 12, joined across endpoints,
 facility identifiers recoded, reprojected to EPSG:32647. Coordinates are
 exact; the recoded identifiers are not an anonymisation.
@@ -62,5 +71,7 @@ License (ODbL) 1.0, https://www.openstreetmap.org/copyright and
 https://opendatacommons.org/licenses/odbl/1-0/.
 These layers are derived from OpenStreetMap data and from the Ministry of
 Public Health facility locations above; their licence status has not been
-finally determined. Until it is, treat them as subject to the ODbL 1.0 and
-to any terms governing the facility data.
+finally determined. Until it is determined, users should assume that the
+OpenStreetMap attribution and ODbL 1.0 obligations may apply, together with
+any terms governing the facility data. This notice is not a licence grant
+for these layers.

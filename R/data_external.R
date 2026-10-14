@@ -89,8 +89,8 @@ read_spax_example <- function(dataset = NULL) {
 #'
 #' @format A GeoTIFF file containing a multi-layer raster with:
 #' \describe{
-#'   \item{Dimensions}{509 rows × 647 columns × 77 layers}
-#'   \item{Resolution}{520.4038 × 520.4038 meters}
+#'   \item{Dimensions}{509 rows x 647 columns x 77 layers}
+#'   \item{Resolution}{520.4038 x 520.4038 meters}
 #'   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
 #'   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
 #'   \item{Values}{Travel time in minutes}
@@ -176,8 +176,8 @@ NULL
 #'
 #' @format A GeoTIFF file containing a raster with:
 #' \describe{
-#'   \item{Dimensions}{509 rows × 647 columns}
-#'   \item{Resolution}{520.4038 × 520.4038 meters}
+#'   \item{Dimensions}{509 rows x 647 columns}
+#'   \item{Resolution}{520.4038 x 520.4038 meters}
 #'   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
 #'   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
 #'   \item{Values}{Population density (children per grid cell)}
@@ -185,11 +185,14 @@ NULL
 #' }
 #'
 #' @source Meta Data for Good and the Center for International Earth Science
-#' Information Network (CIESIN). High Resolution Population Density Maps,
-#' Thailand, children under five, 2020, distributed through the Humanitarian
-#' Data Exchange. Underlying imagery: Maxar Technologies. Licensed CC BY 4.0;
-#' see \code{system.file("COPYRIGHTS", package = "spax")}.
-#' \url{https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps}
+#' Information Network (CIESIN), Columbia University. High Resolution Population
+#' Density Maps, Thailand, children under five, 2020, downloaded from the
+#' Humanitarian Data Exchange,
+#' \url{https://data.humdata.org/dataset/thailand-high-resolution-population-density-maps-demographic-estimates}.
+#' Source imagery (c) 2016 Maxar. HDX lists the dataset under a Creative Commons
+#' Attribution (CC BY) licence; Meta's current distribution states CC BY 4.0. The
+#' licence version of the file used here has not been confirmed; see
+#' \code{system.file("COPYRIGHTS", package = "spax")}.
 #'
 #' @details
 #' This dataset was processed from Meta's High Resolution Population Density Maps

@@ -6,8 +6,8 @@
 \format{
 A GeoTIFF file containing a multi-layer raster with:
 \describe{
-  \item{Dimensions}{509 rows × 647 columns × 77 layers}
-  \item{Resolution}{520.4038 × 520.4038 meters}
+  \item{Dimensions}{509 rows x 647 columns x 77 layers}
+  \item{Resolution}{520.4038 x 520.4038 meters}
   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
   \item{Values}{Travel time in minutes}

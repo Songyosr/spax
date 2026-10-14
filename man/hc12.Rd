@@ -25,7 +25,8 @@ containing the following variables:
 }
 \source{
 Office of the Permanent Secretary, Ministry of Public Health. (2020).
-Government Open Data Services. Retrieved December 19, 2024, from
+Government Open Data Services. Accessed December 2024 (preparation script
+dated 2024-12-19), from
 https://opendata.moph.go.th
 
 Redistribution terms for these data have not been confirmed; see
@@ -42,8 +43,10 @@ The dataset combines three main data sources from the MoPH API:
 \description{
 A collection of spatial datasets containing information about health facilities
 in Thailand's Health Region 12 (Songkhla, Satun, Trang, Phatthalung, Pattani,
-Yala and Narathiwat). Provider statistics are for 2020 (B.E. 2563);
-health-volunteer counts are for B.E. 2565.
+Yala and Narathiwat). The preparation script requests provider and
+service-population statistics for B.E. 2563 (2020) and, as written,
+health-volunteer counts for B.E. 2565 (2022); the original API responses
+were not retained.
 The data is split into two complementary datasets: primary health centers (PHC)
 and hospitals.
 }
@@ -55,17 +58,18 @@ The data is split into two datasets:
   \item All facilities are level "1-Community"
   \item No inpatient beds (bed = 0)
   \item Typically staffed by 1-4 healthcare providers
-  \item Strong health volunteer presence (s_hv > 0)
+  \item Most have health volunteers (s_hv > 0 for 810 of 819)
   \item Serves defined population catchments
 }
 
 \strong{hc12_hos}: Hospitals (n=77)
 \itemize{
   \item Includes general (level 2) and regional hospitals (level 3)
-  \item Inpatient beds range from 0 to 591; 14 records report 0 beds
+  \item Inpatient beds range from 0 to 591; 14 records have bed = 0, where
+        the preparation script also coded missing values as 0
   \item Larger healthcare workforce
   \item Limited health volunteer involvement
-  \item Population data not available at facility level
+  \item Service-area population is reported for 29 of 77 hospitals
 }
 }
 \note{
