@@ -34,6 +34,7 @@ test_that("spax_2sfca, spax_e2sfca and spax_m2sfca match the FCA oracle", {
     expect_equal(access_values(e2), fca_oracle(m$D, W, W, m$S, norm), info = norm)
     expect_equal(e2$parameters, list(decay_params = decay, demand_normalize = norm))
   }
+  expect_equal(e2$type, "E2SFCA")
 
   # M2SFCA squares the kernel in the access step only.
   m2 <- run(spax_m2sfca, decay_params = decay, demand_normalize = "standard")
