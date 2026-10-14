@@ -174,6 +174,12 @@ test_that("fixed-point gradients use the accepted objective state", {
   expect_gt(a$fit$spectral_radius, 0)
   expect_identical(a$sensitivity_states[[1]], a$solves[[1]]$fit$x_star)
   expect_identical(a$solves[[2]]$args$x0, a$solves[[1]]$fit$x_star)
+  # Without reuse the gradient solve, and any later objective solve, warm
+  # starts from the last accepted objective state.
+  expect_identical(b$solves[[2]]$args$x0, b$solves[[1]]$fit$x_star)
+  warm <- .run_reuse_requests(p, requests = c("f0", "f0.1"), tol = 1e-10)
+  expect_null(warm$solves[[1]]$args$x0)
+  expect_identical(warm$solves[[2]]$args$x0, warm$solves[[1]]$fit$x_star)
   expect_equal(a$answers, b$answers, tolerance = 1e-7)
   expect_equal(a$fit$outputs, b$fit$outputs, tolerance = 1e-7)
   expect_true(a$fit$equilibrium$converged)
