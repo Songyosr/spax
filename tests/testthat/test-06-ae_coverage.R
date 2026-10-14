@@ -15,15 +15,14 @@ test_that("coverage matches independent choice, ratio, caps and conservation", {
   D <- c(10, 30, 5, 20)
   S <- c(100, 20, 50)
   dist <- terra::values(f$distance)[c(1, 2, 3, 6), ]
-  score <- sweep(exp(-dist^2 / 8), 2, S, "*")
-  score[is.na(score)] <- 0
-  P <- score / (rowSums(score) + 20)
-  U <- as.vector(crossprod(P, D))
-  r <- ifelse(U > 0, S / U, 0)
-  A <- as.vector(P %*% r)
+  ref <- clm_oracle(dist, D, S, sigma = 2, v0 = 20)
+  P <- unname(ref$probability)
+  U <- ref$utilization
+  r <- ref$ratio
+  A <- ref$A
   expect_equal(x$facilities$r, r)
   expect_equal(x$cells$A, A)
-  expect_equal(x$cells$rho, rowSums(P))
+  expect_equal(x$cells$rho, ref$rho)
   expect_equal(x$cells$E_post, pmin(A / 3, 1))
   expect_equal(x$cells$E_fac, as.vector(P %*% pmin(r / 3, 1)))
   expect_true(all(x$cells$E_post >= x$cells$E_fac - 1e-14))
@@ -53,6 +52,16 @@ test_that("fit extraction reuses outputs without solving or extracting raster da
   x <- .ae_coverage(fit, norm = 3)
   expect_equal(x$cells, reference$cells)
   expect_equal(.coverage_aggregate(x), reference$regional)
+  expect_error(.ae_coverage(fit, units = 1), "units")
+  bad <- fit
+  bad$allocation_form <- "huff_decay"
+  expect_error(.ae_coverage(bad), "CLM allocation")
+  bad <- fit
+  bad$coverage_meta$facility_ids <- c("a", "b")
+  expect_error(.ae_coverage(bad), "incompatible axes")
+  bad <- fit
+  bad$outputs$allocation[1, 1] <- -0.1
+  expect_error(.ae_coverage(bad), "invalid coverage numeric")
   fit$outputs$utilization[1] <- fit$outputs$utilization[1] * 2
   expect_error(.ae_coverage(fit), "inconsistent")
   fit$coverage_meta <- NULL
@@ -75,6 +84,7 @@ test_that("zone aggregation aligns IDs and applies floors after raw aggregation"
   expect_error(.coverage_aggregate(x, zones[-4, ]), "every retained")
   zones$cell[1] <- zones$cell[2]
   expect_error(.coverage_aggregate(x, zones), "unique cell")
+  expect_error(.coverage_aggregate(x, data.frame(cell = 1:6)), "zone labels")
   floored <- .problem_coverage(f$problem, f$theta, norm = 3,
                                rho_floor = 1, contact_need_floor = 1000)
   expect_true(all(floored$cells$masked))
@@ -97,6 +107,9 @@ test_that("zero supply, zero load and unknown observations remain distinct", {
   expect_equal(x$facilities$r_plugin, c(2, NA, NA))
   expect_equal(x$facilities$observed, c(50, 0, NA))
   expect_equal(x$conservation$supported_supply, 100)
+  expect_s3_class(summary(x)$plugin_gap, "data.frame")
+  expect_output(print(summary(x)))
+  expect_error(.problem_coverage(p, f$theta, solve_control = list(1)), "solve_control")
   expect_error(.problem_coverage(p, f$theta, observed = c(a = 1, b = 2, z = 3)), "facility IDs")
   expect_error(.problem_coverage(p, f$theta, observed = 1:3), "named vector")
   expect_error(.problem_coverage(p, f$theta, norm = 0), "norm")
@@ -117,9 +130,7 @@ test_that("methods and lazy maps preserve fit support, including unreachable dem
   expect_true(terra::compareGeom(map, f$demand))
   expect_equal(which(is.na(terra::values(map)[, 1])), c(4L, 5L))
   expect_equal(unname(terra::values(map)[3, 1]), 0)
-  path <- tempfile(fileext = ".pdf")
-  grDevices::pdf(path)
-  on.exit({grDevices::dev.off(); unlink(path)}, add = TRUE)
+  withr::local_pdf(NULL)
   for (type in c("coverage", "contact", "adequacy", "quadrant", "all")) {
     expect_invisible(plot(x, type = type))
   }

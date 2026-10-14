@@ -23,6 +23,8 @@ test_that("selective distances equal full extraction, including missing and zero
   expect_true(is.infinite(p$distance_active[4, 1]))
 })
 
+# The terra mocks below pin the DEC-010 efficiency contract: preparation reads
+# only the retained rows of a partially supported distance stack.
 test_that("partial support never requests the full distance values matrix", {
   f <- .extraction_fixture()
   original_values <- terra::values
@@ -43,13 +45,13 @@ test_that("partial support never requests the full distance values matrix", {
 })
 
 test_that("file-backed, single-layer, all-active and empty extraction preserve shape", {
+  skip_if_no_proj() # writing a GeoTIFF with a CRS needs the PROJ database
   f <- .extraction_fixture()
-  path <- tempfile(fileext = ".tif")
+  path <- withr::local_tempfile(fileext = ".tif")
   # Use finite/NA values here: GeoTIFF handling of Inf is driver-specific.
   v <- terra::values(f$distance); v[is.infinite(v)] <- NA_real_
   terra::values(f$distance) <- v
   disk <- terra::writeRaster(f$distance, path, overwrite = TRUE, datatype = "FLT8S")
-  on.exit(unlink(path), add = TRUE)
   names(disk) <- names(f$distance)
   full_disk <- terra::values(disk, mat = TRUE)
   expect_identical(is.na(full_disk), is.na(v))
@@ -70,10 +72,8 @@ test_that("preparation refreshes changed support and facility order without impu
   f <- .extraction_fixture()
   p <- .huff_problem(f$demand, f$supply, f$distance, v0 = 10)
   before <- .problem_coverage(p, c(sigma = 2))
-  v <- terra::values(.coverage_surface(before, "rho"))[, 1]
-  expect_true(is.na(v[2])) # valid zero demand, not a prediction
-  expect_true(is.na(v[3])) # unknown demand, not silently converted to zero
-  expect_equal(unname(v[4]), 0) # positive demand with no reachable facility
+  # Map support for zero, unknown and unreachable demand is checked in the
+  # coverage tests.
   terra::values(f$demand)[2, 1] <- 15
   distance <- f$distance[[c(2, 1)]]
   q <- .huff_problem(f$demand, f$supply, distance, v0 = 10)
