@@ -6,6 +6,8 @@
 #
 # Run from the package root:
 #   Rscript data-raw/cornwall_gp.R
+# Needs data.table, sf, terra, curl, digest and jsonlite (build-time only;
+# data-raw/ is excluded from the package).
 #
 # Downloads are cached outside the repository, in SPAX_DATA_RAW_CACHE or the
 # spax user cache directory. Static source files are pinned by SHA-256 and the
@@ -37,6 +39,11 @@ dir.create(cache, recursive = TRUE, showWarnings = FALSE)
 sha256 <- function(path) digest::digest(file = path, algo = "sha256")
 
 # Sources ---------------------------------------------------------------------
+#
+# API responses accepted on 2026-10-14 (SHA-256 prefixes; compare with the
+# provenance record after a rebuild to detect upstream changes):
+#   onspd_nov_2025.json f5aa97e37ddf, lsoa_bsc.geojson 0e38c8d7e4d3,
+#   lsoa_pop_centroids.geojson 5281b30edc94, ons_pop_lsoa21.csv 203a5293fa49
 
 icb_code <- "QT6"           # NHS Cornwall and Isles of Scilly ICB
 scilly_lsoa_prefix <- "Isles of Scilly"
@@ -73,9 +80,15 @@ fetch <- function(key) {
   path <- file.path(cache, s$file)
   if (!file.exists(path)) {
     tmp <- paste0(path, ".part")
-    old <- options(timeout = max(900, getOption("timeout")))
-    on.exit(options(old), add = TRUE)
-    utils::download.file(s$url, tmp, mode = "wb", quiet = TRUE)
+    for (attempt in 1:3) { # transient network failures are common for large files
+      ok <- tryCatch({
+        curl::curl_download(s$url, tmp, quiet = TRUE)
+        TRUE
+      }, error = function(e) FALSE)
+      if (ok) break
+      Sys.sleep(5 * attempt)
+    }
+    if (!ok) stop("download failed after 3 attempts: ", s$url, call. = FALSE)
     file.rename(tmp, path)
   }
   if (!identical(sha256(path), s$sha256)) {
@@ -138,7 +151,8 @@ setDT(onspd)
 pr <- merge(pr, onspd[, .(postcode = pcds, x = as.numeric(east1m),
                           y = as.numeric(north1m), doterm)],
             by = "postcode", all.x = TRUE)
-stopifnot(!anyNA(pr$x), !anyNA(pr$gp_fte_extg))
+stopifnot(!anyNA(pr$x), !anyNA(pr$gp_fte_extg),
+          all(is.na(pr$doterm) | !nzchar(pr$doterm))) # no terminated postcodes
 
 # Small areas -----------------------------------------------------------------
 
@@ -198,15 +212,6 @@ names(popr) <- "pop"
 
 land <- rasterize(area_ll, wp, touches = TRUE)
 fr <- mask(resample(rast(fetch("friction")), wp, method = "near"), land)
-# MAP codes inland water as 0.06 min/m; give populated water cells the median
-# friction of their land neighbours so riverside towns are not penalised.
-water <- !is.na(fr) & fr >= 0.05 & !is.na(popr) & popr > 0
-n_water_fixed <- as.numeric(global(water, "sum", na.rm = TRUE))
-if (n_water_fixed > 0) {
-  land_fr <- classify(fr, cbind(0.05, Inf, NA), right = FALSE)
-  nb <- focal(land_fr, w = 3, fun = "median", na.rm = TRUE)
-  fr <- ifel(water & !is.na(nb), nb, fr)
-}
 
 pts_ll <- st_transform(st_as_sf(pr, coords = c("x", "y"), crs = 27700), 4326)
 pcell <- cellFromXY(fr, st_coordinates(pts_ll))
@@ -294,7 +299,7 @@ saveRDS(names(travel), "inst/extdata/cornwall_gp_travel_names.rds")
 
 provenance <- list(
   built = format(Sys.time(), tz = "UTC", usetz = TRUE),
-  static = static, api = api_log, n_water_cells_fixed = n_water_fixed,
+  static = static, api = api_log,
   outputs = vapply(c(list.files("data", "^cornwall_", full.names = TRUE),
                      list.files("inst/extdata", "^cornwall_", full.names = TRUE)),
                    sha256, character(1)))

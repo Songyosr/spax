@@ -69,7 +69,7 @@
 #'   \item{cent_x, cent_y}{Population-weighted centroid (EPSG:27700), the
 #'     origin used for `cornwall_travel`.}
 #'   \item{scilly}{`TRUE` for the Isles of Scilly area.}
-#'   \item{geometry}{Generalised boundary.}
+#'   \item{geometry}{Super-generalised (200 m) clipped boundary.}
 #' }
 #'
 #' @details Registered counts exceed the population estimates by about 4%,
@@ -122,14 +122,18 @@
 #' population-weighted centroid to each practice's main site.
 #'
 #' @format An integer matrix with 337 rows (`cornwall_lsoa$lsoa`) and 55
-#'   columns (`cornwall_gp$practice`). Values are at least 1 minute
-#'   (same-cell pairs). `NA` marks pairs with no road connection: the Isles of
-#'   Scilly area and practice are reachable only from each other.
+#'   columns (`cornwall_gp$practice`). Values are rounded to whole minutes
+#'   with a 1-minute floor, which covers same-cell and adjacent-cell pairs;
+#'   about half of in-area registrations have a value of 1. `NA` marks pairs
+#'   with no road connection: the Isles of Scilly area and practice are
+#'   reachable only from each other.
 #'
 #' @details Times are least-cost paths through the Malaria Atlas Project 2019
 #'   motorised friction surface (about 1 km cells), computed with
 #'   [terra::costDist()] over land in Cornwall and the Isles of Scilly; the sea
-#'   and the Devon border act as barriers. The road network dates from about
+#'   and the Devon border act as barriers. Times are measured to the edge of
+#'   the practice's cell, so they run slightly (under a minute) shorter than
+#'   cell-centre to cell-centre. The road network dates from about
 #'   2019, traffic is not modelled, and 1 km cells are coarse in towns, where
 #'   several practices can share a cell. Values are taken from
 #'   `cornwall_gp_travel.tif` at each centroid's cell.
@@ -159,7 +163,8 @@
 #'   arc-second cells (about 1 km; about 0.55 square km at this latitude),
 #'   EPSG:4326. Values are estimated residents per cell. Cells crossing the
 #'   boundary are weighted by the share of their area inside it; `NA` marks
-#'   cells outside.
+#'   cells outside. The total (about 543,000) is about 7% below the ONS mid-2024
+#'   estimate used in [cornwall_lsoa] (585,655); do not mix the two unknowingly.
 #'
 #' @source WorldPop (2018), Global High Resolution Population Denominators
 #'   Project, 2020 UN-adjusted 1 km estimates for the United Kingdom,
@@ -183,8 +188,10 @@ NULL
 #'
 #' @format A 55-layer GeoTIFF on the `cornwall_pop.tif` grid (132 rows x 271
 #'   columns, EPSG:4326). Layer names are practice codes (`cornwall_gp$practice`).
-#'   Values are at least 1 minute; `NA` marks unpopulated cells, pairs without a
-#'   road connection (the Isles of Scilly) and journeys over 180 minutes.
+#'   Values are rounded to whole minutes with a 1-minute floor; `NA` marks
+#'   unpopulated cells, pairs without a road connection (mainland cells to the
+#'   Isles of Scilly practice and back, and off-island Scilly cells that cannot
+#'   reach the St Mary's practice) and journeys over 180 minutes.
 #'
 #' @details Computed as for [cornwall_travel]; see its details for method and
 #'   limitations.
