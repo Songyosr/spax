@@ -19,14 +19,13 @@ Computed using OSRM with OpenStreetMap data.
 Hospital locations from \code{\link{hc12_hos}}.
 }
 \description{
-A RasterStack containing travel time isochrones for 77 hospitals in Thailand's Region 12.
+A multi-layer GeoTIFF containing travel time isochrones for 77 hospitals in Thailand's Region 12.
 Each layer represents the travel time (in minutes) to reach one hospital, computed using
 the OSRM (Open Source Routing Machine) routing engine.
 
-**Note**: As of version 0.2.4, this dataset has been moved to external data storage
-to improve package performance. The data is no longer lazy-loaded, so direct usage
-like `rast(hos_iscr)` is not supported. Please use `read_spax_example("hos_iscr.tif")`
-to access this dataset.
+The GeoTIFF is bundled in the package's \code{inst/extdata} directory and is
+not a lazy-loaded R object. Use \code{read_spax_example("hos_iscr.tif")} to
+load it as a \code{terra::SpatRaster}; no download is required.
 }
 \details{
 Travel times were calculated using the following time-break structure:
@@ -39,10 +38,7 @@ Travel times were calculated using the following time-break structure:
 }
 \examples{
 \dontrun{
-# Old method (no longer supported):
-# rast(hos_iscr)  # Will not work after v0.2.4
-
-# New method:
+# Load the bundled GeoTIFF as a SpatRaster:
 hos_iscr <- read_spax_example("hos_iscr.tif")
 
 # Plot travel time to first hospital

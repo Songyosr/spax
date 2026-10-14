@@ -5,6 +5,16 @@
 The changes below are available on `codex-assist-main`. They are not a new stable
 release; record the source commit when reproducing an analysis.
 
+* The supported minimum is R 4.4.0, with testthat 3.2.0 for tests. This is the
+  dependency and testing policy for the development branch. CI targets release R
+  on Linux, Windows and macOS, plus Linux R-devel and the exact minimum R version.
+  Existing public FCA calling semantics are unchanged by this compatibility floor.
+* Tutorials now use portable generated examples; live routing is optional and
+  is not executed during routine builds. A model-choice guide connects the public
+  FCA and experimental allocation workflows. The full allocation example retains
+  all 399 bootstrap attempts and its existing statistical reporting rules.
+* Removed the unused `bench` and `fasterize` packages from Suggests after the
+  portable tutorial conversion.
 * Public FCA functions remain supported, including independent accessibility
   indicators from multiple supply columns. Their equations and normalization
   choices are unchanged by the experimental allocation interface.
