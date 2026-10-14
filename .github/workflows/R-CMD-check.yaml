@@ -14,9 +14,72 @@ concurrency:
   group: r-check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Tiered checks. Every PR push and every push to codex-assist-main runs the
+# quick check: one Linux cell, CRAN-mode check with all tests, without
+# rebuilding vignettes or the PDF manual. The full five-cell matrix (vignettes,
+# PDF manual with index, evidence and preservation records) runs only for major
+# updates: PRs into develop, PRs labelled `full-check` (the label takes effect
+# on the next push or a close/reopen; re-running reuses the old labels), manual
+# "Run workflow" dispatch, and pushes to develop. Label PRs that substantially
+# change Rd files, since only the full matrix builds the PDF manual.
 jobs:
+  quick:
+    name: quick (Linux, R release, no vignette rebuild)
+    if: >-
+      (github.event_name == 'push' && github.ref != 'refs/heads/develop') ||
+      (github.event_name == 'pull_request' && github.base_ref != 'develop' &&
+       !contains(github.event.pull_request.labels.*.name, 'full-check'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      _R_CHECK_FORCE_SUGGESTS_: "true"
+      _R_CHECK_CRAN_INCOMING_: "true"
+      NOT_CRAN: "false"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          dependencies: '"all"'
+          needs: check
+      - name: Locate the PROJ database for spatial tests
+        shell: Rscript {0}
+        run: |
+          sf_paths <- tryCatch(sf::sf_proj_info(type = "path"),
+                               error = function(e) character())
+          paths <- c(Sys.getenv(c("PROJ_DATA", "PROJ_LIB")), sf_paths,
+                     system.file("proj", package = "sf"),
+                     system.file("proj", package = "terra"),
+                     "/usr/share/proj", "/usr/local/share/proj")
+          paths <- unique(unlist(strsplit(paths, .Platform$path.sep, fixed = TRUE)))
+          paths <- paths[!is.na(paths) & nzchar(paths) & file.exists(file.path(paths, "proj.db"))]
+          # Without proj.db the spatial tests skip silently; fail instead.
+          if (!length(paths)) stop("PROJ database is required for spatial tests")
+          proj <- normalizePath(paths[[1]], winslash = "/", mustWork = TRUE)
+          cat(paste0(c("PROJ_DATA=", "PROJ_LIB="), proj, "\n"),
+              file = Sys.getenv("GITHUB_ENV"), append = TRUE, sep = "")
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--as-cran", "--no-manual", "--ignore-vignettes")'
+          build_args: 'c("--no-build-vignettes", "--no-manual")'
+          error-on: '"warning"'
+          upload-results: true
+          artifact-name: r-check-quick
+
   check:
     name: ${{ matrix.config.id }} (R ${{ matrix.config.r }})
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'pull_request' &&
+       (github.base_ref == 'develop' ||
+        contains(github.event.pull_request.labels.*.name, 'full-check')))
     runs-on: ${{ matrix.config.os }}
     timeout-minutes: 90
     strategy:
