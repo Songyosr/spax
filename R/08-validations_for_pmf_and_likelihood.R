@@ -67,8 +67,8 @@
       stop(sprintf("Column '%s' not found in input vector", value_col))
     }
 
-    # Check column data
-    values <- x[[value_col]]
+    # Check column data; `[[` on a SpatVector returns a one-column data frame
+    values <- x[[value_col]][[1]]
     if (!is.numeric(values)) {
       stop(sprintf("Column '%s' must contain numeric values", value_col))
     }
@@ -87,8 +87,8 @@
       stop("Input and template must have same CRS")
     }
 
-    # Check that vector intersects template extent
-    if (!terra::intersect(terra::ext(x), terra::ext(template))) {
+    # Check that vector intersects template extent (NULL when disjoint)
+    if (is.null(terra::intersect(terra::ext(x), terra::ext(template)))) {
       stop("Input vector must intersect template extent")
     }
   }
