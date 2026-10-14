@@ -3,7 +3,7 @@
 # Engine-instance #1 of the platform (see notes "Spax Platform Vision"): the
 # no-state, single-pass T_theta. The checked spax_field / terra layer decides
 # meaning and geometry; this layer does the repeated numeric work on compact
-# matrices. Public API is unchanged -- these are private, tests/benchmarks only.
+# matrices. Public API is unchanged -- these are private, used by the AE models.
 #
 # The atom catalog is documentation; a function exists only where there is a
 # contract worth testing. Executor functions are promoted when the operation is:
@@ -13,7 +13,6 @@
 # Executor catalog:
 #   .contract      contract a vector/matrix over one margin via crossprod/%*%
 #   .scale         row/col scaling; broadcast folds into this
-#   .safe_ratio    zero-safe guarded division
 #   .normalize     margin normalization; policy modes live in the planner
 #   .rewrap_cells  compact vector -> raster boundary utility
 #
@@ -25,8 +24,8 @@
 #
 # Substrate: the compute (gather/ratio/spread) is plain crossprod/%*%/elementwise.
 # terra is only the I/O skin -- the extractor (.fca_compact_plan) and the rewrap.
-# The terra-free core (.compute_fca_plan) consumes a plan of plain matrices, so a
-# non-terra / sparse front-end can feed the same executor unchanged.
+# The plan holds plain matrices, so a non-terra / sparse front-end can feed the
+# same primitives unchanged.
 #
 # Storage seam: contracts are written with crossprod / %*%, which are generic
 # over base dense matrices AND Matrix::dgCMatrix. The dense/sparse choice is a
@@ -81,14 +80,6 @@
   } else {
     out
   }
-}
-
-#' Zero-safe elementwise ratio (matrix form of `.ae_ratio`)
-#' @keywords internal
-.safe_ratio <- function(num, denom, zero = 0) {
-  out <- num / denom
-  out[!is.finite(out)] <- zero
-  out
 }
 
 #' Normalize a matrix over one margin
@@ -212,50 +203,3 @@
   )
 }
 
-#' Execute an FCA plan on the compact substrate (terra-free interpreter)
-#'
-#' `gather -> ratio -> spread` as matrix ops. Consumes only the plan's plain
-#' matrices/vectors -- no terra -- and returns one access vector per measure
-#' (over the plan's reachable cells). Multiple supply measures are an
-#' independent batch axis: `S[J, M]` is divided by the shared `U[J]`, then spread
-#' with one matrix-matrix contraction `Ka %*% R`. The kernels in `plan` may be
-#' dense base matrices or `Matrix::` sparse matrices; the same code path handles
-#' both. This is also the hot loop an AE fixed point would iterate (no rewrap
-#' inside).
-#' @keywords internal
-.compute_fca_plan <- function(plan) {
-  U <- .contract(plan$D_active, plan$Kd_active, over = "rows")   # [J]
-  if (!is.null(dim(U))) {
-    S <- matrix(plan$S[, 1], nrow = nrow(U), ncol = ncol(U))
-    R <- .safe_ratio(S, U, zero = 0)                                # [J x demand batches]
-  } else {
-    R <- .safe_ratio(plan$S, U, zero = 0)                            # [J x measures]
-  }
-  A <- plan$Ka_kept %*% R                                          # [reachable cells x measures]
-  lapply(seq_len(ncol(A)), function(m) as.vector(A[, m]))
-}
-
-#' Run FCA over the compact matrix substrate (== compute_fca, no raster hot loop)
-#'
-#' terra front-end (extract) -> terra-free executor -> terra back-end (rewrap).
-#' Equivalent to `compute_fca()` within float tolerance; private, tests/benchmarks.
-#' @keywords internal
-.compute_fca_matrix <- function(demand, supply, demand_kernel, access_kernel,
-                                demand_normalize = "identity",
-                                id_col = NULL, supply_cols = NULL,
-                                indicator_names = NULL) {
-  plan <- .fca_compact_plan(
-    demand, supply, demand_kernel, access_kernel,
-    demand_normalize = demand_normalize, id_col = id_col,
-    supply_cols = supply_cols, indicator_names = indicator_names
-  )
-
-  access <- .compute_fca_plan(plan)                              # terra-free core
-
-  layers <- lapply(access, function(A) {
-    .rewrap_cells(A, plan$template, kept_cell_index = plan$access_kept_index)
-  })
-  out <- terra::rast(layers)
-  names(out) <- plan$measures
-  out
-}

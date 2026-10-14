@@ -192,35 +192,3 @@ test_that("Huff vector and matrix targets fit with masks and gradients", {
   expect_equal(unname(gd$theta_hat["sigma"]), unname(bb$theta_hat["sigma"]),
                tolerance = 1e-3)
 })
-
-# .fit_problem_decay() is a single-parameter weighted-SSE wrapper kept
-# pending a maintainer decision (test audit 2026-10-14); retiring it means
-# deleting this block.
-
-test_that(".fit_problem_decay equals the weighted-SSE NFXP fit", {
-  problem <- ae_ratio_problem(fix = c("v0", "feedback_scale"))
-  observed <- .solve_problem(problem, c(sigma = 2), lambda = 0.7,
-                             tol = 1e-10)$utilization
-  controls <- list(lambda = 0.7, tol = 1e-10, max_iter = 500,
-                   control = list(maxit = 20))
-  decay <- do.call(.fit_problem_decay, c(list(
-    problem = problem, observed = observed, init = 1.5, lower = 0.5,
-    upper = 4, eta = 2), controls))
-  nfxp <- do.call(.fit_problem_nfxp, c(list(
-    problem = problem, observed = observed, init = c(sigma = 1.5),
-    lower = c(sigma = 0.5), upper = c(sigma = 4),
-    loss_args = list(eta = 2)), controls))
-
-  expect_s3_class(decay, "ae_problem_decay_fit")
-  expect_s3_class(decay, "ae_problem_nfxp_fit")
-  expect_equal(decay$theta_hat, unname(nfxp$theta[["sigma"]]))
-  expect_equal(decay$theta_hat, 2, tolerance = 1e-3)
-  expect_equal(decay$wsse, nfxp$loss)
-  expect_lt(decay$wsse, 1e-6)
-  expect_equal(decay$eta, 2)
-  expect_equal(unname(decay$predicted), unname(observed), tolerance = 1e-4)
-  expect_gt(decay$spectral_radius, 0)
-  expect_lt(decay$spectral_radius, 1)
-  expect_error(.fit_problem_decay(ae_ratio_problem(), observed, 1.5, 0.5, 4),
-               "single-parameter")
-})

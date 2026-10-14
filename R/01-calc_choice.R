@@ -91,12 +91,5 @@ calc_choice <- function(weights, attractiveness = NULL,
   .chck_calc_choice(weights, attractiveness, alpha, a0)
 
   # Use same core computation
-  probs <- .help_calc_choice_core(weights, attractiveness, alpha, a0)
-
-  # Add names for user-facing results
-  if (is.null(names(probs))) {
-    names(probs) <- paste0("facility_", seq_len(nlyr(probs)))
-  }
-
-  return(probs)
+  .help_calc_choice_core(weights, attractiveness, alpha, a0)
 }

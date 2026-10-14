@@ -1,9 +1,9 @@
-# Compact matrix executor (R/05-executor.R). The primitives serve the AE
-# models; the compact FCA executor at the end is benchmark-only.
+# Compact matrix executor (R/05-executor.R): primitives and the compact FCA
+# plan that the AE models build on.
 
 # Executor primitives ---------------------------------------------------------
 
-test_that(".contract, .scale and .safe_ratio do plain matrix algebra", {
+test_that(".contract and .scale do plain matrix algebra", {
   K <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2) # [2 x 3]
   v_rows <- c(10, 100)
   v_cols <- c(2, 3, 4)
@@ -19,9 +19,6 @@ test_that(".contract, .scale and .safe_ratio do plain matrix algebra", {
   expect_equal(.scale(K, v_rows, "rows"), sweep(K, 1, v_rows, "*"))
   expect_equal(.scale(K, v_cols, "cols"), sweep(K, 2, v_cols, "*"))
   expect_error(.scale(K, v_rows, "diagonal"), "should be one of")
-
-  expect_equal(.safe_ratio(c(2, 4, 6, 0), c(1, 0, 3, 0), zero = 0), c(2, 0, 2, 0))
-  expect_equal(.safe_ratio(c(2, 4), c(1, 0), zero = -1), c(2, -1))
 })
 
 test_that(".normalize divides over a margin and the FCA policy wraps it", {
@@ -72,60 +69,24 @@ test_that(".rewrap_cells writes values back onto the template", {
   expect_equal(terra::values(kept)[, 1], c(NA, 7, NA, 9))
 })
 
-# Benchmark-only compact FCA executor ------------------------------------------
-# .fca_compact_plan(), .compute_fca_plan() and .compute_fca_matrix() are used
-# only by benchmarks (maintainer decision pending). Delete this section
-# together with them.
+# Compact FCA plan ------------------------------------------------------------
 
-test_that(".compute_fca_matrix matches the FCA oracle for every normalization", {
+test_that("the compact FCA plan names its measures and refuses mixed batches", {
   td <- fca_toy()
-  K <- exp(-unname(terra::values(td$distance))^2 / (2 * 2.4^2))
-  K[9, ] <- NA # unreachable cell
-  D <- terra::values(td$demand)[, 1]
-  D[c(2, 5)] <- c(0, NA) # inactive demand rows are compacted away
-  demand <- terra::setValues(td$demand, D)
-  kernel <- terra::setValues(td$distance, K)
-  S <- unname(td$supply_matrix)
-
-  for (norm in c("identity", "standard", "semi")) {
-    matx <- .compute_fca_matrix(demand, td$supply_matrix, kernel, kernel,
-                                demand_normalize = norm)
-    expect_equal(names(matx), c("doctors", "nurses"))
-    expect_equal(unname(terra::values(matx)), fca_oracle(D, K, K, S, norm),
-                 info = norm)
-  }
-  single <- .compute_fca_matrix(demand, td$supply_vector, kernel, kernel,
-                                indicator_names = "gp_access")
-  expect_equal(names(single), "gp_access")
-  expect_equal(unname(terra::values(single)), fca_oracle(D, K, K, S[, 1]))
-
-  # The terra-free core takes sparse kernels unchanged.
-  skip_if_not_installed("Matrix")
-  plan <- .fca_compact_plan(demand, td$supply_matrix, kernel, kernel,
-                            demand_normalize = "standard")
-  sparse <- plan
-  sparse$Kd_active <- Matrix::Matrix(plan$Kd_active, sparse = TRUE)
-  sparse$Ka_kept <- Matrix::Matrix(plan$Ka_kept, sparse = TRUE)
-  expect_equal(lapply(.compute_fca_plan(sparse), as.numeric),
-               .compute_fca_plan(plan), tolerance = 1e-10)
-})
-
-test_that("the compact executor batches demand layers or supply measures, not both", {
-  td <- fca_toy()
-  K <- exp(-unname(terra::values(td$distance))^2 / 8)
-  kernel <- terra::setValues(td$distance, K)
-  D <- terra::values(td$demand)[, 1]
+  kernel <- terra::setValues(td$distance,
+                             exp(-unname(terra::values(td$distance))^2 / 8))
   demand_batch <- c(td$demand, td$demand * 2)
   names(demand_batch) <- c("children", "adults")
 
-  batched <- .compute_fca_matrix(demand_batch, td$supply_vector, kernel, kernel,
-                                 demand_normalize = "standard")
-  expect_equal(names(batched), c("children", "adults"))
-  expect_equal(
-    unname(terra::values(batched)),
-    cbind(fca_oracle(D, K, K, td$supply_vector, "standard"),
-          fca_oracle(2 * D, K, K, td$supply_vector, "standard"))
-  )
+  # Measures are the supply columns, the demand layers of a batch, or the
+  # given indicator names.
+  expect_equal(.fca_compact_plan(td$demand, td$supply_matrix, kernel,
+                                 kernel)$measures, c("doctors", "nurses"))
+  expect_equal(.fca_compact_plan(demand_batch, td$supply_vector, kernel,
+                                 kernel)$measures, c("children", "adults"))
+  expect_equal(.fca_compact_plan(td$demand, td$supply_matrix, kernel, kernel,
+                                 indicator_names = c("a", "b"))$measures,
+               c("a", "b"))
   expect_error(.fca_compact_plan(demand_batch, td$supply_matrix, kernel, kernel),
                "product-axis semantics")
 })

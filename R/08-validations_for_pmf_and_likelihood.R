@@ -121,35 +121,3 @@
   invisible(TRUE)
 }
 
-#' Validate numeric values for likelihood computation
-#' @param x Numeric vector to validate
-#' @param allow_negative Logical; if TRUE, allow negative values
-#' @param method Character string indicating computation method
-#' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
-.chck_likelihood_values <- function(x, allow_negative = FALSE, method = "mean") {
-  # Check for valid numeric values
-  if (!is.numeric(x)) {
-    stop("Values must be numeric")
-  }
-
-  # Check for negative values if not allowed
-  if (!allow_negative && any(x < 0, na.rm = TRUE)) {
-    stop("Values cannot be negative")
-  }
-
-  # Method-specific validation
-  if (!method %in% c("mean", "sum", "custom")) {
-    stop("Invalid method specified")
-  }
-
-  # Check for zero/NA issues
-  if (method == "mean" && all(is.na(x))) {
-    stop("All values are NA")
-  }
-  if (method == "sum" && sum(x, na.rm = TRUE) == 0) {
-    stop("Sum of values is zero")
-  }
-
-  invisible(TRUE)
-}

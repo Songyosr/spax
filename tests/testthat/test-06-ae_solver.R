@@ -119,29 +119,3 @@ test_that("implicit_gradient solves the fixed-point sensitivity equation", {
     "one row per state"
   )
 })
-
-# Test-only helpers in R/ (equilibrium_residual, fd_jacobian_param,
-# grad_check) have no package caller. Kept pending a maintainer decision
-# (test audit 2026-10-14); retiring them means deleting this block.
-
-test_that("test-only residual and Jacobian checkers agree with closed forms", {
-  map <- function(x) c(x[1] + 1, 2 * x[2])
-  expect_equal(equilibrium_residual(map, c(3, 4)), c(-1, -4))
-
-  param_map <- function(x, theta) {
-    c(theta[1] * x[1] + theta[2], theta[1] * x[2]^2)
-  }
-  x <- c(2, 3)
-  analytic <- matrix(c(x[1], x[2]^2, 1, 0), nrow = 2)
-  expect_equal(fd_jacobian_param(param_map, c(4, 5), x), analytic,
-               tolerance = 1e-5)
-
-  fn <- function(x) c(exp(x[1]), x[1] * x[2])
-  x <- c(0.5, 2)
-  analytic <- matrix(c(exp(x[1]), x[2], 0, x[1]), nrow = 2)
-  check <- grad_check(fn, x, analytic, tolerance = 1e-5)
-  expect_true(check$passed)
-  expect_lte(check$max_abs, 1e-5)
-  expect_equal(check$analytic, analytic)
-  expect_equal(dim(check$finite_difference), c(2L, 2L))
-})

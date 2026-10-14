@@ -5,10 +5,11 @@
 # alignment is always by index$layer join key (never raw layer order), and
 # fields are immutable (operations return new fields).
 #
-# Three formal atoms — .ae_lift / .ae_transform / .ae_aggregate — plus the
-# domain-general FCA verbs .ae_normalize / .ae_gather / .ae_spread / .ae_ratio /
-# .ae_update. `gather` keeps the fused terra::global reduction; `spread` is
-# recomposed from atoms (see SPAX-002 card / Harmonized Implementation Plan).
+# Two formal atoms — .ae_transform / .ae_aggregate — plus the domain-general
+# FCA verbs .ae_normalize / .ae_gather / .ae_spread / .ae_ratio. `gather` keeps
+# the fused terra::global reduction; `spread` is recomposed from atoms (see
+# SPAX-002 card / Harmonized Implementation Plan). The unused lift, update
+# and mask atoms were removed after the 2026-10-14 test audit.
 #
 # Naming: internal `.ae_*`, mapping 1:1 to a future exported `ae_*` layer.
 # No public API is added here; the raw->field rewire of compute_access() /
@@ -106,15 +107,6 @@
     stop("internal: broadcast vector length must equal the raster layer count")
   }
   aligned
-}
-
-#' Build a raster field from already-consistent data + frame (snap construction)
-#' @keywords internal
-.ae_raster <- function(data, domain, frame, role = "unknown", meta = list()) {
-  .spax_raster_field(
-    data = data, domain = domain, index = list(layer = frame),
-    role = role, meta = meta, snap = TRUE
-  )
 }
 
 #' Is x a length-one scalar accepted by field Ops?
@@ -302,73 +294,6 @@
   }, numeric(1))
   denom <- denom_by_group[match(key, groups)]
   .ae_normalize_values(values, denom, method = method, a0 = a0)
-}
-
-# Atom: lift -----------------------------------------------------------------
-
-#' Lift a field onto a template field's structure
-#'
-#' The template supplies backend, domain, geometry, and index frame. Its values
-#' are ignored. Source values are matched on source axes and broadcast over axes
-#' present only in the template.
-#' @keywords internal
-.ae_lift <- function(field, template) {
-  .chck_class(field, "spax_field", "field")
-  .chck_class(template, "spax_field", "template")
-  if (!all(.field_domain(field) %in% .field_domain(template))) {
-    stop("field domain must be a subset of template domain")
-  }
-
-  tdata <- .field_data(template)
-  backend <- .field_backend(field)
-  template_backend <- .field_backend(template)
-
-  if (template_backend == "vector") {
-    if (backend != "vector") {
-      stop("lifting raster fields to vector templates is not supported")
-    }
-    aligned <- .ae_align_vector_to_frame(field, .field_node_index(template))
-    return(.rewrap_field(template, aligned, role = .field_role(field), meta = list()))
-  }
-
-  if (template_backend == "raster" && backend == "vector") {
-    aligned <- .ae_align_to_layers(field, template) # length = nlyr(template)
-    lifted <- (tdata * 0) + aligned # constant-per-layer, template geometry/NA
-    return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
-  }
-
-  if (template_backend == "raster" && backend == "raster") {
-    .chck_raster_alignment(.field_data(field)[[1]], tdata[[1]], "field", "template")
-    base <- .field_data(field)
-
-    source_layer_axes <- .field_layer_axes(field)
-    if (length(source_layer_axes) == 0) {
-      if (terra::nlyr(base) != 1) {
-        stop("cell-axis-only raster fields must have one layer")
-      }
-      lifted <- base[[rep(1, terra::nlyr(tdata))]]
-      return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
-    }
-
-    template_frame <- .field_layer_index(template)
-    missing_axes <- setdiff(source_layer_axes, names(template_frame))
-    if (length(missing_axes) > 0) {
-      stop("raster field layer axis is not present in the template index: ",
-           paste(missing_axes, collapse = ", "))
-    }
-
-    source_frame <- .field_layer_index(field)
-    source_ids <- .ae_tuple_key(source_frame, source_layer_axes)
-    template_ids <- .ae_tuple_key(template_frame, source_layer_axes)
-    if (!all(template_ids %in% source_ids)) {
-      stop("raster field is missing layer tuples present in the template index")
-    }
-    lifted <- base[[match(template_ids, source_ids)]]
-    return(.rewrap_field(template, lifted, role = .field_role(field), meta = list()))
-  }
-
-  stop("unsupported lift: backend '", backend, "', domain (",
-       paste(.field_domain(field), collapse = ", "), ")")
 }
 
 # Atom: transform ------------------------------------------------------------
@@ -753,54 +678,4 @@ Math.spax_field <- function(x, ...) {
     out
   }
   .ae_combine(num, denom, op = safe_div)
-}
-
-# Verb: update (damped) ------------------------------------------------------
-
-#' Damped update of a retained state toward a realized target
-#'
-#' mix_lambda(omega, target) = (1 - lambda) * omega + lambda * target. The
-#' standard AE relaxation step; lambda in (0, 1].
-#' @keywords internal
-.ae_update <- function(state, target, lambda = 1) {
-  if (!is.numeric(lambda) || length(lambda) != 1 || lambda <= 0 || lambda > 1) {
-    stop("lambda must be a single value in (0, 1]")
-  }
-  a <- .ae_transform(state, function(x) (1 - lambda) * x)
-  b <- .ae_transform(target, function(x) lambda * x)
-  out <- .ae_combine(a, b, op = `+`)
-  out$role <- .field_role(state)
-  out
-}
-
-# Verb: mask ------------------------------------------------------------------
-
-#' Apply a binary or soft compatibility mask
-#' @keywords internal
-.ae_mask <- function(field, mask) {
-  .chck_class(field, "spax_field", "field")
-  .chck_class(mask, "spax_field", "mask")
-  values <- .field_data(mask)
-  mask_values <- if (inherits(values, "SpatRaster")) {
-    terra::values(values, mat = FALSE)
-  } else {
-    values
-  }
-  if (!(is.logical(mask_values) || is.numeric(mask_values))) {
-    stop("mask values must be logical or numeric")
-  }
-  if (any(is.na(mask_values))) {
-    stop("mask values must not be missing")
-  }
-  if (is.numeric(mask_values) && any(mask_values < 0 | mask_values > 1)) {
-    stop("numeric mask values must be in [0, 1]")
-  }
-
-  if (setequal(.field_domain(mask), .field_domain(field))) {
-    return(.ae_combine(field, mask, op = `*`))
-  }
-  if (all(.field_domain(mask) %in% .field_domain(field))) {
-    return(.ae_combine(field, .ae_lift(mask, template = field), op = `*`))
-  }
-  stop("mask domain must match or be a subset of field domain")
 }

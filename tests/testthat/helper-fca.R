@@ -20,6 +20,12 @@ field_rast <- function(n = 1, names = NULL) {
            names = names)
 }
 
+# The layer index of a raster field or the node index of a vector field.
+field_index_frame <- function(field) {
+  if (inherits(field, "spax_raster_field")) .field_layer_index(field)
+  else .field_node_index(field)
+}
+
 # The 3 x 3 FCA toy: demand 10..90 and two facilities whose distances run
 # 1..5 from opposite corners. Supply comes as a data frame, a matrix and a
 # named vector with the same values.

@@ -77,15 +77,6 @@
   invisible(TRUE)
 }
 
-#' Check if value is integer
-#' @keywords internal
-.chck_is_integer <- function(x, name = "Input") {
-  if (!is.numeric(x) || any(x != as.integer(x), na.rm = TRUE)) {
-    stop(sprintf("%s must be integer value(s)", name))
-  }
-  invisible(TRUE)
-}
-
 # 2. Basic Value Checks --------------------------------------------------------
 #' Check if value is in valid range
 #' @keywords internal
@@ -160,12 +151,3 @@
   invisible(TRUE)
 }
 
-# 6. NA Handling --------------------------------------------------------------
-#' Check if values contain NAs when not allowed
-#' @keywords internal
-.chck_no_na <- function(x, name = "Input") {
-  if (any(is.na(x))) {
-    stop(sprintf("%s contains NA values", name))
-  }
-  invisible(TRUE)
-}

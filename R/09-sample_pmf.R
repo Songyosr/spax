@@ -321,11 +321,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     values(result) <- NA
   }
 
-  # Assign layer names if not in snap mode
-  if (!snap && is.null(names(result))) {
-    names(result) <- paste0("sim_", 1:iterations)
-  }
-
   return(result)
 }
 
@@ -355,9 +350,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Early return if no samples needed
   if (sum(n_samples) == 0) {
-    if (!snap && is.null(names(result))) {
-      names(result) <- paste0("sim_", 1:iterations)
-    }
     return(result)
   }
 
@@ -422,11 +414,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Assign counts to result raster
   values(result) <- counts
-
-  # Assign layer names if not in snap mode
-  if (!snap && is.null(names(result))) {
-    names(result) <- paste0("sim_", 1:iterations)
-  }
 
   return(result)
 }

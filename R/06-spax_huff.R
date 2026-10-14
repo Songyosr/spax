@@ -68,9 +68,3 @@
   )
 }
 
-#' Static Huff map T(a) = a (constant; reaches equilibrium in one pass)
-#' @keywords internal
-.huff_map <- function(a, plan, v0 = 0,
-                      allocation = c("clm", "huff_decay")) {
-  .huff_state(a, plan = plan, v0 = v0, allocation = match.arg(allocation))$target
-}

@@ -81,23 +81,3 @@ test_that("output sensitivities use provided Jacobians or finite differences", {
   expect_equal(.problem_output_jac_state(step, x = 1, output = "utilization"),
                matrix(7, 1, 1))
 })
-
-# Test-only evaluators in R/ (.problem_map, .problem_outputs,
-# .problem_jac_state) have no package caller. Kept pending a maintainer
-# decision (test audit 2026-10-14); retiring them means deleting this block.
-
-test_that("test-only problem evaluators match the bound step", {
-  p <- ae_ratio_problem()
-  theta <- ae_ratio_truth()
-  step <- .bind_theta(p, theta)
-  x <- c(20, 40)
-
-  expect_identical(.problem_map(p, x, theta), step$map(x))
-  expect_identical(.problem_outputs(p, x, theta), step$outputs(x))
-  expect_identical(.problem_outputs(p, x, theta, "flow")$flow, step$outputs(x)$flow)
-  expect_identical(.problem_jac_state(p, x, theta), step$jac_state(x))
-  expect_error(
-    .problem_jac_state(ae_identity_problem(), c(1, 1), c(alpha = 1, beta = 1)),
-    "analytic state Jacobian"
-  )
-})

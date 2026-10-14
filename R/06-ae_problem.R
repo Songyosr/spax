@@ -515,22 +515,6 @@
   structure(bound, class = c("ae_bound_step", paste0(problem$model, "_bound_step")))
 }
 
-#' Evaluate a problem map at one state and theta
-#' @keywords internal
-#' @md
-.problem_map <- function(problem, x, theta) {
-  .bind_theta(problem, theta)$map(x)
-}
-
-#' Evaluate rich outputs at one state and theta
-#' @param requested_outputs Optional output names to materialize. `NULL` keeps
-#'   the provider's existing default outputs.
-#' @keywords internal
-#' @md
-.problem_outputs <- function(problem, x, theta, requested_outputs = NULL) {
-  .problem_step_outputs(.bind_theta(problem, theta), x, requested_outputs)
-}
-
 #' Evaluate rich outputs for a problem at arbitrary theta and state
 #' @param requested_outputs Optional output names to materialize. `NULL` keeps
 #'   the provider's existing default outputs.
@@ -574,17 +558,6 @@
     kept_cell_index = .allocation_cell_index(meta),
     output_axes = problem$metadata$spec$output_axes
   )
-}
-
-#' Evaluate the state Jacobian provider at one state and theta
-#' @keywords internal
-#' @md
-.problem_jac_state <- function(problem, x, theta) {
-  step <- .bind_theta(problem, theta)
-  if (!is.function(step$jac_state)) {
-    stop("problem does not provide an analytic state Jacobian")
-  }
-  step$jac_state(x)
 }
 
 #' Solve an AE problem at fixed theta
@@ -931,49 +904,6 @@
   )
 }
 
-#' Fit one decay parameter for an AE problem by weighted SSE
-#' @keywords internal
-#' @md
-.fit_problem_decay <- function(problem, observed, init, lower, upper,
-                               lambda = 1, tol = 1e-8, max_iter = 1000,
-                               eta = 1, control = list(maxit = 25),
-                               check = FALSE) {
-  .chck_class(problem, "ae_problem", "problem")
-  .chck_positive_scalar(init, "init")
-  .chck_positive_scalar(lower, "lower")
-  .chck_positive_scalar(upper, "upper")
-  .chck_nonnegative_scalar(eta, "eta")
-  if (length(problem$theta$names) != 1L) {
-    stop(".fit_problem_decay() currently supports a single-parameter theta")
-  }
-  pname <- problem$theta$names
-  fit <- .fit_problem_nfxp(
-    problem = problem,
-    observed = observed,
-    init = stats::setNames(init, pname),
-    lower = stats::setNames(lower, pname),
-    upper = stats::setNames(upper, pname),
-    output = "utilization",
-    loss = .weighted_sse_loss,
-    loss_grad = .weighted_sse_gradient,
-    loss_args = list(eta = eta),
-    lambda = lambda,
-    tol = tol,
-    max_iter = max_iter,
-    control = control,
-    check = check
-  )
-  fit$theta_hat <- unname(fit$theta[[pname]])
-  fit$wsse <- fit$loss
-  fit$eta <- eta
-  class(fit) <- c(
-    "ae_problem_decay_fit",
-    paste0(problem$model, "_problem_decay_fit"),
-    class(fit)
-  )
-  fit
-}
-
 #' Compare calibrated AE problem fits on an identical target and loss
 #'
 #' Builds a tidy comparison table over fits of *different models calibrated
@@ -1188,13 +1118,6 @@
     out$residual <- out$predicted - out$observed
   }
   out
-}
-
-.problem_map_jac_state <- function(step, x, fd_eps = 1e-6) {
-  if (is.function(step$jac_state)) {
-    return(.problem_jac_state_matrix(step$jac_state(x)))
-  }
-  fd_jacobian_state(step$map, x, eps = fd_eps, check = FALSE)
 }
 
 .problem_jac_state_matrix <- function(jac) {

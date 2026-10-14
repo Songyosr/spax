@@ -2,7 +2,7 @@
 
 test_that("save_spax and read_spax round-trip in file and directory modes", {
   skip_if_no_proj()
-  td <- .create_test_data()
+  td <- fca_toy()
   result <- spax_e2sfca(
     demand = td$demand,
     supply = td$supply_df,

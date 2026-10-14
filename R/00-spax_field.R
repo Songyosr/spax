@@ -737,19 +737,6 @@
   field$index$node
 }
 
-#' Backend-neutral index frame accessor
-#' @keywords internal
-.field_index_frame <- function(field) {
-  .chck_class(field, "spax_field", "field")
-  if (inherits(field, "spax_raster_field")) {
-    return(.field_layer_index(field))
-  }
-  if (inherits(field, "spax_vector_field")) {
-    return(.field_node_index(field))
-  }
-  stop("index frame is not implemented for this field backend")
-}
-
 #' @keywords internal
 .field_axis_values <- function(field, axis) {
   .chck_class(field, "spax_field", "field")

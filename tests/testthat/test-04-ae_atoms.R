@@ -87,7 +87,7 @@ test_that(".ae_aggregate groups product-axis raster fields by retained axes", {
   expect_s3_class(out, "spax_vector_field")
   expect_equal(.field_domain(out), c("J", "mode"))
   expect_equal(unname(.field_data(out)), c(4, 8, 12, 16))
-  expect_equal(.field_index_frame(out)[c("J", "mode")], .prod_tuples())
+  expect_equal(field_index_frame(out)[c("J", "mode")], .prod_tuples())
 
   # A group holding a single layer passes that layer through.
   uneven <- .mk_prod_field(
@@ -230,6 +230,12 @@ test_that("a subset-domain vector is broadcast by tuple in operand order (DEC-01
                               frame = .prod_tuples())
   expect_equal(unname(.field_data(.ae_combine(vprod, vj, op = `*`))),
                c(10, 20, 300, 400))
+})
+
+test_that("a broadcast vector must cover every tuple of the raster operand", {
+  field <- .mk_prod_field(.prod_tuples(), c(10, 20, 30, 40))
+  partial <- .spax_vector_field(c(1.5), domain = "J", frame = data.frame(J = "j1"))
+  expect_error(.ae_combine(field, partial, op = `*`), "missing axis tuples")
 })
 
 test_that("a subset-domain raster is replicated onto the larger raster's layers", {
@@ -404,68 +410,4 @@ test_that(".ae_normalize handles outside option and semi normalization by group"
   )
   semi <- .ae_normalize(semi_field, by = "mode", method = "semi")
   expect_equal(unname(.field_data(semi)), c(0.2, 0.5, 0.4, 0.5))
-})
-
-# Atoms kept pending a maintainer decision (test audit 2026-10-14): .ae_lift,
-# .ae_update and .ae_mask have no caller outside this file's layer. Retiring
-# them means deleting this section.
-
-test_that(".ae_lift broadcasts vector fields onto raster and vector templates", {
-  f <- mk_fields()
-  lifted <- .ae_lift(f$ratios, template = f$kernel)
-  expect_s3_class(lifted, "spax_raster_field")
-  expect_equal(terra::nlyr(.field_data(lifted)), 2)
-  v <- .cell_values(lifted)
-  expect_true(all(v[, 1] == 1.5))
-  expect_true(all(v[, 2] == 2.5))
-
-  base <- .spax_vector_field(c(j1 = 10, j2 = 20), domain = "J")
-  template <- .spax_vector_field(rep(NA_real_, 4), domain = c("J", "mode"),
-                                 frame = .prod_tuples(), role = "template")
-  lifted <- .ae_lift(base, template)
-  expect_s3_class(lifted, "spax_vector_field")
-  expect_equal(.field_domain(lifted), c("J", "mode"))
-  expect_equal(unname(.field_data(lifted)), c(10, 10, 20, 20))
-})
-
-test_that(".ae_lift replicates raster fields across added layer axes", {
-  f <- mk_fields()
-  lifted <- .ae_lift(f$demand, template = f$kernel)
-  expect_equal(terra::nlyr(.field_data(lifted)), 2)
-  d <- as.numeric(.cell_values(f$demand))
-  expect_equal(.cell_values(lifted), cbind(d, d), ignore_attr = TRUE)
-
-  r <- do.call(c, lapply(c(1, 2), function(v) terra::rast(nrows = 2, ncols = 2, vals = v)))
-  names(r) <- c("j1", "j2")
-  base <- .spax_raster_field(r, domain = c("I", "J"))
-  template <- .mk_prod_field(.prod_tuples(), c(0, 0, 0, 0))
-  lifted <- .ae_lift(base, template)
-  expect_s3_class(lifted, "spax_raster_field")
-  expect_equal(.first_cell(lifted), c(1, 1, 2, 2))
-})
-
-test_that(".ae_update applies a damped mix", {
-  st <- .spax_vector_field(c(fac_a = 1, fac_b = 1), domain = "facility")
-  tg <- .spax_vector_field(c(fac_a = 3, fac_b = 5), domain = "facility")
-  up <- .ae_update(st, tg, lambda = 0.5)
-  expect_equal(unname(.field_data(up)), c(2, 3))
-
-  expect_error(.ae_update(st, tg, lambda = 0), "lambda")
-})
-
-test_that(".ae_mask applies lower-dimensional soft masks explicitly", {
-  field <- .mk_prod_field(.prod_tuples(), c(10, 20, 30, 40))
-  mask <- .spax_vector_field(
-    c(1, 0.5, 0),
-    domain = c("J", "mode"),
-    frame = .prod_tuples()[1:3, ]
-  )
-  expect_error(.ae_mask(field, mask), "missing axis tuples")
-
-  mask <- .spax_vector_field(c(1, 0.5, 0, 0.25), domain = c("J", "mode"),
-                             frame = .prod_tuples())
-  expect_equal(.first_cell(.ae_mask(field, mask)), c(10, 10, 0, 10))
-  expect_error(.ae_mask(field, .spax_vector_field(c(1.5), domain = "J",
-                                                  frame = data.frame(J = "j1"))),
-               "\\[0, 1\\]")
 })

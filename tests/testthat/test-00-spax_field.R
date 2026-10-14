@@ -23,8 +23,6 @@ test_that("fields rekey data to canonical L/V keys and expose accessors", {
   expect_equal(.field_data(vec), c(V1 = 10, V2 = 20))
   expect_equal(.field_node_index(vec),
                data.frame(key = c("V1", "V2"), J = c("H1", "H2")))
-  expect_identical(.field_index_frame(vec), .field_node_index(vec))
-  expect_identical(.field_index_frame(lifted), .field_layer_index(lifted))
 
   expect_error(.field_axis_values(vec, "K"), "axis must be in field domain")
 })
@@ -113,8 +111,8 @@ test_that("vector fields bind node frames by key or by position", {
     c(10, 4, 20), domain = c("J", "mode"),
     frame = data.frame(J = c("H1", "H1", "H2"), mode = c("car", "walk", "car"))
   )
-  expect_equal(names(.field_data(partial)), .field_index_frame(partial)$key)
-  expect_equal(.field_index_frame(partial)[-1],
+  expect_equal(names(.field_data(partial)), field_index_frame(partial)$key)
+  expect_equal(field_index_frame(partial)[-1],
                data.frame(J = c("H1", "H1", "H2"), mode = c("car", "walk", "car")))
   expect_equal(.field_axis_values(partial, "mode"), c("car", "walk"))
 
@@ -220,8 +218,8 @@ test_that(".rewrap_field keeps the structure and rekeys new data", {
   expect_s3_class(raster_rewrapped, "spax_raster_field")
   expect_equal(names(.field_data(raster_rewrapped)),
                .field_layer_index(raster_field)$layer)
-  expect_equal(.field_index_frame(raster_rewrapped),
-               .field_index_frame(raster_field))
+  expect_equal(field_index_frame(raster_rewrapped),
+               field_index_frame(raster_field))
   expect_equal(.field_role(raster_rewrapped), "map")
   expect_error(.rewrap_field(raster_field, raster_data[[1]]),
                "one layer per index row")
@@ -230,8 +228,8 @@ test_that(".rewrap_field keeps the structure and rekeys new data", {
   vector_rewrapped <- .rewrap_field(vector_field, c(11, 21))
   expect_equal(.field_data(vector_rewrapped),
                setNames(c(11, 21), .field_node_index(vector_field)$key))
-  expect_equal(.field_index_frame(vector_rewrapped),
-               .field_index_frame(vector_field))
+  expect_equal(field_index_frame(vector_rewrapped),
+               field_index_frame(vector_field))
   expect_error(.rewrap_field(vector_field, c(1, 2, 3)), "one value per index row")
 })
 
