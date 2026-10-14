@@ -172,8 +172,10 @@ test_that("rasterize_demand updates a prior with observed counts", {
                on_cells(f$cells[1:2], c(2, 5) / 7))
 
   expect_error(rasterize_demand(f$points, "cases"), "Either prior or template")
-  expect_error(rasterize_demand(f$points, "cases", template = f$template,
-                                standardize = TRUE), "negative likelihood")
+  for (standardize in list(TRUE, 1)) {
+    expect_error(rasterize_demand(f$points, "cases", template = f$template,
+                                  standardize = standardize), "negative likelihood")
+  }
   empty <- f$template
   terra::values(empty) <- NA_real_
   expect_error(rasterize_demand(f$points, "cases", template = empty),

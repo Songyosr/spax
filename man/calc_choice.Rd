@@ -18,7 +18,6 @@ calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 \item{snap}{Logical; if TRUE enables fast computation mode with:
 - Minimal validation
 - Essential preprocessing only
-- No name/attribute assignment
 Only use when inputs are known to be valid.}
 }
 \value{

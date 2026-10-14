@@ -30,8 +30,9 @@ test_that("calc_normalize applies each method to numeric vectors", {
   expect_error(calc_normalize(c(1, -2, 3), "standard"), "non-negative")
   expect_error(calc_normalize(toy_rast(c(1, -2, 3, 4), 2, 2), "identity"),
                "non-negative")
-  # snap skips validation
+  # snap skips validation, and a custom method receives x as is
   expect_equal(calc_normalize(c(1, -2, 3), "identity", snap = TRUE), c(1, -2, 3))
+  expect_equal(calc_normalize(c(-1, 0, 1), function(x) x + 1), c(0, 1, 2))
 })
 
 test_that("calc_normalize normalizes each raster cell across layers", {

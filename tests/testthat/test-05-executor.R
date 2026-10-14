@@ -90,3 +90,20 @@ test_that("the compact FCA plan names its measures and refuses mixed batches", {
   expect_error(.fca_compact_plan(demand_batch, td$supply_matrix, kernel, kernel),
                "product-axis semantics")
 })
+
+test_that("the compact FCA plan keeps only active demand rows for the gather", {
+  td <- fca_toy()
+  K <- exp(-unname(terra::values(td$distance))^2 / 8)
+  K[9, ] <- NA # unreachable cell
+  D <- terra::values(td$demand)[, 1]
+  D[c(2, 5)] <- c(0, NA) # inactive demand
+  plan <- .fca_compact_plan(terra::setValues(td$demand, D), td$supply_vector,
+                            terra::setValues(td$distance, K),
+                            terra::setValues(td$distance, K))
+  keep <- c(1, 3, 4, 6, 7, 8, 9)
+  expected_K <- K[keep, ]
+  expected_K[is.na(expected_K)] <- 0
+  expect_equal(plan$demand_kept_index, keep)
+  expect_equal(unname(plan$D_active), D[keep])
+  expect_equal(unname(plan$Kd_active), expected_K)
+})

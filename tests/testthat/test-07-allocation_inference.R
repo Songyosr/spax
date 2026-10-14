@@ -1,7 +1,6 @@
 # Private SPAX-047 observation and first-order uncertainty diagnostic
-# (R/07-allocation_inference.R), kept pending a maintainer keep-or-retire
-# decision (test audit 2026-10-14). If SPAX-047 is retired, delete this file
-# together with R/07-allocation_inference.R.
+# (R/07-allocation_inference.R), kept internal (DEC-027). It goes with that
+# file if it is ever retired.
 
 .observation <- function(f, y, output = "utilization", sampling = "independent_poisson",
                          groups = NULL, model = f$model) {

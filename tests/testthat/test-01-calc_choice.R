@@ -39,6 +39,7 @@ test_that("calc_choice validates weights, attractiveness, alpha and a0", {
   weights <- toy_rast(c(0.5, 0.2), nlyr = 2)
 
   expect_error(calc_choice("not_a_raster"), "weights must be one of")
+  expect_error(calc_choice(weights * -1), "weights must be non-negative")
   expect_error(calc_choice(weights, attractiveness = "a"),
                "attractiveness must be numeric")
   expect_error(calc_choice(weights, attractiveness = 1),

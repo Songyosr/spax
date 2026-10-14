@@ -67,4 +67,3 @@
     outside_share = outside_share
   )
 }
-

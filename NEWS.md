@@ -50,8 +50,10 @@ release; record the source commit when reproducing an analysis.
     instead of a base R error.
   * `spax_2sfca()` validates `threshold` with a message that names it; `NA`
     and `NULL`, which gave all-NaN results or the binary default, are refused.
-* `calc_normalize()` now refuses negative weights (outside `snap` mode); it
-  previously returned them without normalizing.
+* `calc_normalize()` and `calc_choice()` now refuse negative weights (outside
+  `snap` mode); they previously divided by the remaining sum and returned
+  negative "probabilities". A custom `calc_normalize()` method still receives
+  its input unchecked.
 * `clm_allocation()` requires `fit_v0` and `fit_beta` to be `TRUE` or
   `FALSE`; other values such as `"yes"` were silently treated as `FALSE`.
 * `?calc_decay` documents each kernel's formula and the `sigma` used when none

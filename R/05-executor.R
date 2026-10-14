@@ -3,7 +3,8 @@
 # Engine-instance #1 of the platform (see notes "Spax Platform Vision"): the
 # no-state, single-pass T_theta. The checked spax_field / terra layer decides
 # meaning and geometry; this layer does the repeated numeric work on compact
-# matrices. Public API is unchanged -- these are private, used by the AE models.
+# matrices. Public API is unchanged -- these are private; the plan below serves
+# the internal SAE/HAAE reference models.
 #
 # The atom catalog is documentation; a function exists only where there is a
 # contract worth testing. Executor functions are promoted when the operation is:
@@ -137,8 +138,9 @@
 #' The semantic boundary: validate geometry once, then drop to plain matrices.
 #' Active-demand compaction (`is.finite(D) & D > 0`) removes inactive origin
 #' rows from the gather -- exact, since zero/NA-demand cells contribute nothing
-#' to facility load. The spread keeps cells reachable by at least one facility
-#' (cells unreachable by all stay NA, matching compute_fca).
+#' to facility load. The plan also records an access-side compaction (cells
+#' reachable by at least one facility) for a spread step; the SAE/HAAE plans
+#' use the demand-side fields.
 #'
 #' Kernels are taken as `SpatRaster`s here (the proven oracle shape); the
 #' boundary check mirrors `compute_fca()`'s alignment contract.
@@ -202,4 +204,3 @@
     template          = demand_kernel[[1]]
   )
 }
-

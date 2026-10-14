@@ -1,8 +1,9 @@
 #' Internal function for core choice cvalidation
 #' @keywords internal
 .chck_calc_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
-  # Check weights is SpatRaster
+  # Check weights is a SpatRaster of non-negative values
   .chck_class(weights, "SpatRaster", "weights")
+  .chck_nonnegative_weights(weights, "weights")
 
   # Check attractiveness if provided
   if (!is.null(attractiveness)) {
@@ -49,7 +50,6 @@
 #' @param snap Logical; if TRUE enables fast computation mode with:
 #'        - Minimal validation
 #'        - Essential preprocessing only
-#'        - No name/attribute assignment
 #'        Only use when inputs are known to be valid.
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples

@@ -1,5 +1,5 @@
-# Legacy providers and input paths awaiting maintainer decisions (test audit
-# 2026-10-14). Each section can be deleted together with the code it tests:
+# Legacy providers and input paths kept internal (DEC-027). Each section can
+# be deleted together with the code it tests:
 # - "huff_decay": the explicit legacy allocation = "huff_decay" form of the
 #   static Huff provider. Its first block also uses HAAE.
 # - "SAE and HAAE": the SAE/HAAE fixed-point providers; the raster-path blocks

@@ -151,3 +151,18 @@
   invisible(TRUE)
 }
 
+#' Check that numeric or raster weights are non-negative (NA is allowed)
+#' @keywords internal
+.chck_nonnegative_weights <- function(x, name = "weights") {
+  lowest <- if (inherits(x, "SpatRaster")) {
+    suppressWarnings(min(terra::global(x, "min", na.rm = TRUE)[[1]], na.rm = TRUE))
+  } else if (is.numeric(x)) {
+    suppressWarnings(min(x, na.rm = TRUE))
+  } else {
+    NA_real_
+  }
+  if (isTRUE(lowest < 0)) {
+    stop(sprintf("%s must be non-negative", name))
+  }
+  invisible(TRUE)
+}

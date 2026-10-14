@@ -1,5 +1,5 @@
-# SAE provider. Keep or retire is an open maintainer decision; every SAE-
-# specific check lives here so retiring SAE means deleting this file.
+# SAE provider, kept as an internal reference model (DEC-027). Every
+# SAE-specific check lives here.
 
 .mk_sae_data <- function() {
   td <- ae_toy_inputs("2x2")

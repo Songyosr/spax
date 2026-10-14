@@ -26,6 +26,7 @@ test_that("sample_pmf validates its inputs", {
   for (n in list(-1, 2.5, NA_real_, Inf, c(1, 2), TRUE)) {
     expect_error(sample_pmf(pmf, n = n), "n must be a non-negative integer")
   }
+  expect_error(sample_pmf(pmf, n = -1, snap = TRUE), "n must be a non-negative integer")
 
   bad_method <- function(value) function() value
   expect_error(sample_pmf(pmf, method = bad_method("a")), "must return numeric")

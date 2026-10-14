@@ -111,7 +111,7 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
   if (is.null(prior) && is.null(template)) {
     stop("Either prior or template must be provided")
   }
-  if (isTRUE(standardize)) {
+  if (!isFALSE(standardize)) {
     stop("standardize = TRUE gives negative likelihood values, which cannot ",
          "form a posterior PMF")
   }

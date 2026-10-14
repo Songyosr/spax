@@ -85,7 +85,7 @@
 #' Returns one value per raster layer, aligned by axis-tuple key (never by
 #' position). This is what lets `raster <op> vector` use terra's per-layer
 #' recycling instead of materializing the vector as a raster stack (SPAX-022):
-#' the lift/`(data*0)+v` step is replaced by a plain numeric the op recycles.
+#' a plain numeric that the op recycles.
 #'
 #' The vector's domain must be a subset of the raster's layer axes (broadcast).
 #' An axis present only on the vector would grow the raster (outer product),
@@ -625,8 +625,9 @@ Math.spax_field <- function(x, ...) {
 #' Realize a source field onto the supply side (demand -> facility)
 #'
 #' gather(v, W)_j = sum_i v_i W_ij. Keeps terra::global's fused weighted
-#' reduction (no materialized product stack); equal to lift -> transform ->
-#' aggregate-over-I. Returns a vector field on the weight field's non-I axis.
+#' reduction (no materialized product stack); equal to broadcasting the source
+#' over the weight layers, multiplying and summing over I. Returns a vector
+#' field on the weight field's non-I axis.
 #' @keywords internal
 .ae_gather <- function(source, weights) {
   .chck_class(source, "spax_raster_field", "source")

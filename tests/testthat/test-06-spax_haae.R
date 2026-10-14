@@ -1,5 +1,5 @@
-# HAAE provider. Keep or retire is an open maintainer decision; every HAAE-
-# specific check lives here so retiring HAAE means deleting this file.
+# HAAE provider, kept as an internal reference model (DEC-027). Every
+# HAAE-specific check lives here.
 
 .mk_haae_data <- function() {
   td <- ae_toy_inputs("2x2")
