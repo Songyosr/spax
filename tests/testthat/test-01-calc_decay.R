@@ -1,20 +1,26 @@
 # calc_decay(): built-in kernels, custom functions, validation and
 # variable-catchment (raster) sigma.
 
-test_that("built-in kernels follow their formulas on vectors, matrices and rasters", {
-  kernels <- list(
+# The five built-in kernels with an explicit sigma (inverse takes none).
+decay_kernels <- function() {
+  list(
     gaussian = list(sigma = 20, f = function(d, s) exp(-d^2 / (2 * s^2))),
     exponential = list(sigma = 0.1, f = function(d, s) exp(-s * d)),
     power = list(sigma = 2, f = function(d, s) d^(-s)),
     inverse = list(sigma = NULL, f = function(d, s) 1 / (d + 1)),
     binary = list(sigma = 25, f = function(d, s) 1 * (d <= s))
   )
-  d_vec <- c(1, 10, 20, 25, 30, 50, NA)
+}
+
+test_that("built-in kernels follow their formulas on vectors, matrices and rasters", {
+  kernels <- decay_kernels()
   d_mat <- matrix(seq(1, 49, by = 2), 5, 5)
   d_rast <- toy_rast(seq(5, 90, by = 5), nlyr = 2, names = c("a", "b"))
 
   for (m in names(kernels)) {
     k <- kernels[[m]]
+    # Distance 0 is left out only for power (pending maintainer decision).
+    d_vec <- c(if (m != "power") 0, 1, 10, 20, 25, 30, 50, NA)
     expect_equal(
       list(calc_decay(d_vec, m, sigma = k$sigma),
            calc_decay(d_mat, m, sigma = k$sigma),
@@ -24,16 +30,22 @@ test_that("built-in kernels follow their formulas on vectors, matrices and raste
       info = m
     )
   }
+  at_zero <- c("gaussian", "exponential", "inverse", "binary")
+  expect_equal(
+    vapply(at_zero, function(m) calc_decay(0, m, sigma = kernels[[m]]$sigma),
+           numeric(1)),
+    setNames(rep(1, 4), at_zero)
+  )
   expect_length(calc_decay(numeric(0), "gaussian", sigma = 1), 0)
 })
 
 test_that("calc_decay keeps raster geometry and layer names", {
+  kernels <- decay_kernels()
   r <- toy_rast(seq(5, 90, by = 5), nlyr = 2, names = c("a", "b"))
   custom <- function(distance, k = 1) 1 / (1 + k * distance)
 
-  # Built-in kernels with their default parameters.
-  for (m in c("gaussian", "exponential", "power", "inverse", "binary")) {
-    w <- calc_decay(r, m)
+  for (m in names(kernels)) {
+    w <- calc_decay(r, m, sigma = kernels[[m]]$sigma)
     expect_true(terra::compareGeom(w, r) && identical(names(w), names(r)),
                 info = m)
   }
