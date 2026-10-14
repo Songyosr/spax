@@ -30,7 +30,8 @@ raw supply or capacity attribution.}
 With zero outside weight and zero inside opportunity, the existing guard
 returns zero mass; that row is not a normalized choice distribution.}
 
-\item{fit_v0, fit_beta}{Logical flags promoting these constants to parameters.}
+\item{fit_v0, fit_beta}{\code{TRUE} or \code{FALSE}: whether to promote these constants
+to fitted parameters.}
 }
 \value{
 The existing private \code{ae_problem} for built-in corrected static CLM.

@@ -38,7 +38,14 @@
 }
 
 #' Gradient of the Poisson NLL with respect to parameters
+#'
+#' Both the loss and this gradient floor predictions at `eps`. Below the
+#' floor the loss is flat, but the gradient keeps the log-likelihood slope
+#' `1 - y / eps`, which pushes a prediction that collapsed towards zero back
+#' up instead of stalling the optimizer there. The two therefore disagree
+#' below `eps` by design.
 #' @keywords internal
+#' @md
 .poisson_gradient <- function(predicted, observed, sensitivity, eps = 1e-9) {
   .chck_numeric_vector(predicted, "predicted")
   .chck_numeric_vector(observed, "observed")

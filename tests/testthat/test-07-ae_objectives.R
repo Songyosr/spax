@@ -34,7 +34,7 @@ test_that("Poisson objective floors predictions at eps", {
                1e-3 - log(1e-3) + 2 - 2 * log(2))
   # Below eps the floored loss is flat, but the gradient keeps the slope at
   # eps rather than zero.
-  # Current behaviour; maintainer decision pending (test audit 2026-10-14).
+  # By design the gradient keeps the slope 1 - y/eps below the floor.
   expect_equal(.poisson_gradient(c(0, 2), c(1, 2), diag(2), eps = 1e-3),
                c(1 - 1 / 1e-3, 0))
 })

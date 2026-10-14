@@ -27,8 +27,11 @@ test_that("calc_normalize applies each method to numeric vectors", {
   expect_equal(calc_normalize(x, halve), x / 2)
   expect_equal(calc_normalize(x, halve, factor = 4), x / 4)
 
-  # Current behaviour; maintainer decision pending (test audit 2026-10-14).
-  expect_error(calc_normalize(c(-1, -2, -3), "standard"), NA)
+  expect_error(calc_normalize(c(1, -2, 3), "standard"), "non-negative")
+  expect_error(calc_normalize(toy_rast(c(1, -2, 3, 4), 2, 2), "identity"),
+               "non-negative")
+  # snap skips validation
+  expect_equal(calc_normalize(c(1, -2, 3), "identity", snap = TRUE), c(1, -2, 3))
 })
 
 test_that("calc_normalize normalizes each raster cell across layers", {

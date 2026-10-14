@@ -198,6 +198,10 @@
   .chck_positive_scalar(kappa, "kappa")
   .chck_positive_scalar(beta, "beta")
   .chck_nonnegative_scalar(v0, "v0")
+  if (!is.logical(fit_v0) || length(fit_v0) != 1L || is.na(fit_v0) ||
+      !is.logical(fit_beta) || length(fit_beta) != 1L || is.na(fit_beta)) {
+    stop("`fit_v0` and `fit_beta` must be TRUE or FALSE")
+  }
   list(
     model = "huff",
     family = family,

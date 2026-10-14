@@ -28,6 +28,24 @@ Calculate weights using different spatial decay functions or a custom function.
 Supports built-in methods and custom decay functions. The decay weights represent
 how the influence or interaction strength diminishes with distance.
 }
+\details{
+Built-in kernels for a distance \eqn{d}, and the \code{sigma} used when
+none is given:
+\itemize{
+  \item \code{"gaussian"}: \eqn{\exp(-d^2 / (2\sigma^2))}; default
+    \eqn{\sigma = 11.64884}.
+  \item \code{"exponential"}: \eqn{\exp(-\sigma d)}; default
+    \eqn{\sigma = 0.1}.
+  \item \code{"power"}: \eqn{d^{-\sigma}}; default \eqn{\sigma = 2}. The
+    weight is \code{Inf} at distance 0.
+  \item \code{"inverse"}: \eqn{1 / (d + c)}, with \code{c = 1} unless
+    \code{c} is passed in \code{...}; \code{sigma} is not used.
+  \item \code{"binary"}: 1 when \eqn{d \le \sigma}, otherwise 0; default
+    \eqn{\sigma = 97.5}.
+}
+The defaults are historical values, not recommendations: set \code{sigma}
+for the units and scale of your travel times.
+}
 \examples{
 \dontrun{
 library(terra)

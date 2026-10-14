@@ -19,8 +19,7 @@ test_that("built-in kernels follow their formulas on vectors, matrices and raste
 
   for (m in names(kernels)) {
     k <- kernels[[m]]
-    # Distance 0 is left out only for power (pending maintainer decision).
-    d_vec <- c(if (m != "power") 0, 1, 10, 20, 25, 30, 50, NA)
+    d_vec <- c(0, 1, 10, 20, 25, 30, 50, NA)
     expect_equal(
       list(calc_decay(d_vec, m, sigma = k$sigma),
            calc_decay(d_mat, m, sigma = k$sigma),
@@ -36,7 +35,19 @@ test_that("built-in kernels follow their formulas on vectors, matrices and raste
            numeric(1)),
     setNames(rep(1, 4), at_zero)
   )
+  expect_equal(calc_decay(0, "power", sigma = 2), Inf)
   expect_length(calc_decay(numeric(0), "gaussian", sigma = 1), 0)
+})
+
+test_that("calc_decay uses the documented sigma when none is given", {
+  d <- c(0, 1, 10, 97.5, 98)
+  defaults <- c(gaussian = 11.64884, exponential = 0.1, power = 2, binary = 97.5)
+  for (m in names(defaults)) {
+    expect_equal(calc_decay(d, m), calc_decay(d, m, sigma = defaults[[m]]), info = m)
+  }
+  # inverse ignores sigma and takes its offset through `...`
+  expect_equal(calc_decay(d, "inverse", sigma = 5), 1 / (d + 1))
+  expect_equal(calc_decay(d, "inverse", c = 2), 1 / (d + 2))
 })
 
 test_that("calc_decay keeps raster geometry and layer names", {

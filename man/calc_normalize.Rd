@@ -14,7 +14,7 @@ calc_normalize(
 )
 }
 \arguments{
-\item{x}{Numeric vector, matrix, or SpatRaster of weights}
+\item{x}{Numeric vector, matrix, or SpatRaster of non-negative weights}
 
 \item{method}{Character string specifying normalization method:
 

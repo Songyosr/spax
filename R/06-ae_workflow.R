@@ -70,7 +70,8 @@ prepare_allocation <- function(demand, supply, distance,
 #' @param v0 Nonnegative outside-option weight, not an outside probability.
 #'   With zero outside weight and zero inside opportunity, the existing guard
 #'   returns zero mass; that row is not a normalized choice distribution.
-#' @param fit_v0,fit_beta Logical flags promoting these constants to parameters.
+#' @param fit_v0,fit_beta `TRUE` or `FALSE`: whether to promote these constants
+#'   to fitted parameters.
 #' @return The existing private `ae_problem` for built-in corrected static CLM.
 #'   Parameter order is sigma, then v0 and beta when their flags are true.
 #' @family experimental allocation workflow

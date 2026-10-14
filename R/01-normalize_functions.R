@@ -3,7 +3,7 @@
 #' @description
 #' Normalizes weights using different methods with support for outside options.
 #'
-#' @param x Numeric vector, matrix, or SpatRaster of weights
+#' @param x Numeric vector, matrix, or SpatRaster of non-negative weights
 #' @param method Character string specifying normalization method:
 #'
 #'        - "standard": Divide by sum + a0 (default)
@@ -88,6 +88,18 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   # Input existence check
   if (length(x) == 0) {
     stop("Input weights cannot be empty")
+  }
+
+  # Weights are non-negative
+  lowest <- if (inherits(x, "SpatRaster")) {
+    suppressWarnings(min(terra::global(x, "min", na.rm = TRUE)[[1]], na.rm = TRUE))
+  } else if (is.numeric(x)) {
+    suppressWarnings(min(x, na.rm = TRUE))
+  } else {
+    NA_real_
+  }
+  if (isTRUE(lowest < 0)) {
+    stop("weights must be non-negative")
   }
 
   # Method validation - handle both string methods and custom functions

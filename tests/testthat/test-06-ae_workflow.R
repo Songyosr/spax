@@ -18,6 +18,10 @@ test_that("workflow model declaration retains only the corrected prepared CLM", 
   for (bad in list(0, "1")) expect_error(clm_allocation(f$inputs, kappa = bad), "kappa")
   for (bad in list(0, c(1, 2))) expect_error(clm_allocation(f$inputs, beta = bad), "beta")
   for (bad in list(-1, NA_real_)) expect_error(clm_allocation(f$inputs, v0 = bad), "v0")
+  for (bad in list("yes", NA, c(TRUE, FALSE), 1)) {
+    expect_error(clm_allocation(f$inputs, fit_v0 = bad), "must be TRUE or FALSE")
+    expect_error(clm_allocation(f$inputs, fit_beta = bad), "must be TRUE or FALSE")
+  }
 })
 
 test_that("a selected fit recovers the truth and its saved methods read without recomputation", {

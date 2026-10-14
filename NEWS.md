@@ -50,6 +50,12 @@ release; record the source commit when reproducing an analysis.
     instead of a base R error.
   * `spax_2sfca()` validates `threshold` with a message that names it; `NA`
     and `NULL`, which gave all-NaN results or the binary default, are refused.
+* `calc_normalize()` now refuses negative weights (outside `snap` mode); it
+  previously returned them without normalizing.
+* `clm_allocation()` requires `fit_v0` and `fit_beta` to be `TRUE` or
+  `FALSE`; other values such as `"yes"` were silently treated as `FALSE`.
+* `?calc_decay` documents each kernel's formula and the `sigma` used when none
+  is given, and notes that power decay is infinite at distance 0.
 * `fit_allocation()` and `bootstrap_allocation()` no longer force a full
   garbage collection before every fit: the internal fit timer used
   `system.time()`, which collects garbage first by default. Results are
