@@ -1272,7 +1272,16 @@
 }
 
 .problem_output_jac_param <- function(problem, theta, x, output,
-                                      fd_eps = 1e-6) {
+                                      fd_eps = 1e-6, step = NULL) {
+  if (is.null(step)) step <- .bind_theta(problem, theta)
+  if (is.function(step$jac_output_param)) {
+    jac <- step$jac_output_param(x, output = output)
+    if (!is.null(jac)) {
+      .chck_numeric_matrix(jac, "jac_output_param")
+      if (ncol(jac) != length(theta)) stop("output parameter Jacobian has wrong columns")
+      return(.coerce_numeric_matrix(jac))
+    }
+  }
   fn <- function(theta_value) {
     step <- .bind_theta(problem, theta_value)
     .problem_output_from_step(step, x, output, required = TRUE)
@@ -1303,7 +1312,7 @@
     jac_state_result = jac_state_result
   )
   output_jac_param <- .problem_output_jac_param(
-    problem, theta, x, output = output, fd_eps = fd_eps
+    problem, theta, x, output = output, fd_eps = fd_eps, step = step
   )
   output_jac_state %*% state_sensitivity + output_jac_param
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/06-ae_coverage.R
 \name{.ae_coverage}
 \alias{.ae_coverage}
-\title{Decompose a fitted static CLM on its retained demand support}
+\title{Decompose a fitted CLM allocation on its retained demand support}
 \usage{
 .ae_coverage(
   fit,
@@ -34,7 +34,7 @@ defaults to \code{norm}. Without an adequacy cut, quadrants are unclassified.
 Contact floors mask reported \code{abar} and quadrant, never \code{A}, \code{rho}, or
 \code{abar_raw}. \code{contact_need_floor} applies to aggregates, not individual cells.
 Cell/zone values exactly at a floor or classification cut are retained/high.
-This first private layer accepts only the corrected static CLM allocation.
+Accepts corrected static CLM and CLM ratio-response allocations.
 The compact table carries canonical \code{origin_id} and \code{registry_index}; \code{cell}
 is present only for a validated spatial mapping. Numeric summaries and origin
 zone joins do not require a template. Declared input units and policies are

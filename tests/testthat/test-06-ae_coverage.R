@@ -103,7 +103,7 @@ test_that("zero supply, zero load and unknown observations remain distinct", {
   expect_error(.problem_coverage(p, f$theta, rho_floor = 2), "rho_floor")
   legacy <- .huff_problem(f$demand, c(a = 100, b = 20, c = 50), f$distance,
                           allocation = "huff_decay")
-  expect_error(.problem_coverage(legacy, f$theta), "static CLM")
+  expect_error(.problem_coverage(legacy, f$theta), "CLM allocation")
 })
 
 test_that("methods and lazy maps preserve fit support, including unreachable demand", {

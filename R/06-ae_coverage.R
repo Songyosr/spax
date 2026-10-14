@@ -1,6 +1,6 @@
 # Private post-fit coverage -------------------------------------------------
 
-#' Decompose a fitted static CLM on its retained demand support
+#' Decompose a fitted CLM allocation on its retained demand support
 #'
 #' Reuses saved allocation and utilization; no solve, raster extraction, or
 #' geometry reconstruction. Requires fits with `coverage_meta` (older saved
@@ -19,7 +19,7 @@
 #' Contact floors mask reported `abar` and quadrant, never `A`, `rho`, or
 #' `abar_raw`. `contact_need_floor` applies to aggregates, not individual cells.
 #' Cell/zone values exactly at a floor or classification cut are retained/high.
-#' This first private layer accepts only the corrected static CLM allocation.
+#' Accepts corrected static CLM and CLM ratio-response allocations.
 #' The compact table carries canonical `origin_id` and `registry_index`; `cell`
 #' is present only for a validated spatial mapping. Numeric summaries and origin
 #' zone joins do not require a template. Declared input units and policies are
@@ -31,7 +31,7 @@
                          contact_cut = NULL, adequacy_cut = norm) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (!identical(fit$allocation_form, "clm")) {
-    stop("coverage currently requires a static CLM fit")
+    stop("coverage requires a CLM allocation fit")
   }
   meta <- fit$coverage_meta
   if (is.null(meta)) stop("fit has no coverage metadata; regenerate the fit")
@@ -123,23 +123,34 @@
   ans
 }
 
-#' Decompose a static CLM problem at specified parameters
+#' Decompose a CLM allocation problem at specified parameters
 #'
 #' Solves once if `state` is absent; otherwise evaluates outputs at that state.
 #' This entry point also supports older saved problems without refitting targets.
+#' `solve_control` supplies named solver controls, such as damping for feedback.
+#' Failed solves are rejected before coverage extraction.
 #' @keywords internal
 #' @md
-.problem_coverage <- function(problem, theta, state = NULL, ...) {
+.problem_coverage <- function(problem, theta, state = NULL, ..., solve_control = list()) {
   .chck_class(problem, "ae_problem", "problem")
   if (!identical(problem$metadata$spec$allocation, "clm")) {
-    stop("coverage currently requires a static CLM problem")
+    stop("coverage requires a CLM allocation problem")
   }
-  outputs <- if (is.null(state)) .solve_problem(problem, theta)$outputs else
-    .problem_outputs_at(problem, theta, state)
+  if (!is.list(solve_control) || (length(solve_control) &&
+      (is.null(names(solve_control)) || any(names(solve_control) == "") ||
+       anyDuplicated(names(solve_control)) ||
+       any(names(solve_control) %in% c("problem", "theta"))))) {
+    stop("solve_control must be a named list of solver controls")
+  }
+  outputs <- if (is.null(state)) {
+    solved <- do.call(.solve_problem, c(list(problem = problem, theta = theta), solve_control))
+    if (!isTRUE(solved$converged)) stop("coverage requires a converged solve")
+    solved$outputs
+  } else .problem_outputs_at(problem, theta, state)
   .coverage_from_outputs(problem, theta, outputs, ...)
 }
 
-# Shared static-CLM adapter: report from saved evaluated outputs without solving.
+# Shared CLM adapter: report from saved evaluated outputs without solving.
 .coverage_from_outputs <- function(problem, theta, outputs, ...) {
   fit <- structure(list(model = problem$model, family = problem$metadata$spec$family,
                         allocation_form = "clm", theta = theta, outputs = outputs,

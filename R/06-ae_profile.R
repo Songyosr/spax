@@ -51,6 +51,14 @@
         jac[, nuisance_index, drop = FALSE]
       }
     }
+    if (is.function(step$jac_output_param)) {
+      original_output_param <- step$jac_output_param
+      step$jac_output_param <- function(x, output) {
+        jac <- original_output_param(x, output = output)
+        if (is.null(jac)) return(NULL)
+        jac[, nuisance_index, drop = FALSE]
+      }
+    }
     step$theta <- theta
     step
   }

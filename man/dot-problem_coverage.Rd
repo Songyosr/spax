@@ -2,12 +2,14 @@
 % Please edit documentation in R/06-ae_coverage.R
 \name{.problem_coverage}
 \alias{.problem_coverage}
-\title{Decompose a static CLM problem at specified parameters}
+\title{Decompose a CLM allocation problem at specified parameters}
 \usage{
-.problem_coverage(problem, theta, state = NULL, ...)
+.problem_coverage(problem, theta, state = NULL, ..., solve_control = list())
 }
 \description{
 Solves once if \code{state} is absent; otherwise evaluates outputs at that state.
 This entry point also supports older saved problems without refitting targets.
+\code{solve_control} supplies named solver controls, such as damping for feedback.
+Failed solves are rejected before coverage extraction.
 }
 \keyword{internal}
