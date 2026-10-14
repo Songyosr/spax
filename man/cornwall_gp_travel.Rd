@@ -6,8 +6,10 @@
 \format{
 A 55-layer GeoTIFF on the \code{cornwall_pop.tif} grid (132 rows x 271
 columns, EPSG:4326). Layer names are practice codes (\code{cornwall_gp$practice}).
-Values are at least 1 minute; \code{NA} marks unpopulated cells, pairs without a
-road connection (the Isles of Scilly) and journeys over 180 minutes.
+Values are rounded to whole minutes with a 1-minute floor; \code{NA} marks
+unpopulated cells, pairs without a road connection (mainland cells to the
+Isles of Scilly practice and back, and off-island Scilly cells that cannot
+reach the St Mary's practice) and journeys over 180 minutes.
 }
 \source{
 Derived from the Malaria Atlas Project motorised friction surface

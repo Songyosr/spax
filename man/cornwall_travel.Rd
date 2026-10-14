@@ -6,9 +6,11 @@
 \title{Travel time from each small area to each practice}
 \format{
 An integer matrix with 337 rows (\code{cornwall_lsoa$lsoa}) and 55
-columns (\code{cornwall_gp$practice}). Values are at least 1 minute
-(same-cell pairs). \code{NA} marks pairs with no road connection: the Isles of
-Scilly area and practice are reachable only from each other.
+columns (\code{cornwall_gp$practice}). Values are rounded to whole minutes
+with a 1-minute floor, which covers same-cell and adjacent-cell pairs;
+about half of in-area registrations have a value of 1. \code{NA} marks pairs
+with no road connection: the Isles of Scilly area and practice are
+reachable only from each other.
 }
 \source{
 Derived from the Malaria Atlas Project motorised friction surface
@@ -27,7 +29,9 @@ population-weighted centroid to each practice's main site.
 Times are least-cost paths through the Malaria Atlas Project 2019
 motorised friction surface (about 1 km cells), computed with
 \code{\link[terra:costDist]{terra::costDist()}} over land in Cornwall and the Isles of Scilly; the sea
-and the Devon border act as barriers. The road network dates from about
+and the Devon border act as barriers. Times are measured to the edge of
+the practice's cell, so they run slightly (under a minute) shorter than
+cell-centre to cell-centre. The road network dates from about
 2019, traffic is not modelled, and 1 km cells are coarse in towns, where
 several practices can share a cell. Values are taken from
 \code{cornwall_gp_travel.tif} at each centroid's cell.

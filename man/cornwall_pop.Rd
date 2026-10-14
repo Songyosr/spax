@@ -8,7 +8,8 @@ A one-layer GeoTIFF (\code{pop}): 132 rows x 271 columns of 30
 arc-second cells (about 1 km; about 0.55 square km at this latitude),
 EPSG:4326. Values are estimated residents per cell. Cells crossing the
 boundary are weighted by the share of their area inside it; \code{NA} marks
-cells outside.
+cells outside. The total (about 543,000) is about 7\% below the ONS mid-2024
+estimate used in \link{cornwall_lsoa} (585,655); do not mix the two unknowingly.
 }
 \source{
 WorldPop (2018), Global High Resolution Population Denominators

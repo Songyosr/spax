@@ -19,7 +19,7 @@ practice (row totals of \code{cornwall_flows}).}
 \item{cent_x, cent_y}{Population-weighted centroid (EPSG:27700), the
 origin used for \code{cornwall_travel}.}
 \item{scilly}{\code{TRUE} for the Isles of Scilly area.}
-\item{geometry}{Generalised boundary.}
+\item{geometry}{Super-generalised (200 m) clipped boundary.}
 }
 }
 \source{
