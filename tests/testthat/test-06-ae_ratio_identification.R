@@ -12,14 +12,20 @@ ratio_identification_fixture <- function(gamma_truth = 0) {
   mu <- .solve_problem(problem, truth, lambda = 0.4, tol = 1e-12, max_iter = 5000)$outputs$flow
   observed <- withr::with_seed(42, matrix(stats::rpois(length(mu), mu), nrow(mu),
                                            dimnames = dimnames(travel)))
-  list(inputs = inputs, observed = observed)
+  list(inputs = inputs, observed = observed, travel = travel, demand = demand)
+}
+
+# gamma_upper = 2 keeps the feedback solves cheap. A bounded fit can only lose
+# likelihood, so its gain is a lower bound on the unbounded gain.
+ratio_identification_run <- function(f) {
+  .ratio_identification(f$inputs, f$observed,
+    starts = rbind(a = c(sigma = 6, v0 = 1), b = c(sigma = 14, v0 = 0.2)),
+    lower = c(sigma = 0.5, v0 = 1e-4), upper = c(sigma = 60, v0 = 50),
+    gamma_upper = 2)
 }
 
 test_that("ratio identification reports nested fits and the free-model bound", {
-  f <- ratio_identification_fixture()
-  res <- .ratio_identification(f$inputs, f$observed,
-    starts = rbind(a = c(sigma = 6, v0 = 1), b = c(sigma = 14, v0 = 0.2)),
-    lower = c(sigma = 0.5, v0 = 1e-4), upper = c(sigma = 60, v0 = 50))
+  res <- ratio_identification_run(ratio_identification_fixture())
 
   expect_identical(res$model, c("static", "static_b", "ratio", "ratio_b", "free"))
   expect_identical(res$k, c(2L, 3L, 3L, 4L, 7L))
@@ -35,16 +41,40 @@ test_that("ratio identification reports nested fits and the free-model bound", {
   expect_equal(res$share_of_free_gain[res$model == "free"], 1)
   expect_true(abs(res$sigma[res$model == "static"] - 9) < 1.5)
   expect_true(all(res$converged))
+  # Without feedback the ratio gain stays below a likelihood-ratio statistic
+  # of 6 (2 x gain), which the feedback test below must exceed.
+  expect_lt(res$gain[res$model == "ratio"], 3)
   expect_match(attr(res, "note"), "cannot be separated")
 })
 
 test_that("ratio identification finds a feedback gain when feedback is present", {
-  f <- ratio_identification_fixture(gamma_truth = 0.8)
-  res <- .ratio_identification(f$inputs, f$observed,
-    starts = rbind(a = c(sigma = 6, v0 = 1), b = c(sigma = 14, v0 = 0.2)),
-    lower = c(sigma = 0.5, v0 = 1e-4), upper = c(sigma = 60, v0 = 50))
-  expect_gt(res$gain[res$model == "ratio"], 1)
+  res <- ratio_identification_run(ratio_identification_fixture(gamma_truth = 0.8))
+  expect_gt(res$gain[res$model == "ratio"], 3)
   expect_gt(res$gamma[res$model == "ratio"], 0)
+  expect_true(all(res$converged))
+})
+
+test_that("the free-attractiveness fit reaches a stationary point of the CLM likelihood", {
+  f <- ratio_identification_fixture(gamma_truth = 0.8)
+  free <- .clm_free_attractiveness_fit(f$inputs, f$observed, sigma = 8, v0 = 0.6)
+  J <- ncol(f$observed)
+  # Independent Poisson loss; the first attractiveness stays fixed.
+  loss <- function(p) {
+    a <- c(free$attractiveness[1], exp(p[seq_len(J - 1)]))
+    w <- sweep(exp(-f$travel^2 / (2 * exp(p[J])^2)), 2, a, "*")
+    mu <- f$demand * w / (rowSums(w) + exp(p[J + 1]))
+    sum(mu - f$observed * log(mu))
+  }
+  p <- c(log(free$attractiveness[-1]), log(free$sigma), log(free$v0))
+  expect_equal(loss(p), free$loss, tolerance = 1e-10)
+  h <- 1e-5
+  grad <- vapply(seq_along(p), function(k) {
+    e <- replace(numeric(length(p)), k, h)
+    (loss(p + e) - loss(p - e)) / (2 * h)
+  }, numeric(1))
+  # Gradients away from the optimum are of order 10-1000 here.
+  expect_lt(max(abs(grad)), 1e-3)
+  expect_true(free$converged)
 })
 
 test_that("ratio identification validates its inputs", {
@@ -58,4 +88,8 @@ test_that("ratio identification validates its inputs", {
     starts = rbind(a = c(s = 6, v = 1)),
     lower = c(sigma = 0.5, v0 = 1e-4), upper = c(sigma = 60, v0 = 50)),
     "columns sigma and v0")
+  expect_error(.ratio_identification(f$inputs, f$observed,
+    starts = rbind(a = c(sigma = 6, v0 = 1)),
+    lower = c(sigma = 0.5, v = 1e-4), upper = c(sigma = 60, v0 = 50)),
+    "named sigma and v0")
 })

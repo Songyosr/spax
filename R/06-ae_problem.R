@@ -842,17 +842,19 @@
     }
   }
 
-  elapsed <- system.time({
-    opt <- stats::optim(
-      par = log(init),
-      fn = objective,
-      gr = objective_grad,
-      method = "L-BFGS-B",
-      lower = log(lower),
-      upper = log(upper),
-      control = control
-    )
-  })[["elapsed"]]
+  # proc.time(), not system.time(): its default gcFirst = TRUE would force a
+  # full garbage collection before every fit (SPAX-037 timer rule).
+  started <- proc.time()[["elapsed"]]
+  opt <- stats::optim(
+    par = log(init),
+    fn = objective,
+    gr = objective_grad,
+    method = "L-BFGS-B",
+    lower = log(lower),
+    upper = log(upper),
+    control = control
+  )
+  elapsed <- proc.time()[["elapsed"]] - started
 
   theta_hat <- stats::setNames(exp(opt$par), expected)
   .warn_search_boundary(opt$par, lower, upper, expected)
