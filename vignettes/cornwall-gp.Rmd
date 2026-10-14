@@ -18,8 +18,8 @@ model to real, openly licensed data: where the residents of each small area in
 Cornwall are registered with a GP. It then splits each area's access into two
 parts:
 
-- **reach** (ρ): the share of residents the model allocates to some practice in
-  the area at all, and
+- **reach** (ρ): the share of residents the model allocates to any practice in
+  mainland Cornwall, and
 - **availability** (ā): GP full-time equivalents per 1,000 of those residents,
   after accounting for everyone else who uses the same practices.
 
@@ -48,9 +48,10 @@ areas and 54 practices.
 ```{r inputs}
 mainland_area <- !areas$scilly
 mainland_gp <- !gp$scilly
-travel <- cornwall_travel[mainland_area, mainland_gp]
+travel <- cornwall_travel[areas$lsoa[mainland_area], gp$practice[mainland_gp]]
 
-# Demand: residents registered with any GP practice in England.
+# Demand: residents registered with any GP practice in England, including
+# practices outside mainland Cornwall.
 demand <- setNames(areas$registered[mainland_area], areas$lsoa[mainland_area])
 # Supply: GP full-time equivalents, excluding GPs in training.
 supply <- setNames(gp$gp_fte_extg[mainland_gp], gp$practice[mainland_gp])
@@ -66,15 +67,17 @@ c(registered = sum(demand), at_mainland_practices = sum(observed))
 
 Demand counts every registered resident, wherever they are registered, so the
 model's outside option corresponds to registration with a practice outside
-Cornwall. It is not unmet need: almost everyone in England is registered with
-some practice.
+mainland Cornwall (including the Isles of Scilly practice). It is not unmet
+need: almost everyone in England is registered with some practice.
 
 ## Fit the model
 
 The model gives each practice an attraction proportional to its GP FTE, which
 decays with travel time through a Gaussian kernel with scale σ. The outside
 option v0 competes with all practices. Fitting to the small area × practice
-flows uses where people actually register, which identifies both parameters.
+flows uses where people actually register. A single constant v0 cannot
+reproduce registration across the Devon border, which is concentrated in a
+few border areas, so treat the fitted outside share as approximate.
 
 ```{r fit}
 inputs <- prepare_allocation(demand, supply, travel, metadata = list(
@@ -92,8 +95,8 @@ summary(fit)
 coef(fit)
 ```
 
-All three starts converge away from the bounds. They stop within about 0.5% of
-each other in σ and within one part in ten million in loss; the summary still
+All three starts converge away from the bounds. They stop within about 0.1% of
+each other in σ, 0.5% in v0 and one part in ten million in loss; the summary still
 flags this as disagreement because its default tolerances are deliberately
 strict, so read the gaps in its table rather than the flag alone. A σ of a few
 minutes means registration is very local: a practice twice σ away keeps only
@@ -107,13 +110,13 @@ cor(fitted_totals, colSums(observed))
 ## Split access into reach and availability
 
 `evaluate_allocation()` solves the fitted model once and returns the
-decomposition. Availability is judged against the Cornwall average: GP FTE per
-registered patient across all mainland practices. Reach is judged against a
+decomposition. Availability is judged against the model's own regional
+average: GP FTE per patient the fitted model allocates to mainland practices. Reach is judged against a
 fixed 0.95, because almost everyone is registered and a cut at the average
 reach would split areas on differences of a fraction of a percent.
 
 ```{r evaluate}
-norm <- sum(supply) / sum(observed)
+norm <- sum(supply) / sum(fitted(fit))
 baseline <- evaluate_allocation(model, coef(fit), coverage_args = list(
   norm = norm, units = "GP FTE per registered patient",
   contact_cut = 0.95, adequacy_cut = norm))
@@ -122,8 +125,9 @@ cells$abar_per_1000 <- 1000 * cells$abar
 summary(cells[, c("rho", "abar_per_1000")])
 ```
 
-Reach is close to 1 almost everywhere, while availability varies several-fold
-between areas. Weighting by residents shows where people live in each class:
+Reach is close to 1 almost everywhere. Availability varies about twofold
+between the 5th and 95th percentile areas, with a few higher outliers around
+Falmouth. Weighting by residents shows where people live in each class:
 
 ```{r quadrants}
 round(100 * tapply(cells$demand, cells$quadrant, sum) / sum(cells$demand), 1)
@@ -144,8 +148,13 @@ ggplot(mapped) +
   theme_void()
 ```
 
-Low availability concentrates in areas served by practices with large lists for
-their GP staffing; reach shows almost no geographic pattern.
+Low availability concentrates in areas whose nearby practices carry many
+patients per GP FTE.
+
+Reach dips only in a few remote rural areas, such as Bodmin Moor and West
+Penwith, where the short kernel makes the model understate how many residents
+register in Cornwall. These are the small both-low and contact-limited classes
+above.
 
 ```{r reach-map, fig.height = 6}
 ggplot(mapped) +
@@ -157,10 +166,13 @@ ggplot(mapped) +
 
 ## Reading the result
 
-- Distance decay is the most robust quantity here: σ stays within a few
-  minutes under different demand definitions and travel sources.
-- Reach is close to saturated by design. Registration is near-universal, and
-  the outside option only captures registration elsewhere.
+- Distance decay is well determined: all starts agree, and σ of about 4 minutes
+  means people register close to home.
+- Reach is close to saturated because demand counts registered residents and
+  registration is near-universal; the outside option only captures registration
+  elsewhere.
+- Supply is not adjusted for practices' patients from outside Cornwall, which
+  are a few per cent of some border practices' lists.
 - Availability is the informative axis. Areas classed as capacity-limited reach
   a practice easily but share its GPs with many other patients.
 - This is a single snapshot. A model in which attraction falls as practices get
