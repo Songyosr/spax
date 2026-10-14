@@ -116,15 +116,11 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @keywords internal
 .sample_pmf_internal <- function(x, n, size, prob, method, iterations,
                                  evolve_prop, replace_0, snap, ...) {
-  # Compute sample sizes - ensure n takes precedence
-  if (!is.null(n)) {
-    n_samples <- rep(n, iterations)
-  } else {
-    n_samples <- .help_gen_sample_size(
-      n = n, size = size, prob = prob,
-      method = method, iterations = iterations, ...
-    )
-  }
+  # Compute sample sizes (a fixed n takes precedence and is validated there)
+  n_samples <- .help_gen_sample_size(
+    n = n, size = size, prob = prob,
+    method = method, iterations = iterations, ...
+  )
 
   if (evolve_prop == 0) {
     warning("evolve_prop = 0 means no new samples, returning first iteration only")
@@ -208,7 +204,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   # Check if input is PMF
   sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
 
-  if (abs(sum_check - 1) > 1e-10) {
+  if (!is.finite(sum_check) || abs(sum_check - 1) > 1e-10) {
     # Not a PMF, need to convert
     pmf_result <- transform_pmf(x, return_total = TRUE)
     return(pmf_result) # Returns list with $pmf and $total
@@ -236,7 +232,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                                   method = "poisson", iterations = 1, ...) {
   # Fixed sample size takes precedence
   if (!is.null(n)) {
-    if (!is.numeric(n) || any(n < 0) || any(n != as.integer(n))) {
+    if (!is.numeric(n) || anyNA(n) || any(n < 0) || any(n != round(n))) {
       stop("n must be a non-negative integer")
     }
     return(rep(n, iterations))
