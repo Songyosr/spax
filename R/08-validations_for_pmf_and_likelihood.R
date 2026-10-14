@@ -87,8 +87,12 @@
       stop("Input and template must have same CRS")
     }
 
-    # Check that vector intersects template extent (NULL when disjoint)
-    if (is.null(terra::intersect(terra::ext(x), terra::ext(template)))) {
+    # Bounding-box overlap; terra::intersect() returns NULL for any zero-area
+    # overlap, which would reject single points and collinear points.
+    a <- as.vector(terra::ext(x))
+    b <- as.vector(terra::ext(template))
+    if (!(a[["xmin"]] <= b[["xmax"]] && a[["xmax"]] >= b[["xmin"]] &&
+          a[["ymin"]] <= b[["ymax"]] && a[["ymax"]] >= b[["ymin"]])) {
       stop("Input vector must intersect template extent")
     }
   }

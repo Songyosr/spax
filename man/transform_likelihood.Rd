@@ -50,11 +50,13 @@ The likelihood surface shows where values are higher or lower than expected:
 pop <- read_spax_example("cornwall_pop.tif")
 lik1 <- transform_likelihood(pop)
 
-# From vector input: residents aged 65+ by small area, on the same grid
+# From vector input: density of residents aged 65+ by small area. Rasterizing
+# copies a polygon's value to every cell it covers, so use a density, not a count.
 areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas$dens_65 <- areas$pop_65p / terra::expanse(areas, unit = "km")
 lik2 <- transform_likelihood(
   areas,
-  value_col = "pop_65p",
+  value_col = "dens_65",
   template = pop
 )
 

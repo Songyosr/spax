@@ -20,6 +20,17 @@ test_that("vector input accepts a numeric column", {
   expect_s4_class(lik, "SpatRaster")
 })
 
+test_that("vector input accepts single and collinear points inside the template", {
+  f <- vector_fixture()
+  one <- terra::vect(cbind(1.5, 2.5), atts = data.frame(cases = 3), crs = "EPSG:3857")
+  expect_invisible(.chck_vector_input(one, "cases", f$template))
+  expect_equal(terra::global(transform_pmf(one, value_col = "cases", template = f$template),
+                             "sum", na.rm = TRUE)[[1]], 1)
+  line <- terra::vect(cbind(c(0.5, 3.5), c(2.5, 2.5)), atts = data.frame(cases = c(1, 2)),
+                      crs = "EPSG:3857")
+  expect_invisible(.chck_vector_input(line, "cases", f$template))
+})
+
 test_that("vector input rejects non-numeric columns and disjoint extents", {
   f <- vector_fixture()
   expect_error(.chck_vector_input(f$points, "label", f$template),
