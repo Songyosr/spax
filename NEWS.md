@@ -28,6 +28,10 @@ release; record the source commit when reproducing an analysis.
   points. `transform_demand(full_output = TRUE)` no longer requires an
   undocumented `id` column, and `transform_demand()` now warns when an area
   covers no grid cell, because its count would be dropped.
+* `fit_allocation()` and `bootstrap_allocation()` no longer force a full
+  garbage collection before every fit: the internal fit timer used
+  `system.time()`, which collects garbage first by default. Results are
+  unchanged; repeated fits run faster (the package tests take half as long).
 * The `update_pmf()`, `transform_demand()` and `calc_normalize()` examples now
   run; the first two previously referred to an undefined object.
 * The allocation-workflow vignette now loads its full 399-attempt bootstrap
