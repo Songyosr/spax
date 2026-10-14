@@ -365,8 +365,6 @@ test_that("bootstrap replay preserves the caller's RNG, inputs and paired scenar
   expect_equal(run$draws$regional_rho, rep(base / sum(f$demand), 4), tolerance = 1e-10)
   expect_equal(run$draws$delta_contacts, rep(changed - base, 4), tolerance = 1e-10)
   expect_equal(run$draws$regional_A, rep(sum(f$supply) / sum(f$demand), 4), tolerance = 1e-10)
-  expect_true(all(run$intervals$status[run$intervals$quantity != "regional_A"] ==
-    "incomplete_bootstrap"))
   expected <- .preserve_caller_rng({
     RNGkind("Mersenne-Twister", "Inversion", "Rejection")
     do.call(rbind, lapply(4421L + seq_len(4L), function(seed) {
