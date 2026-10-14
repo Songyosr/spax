@@ -66,8 +66,10 @@ test_that("a search without an eligible start stays inspectable but has no estim
 test_that("loss choices pass through and count targets reject negatives", {
   f <- alloc_small_case()
   calls <- 0L; received <- NULL
-  testthat::local_mocked_bindings(.fit_problem_multistart = function(...) {
-    calls <<- calls + 1L; received <<- list(...); "passed"
+  testthat::local_mocked_bindings(.fit_problem_multistart = function(problem, observed, ...) {
+    calls <<- calls + 1L
+    received <<- c(list(problem = problem, observed = observed), list(...))
+    "passed"
   })
   utilization <- f$observed; utilization[2] <- -0.5
   expect_error(fit_allocation(f$model, utilization, f$starts, f$lower, f$upper),
@@ -92,13 +94,13 @@ test_that("loss choices pass through and count targets reject negatives", {
   flow[2, 3] <- 0.5
   expect_identical(fit_allocation(f$model, flow, f$starts, f$lower, f$upper,
                                   output = "flow"), "passed")
-  expect_identical(received[[2]], flow)
+  expect_identical(received$observed, flow)
   # Other output domains and custom losses pass through unchanged.
   probability <- f$probability; probability[1, 1] <- -0.5
   custom <- function(predicted, observed) sum((predicted - observed)^2)
   expect_identical(fit_allocation(f$model, probability, f$starts, f$lower, f$upper,
     output = "allocation", loss = custom), "passed")
-  expect_identical(received[[2]], probability)
+  expect_identical(received$observed, probability)
   expect_identical(received$loss, custom)
   expect_null(received$loss_grad)
   expect_equal(calls, 4L)
@@ -108,7 +110,7 @@ test_that("custom workflow callbacks retain canonical masked order and auxiliary
   f <- alloc_small_case()
   y <- f$flow; y[1, 2] <- NA_real_
   mask <- !is.na(as.numeric(y)); expected <- as.numeric(y)[mask]
-  weights <- seq_along(expected); seen <- list(); gradients <- 0L
+  weights <- seq_along(expected); seen <- list(); gradients <- 0L; optimised <- 0L
   loss <- function(predicted, observed, weights, offset) {
     seen[[length(seen) + 1L]] <<- list(observed = observed, weights = weights, offset = offset)
     sum(weights * (predicted - observed)^2) + offset
@@ -119,11 +121,13 @@ test_that("custom workflow callbacks retain canonical masked order and auxiliary
   }
   # Evaluate the objective and gradient at each start instead of optimising.
   testthat::local_mocked_bindings(optim = function(par, fn, gr, ...) {
+    optimised <<- optimised + 1L
     list(par = par, value = fn(par), gradient = gr(par), convergence = 0L)
   }, .package = "stats")
   fit <- fit_allocation(f$model, y[c(3, 1, 2), c(2, 3, 1), drop = FALSE],
     f$starts, f$lower, f$upper, output = "flow", loss = loss,
     loss_grad = grad, loss_args = list(weights = weights, offset = 7), gradient = TRUE)
+  expect_identical(optimised, nrow(f$starts))
   expect_identical(fit$status, "selected")
   expect_true(length(seen) > 0)
   expect_true(gradients > 0)

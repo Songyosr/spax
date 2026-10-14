@@ -210,7 +210,8 @@ test_that("diagnostic identities align independently and numerical absence is no
   expect_true(all(z$jacobian_log[1, ] == 0))
   expect_false(z$status %in% c("incompatible_zero_mean", "nonregular_mean_or_loss_floor"))
   y[1] <- 1
-  incompatible <- .allocation_bootstrap_diagnostic(absent, f$truth, y, unit_weights, f$lower, f$upper)
+  incompatible <- .allocation_bootstrap_diagnostic(absent, f$truth, y, unit_weights,
+                                                   f$lower, f$upper)
   expect_identical(incompatible$status, "incompatible_zero_mean")
   distance[, 1] <- 1e6
   underflow <- clm_allocation(prepare_allocation(f$demand, f$supply, distance), fit_v0 = TRUE)
@@ -234,15 +235,17 @@ test_that("weighted refits select an eligible start and align observations by fa
   expect_identical(serialize(list(f$inputs, f$y, w, f$starts, f$lower, f$upper), NULL), before)
   # Observations and multiplicities reach the fitter in canonical facility order.
   seen <- list()
-  testthat::local_mocked_bindings(.fit_problem_multistart = function(...) {
-    args <- list(...)
-    seen[[length(seen) + 1L]] <<- list(observed = args[[2]], weights = args$loss_args$weights)
+  testthat::local_mocked_bindings(.fit_problem_multistart = function(problem, observed, ...,
+                                                                     loss_args) {
+    seen[[length(seen) + 1L]] <<- list(observed = observed, weights = loss_args$weights)
     stop("captured inputs")
   })
-  inputs <- list(list(f$y, w), list(rev(f$y), w[c(2:length(w), 1)]), list(unname(f$y), rev(w)))
+  inputs <- list(list(observed = f$y, weights = w),
+                 list(observed = rev(f$y), weights = w[c(2:length(w), 1)]),
+                 list(observed = unname(f$y), weights = rev(w)))
   for (input in inputs) {
-    expect_error(.allocation_case_fit(f$model, input[[1]], f$starts, f$lower, f$upper,
-                                      input[[2]]), "captured inputs")
+    expect_error(.allocation_case_fit(f$model, input$observed, f$starts, f$lower, f$upper,
+                                      input$weights), "captured inputs")
   }
   expect_identical(seen[[1]], list(observed = f$y, weights = unname(w)))
   expect_identical(seen[[2]], seen[[1]])
@@ -259,6 +262,13 @@ test_that("failed, co-located and boundary original fits refuse intervals before
     original_mean_boundary = alloc_count_fit(f, starts = starts,
                                              lower = replace(f$lower, "sigma", 10)))
   models <- list(f$model, colocated$model, f$model)
+  # Rank refusal applies to the original fit only: a weighted refit of the
+  # co-located design still succeeds with its single local direction.
+  unit <- stats::setNames(rep(1, length(colocated$supply)), names(colocated$supply))
+  refit <- .allocation_case_fit(colocated$model, colocated$y, colocated$starts,
+                                colocated$lower, colocated$upper, unit)
+  expect_true(refit$success)
+  expect_equal(refit$rank, 1)
   testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
     stop("unexpected bootstrap refit")
   })
@@ -276,7 +286,7 @@ test_that("failed, co-located and boundary original fits refuse intervals before
   }
 })
 
-test_that("unsupported observations, altered systems and invalid saved fits cannot enter bootstrap", {
+test_that("unsupported observations, altered systems and invalid fits cannot enter bootstrap", {
   f <- alloc_generated_case(); fit <- alloc_generated_fit()
   declaration <- alloc_bootstrap_observation()
   run <- function(fit, model = f$model, observation = declaration, scenario = NULL,
@@ -311,7 +321,8 @@ test_that("unsupported observations, altered systems and invalid saved fits cann
   changed <- clm_allocation(prepare_allocation(f$demand, modified, f$distance), fit_v0 = TRUE)
   expect_error(run(fit, model = changed), "conflict")
   demand <- f$demand; demand[1] <- demand[1] + 1
-  invalid_scenario <- clm_allocation(prepare_allocation(demand, f$supply, f$distance), fit_v0 = TRUE)
+  invalid_scenario <- clm_allocation(prepare_allocation(demand, f$supply, f$distance),
+                                     fit_v0 = TRUE)
   expect_error(run(fit, scenario = invalid_scenario), "supply only")
   exp_model <- clm_allocation(f$inputs, family = "exponential", fit_v0 = TRUE)
   expect_error(run(fit, model = exp_model), "Gaussian")
@@ -336,8 +347,9 @@ test_that("bootstrap replay preserves the caller's RNG, inputs and paired scenar
   scenario <- clm_allocation(prepare_allocation(f$demand, supply, f$distance,
     metadata = f$inputs$input_metadata), fit_v0 = TRUE)
   calls <- list()
-  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
-    calls[[length(calls) + 1L]] <<- list(...)[[6]]
+  testthat::local_mocked_bindings(.allocation_case_fit = function(model, observed, starts,
+                                                                  lower, upper, weights, ...) {
+    calls[[length(calls) + 1L]] <<- weights
     # A valid constrained inner fit remains in the bootstrap distribution.
     alloc_mock_case_fit(f, theta = f$lower, boundary = TRUE)
   })
@@ -403,12 +415,13 @@ test_that("absent facilities stay in resampling while unsupported capacity is di
   f$y <- stats::setNames(round(.case_mean(f, f$truth)), names(f$supply))
   fit <- alloc_count_fit(f)
   changed_supply <- f$supply; changed_supply[1] <- changed_supply[1] * 2
-  scenario <- clm_allocation(prepare_allocation(f$demand, changed_supply, f$distance), fit_v0 = TRUE)
+  scenario <- clm_allocation(prepare_allocation(f$demand, changed_supply, f$distance),
+                             fit_v0 = TRUE)
   calls <- list()
-  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
-    args <- list(...)
-    calls[[length(calls) + 1L]] <<- list(ids = args[[1]]$substrate$facility_ids,
-      supply = as.numeric(args[[1]]$substrate$S), weights = args[[6]])
+  testthat::local_mocked_bindings(.allocation_case_fit = function(model, observed, starts,
+                                                                  lower, upper, weights, ...) {
+    calls[[length(calls) + 1L]] <<- list(ids = model$substrate$facility_ids,
+      supply = as.numeric(model$substrate$S), weights = weights)
     alloc_mock_case_fit(f)
   })
   result <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(), scenario,
