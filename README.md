@@ -221,9 +221,9 @@ prediction/reporting.
 
 Report reproducible issues or discuss larger changes on the [project
 repository](https://github.com/Songyosr/spax). Package code uses the MIT
-license; see [LICENSE](LICENSE). The bundled Health Region 12 example
-data are third-party material under their own terms, which the MIT
-license does not cover. The installed notice file,
-`system.file("COPYRIGHTS", package = "spax")` (source `inst/COPYRIGHTS`),
-lists each dataset's source, attribution and licence status; some terms
-are still unconfirmed.
+license; see [LICENSE](LICENSE). The bundled Cornwall GP example data
+are openly licensed third-party material (Open Government Licence v3.0
+and Creative Commons Attribution), which the MIT license does not cover.
+The installed notice file, `system.file("COPYRIGHTS", package = "spax")`
+(source `inst/COPYRIGHTS`), lists each source and its required
+attribution.

@@ -5,6 +5,22 @@
 The changes below are available on `codex-assist-main`. They are not a new stable
 release; record the source commit when reproducing an analysis.
 
+* **Breaking:** the Thailand Health Region 12 example data have been removed
+  from the package, because their redistribution terms could not be fully
+  confirmed. All examples and tests now use the open Cornwall GP data.
+
+  | Removed | Use instead |
+  |---|---|
+  | `hos_iscr.tif`, `phc_iscr.tif` (travel time to facilities) | `read_spax_example("cornwall_gp_travel.tif")` |
+  | `u5pd.tif` (population grid) | `read_spax_example("cornwall_pop.tif")` |
+  | `hc12_hos`, `hc12_phc` (facilities and supply) | `cornwall_gp` |
+  | `bound0`, `bound1` (boundaries) | `cornwall_lsoa` |
+  | `hos_iscvec` (isochrone polygons) | no direct replacement |
+
+  The package is about 1 MB instead of about 27 MB. Analyses that need the old
+  objects should load them from a saved copy of an earlier spax version.
+* The `update_pmf()`, `transform_demand()` and `calc_normalize()` examples now
+  run; the first two previously referred to an undefined object.
 * The allocation-workflow vignette now loads its full 399-attempt bootstrap
   result from `vignettes/allocation-bootstrap.rds` instead of recomputing it,
   cutting the vignette rebuild from about 200 s to under 30 s. The printed call,

@@ -42,3 +42,23 @@ test_that("vector input rejects non-numeric columns and disjoint extents", {
   expect_error(.chck_vector_input(far, "cases", f$template),
                "must intersect template extent")
 })
+
+test_that("transform_demand accepts polygon area totals", {
+  template <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4,
+                          ymin = 0, ymax = 4, crs = "EPSG:3857")
+  terra::values(template) <- 1
+  areas <- terra::vect(c("POLYGON ((0 0, 2 0, 2 4, 0 4, 0 0))",
+                         "POLYGON ((2 0, 4 0, 4 4, 2 4, 2 0))"),
+                       crs = "EPSG:3857")
+  areas$cases <- c(10, 30)
+  pmf <- transform_pmf(template)
+  surface <- transform_demand(areas, value_col = "cases", pmf = pmf, density = TRUE)
+  expect_equal(terra::global(surface, "sum", na.rm = TRUE)[[1]], 40)
+  out <- transform_demand(areas, value_col = "cases", pmf = pmf, density = TRUE,
+                          full_output = TRUE)
+  expect_equal(out$totals$original, c(10, 30))
+  expect_equal(out$totals$redistributed, c(10, 30))
+  areas$label <- c("a", "b")
+  expect_error(transform_demand(areas, value_col = "label", pmf = pmf),
+               "must be numeric")
+})

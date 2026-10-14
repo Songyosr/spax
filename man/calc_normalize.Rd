@@ -43,7 +43,6 @@ Object of the same class as input containing normalized weights
 Normalizes weights using different methods with support for outside options.
 }
 \examples{
-\dontrun{
 library(terra)
 
 # Example 1: Basic vector normalization
@@ -84,5 +83,4 @@ norm_stack <- calc_normalize(r_stack) # Normalizes each cell across layers
 # Example 8: Handling NA values
 weights_with_na <- c(2, NA, 5, 3)
 calc_normalize(weights_with_na) # NA values are handled appropriately
-}
 }

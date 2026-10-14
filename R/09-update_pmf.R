@@ -21,14 +21,22 @@
 #'         - Posterior density if density = TRUE
 #'
 #' @examples
-#' \dontrun{
+#' pop <- read_spax_example("cornwall_pop.tif")
+#'
+#' # Point counts: residents registered with a GP outside Cornwall, placed at
+#' # each small area's population-weighted centroid
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' cases <- sf::st_as_sf(areas, coords = c("cent_x", "cent_y"), crs = 27700) |>
+#'   sf::st_transform(4326) |>
+#'   terra::vect()
+#'
 #' # Create prior from population
 #' prior <- transform_pmf(pop)
 #'
-#' # Create likelihood from cases
+#' # Create likelihood from the point counts
 #' likelihood <- transform_likelihood(
-#'   case_spatial,
-#'   value_col = "cases",
+#'   cases,
+#'   value_col = "registered_out",
 #'   template = pop
 #' )
 #'
@@ -37,7 +45,6 @@
 #'
 #' # Get density surface
 #' density <- update_pmf(prior, likelihood, density = TRUE)
-#' }
 #' @export
 update_pmf <- function(prior, likelihood, normalize = TRUE,
                        density = FALSE, snap = FALSE) {

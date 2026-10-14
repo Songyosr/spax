@@ -22,7 +22,6 @@
 #' @param ... Additional arguments passed to custom normalization function
 #' @return Object of the same class as input containing normalized weights
 #' @examples
-#' \dontrun{
 #' library(terra)
 #'
 #' # Example 1: Basic vector normalization
@@ -63,7 +62,6 @@
 #' # Example 8: Handling NA values
 #' weights_with_na <- c(2, NA, 5, 3)
 #' calc_normalize(weights_with_na) # NA values are handled appropriately
-#' }
 #' @export
 calc_normalize <- function(x, method = "standard", ref_value = NULL,
                            a0 = 0, snap = FALSE, ...) {
