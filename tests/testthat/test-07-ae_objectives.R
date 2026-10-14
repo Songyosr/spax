@@ -27,9 +27,14 @@ test_that("Poisson loss and gradient match closed forms and finite differences",
   expect_equal(loss_fn(theta), sum(pred - observed * log(pred)))
   expect_equal(.poisson_gradient(pred, observed, C),
                as.vector(fd_jacobian(loss_fn, theta)), tolerance = 1e-5)
-  # Predictions are floored at eps before the logarithm.
+})
+
+test_that("Poisson objective floors predictions at eps", {
   expect_equal(.poisson_loss(c(0, 2), c(1, 2), eps = 1e-3),
                1e-3 - log(1e-3) + 2 - 2 * log(2))
+  # Below eps the floored loss is flat, but the gradient keeps the slope at
+  # eps rather than zero.
+  # Current behaviour; maintainer decision pending (test audit 2026-10-14).
   expect_equal(.poisson_gradient(c(0, 2), c(1, 2), diag(2), eps = 1e-3),
                c(1 - 1 / 1e-3, 0))
 })
