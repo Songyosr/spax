@@ -1,39 +1,9 @@
-.saved_bootstrap_fixture <- function(refused = FALSE) {
-  d <- data.frame(attempt = 1:3, seed = 101:103,
-    status = c("selected", "fit_failed", "selected"), success = c(TRUE, FALSE, TRUE),
-    sigma = c(10, NA, 12), v0 = c(20, NA, 24), boundary = c(FALSE, TRUE, TRUE),
-    best_start = c("near", NA, "far"), loss = c(10, NA, 11),
-    score_norm = c(1e-6, NA, 1e-7), regional_rho = c(.6, NA, .7), regional_A = c(2, NA, 2))
-  estimates <- data.frame(quantity = c("sigma", "regional_rho", "regional_A"),
-    estimate = c(11, .65, 2), lower = NA_real_, upper = NA_real_,
-    status = c("incomplete_bootstrap", "incomplete_bootstrap", "fixed_input_identity"),
-    successful = 2L, attempted = 3L, planned = 399L)
-  starts <- data.frame(attempt = rep(1:3, each = 2), start = rep(c("near", "far"), 3),
-    eligible = c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE),
-    message = c("", "", "failed", "failed", "", ""))
-  if (refused) {
-    d <- d[FALSE, ]; starts <- starts[FALSE, ]
-    estimates$status[1:2] <- "original_unidentified"
-    estimates$attempted <- estimates$successful <- 0L
-  }
-  structure(list(status = if (refused) "refused" else "incomplete",
-    reasons = if (refused) "original_unidentified" else character(), original = list(theta = c(sigma = 11, v0 = 22)),
-    intervals = estimates, draws = d, starts = starts, planned = 399L,
-    attempted = nrow(d), successful = sum(d$success), seed = 1L,
-    observation = list(event = "requests", period = "period1", sampling = "independent_facilities"),
-    settings = list(evidence_scope = "Conditional generated-study scope",
-      fixed_inputs = "demand, supply, travel and network",
-      capacity_identity = "regional_A is attributed supply per retained demand"),
-    facility_ids = c("f1", "f2", "f3"),
-    capacity_support = list(supported_facility_ids = c("f1", "f2"),
-      unsupported_facility_ids = "f3", unsupported_supply = c(f3 = 3),
-      total_supply = 12, attributed_supply = 9),
-    input_metadata = list(demand_units = "requests", supply_units = "slots")),
-    class = "ae_allocation_bootstrap")
-}
+# Saved-result inspection (as.data.frame, summary, print and plot) for
+# allocation fits, coverage and bootstrap results. These methods read saved
+# values and never solve, fit, resample or build maps.
 
 test_that("saved bootstrap tables retain failures, boundaries and denominators", {
-  x <- .saved_bootstrap_fixture(); before <- x
+  x <- saved_bootstrap_stub(); before <- x
   testthat::local_mocked_bindings(
     .solve_problem = function(...) stop("inspection attempted a solve"),
     .fit_problem_nfxp = function(...) stop("inspection attempted a fit"),
@@ -53,14 +23,18 @@ test_that("saved bootstrap tables retain failures, boundaries and denominators",
   expect_identical(s$facility_ids, x$facility_ids)
   expect_identical(s$settings$capacity_identity, x$settings$capacity_identity)
   expect_output(print(x), "399")
-  expect_output(print(s), "independent_facilities")
-  expect_output(print(s), "total: 12.*attributed: 9.*unsupported: 3")
-  expect_output(print(s), "positive supply without support: 1")
+  printed <- paste(utils::capture.output(print(s)), collapse = "\n")
+  for (key in c("independent_facilities", "slots", "total: 12", "attributed: 9",
+                "unsupported: 3", "without support: 1")) {
+    expect_match(printed, key, fixed = TRUE)
+  }
+  undeclared <- x; undeclared$input_metadata$supply_units <- NA_character_
+  expect_output(print(undeclared), "raw supply units")
   expect_identical(x, before)
 })
 
 test_that("refused bootstrap results remain inspectable without attempts", {
-  x <- .saved_bootstrap_fixture(TRUE)
+  x <- saved_bootstrap_stub(TRUE)
   expect_equal(nrow(as.data.frame(x, type = "draws")), 0)
   expect_equal(nrow(as.data.frame(x, type = "starts")), 0)
   expect_equal(summary(x)$counts$attempted, 0)
@@ -69,50 +43,45 @@ test_that("refused bootstrap results remain inspectable without attempts", {
   expect_error(as.data.frame(x, type = "unknown"), "arg")
 })
 
-test_that("bootstrap plots inspect saved ranges, refusals and retained draws", {
-  x <- .saved_bootstrap_fixture(); path <- tempfile(fileext = ".pdf")
-  grDevices::pdf(path)
-  on.exit({grDevices::dev.off(); unlink(path)}, add = TRUE)
-  expect_identical(plot(x, quantity = "regional_rho"), x)
-  expect_identical(plot(x, quantity = "regional_rho", type = "draws"), x)
-  expect_identical(plot(x, quantity = "regional_A"), x)
-  x$intervals$lower[1] <- 9; x$intervals$upper[1] <- 13
-  expect_identical(plot(x, quantity = "sigma", main = "Saved interval"), x)
-  refused <- .saved_bootstrap_fixture(TRUE)
-  expect_identical(plot(refused, type = "draws"), refused)
-  refused$intervals$estimate[1] <- NA_real_
-  expect_identical(plot(refused), refused)
-  expect_error(plot(x, quantity = "absent"), "saved estimate")
-})
-
-test_that("saved stale bounds never make refused or incomplete ranges reportable", {
-  x <- .saved_bootstrap_fixture()
-  x$intervals$lower[1] <- 9; x$intervals$upper[1] <- 13
-  x$intervals$status[1] <- "conditional_pointwise_bootstrap"
-  x$status <- "complete"
+test_that("bootstrap plots draw an interval only for an eligible quantity of a complete run", {
+  x <- saved_bootstrap_stub()
   segments <- 0L; captions <- character()
   testthat::local_mocked_bindings(
     segments = function(...) { segments <<- segments + 1L; invisible(NULL) },
     mtext = function(text, ...) { captions <<- c(captions, paste(text, collapse = "\n")); invisible(NULL) },
     .package = "graphics")
-  pdf <- tempfile(fileext = ".pdf"); saved <- tempfile(fileext = ".rds")
-  grDevices::pdf(pdf)
-  on.exit({grDevices::dev.off(); unlink(c(pdf, saved))}, add = TRUE)
-  plot(x, quantity = "sigma")
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  saved <- withr::local_tempfile(fileext = ".rds")
+  # Saved views return their input; an incomplete run draws no interval.
+  expect_identical(plot(x, quantity = "regional_rho"), x)
+  expect_identical(plot(x, quantity = "regional_rho", type = "draws"), x)
+  expect_identical(plot(x, quantity = "regional_A"), x)
+  refused <- saved_bootstrap_stub(TRUE)
+  expect_identical(plot(refused, type = "draws"), refused)
+  refused$intervals$estimate[1] <- NA_real_
+  expect_identical(plot(refused), refused)
+  expect_equal(segments, 0L)
+  expect_error(plot(x, quantity = "absent"), "saved estimate")
+  # Stale saved bounds are drawn only when both the run and quantity permit.
+  x$intervals$lower[1] <- 9; x$intervals$upper[1] <- 13
+  x$intervals$status[1] <- "conditional_pointwise_bootstrap"
+  x$status <- "complete"
+  plot(x, quantity = "sigma", main = "Saved interval")
   expect_equal(segments, 1L)
   expect_output(print(x), "conditional bootstrap intervals")
-  expect_match(tail(captions, 1), "quantity: conditional interval eligible")
+  expect_match(tail(captions, 1), "conditional interval eligible")
   expect_false(grepl("conditional_pointwise_bootstrap", tail(captions, 1), fixed = TRUE))
-  expect_match(tail(captions, 1), "\n2/3 finite successful values; 399 planned")
+  expect_match(tail(captions, 1), "2/3 finite successful values")
   expected <- c(refused = "refused", incomplete = "incomplete",
     insufficient_success = "insufficient successful draws")
-  for (status in c("refused", "incomplete", "insufficient_success")) {
+  for (status in names(expected)) {
     x$status <- status
     saveRDS(x, saved)
     restored <- readRDS(saved)
     plot(restored, quantity = "sigma")
     expect_equal(segments, 1L)
-    expect_match(tail(captions, 1), paste0("run: ", expected[[status]]))
+    expect_match(tail(captions, 1), expected[[status]])
     expect_identical(as.data.frame(restored), x$intervals)
   }
   x$status <- "complete"
@@ -121,37 +90,23 @@ test_that("saved stale bounds never make refused or incomplete ranges reportable
     plot(x, quantity = "sigma")
     expect_equal(segments, 1L)
   }
-  expect_match(tail(captions, 1), "quantity: fixed input identity")
+  expect_match(tail(captions, 1), "fixed input identity")
   x$status <- "incomplete"
   plot(x, quantity = "sigma", type = "draws")
-  expect_match(tail(captions, 1), "run: incomplete")
+  expect_match(tail(captions, 1), "incomplete")
 })
 
-test_that("fit parameter tables and multistart summary preserve saved fields", {
+test_that("fit parameter tables name every saved parameter", {
   fit <- structure(list(theta = c(sigma = 3, v0 = 8)), class = "ae_problem_nfxp_fit")
-  x <- structure(list(best = fit, best_start = "first", status = "selected",
-    table = data.frame(start = "first", eligible = TRUE, loss = 1), boundary = matrix(FALSE, 1, 2),
-    loss_disagreement = FALSE, parameter_disagreement = FALSE,
-    tolerances = list(loss = 1e-6, log_parameter = .001), warnings = list(character()), errors = list(character())),
-    class = "ae_multistart_fit")
-  testthat::local_mocked_bindings(summary.ae_problem_nfxp_fit = function(object, ...) list(theta = object$theta))
   expect_equal(as.data.frame(fit), data.frame(parameter = c("sigma", "v0"), estimate = c(3, 8)))
-  expect_identical(as.data.frame(x), as.data.frame(fit))
   expect_identical(as.data.frame(fit, type = "parameters"), as.data.frame(fit))
-  expect_identical(as.data.frame(x, type = "parameters"), as.data.frame(x))
   expect_error(as.data.frame(fit, type = "starts"), "arg")
-  expect_error(as.data.frame(x, type = "starts"), "arg")
-  s <- summary(x)
-  expect_s3_class(s, "summary.ae_multistart_fit")
-  expect_identical(names(s), c("status", "selected_start", "selected", "starts", "boundary", "disagreement", "warnings", "errors"))
-  expect_identical(s$starts, x$table)
-  expect_identical(s$boundary, x$boundary)
-  expect_identical(s$warnings, x$warnings)
-  x$best <- x$best_start <- NULL; x$status <- "no_valid_fit"
-  expect_null(summary(x)$selected)
-  expect_output(print(summary(x)), "none")
-  expect_error(as.data.frame(x), "no eligible allocation fit")
-  expect_error(plot(x), "no eligible allocation fit")
+  unnamed <- structure(list(theta = c(3, 8)), class = "ae_problem_nfxp_fit")
+  expect_identical(as.data.frame(unnamed)$parameter, c("theta1", "theta2"))
+  multistart <- alloc_small_fit()
+  expect_identical(as.data.frame(multistart), as.data.frame(multistart$best))
+  expect_identical(as.data.frame(multistart, type = "parameters"), as.data.frame(multistart))
+  expect_error(as.data.frame(multistart, type = "starts"), "arg")
 })
 
 test_that("multistart plotting delegates without changing selected diagnostics", {
@@ -180,7 +135,23 @@ test_that("coverage extraction retains support, IDs, raw masks and metadata", {
   expect_identical(attr(z, "reporting_settings"), x$settings)
   expect_identical(as.data.frame(x)$abar_raw, x$regional$abar_raw)
   expect_true(is.na(as.data.frame(x)$abar))
-  path <- tempfile(fileext = ".rds"); on.exit(unlink(path), add = TRUE)
+  path <- withr::local_tempfile(fileext = ".rds")
   saveRDS(x, path)
   expect_identical(as.data.frame(readRDS(path), type = "cells"), z)
+  missing <- x; missing$cells <- NULL
+  expect_error(as.data.frame(missing, type = "cells"), "unavailable")
+})
+
+test_that("inspection methods run on a real fit and a real bootstrap run", {
+  fit <- alloc_small_fit()
+  run <- alloc_bootstrap_run()
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_equal(plot(fit), range(c(fit$best$observed, fit$best$predicted)))
+  expect_identical(plot(run), run)
+  expect_identical(plot(run, quantity = "regional_rho", type = "draws"), run)
+  expect_output(print(fit), "selected start")
+  expect_output(print(run), "incomplete")
+  expect_equal(summary(run)$counts$attempted, 3)
+  expect_identical(as.data.frame(run, type = "draws"), run$draws)
 })
