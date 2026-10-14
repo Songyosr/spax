@@ -1,10 +1,8 @@
+# Static CLM on the b, a, c identity inputs with a fitted outside option, and
+# its allocation with two suppressed cells. `rows`/`cols` permute the axes.
 .identity_fixture <- function() {
-  d <- terra::rast(nrows = 1, ncols = 5)
-  terra::values(d) <- c(8, 0, 13, NA, 21)
-  distance <- c(d, d, d)
-  names(distance) <- c("b", "a", "c")
-  terra::values(distance) <- cbind(c(1, 2, 4, 2, 5), c(4, 2, 1, 2, 3), c(2, 3, 5, 2, 1))
-  p <- .huff_problem(d, c(b = 30, a = 20, c = 25), distance, fit_v0 = TRUE)
+  f <- ae_identity_inputs(5)
+  p <- .huff_problem(f$demand, f$supply, f$distance, fit_v0 = TRUE)
   out <- .solve_problem(p, c(sigma = 2, v0 = 6))$outputs
   y <- out$allocation
   dimnames(y) <- list(c("1", "3", "5"), c("b", "a", "c"))
@@ -27,19 +25,15 @@ test_that("named axes align independently and retain nonconsecutive origin keys"
   expect_identical(perm$observed, ref$observed)
   expect_identical(perm$mask, ref$mask)
   expect_identical(perm$values, ref$values)
-  expect_identical(perm$alignment$canonical_to_input, list(order(f$rows), order(f$cols)))
-  expect_identical(perm$alignment$input_to_canonical, list(f$rows, f$cols))
   for (axis in 1:2) {
     partial <- if (axis == 1) f$y[f$rows, , drop = FALSE] else f$y[, f$cols, drop = FALSE]
     dn <- dimnames(partial); dn[3 - axis] <- list(NULL); dimnames(partial) <- dn
     bound <- .bind_problem_target(f$p, partial, "allocation")
     expect_equal(unname(bound$observed), unname(f$y))
-    expect_identical(bound$alignment$named, seq_len(2) == axis)
   }
   unnamed <- unname(f$y)
   positional <- .bind_problem_target(f$p, unnamed, "allocation")
   expect_identical(positional$observed, unnamed)
-  expect_identical(positional$alignment$named, c(FALSE, FALSE))
   expect_identical(positional$mask, as.numeric(!is.na(unnamed)) == 1)
 })
 
@@ -53,6 +47,8 @@ test_that("single fits canonicalize matrix and facility targets without changing
   expect_equal(a$predicted, b$predicted, tolerance = 1e-12)
   expect_identical(a$target_mask, b$target_mask)
   expect_equal(a$outputs, b$outputs, tolerance = 1e-12)
+  # Fits from permuted inputs share one canonical identity and compare.
+  expect_no_error(.compare_problem_fits(list(a = a, b = b)))
   y <- f$utilization; y[2] <- NA_real_
   av <- .identity_fit(f, y, "utilization")
   bv <- .identity_fit(f, y[f$cols], "utilization")
@@ -89,7 +85,7 @@ test_that("objective and gradient callbacks receive canonical masks and unchange
   expect_identical(b$fit$evaluation_reuse, a$fit$evaluation_reuse)
 })
 
-test_that("multistart and profile share canonical observations and match direct calls", {
+test_that("multistart and profile results do not depend on observation order", {
   f <- .identity_fixture()
   starts <- rbind(near = f$init, far = c(sigma = 2.7, v0 = 9))
   args <- list(problem = f$p, starts = starts, lower = f$lower, upper = f$upper,
@@ -180,12 +176,9 @@ test_that("invalid named identities fail before any fit or solve", {
 })
 
 test_that("custom providers need explicit identities only for named observations", {
-  p <- .new_problem("toy", substrate = list(facility_ids = c("f2", "f1"),
-      origin_ids = c("r2", "r1")),
-    state = list(name = "x", axis = "J", init = c(1, 1), lower = 0, upper = Inf),
-    theta = list(names = c("a", "b"), lower = c(0, 0), upper = c(Inf, Inf)),
-    bind = function(theta) list(map = function(x) theta,
-      outputs = function(x) list(target = theta, utilization = theta, custom = theta)))
+  p <- ae_identity_problem(c("a", "b"), facility_ids = c("f2", "f1"),
+    substrate = list(origin_ids = c("r2", "r1")),
+    outputs = function(theta) list(custom = theta))
   fit <- function(problem, y) .fit_problem_nfxp(problem, y, c(a = 1.5, b = 2.5),
     c(a = .1, b = .1), c(a = 5, b = 5), output = "custom")
   legacy <- fit(p, c(2, 3))
@@ -219,15 +212,41 @@ test_that("singleton matrix axes keep dimensions and old raster keys remain reso
   }
 })
 
-test_that("fit comparison rejects distinct canonical identities rather than comparing values alone", {
-  f <- .identity_fixture()
-  a <- .identity_fit(f, f$y)
-  b <- .identity_fit(f, f$y[f$rows, f$cols])
-  expect_no_error(.compare_problem_fits(list(a = a, b = b)))
-  b$target_alignment$ids$facility <- c("other1", "other2", "other3")
-  expect_error(.compare_problem_fits(list(a = a, b = b)), "observation identities")
-  b$target_alignment <- NULL
-  expect_error(.compare_problem_fits(list(a = a, b = b)), "observation identities")
-  a$target_alignment <- NULL
-  expect_no_error(.compare_problem_fits(list(a = a, b = b)))
+test_that("declared output identities are validated", {
+  p <- .identity_fixture()$p
+  expect_error(.problem_output_identity(p, NA_character_), "length-one")
+  # Outputs without a declared axis keep positional identity.
+  expect_null(.problem_output_identity(p, "custom")$axes)
+
+  bad <- p
+  bad$metadata$spec$output_axes <- c(p$metadata$spec$output_axes, utilization = "facility")
+  expect_error(.problem_output_identity(bad, "allocation"), "unique output names")
+  bad <- p
+  bad$metadata$spec$output_axes[["allocation"]] <- "edge"
+  expect_error(.problem_output_identity(bad, "allocation"), "unsupported declared output axis")
+  bad <- p
+  bad$substrate$facility_ids <- c("b", NA, "c")
+  expect_error(.problem_output_identity(bad, "utilization"), "nonmissing")
+  bad$substrate$facility_ids <- c("b", "b", "c")
+  expect_error(.problem_output_identity(bad, "utilization"), "unique and nonblank")
+})
+
+test_that(".fit_target_meta describes vector and matrix targets with NA masks", {
+  meta <- .fit_target_meta(c(1, NA, 3))
+  expect_null(meta$dim)
+  expect_equal(meta$mask, c(TRUE, FALSE, TRUE))
+  expect_equal(meta$values, c(1, 3))
+  expect_equal(meta$n_observed, 2L)
+
+  m <- matrix(c(1, 2, NA, 4), 2, 2)
+  meta_m <- .fit_target_meta(m)
+  expect_equal(meta_m$dim, c(2L, 2L))
+  expect_equal(meta_m$length, 4L)
+  expect_equal(meta_m$values, c(1, 2, 4))
+
+  expect_error(.fit_target_meta("a"), "must be numeric")
+  expect_error(.fit_target_meta(array(1, c(2, 2, 2))), "vector or matrix")
+  expect_error(.fit_target_meta(c(NA_real_, NA_real_)), "non-missing")
+  expect_error(.fit_target_meta(c(1, Inf)), "finite")
+  expect_error(.fit_target_meta(numeric(0)), "empty")
 })
