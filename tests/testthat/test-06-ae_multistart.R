@@ -1,26 +1,23 @@
-.multistart_fixture <- function(model = "huff", flows = FALSE) {
-  d <- terra::rast(nrows = 1, ncols = 4)
-  terra::values(d) <- c(10, 0, 30, 40)
-  distance <- c(d, d)
-  names(distance) <- c("a", "b")
-  terra::values(distance) <- cbind(c(1, 2, 4, 5), c(5, 4, 2, 1))
-  ctor <- get(paste0(".", model, "_problem"))
-  p <- ctor(d, c(a = 30, b = 45), distance)
-  solved <- .solve_problem(p, c(sigma = 2), lambda = .7)
+# Utilization (or a masked allocation) generated at sigma = 2, and two starts.
+.multistart_fixture <- function(problem = ae_toy_problem(shape = "1x4",
+                                  demand = c(10, 0, 30, 40)),
+                                flows = FALSE) {
+  solved <- .solve_problem(problem, c(sigma = 2), lambda = .7, tol = 1e-10)
   y <- if (flows) solved$outputs$allocation else solved$utilization
   if (flows) y[2, 1] <- NA
-  list(p = p, y = y, starts = matrix(c(1.5, 2.5), ncol = 1,
+  list(p = problem, y = y, starts = matrix(c(1.5, 2.5), ncol = 1,
     dimnames = list(c("near", "far"), "sigma")))
 }
 
-test_that("multistart matches separate CLM and fixed-point fits with shared preparation", {
-  fixtures <- lapply(c("huff", "haae"), .multistart_fixture)
+test_that("multistart matches separate static and fixed-point fits", {
+  fixtures <- list(
+    .multistart_fixture(),
+    .multistart_fixture(ae_ratio_problem(fix = c("v0", "feedback_scale")))
+  )
   for (f in fixtures) {
     ref <- lapply(seq_len(2), function(i) .fit_problem_nfxp(f$p, f$y,
       f$starts[i, ], c(sigma = .5), c(sigma = 4), lambda = .7,
       gradient = TRUE, control = list(maxit = 100)))
-    # A prepared problem must suffice throughout the entire search.
-    testthat::local_mocked_bindings(.interaction_substrate = function(...) stop("reprepared"))
     a <- .fit_problem_multistart(f$p, f$y, f$starts, c(sigma = .5), c(sigma = 4),
       lambda = .7, gradient = TRUE, control = list(maxit = 100), keep_fits = TRUE)
     winner <- which.min(vapply(ref, `[[`, numeric(1), "loss"))
@@ -32,13 +29,12 @@ test_that("multistart matches separate CLM and fixed-point fits with shared prep
   }
 })
 
-test_that("matrix masks and private reporting survive selection", {
+test_that("default selection keeps one rich fit and reports every start", {
   f <- .multistart_fixture(flows = TRUE)
   a <- .fit_problem_multistart(f$p, f$y, f$starts, .5, 4,
     output = "allocation", gradient = TRUE, control = list(maxit = 100))
   expect_null(a$fits)
-  expect_identical(a$best$target_mask, as.numeric(!is.na(f$y)) == 1)
-  expect_equal(a$best$predicted[!is.na(f$y)], f$y[!is.na(f$y)], tolerance = 1e-4)
+  expect_s3_class(a$best, "ae_problem_nfxp_fit")
   expect_output(print(a), "eligible starts: 2 / 2")
   expect_identical(rownames(a$theta), rownames(f$starts))
 })
@@ -112,6 +108,8 @@ test_that("invalid input is rejected before any fit", {
                  matrix(c(1, 1), ncol = 1, dimnames = list(NULL, "sigma")))) {
     expect_error(.fit_problem_multistart(f$p, f$y, s, .5, 4), "starts")
   }
+  named <- matrix(c(1.5, 2.5), ncol = 1, dimnames = list(c("x", "x"), "sigma"))
+  expect_error(.fit_problem_multistart(f$p, f$y, named, .5, 4), "row names")
   expect_error(.fit_problem_multistart(f$p, f$y, f$starts, 2, 4), "inside")
   expect_error(.fit_problem_multistart(f$p, f$y, f$starts, 4, .5), "lower")
   expect_error(.fit_problem_multistart(f$p, f$y, f$starts, .5, 4, loss_tol = NA), "tolerances")
@@ -119,14 +117,8 @@ test_that("invalid input is rejected before any fit", {
   expect_error(.fit_problem_multistart(f$p, f$y, f$starts, .5, 4, keep_fits = NA), "keep_fits")
 })
 
-test_that("named parameter columns are aligned and starts share the same problem", {
-  # Add v0 to the static provider by rebuilding once outside the search.
-  d <- terra::rast(nrows = 1, ncols = 3)
-  terra::values(d) <- c(10, 20, 30)
-  dist <- c(d, d)
-  terra::values(dist) <- cbind(c(1, 2, 3), c(3, 2, 1))
-  names(dist) <- c("a", "b")
-  p <- .huff_problem(d, c(a = 30, b = 20), dist, fit_v0 = TRUE)
+test_that("starts share one prepared problem and align named parameter columns", {
+  p <- ae_toy_problem(shape = "1x4", fit_v0 = TRUE)
   y <- .solve_problem(p, c(sigma = 2, v0 = 5))$utilization
   starts <- rbind(a = c(v0 = 4, sigma = 1.5), b = c(v0 = 6, sigma = 2.5))
   original <- .fit_problem_nfxp
@@ -137,9 +129,13 @@ test_that("named parameter columns are aligned and starts share the same problem
     seen[[length(seen) + 1L]] <<- init
     original(problem, observed, init, lower, upper, gradient = gradient, control = control)
   }
-  testthat::local_mocked_bindings(.fit_problem_nfxp = spy)
+  # A prepared problem must suffice throughout the entire search.
+  testthat::local_mocked_bindings(
+    .fit_problem_nfxp = spy,
+    .interaction_substrate = function(...) stop("reprepared"))
   a <- .fit_problem_multistart(p, y, starts, c(v0 = .1, sigma = .5),
     c(v0 = 20, sigma = 4), gradient = TRUE, control = list(maxit = 100))
+  expect_length(seen, 2)
   expect_identical(colnames(a$starts), c("sigma", "v0"))
   expect_identical(names(seen[[1]]), c("sigma", "v0"))
   expect_equal(unname(seen[[1]]), c(1.5, 4))

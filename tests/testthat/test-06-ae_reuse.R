@@ -1,12 +1,19 @@
-.reuse_problem <- function(model = "huff", changed = FALSE) {
-  d <- terra::rast(nrows = 1, ncols = 4)
-  terra::values(d) <- if (changed) c(0, 25, NA, 15) else c(10, 20, 30, 40)
-  dist <- c(d, d)
-  terra::values(dist) <- cbind(c(1, 2, 4, 5), c(5, 4, 2, 1))
-  names(dist) <- if (changed) c("c", "d") else c("a", "b")
-  supply <- stats::setNames(if (changed) c(25, 35) else c(30, 45), names(dist))
-  ctor <- get(paste0(".", model, "_problem"))
-  ctor(d, supply, dist)
+# Huff on the 1 x 4 toy inputs, or a changed scenario with new support,
+# facility IDs and supply.
+.reuse_problem <- function(changed = FALSE) {
+  if (!changed) return(ae_toy_problem(shape = "1x4"))
+  f <- ae_toy_inputs("1x4", demand = c(0, 25, NA, 15))
+  names(f$distance) <- c("c", "d")
+  .huff_problem(f$demand, c(c = 25, d = 35), f$distance)
+}
+
+# A run makes `n` real solves, including the final reporting solve, and
+# reuses `reused` accepted objective solves for gradient requests.
+expect_solves <- function(run, n, reused = NULL) {
+  expect_length(run$solves, n)
+  if (!is.null(reused)) {
+    expect_identical(run$fit$evaluation_reuse$reused_solves, as.integer(reused))
+  }
 }
 
 # Drive real solves through explicit optimizer request sequences. Only optim is
@@ -68,9 +75,9 @@
 test_that("objective-gradient reuse is single use and preserves callbacks", {
   a <- .run_reuse_requests(requests = c("f0", "g0", "g0"))
   b <- .run_reuse_requests(requests = c("f0", "g0", "g0"), reuse = FALSE)
-  expect_length(a$solves, 3)
-  expect_length(b$solves, 4)
-  expect_identical(a$fit$evaluation_reuse, list(enabled = TRUE, reused_solves = 1L))
+  expect_solves(a, 3, reused = 1)
+  expect_solves(b, 4)
+  expect_true(a$fit$evaluation_reuse$enabled)
   expect_equal(a$answers, b$answers, tolerance = 1e-10)
   expect_equal(a$fit$outputs, b$fit$outputs, tolerance = 1e-10)
   expect_equal(a$losses, b$losses, tolerance = 1e-10)
@@ -86,35 +93,28 @@ test_that("objective-gradient reuse is single use and preserves callbacks", {
 test_that("changed points, gradient-first requests and new objectives solve afresh", {
   for (requests in list(c("f0", "g0.1"), c("g0", "g0"),
                         c("f0", "f0.1", "g0"))) {
-    a <- .run_reuse_requests(requests = requests)
-    expect_length(a$solves, length(requests) + 1L)
-    expect_identical(a$fit$evaluation_reuse$reused_solves, 0L)
+    expect_solves(.run_reuse_requests(requests = requests),
+                  length(requests) + 1L, reused = 0)
   }
-  a <- .run_reuse_requests(requests = c("f0", "f0", "g0"))
-  expect_length(a$solves, 3)
-  expect_identical(a$fit$evaluation_reuse$reused_solves, 1L)
+  expect_solves(.run_reuse_requests(requests = c("f0", "f0", "g0")), 3, reused = 1)
 })
 
-test_that("failed solves invalidate an earlier accepted evaluation", {
+test_that("failed solves and invalid losses invalidate an accepted evaluation", {
   a <- .run_reuse_requests(requests = c("f0", "f0", "g0"), fail_at = 2L)
   expect_equal(a$answers[[2]], 1e12)
-  expect_length(a$solves, 4)
-  expect_identical(a$fit$evaluation_reuse$reused_solves, 0L)
+  expect_solves(a, 4, reused = 0)
   expect_true(a$fit$equilibrium$converged)
-})
 
-test_that("invalid losses are not retained and gradient loss callbacks still run", {
   a <- .run_reuse_requests(requests = c("f0", "f0", "g0"), bad_loss_at = 2L)
   expect_equal(a$answers[[2]], 1e12)
-  expect_length(a$solves, 4)
-  expect_identical(a$fit$evaluation_reuse$reused_solves, 0L)
+  expect_solves(a, 4, reused = 0)
   # The callback rejects the paired gradient evaluation. It must run again,
   # triggering finite differences rather than using the prior finite loss.
   a <- .run_reuse_requests(bad_loss_at = 2L)
   b <- .run_reuse_requests(bad_loss_at = 2L, reuse = FALSE)
   expect_equal(a$answers, b$answers, tolerance = 1e-10)
   expect_equal(a$losses, b$losses, tolerance = 1e-10)
-  expect_length(a$solves, length(b$solves) - 1L)
+  expect_solves(a, length(b$solves) - 1L)
   expect_length(a$gradients, 0)
 })
 
@@ -122,7 +122,7 @@ test_that("finite-difference fallback still evaluates its own parameter points",
   a <- .run_reuse_requests(bad_gradient = TRUE)
   b <- .run_reuse_requests(bad_gradient = TRUE, reuse = FALSE)
   expect_equal(a$answers, b$answers, tolerance = 1e-10)
-  expect_length(a$solves, length(b$solves) - 1L)
+  expect_solves(a, length(b$solves) - 1L)
   expect_equal(a$losses, b$losses, tolerance = 1e-10)
   expect_true(all(is.finite(a$answers[[2]])))
 })
@@ -131,10 +131,10 @@ test_that("undeclared providers and finite-difference fits remain uncached", {
   p <- .reuse_problem()
   p$metadata$spec$deterministic <- NULL
   a <- .run_reuse_requests(p)
-  expect_length(a$solves, 3)
+  expect_solves(a, 3)
   expect_false(a$fit$evaluation_reuse$enabled)
   a <- .run_reuse_requests(requests = c("f0", "f0"), gradient = FALSE)
-  expect_length(a$solves, 3)
+  expect_solves(a, 3)
   expect_false(a$fit$evaluation_reuse$enabled)
   expect_error(.run_reuse_requests(reuse = NA), "`reuse`")
   expect_error(.run_reuse_requests(reuse = 1), "`reuse`")
@@ -149,8 +149,8 @@ test_that("separate fits isolate scenarios, support, IDs, masks and controls", {
                             tol = 1e-10, eta = 4)
   ref <- .run_reuse_requests(q, observed = observed, output = "allocation",
                               tol = 1e-10, eta = 4, reuse = FALSE)
-  expect_length(a$solves, 2)
-  expect_length(b$solves, 2)
+  expect_solves(a, 2)
+  expect_solves(b, 2)
   expect_null(b$solves[[1]]$args$x0)
   expect_identical(b$solves[[1]]$args$tol, 1e-10)
   expect_equal(b$solves[[1]]$support, c(2, 4))
@@ -164,16 +164,17 @@ test_that("separate fits isolate scenarios, support, IDs, masks and controls", {
 })
 
 test_that("fixed-point gradients use the accepted objective state", {
-  for (model in c("sae", "haae")) {
-    p <- .reuse_problem(model)
-    a <- .run_reuse_requests(p, tol = 1e-10)
-    b <- .run_reuse_requests(p, tol = 1e-10, reuse = FALSE)
-    expect_length(a$solves, 2)
-    expect_length(b$solves, 3)
-    expect_identical(a$sensitivity_states[[1]], a$solves[[1]]$fit$x_star)
-    expect_identical(a$solves[[2]]$args$x0, a$solves[[1]]$fit$x_star)
-    expect_equal(a$answers, b$answers, tolerance = 1e-7)
-    expect_equal(a$fit$outputs, b$fit$outputs, tolerance = 1e-7)
-    expect_true(a$fit$equilibrium$converged)
-  }
+  # The ratio-feedback model with only sigma free: a genuine fixed point
+  # whose sensitivity depends on the solved state.
+  p <- ae_ratio_problem(fix = c("v0", "feedback_scale"))
+  a <- .run_reuse_requests(p, tol = 1e-10)
+  b <- .run_reuse_requests(p, tol = 1e-10, reuse = FALSE)
+  expect_solves(a, 2, reused = 1)
+  expect_solves(b, 3)
+  expect_gt(a$fit$spectral_radius, 0)
+  expect_identical(a$sensitivity_states[[1]], a$solves[[1]]$fit$x_star)
+  expect_identical(a$solves[[2]]$args$x0, a$solves[[1]]$fit$x_star)
+  expect_equal(a$answers, b$answers, tolerance = 1e-7)
+  expect_equal(a$fit$outputs, b$fit$outputs, tolerance = 1e-7)
+  expect_true(a$fit$equilibrium$converged)
 })

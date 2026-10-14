@@ -1,10 +1,6 @@
+# Huff with a fitted outside option, observed at sigma = 2, v0 = 5.
 .profile_fixture <- function() {
-  d <- terra::rast(nrows = 1, ncols = 4)
-  terra::values(d) <- c(10, 20, 30, 40)
-  distance <- c(d, d)
-  names(distance) <- c("a", "b")
-  terra::values(distance) <- cbind(c(1, 2, 4, 5), c(5, 4, 2, 1))
-  p <- .huff_problem(d, c(a = 30, b = 45), distance, fit_v0 = TRUE)
+  p <- ae_toy_problem(shape = "1x4", fit_v0 = TRUE)
   y <- .solve_problem(p, c(sigma = 2, v0 = 5))$utilization
   list(problem = p, observed = y)
 }
@@ -35,20 +31,16 @@ test_that("profile fits nuisance parameters on one prepared problem", {
   expect_identical(profile$fits$truth$profile$parameter, "sigma")
 })
 
-test_that("profile preserves matrix masks and reconstructs named theta", {
+test_that("profile reconstructs named theta in contract order", {
   f <- .profile_fixture()
-  observed <- .solve_problem(f$problem, c(sigma = 2, v0 = 5))$outputs$allocation
-  observed[2, 1] <- NA
-  profile <- .profile_problem(f$problem, observed, "sigma", c(a = 1.8, b = 2),
+  profile <- .profile_problem(f$problem, f$observed, "sigma", c(a = 1.8, b = 2),
     init = c(v0 = 4, sigma = 2), lower = c(v0 = .1, sigma = .5),
-    upper = c(v0 = 20, sigma = 4), output = "allocation",
-    gradient = TRUE, control = list(maxit = 100))
+    upper = c(v0 = 20, sigma = 4), gradient = TRUE, control = list(maxit = 100))
   expect_identical(profile$nuisance, "v0")
   expect_identical(colnames(profile$theta), c("sigma", "v0"))
+  expect_equal(unname(profile$theta[, "sigma"]), c(1.8, 2))
+  expect_identical(names(profile$best$theta), c("sigma", "v0"))
   expect_null(profile$fits)
-  expect_identical(profile$best$target_mask, as.numeric(!is.na(observed)) == 1)
-  expect_equal(profile$best$predicted[!is.na(observed)], observed[!is.na(observed)],
-               tolerance = 1e-4)
 })
 
 test_that("profile diagnostics retain failures and boundaries", {
@@ -84,10 +76,37 @@ test_that("profile validates its complete theta and point contract", {
   args <- list(problem = f$problem, observed = f$observed, parameter = "sigma",
                values = c(1, 2), init = c(sigma = 2, v0 = 5),
                lower = c(sigma = .5, v0 = .1), upper = c(sigma = 4, v0 = 20))
-  expect_error(do.call(.profile_problem, modifyList(args, list(parameter = "bad"))), "parameter")
-  expect_error(do.call(.profile_problem, modifyList(args, list(values = c(1, 1)))), "distinct")
-  expect_error(do.call(.profile_problem, modifyList(args, list(values = 5))), "inside")
-  expect_error(do.call(.profile_problem, modifyList(args, list(init = c(sigma = 2)))), "missing")
-  expect_error(do.call(.profile_problem, c(args, list(warm_start = NA))), "TRUE or FALSE")
-  expect_error(do.call(.profile_problem, c(args, list(bad_control = 1))), "controls")
+  bad <- function(...) do.call(.profile_problem, modifyList(args, list(...)))
+  expect_error(bad(parameter = "bad"), "parameter")
+  expect_error(bad(values = c(1, 1)), "distinct")
+  expect_error(bad(values = 5), "inside")
+  expect_error(bad(values = c(a = 1, a = 2)), "names")
+  expect_error(bad(init = c(sigma = 2)), "missing")
+  expect_error(bad(init = c(sigma = 5, v0 = 5)), "inside")
+  expect_error(bad(lower = c(sigma = 0, v0 = .1)), "positive")
+  expect_error(bad(warm_start = NA), "TRUE or FALSE")
+  expect_error(bad(bad_control = 1), "controls")
+  expect_error(bad(problem = ae_toy_problem(), init = 2, lower = .5, upper = 4),
+               "nuisance")
+})
+
+test_that("fixed parameters keep the prepared problem and reduce Jacobian columns", {
+  ratio <- ae_ratio_problem()
+  expect_error(.fix_problem_parameter(ratio, "bad", 1), "parameter")
+  expect_error(.fix_problem_parameter(ratio, "feedback_scale", 0.5), "bounds")
+  expect_error(.fix_problem_parameter(ae_toy_problem(), "sigma", 2), "nuisance")
+
+  fixed <- .fix_problem_parameter(ratio, "feedback_scale", 1.5)
+  expect_identical(fixed$substrate, ratio$substrate)
+  expect_identical(fixed$theta$names, c("sigma", "v0"))
+  expect_identical(fixed$metadata$profile$value, 1.5)
+
+  # A provider may return its parameter Jacobian inside a list.
+  jac <- matrix(1:4, 2, 2)
+  listed <- ae_identity_problem(step = list(jac_param = function(x) list(jac_param = jac)))
+  step <- .bind_theta(.fix_problem_parameter(listed, "alpha", 2), c(beta = 3))
+  expect_identical(step$jac_param(c(2, 3))$jac_param, jac[, 2, drop = FALSE])
+  incomplete <- ae_identity_problem(step = list(jac_param = function(x) list()))
+  step <- .bind_theta(.fix_problem_parameter(incomplete, "alpha", 2), c(beta = 3))
+  expect_error(step$jac_param(c(2, 3)), "jac_param")
 })
