@@ -41,7 +41,7 @@ test_that("Cornwall travel matrix matches the tables and the travel grid", {
   # Grid times are whole minutes from 1 to 180, only for populated cells, and
   # no cell reaches both the Scilly practice and a mainland practice.
   times <- terra::values(travel)
-  expect_true(all(times >= 1 & times <= 180, na.rm = TRUE))
+  expect_true(all(times >= 1 & times <= 180 & times == round(times), na.rm = TRUE))
   reaches_mainland <- rowSums(!is.na(times[, !scilly_gp])) > 0
   reaches_scilly <- !is.na(times[, scilly_gp])
   expect_true(any(reaches_mainland) && any(reaches_scilly))
