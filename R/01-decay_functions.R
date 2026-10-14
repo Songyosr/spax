@@ -136,9 +136,10 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
     return(TRUE)
   }
 
-  # Check distance can be either numeric, matrix, or SpatRaster
-  .chck_class(distance, c("numeric", "matrix", "SpatRaster"), "distance")
-  # if(!is.numeric(distance)) stop("Distance must contain a numeric vector, matrix, or SpatRaster")
+  # Distance: a numeric (double or integer) vector or matrix, or a SpatRaster
+  if (!is.numeric(distance) && !inherits(distance, "SpatRaster")) {
+    stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
+  }
 
   # Check method is either a character or function
   if (!is.function(method)) {

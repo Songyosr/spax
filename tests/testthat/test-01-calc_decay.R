@@ -76,6 +76,13 @@ test_that("calc_decay validates distance, method and sigma unless snapped", {
   d <- c(1, 2, 3)
 
   expect_error(calc_decay("a", "gaussian", sigma = 1), "distance must be one of")
+  expect_error(calc_decay(matrix("a", 2, 2), "gaussian", sigma = 1),
+               "distance must be one of")
+  # Integer distances are numeric.
+  expect_equal(calc_decay(1:3, "gaussian", sigma = 2),
+               calc_decay(c(1, 2, 3), "gaussian", sigma = 2))
+  expect_equal(calc_decay(matrix(1:4, 2), "power", sigma = 2),
+               calc_decay(matrix(c(1, 2, 3, 4), 2), "power", sigma = 2))
   expect_error(calc_decay(d, "triangular", sigma = 1), "Invalid method")
   expect_error(calc_decay(d, "gaussian", sigma = "a"), "sigma must be numeric")
   expect_error(calc_decay(d, "gaussian", sigma = c(1, 2)), "sigma must have length 1")
