@@ -1,56 +1,28 @@
-.bootstrap_test_fixture <- function(colocated = FALSE) {
-  n <- 18L; m <- 24L
-  distance <- sqrt(outer(seq(2, 38, length.out = n),
-    seq(3, 37, length.out = m), "-")^2 +
-    outer(5 * sin(seq_len(n)), 4 * cos(seq_len(m)), "-")^2) + 1
-  if (colocated) distance <- matrix(rep(seq(2, 38, length.out = n), m), n, m)
-  dimnames(distance) <- list(paste0("origin", seq_len(n)), paste0("facility", seq_len(m)))
-  demand <- setNames(150 + 20 * sin(seq_len(n)), rownames(distance))
-  supply <- setNames(rep(c(5, 8, 6), length.out = m), colnames(distance))
-  inputs <- prepare_allocation(demand, supply, distance,
-    metadata = list(demand_units = "registered people", demand_period = "reference date",
-      supply_units = "sessions", supply_period = "week", travel_units = "minutes"))
-  model <- clm_allocation(inputs, fit_v0 = TRUE)
-  truth <- c(sigma = 8, v0 = 25)
-  y <- setNames(round(evaluate_allocation(model, truth)$utilization), names(supply))
-  list(model = model, inputs = inputs, D = demand, S = supply, distance = distance,
-    truth = truth, y = y, starts = rbind(short = c(sigma = 7, v0 = 20),
-      wide = c(sigma = 12, v0 = 50)), lower = c(sigma = 2, v0 = 1),
-    upper = c(sigma = 40, v0 = 200))
+# Conditional facility-case bootstrap (bootstrap_allocation()): the case-
+# weighted Poisson objective, the 399-attempt / 380-success interval rule,
+# refusals, RNG preservation, checkpoints and a short run of the real engine.
+# Mocked refits stand in for optimisation where the property under test is the
+# engine's bookkeeping rather than the fit.
+
+# Expected facility means of the generated design, from the CLM oracle.
+.case_mean <- function(f, theta, supply = f$supply) {
+  clm_oracle(f$distance, f$demand, supply, theta[["sigma"]], theta[["v0"]])$utilization
 }
 
-.bootstrap_test_fit <- function(f) fit_allocation(f$model, f$y, f$starts,
-  f$lower, f$upper, output = "utilization", loss = "poisson", gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
-
-.bootstrap_test_observation <- function(f) list(event = "registered people",
-  period = "reference date unresolved", sampling = "independent_facilities")
-
-.bootstrap_test_mean <- function(f, theta, supply = f$S) {
-  weights <- exp(-f$distance^2 / (2 * theta[["sigma"]]^2)) *
-    rep(supply, each = length(f$D))
-  colSums(weights / (rowSums(weights) + theta[["v0"]]) * f$D)
+.case_weights <- function(f) {
+  stats::setNames(rep(c(0, 2, 1), length.out = length(f$supply)), names(f$supply))
 }
 
-.bootstrap_test_mock_fit <- function(f, theta = f$truth, success = TRUE, boundary = FALSE) {
-  parameters <- if (success) theta else setNames(rep(NA_real_, 2), names(theta))
-  table <- data.frame(start = rownames(f$starts), sigma = parameters[[1]],
-    v0 = parameters[[2]], loss = if (success) c(1, 2) else NA_real_,
-    success = success, eligible = success, boundary = boundary,
-    convergence = if (success) 0L else NA_integer_,
-    optim_convergence = if (success) 0L else NA_integer_,
-    solver_converged = success, residual = if (success) 0 else NA_real_,
-    score_norm = if (success) 0 else NA_real_, kkt_score = if (success) 0 else NA_real_,
-    rank = if (success) 2L else NA_integer_,
-    status = if (success) "eligible" else "fit_failed", warnings = "", errors = "")
-  list(success = success, status = if (success) "eligible" else "fit_failed",
-    theta = parameters, loss = if (success) 1 else NA_real_,
-    best_start = if (success) rownames(f$starts)[1] else NA_character_,
-    boundary = boundary, score_norm = if (success) 0 else NA_real_,
-    rank = if (success) 2L else NA_integer_, table = table)
+# One real weighted refit, shared by the blocks that need its start table.
+.case_fit <- function() {
+  alloc_memo("bootstrap_case_fit", {
+    f <- alloc_generated_case()
+    .allocation_case_fit(f$model, f$y, f$starts, f$lower, f$upper, .case_weights(f))
+  })
 }
 
-.bootstrap_test_preserve_rng <- function(code) {
+# Restore the RNG kind and the presence or absence of .Random.seed.
+.preserve_caller_rng <- function(code) {
   kind <- RNGkind()
   present <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   state <- if (present) get(".Random.seed", envir = .GlobalEnv) else NULL
@@ -83,6 +55,7 @@ test_that("case weights multiply observation contributions and analytic gradient
   expect_error(.allocation_case_loss(mu, y, c(1, -1, 1, 3)))
   expect_error(.allocation_case_loss(mu, y, c(1, NA, 1, 2)))
   expect_error(.allocation_case_loss(mu, y, c(1, 1)))
+  expect_error(.allocation_case_gradient(mu, y, J[-1, ], w), "sensitivity")
 })
 
 test_that("case losses distinguish absent counts from incompatible and floored means", {
@@ -122,6 +95,7 @@ test_that("interval eligibility counts finite successes separately for each quan
   expect_equal(sigma$successful, 380)
   expect_equal(c(sigma$lower, sigma$upper),
     quantile(draws$sigma[1:380], c(.025, .975), type = 7, names = FALSE))
+  expect_identical(sigma$status, "conditional_pointwise_bootstrap")
   expect_equal(v0$successful, 379)
   expect_identical(v0$status, "insufficient_bootstrap_success")
   expect_true(is.na(v0$lower) && is.na(v0$upper))
@@ -162,15 +136,16 @@ test_that("380 or 398 completed successes cannot stand in for 399 attempted fits
 })
 
 test_that("a final checkpoint failure suppresses intervals even after attempt 399", {
-  f <- .bootstrap_test_fixture()
-  point <- c(sigma = 8, v0 = 25, regional_rho = .6, regional_A = sum(f$S) / sum(f$D))
+  f <- alloc_generated_case()
+  point <- c(sigma = 8, v0 = 25, regional_rho = .6,
+             regional_A = sum(f$supply) / sum(f$demand))
   context <- list(model = f$model, original = list(status = "eligible"), point = point,
-    settings = .allocation_bootstrap_settings(), observation = .bootstrap_test_observation(f))
+    settings = .allocation_bootstrap_settings(), observation = alloc_bootstrap_observation())
   records <- lapply(seq_len(399L), function(k) {
     list(draw = data.frame(attempt = k, success = TRUE, sigma = 7 + k / 399,
       v0 = 24 + k / 399, regional_rho = .5 + k / 3990, regional_A = unname(point["regional_A"])),
       starts = data.frame(attempt = k, start = "short"),
-      multiplicities = setNames(rep(1L, length(f$S)), names(f$S)))
+      multiplicities = stats::setNames(rep(1L, length(f$supply)), names(f$supply)))
   })
   complete <- .allocation_bootstrap_result(context, records, seed = 44L, attempts = 399L)
   expect_identical(complete$status, "complete")
@@ -188,30 +163,28 @@ test_that("a final checkpoint failure suppresses intervals even after attempt 39
 })
 
 test_that("case diagnostics retain the complete choice network and log derivatives", {
-  f <- .bootstrap_test_fixture(); w <- rep(c(0, 2, 1), length.out = length(f$S))
-  names(w) <- names(f$S)
+  f <- alloc_generated_case(); w <- .case_weights(f)
   before <- serialize(list(f$inputs, f$y, f$starts, f$lower, f$upper), NULL)
   a <- .allocation_bootstrap_diagnostic(f$model, f$truth, f$y, w, f$lower, f$upper)
   b <- .allocation_bootstrap_diagnostic(f$model, f$truth, f$y,
-    setNames(rep(1, length(w)), names(w)), f$lower, f$upper)
-  expect_equal(unname(a$mean), unname(.bootstrap_test_mean(f, f$truth)), tolerance = 1e-10)
+    stats::setNames(rep(1, length(w)), names(w)), f$lower, f$upper)
+  expect_equal(unname(a$mean), .case_mean(f, f$truth), tolerance = 1e-10)
   expect_identical(a$mean, b$mean)
   expect_identical(a$jacobian_log, b$jacobian_log)
   h <- 1e-5
   fd <- vapply(seq_along(f$truth), function(k) {
     plus <- minus <- f$truth
     plus[k] <- plus[k] * exp(h); minus[k] <- minus[k] * exp(-h)
-    (.bootstrap_test_mean(f, plus) - .bootstrap_test_mean(f, minus)) / (2 * h)
-  }, numeric(length(f$S)))
-  expect_equal(unname(a$jacobian_log), unname(fd), tolerance = 1e-7)
-  removed <- f$S; removed[w == 0] <- 0
-  expect_gt(max(abs(.bootstrap_test_mean(f, f$truth, removed) - a$mean)), 1)
+    (.case_mean(f, plus) - .case_mean(f, minus)) / (2 * h)
+  }, numeric(length(f$supply)))
+  expect_equal(unname(a$jacobian_log), fd, tolerance = 1e-7)
+  removed <- f$supply; removed[w == 0] <- 0
+  expect_gt(max(abs(.case_mean(f, f$truth, removed) - a$mean)), 1)
   expect_identical(serialize(list(f$inputs, f$y, f$starts, f$lower, f$upper), NULL), before)
 })
 
 test_that("diagnostic identities align independently and numerical absence is not structural", {
-  f <- .bootstrap_test_fixture()
-  w <- setNames(rep(c(0, 2, 1), length.out = length(f$S)), names(f$S))
+  f <- alloc_generated_case(); w <- .case_weights(f)
   forward <- .allocation_bootstrap_diagnostic(f$model, f$truth, f$y, w, f$lower, f$upper)
   permuted <- .allocation_bootstrap_diagnostic(f$model, f$truth, rev(f$y),
     w[c(2:length(w), 1)], f$lower, f$upper)
@@ -223,11 +196,15 @@ test_that("diagnostic identities align independently and numerical absence is no
   expect_error(.allocation_bootstrap_diagnostic(f$model, f$truth, f$y, bad, f$lower, f$upper))
   bad <- f$y; names(bad)[1] <- "wrong facility"
   expect_error(.allocation_bootstrap_diagnostic(f$model, f$truth, bad, w, f$lower, f$upper))
+  expect_error(.allocation_bootstrap_diagnostic(f$model, f$truth, f$y[-1], w, f$lower, f$upper),
+               "one value per facility")
+  expect_error(.allocation_bootstrap_diagnostic(f$model, f$truth, f$y, w * 0, f$lower, f$upper),
+               "multiplicities")
 
   distance <- f$distance; distance[, 1] <- Inf
-  absent <- clm_allocation(prepare_allocation(f$D, f$S, distance), fit_v0 = TRUE)
+  absent <- clm_allocation(prepare_allocation(f$demand, f$supply, distance), fit_v0 = TRUE)
   y <- f$y; y[1] <- 0
-  unit_weights <- setNames(rep(1, length(y)), names(y))
+  unit_weights <- stats::setNames(rep(1, length(y)), names(y))
   z <- .allocation_bootstrap_diagnostic(absent, f$truth, y, unit_weights, f$lower, f$upper)
   expect_equal(unname(z$mean[1]), 0)
   expect_true(all(z$jacobian_log[1, ] == 0))
@@ -236,101 +213,114 @@ test_that("diagnostic identities align independently and numerical absence is no
   incompatible <- .allocation_bootstrap_diagnostic(absent, f$truth, y, unit_weights, f$lower, f$upper)
   expect_identical(incompatible$status, "incompatible_zero_mean")
   distance[, 1] <- 1e6
-  underflow <- clm_allocation(prepare_allocation(f$D, f$S, distance), fit_v0 = TRUE)
+  underflow <- clm_allocation(prepare_allocation(f$demand, f$supply, distance), fit_v0 = TRUE)
   y[1] <- 0
   under <- .allocation_bootstrap_diagnostic(underflow, f$truth, y, unit_weights, f$lower, f$upper)
   expect_identical(under$status, "nonregular_mean_or_loss_floor")
 })
 
-test_that("weighted refits preserve starts and independently aligned observations", {
-  f <- .bootstrap_test_fixture()
-  w <- setNames(rep(c(0, 2, 1), length.out = length(f$S)), names(f$S))
+test_that("weighted refits select an eligible start and align observations by facility ID", {
+  f <- alloc_generated_case(); w <- .case_weights(f)
   before <- serialize(list(f$inputs, f$y, w, f$starts, f$lower, f$upper), NULL)
-  fit <- .allocation_case_fit(f$model, f$y, f$starts, f$lower, f$upper, w)
-  aligned <- .allocation_case_fit(f$model, rev(f$y), f$starts, f$lower, f$upper,
-    w[c(2:length(w), 1)])
+  fit <- .case_fit()
   expect_true(fit$success)
-  expect_equal(fit$theta, aligned$theta, tolerance = 1e-10)
-  expect_equal(fit$loss, aligned$loss, tolerance = 1e-10)
-  expect_identical(fit$best_start, aligned$best_start)
-  expect_equal(nrow(fit$table), nrow(f$starts))
+  expect_identical(fit$table$start, rownames(f$starts))
+  expect_true(fit$table$eligible[match(fit$best_start, fit$table$start)])
+  expect_equal(fit$loss, min(fit$table$loss[fit$table$eligible]))
   expect_true(all(c("sigma", "v0", "status") %in% names(fit$table)))
   expect_true(is.finite(fit$score_norm) && fit$score_norm <= 1e-3)
-  expected <- .bootstrap_test_mean(f, fit$theta)
+  expected <- .case_mean(f, fit$theta)
   expect_equal(fit$loss, sum(w * (expected - f$y * log(expected))), tolerance = 1e-7)
   expect_identical(serialize(list(f$inputs, f$y, w, f$starts, f$lower, f$upper), NULL), before)
+  # Observations and multiplicities reach the fitter in canonical facility order.
+  seen <- list()
+  testthat::local_mocked_bindings(.fit_problem_multistart = function(...) {
+    args <- list(...)
+    seen[[length(seen) + 1L]] <<- list(observed = args[[2]], weights = args$loss_args$weights)
+    stop("captured inputs")
+  })
+  inputs <- list(list(f$y, w), list(rev(f$y), w[c(2:length(w), 1)]), list(unname(f$y), rev(w)))
+  for (input in inputs) {
+    expect_error(.allocation_case_fit(f$model, input[[1]], f$starts, f$lower, f$upper,
+                                      input[[2]]), "captured inputs")
+  }
+  expect_identical(seen[[1]], list(observed = f$y, weights = unname(w)))
+  expect_identical(seen[[2]], seen[[1]])
+  expect_identical(seen[[3]], seen[[1]])
 })
 
-test_that("co-location is a local rank refusal even when the optimizer can fit totals", {
-  f <- .bootstrap_test_fixture(colocated = TRUE)
-  fit <- .allocation_case_fit(f$model, f$y, f$starts, f$lower, f$upper,
-    setNames(rep(1, length(f$S)), names(f$S)))
-  expect_true(fit$success)
-  expect_equal(fit$rank, 1)
-  point <- c(sigma = unname(fit$theta[1]), v0 = unname(fit$theta[2]),
-    regional_rho = sum(.bootstrap_test_mean(f, fit$theta)) / sum(f$D),
-    regional_A = sum(f$S) / sum(f$D))
-  original <- fit; original$status <- "original_unidentified"
-  draws <- as.data.frame(as.list(point))[rep(1, 399), , drop = FALSE]
-  draws$success <- TRUE
-  tab <- .allocation_bootstrap_intervals(original, point, draws)
-  expect_true(all(tab$status[tab$quantity != "regional_A"] == "original_unidentified"))
-  expect_true(all(is.na(tab$lower) & is.na(tab$upper)))
-  original_fit <- .bootstrap_test_fit(f)
-  testthat::local_mocked_bindings(.allocation_case_fit = function(...) stop("unexpected bootstrap refit"))
-  refused <- .run_allocation_bootstrap(f$model, original_fit, .bootstrap_test_observation(f),
-    seed = 44L, attempts = 2L)
-  expect_identical(refused$status, "refused")
-  expect_identical(refused$original$status, "original_unidentified")
-  expect_equal(refused$attempted, 0)
+test_that("failed, co-located and boundary original fits refuse intervals before attempts", {
+  f <- alloc_generated_case()
+  colocated <- alloc_generated_case(colocated = TRUE)
+  starts <- f$starts; starts[, "sigma"] <- c(12, 18)
+  fits <- list(original_fit_failed = alloc_failed_search(f, f$y),
+    # Co-located facilities fit their totals, but only one local direction.
+    original_unidentified = alloc_generated_fit(colocated = TRUE),
+    original_mean_boundary = alloc_count_fit(f, starts = starts,
+                                             lower = replace(f$lower, "sigma", 10)))
+  models <- list(f$model, colocated$model, f$model)
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    stop("unexpected bootstrap refit")
+  })
+  for (k in seq_along(fits)) {
+    status <- names(fits)[k]
+    result <- bootstrap_allocation(models[[k]], fits[[k]], alloc_bootstrap_observation(),
+                                   seed = 44L)
+    expect_identical(result$status, "refused", info = status)
+    expect_identical(result$original$status, status)
+    expect_equal(result$attempted, 0, info = status)
+    regular <- result$intervals$quantity != "regional_A"
+    expect_true(all(result$intervals$status[regular] == status), info = status)
+    expect_true(all(is.na(result$intervals$lower) & is.na(result$intervals$upper)), info = status)
+    if (status == "original_unidentified") expect_equal(result$original$rank, 1)
+  }
 })
 
-test_that("original boundary estimates refuse intervals before bootstrap attempts", {
-  f <- .bootstrap_test_fixture()
-  f$lower["sigma"] <- 10
-  f$starts[, "sigma"] <- c(12, 18)
-  fit <- .bootstrap_test_fit(f)
-  testthat::local_mocked_bindings(.allocation_case_fit = function(...) stop("unexpected bootstrap refit"))
-  result <- .run_allocation_bootstrap(f$model, fit, .bootstrap_test_observation(f),
-    seed = 116L, attempts = 2L)
-  expect_identical(result$status, "refused")
-  expect_identical(result$original$status, "original_mean_boundary")
-  expect_equal(result$attempted, 0)
-  expect_true(all(is.na(result$intervals$lower) & is.na(result$intervals$upper)))
-})
-
-test_that("unsupported observations and altered fitted systems cannot enter bootstrap", {
-  f <- .bootstrap_test_fixture(); fit <- .bootstrap_test_fit(f)
-  declaration <- .bootstrap_test_observation(f)
-  testthat::local_mocked_bindings(.allocation_case_fit = function(...) stop("unexpected bootstrap refit"))
-  expect_error(.run_allocation_bootstrap(f$model, fit, list(), seed = 1, attempts = 1), "observation")
+test_that("unsupported observations, altered systems and invalid saved fits cannot enter bootstrap", {
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  declaration <- alloc_bootstrap_observation()
+  run <- function(fit, model = f$model, observation = declaration, scenario = NULL,
+                  seed = 1, attempts = 1) {
+    .run_allocation_bootstrap(model, fit, observation, scenario, seed = seed, attempts = attempts)
+  }
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    stop("unexpected bootstrap refit")
+  })
+  expect_error(run(fit, observation = list()), "observation")
   wrong <- declaration; wrong$sampling <- "fixed_total_multinomial"
-  expect_error(.run_allocation_bootstrap(f$model, fit, wrong, seed = 1, attempts = 1), "observation")
-  expect_error(.run_allocation_bootstrap(f$model, fit, declaration, seed = 1.5, attempts = 1), "seed")
+  expect_error(run(fit, observation = wrong), "observation")
+  expect_error(run(fit, seed = 1.5), "seed")
+  expect_error(run(fit, attempts = 0), "attempt limit")
+  expect_error(bootstrap_allocation(f$model, fit, declaration, seed = 1,
+    checkpoint = file.path(withr::local_tempdir(), "missing", "run.rds")), "checkpoint must name")
   missing <- fit; missing$best$observed[1] <- NA_real_
-  expect_error(.run_allocation_bootstrap(f$model, missing, declaration, seed = 1, attempts = 1), "complete")
+  expect_error(run(missing), "complete")
   fractional <- fit; fractional$best$observed[1] <- fractional$best$observed[1] + .25
-  expect_error(.run_allocation_bootstrap(f$model, fractional, declaration, seed = 1, attempts = 1), "whole")
+  expect_error(run(fractional), "whole")
   flow <- fit; flow$best$output <- "flow"
-  expect_error(.run_allocation_bootstrap(f$model, flow, declaration, seed = 1, attempts = 1), "utilization")
+  expect_error(run(flow), "utilization")
   custom <- fit; custom$best$loss_fn <- .weighted_sse_loss
-  expect_error(.run_allocation_bootstrap(f$model, custom, declaration, seed = 1, attempts = 1), "Poisson")
-  modified <- f$S; modified[2] <- modified[2] * 2
-  changed <- clm_allocation(prepare_allocation(f$D, modified, f$distance), fit_v0 = TRUE)
-  expect_error(.run_allocation_bootstrap(changed, fit, declaration, seed = 1, attempts = 1), "conflict")
-  demand <- f$D; demand[1] <- demand[1] + 1
-  invalid_scenario <- clm_allocation(prepare_allocation(demand, f$S, f$distance), fit_v0 = TRUE)
-  expect_error(.run_allocation_bootstrap(f$model, fit, declaration, invalid_scenario,
-    seed = 1, attempts = 1), "supply only")
+  expect_error(run(custom), "Poisson")
+  ids <- fit; ids$best$target_alignment$ids[[1]] <- rev(ids$best$target_alignment$ids[[1]])
+  expect_error(run(ids), "observation IDs conflict")
+  bounds <- fit; bounds$bounds$lower[["sigma"]] <- 10
+  expect_error(run(bounds), "saved fit bounds")
+  starts <- fit; starts$starts[1, "sigma"] <- 1
+  expect_error(run(starts), "saved explicit starts")
+  modified <- f$supply; modified[2] <- modified[2] * 2
+  changed <- clm_allocation(prepare_allocation(f$demand, modified, f$distance), fit_v0 = TRUE)
+  expect_error(run(fit, model = changed), "conflict")
+  demand <- f$demand; demand[1] <- demand[1] + 1
+  invalid_scenario <- clm_allocation(prepare_allocation(demand, f$supply, f$distance), fit_v0 = TRUE)
+  expect_error(run(fit, scenario = invalid_scenario), "supply only")
   exp_model <- clm_allocation(f$inputs, family = "exponential", fit_v0 = TRUE)
-  expect_error(.run_allocation_bootstrap(exp_model, fit, declaration, seed = 1, attempts = 1), "Gaussian")
+  expect_error(run(fit, model = exp_model), "Gaussian")
 })
 
 test_that("the public operation always delegates exactly 399 attempted fits", {
   observed <- NULL
-  testthat::local_mocked_bindings(.run_allocation_bootstrap = function(model, fit, observation,
-      scenario = NULL, seed, checkpoint = NULL, attempts = 399L) {
-    observed <<- attempts
+  testthat::local_mocked_bindings(.run_allocation_bootstrap = function(...) {
+    observed <<- list(...)$attempts
     "delegated"
   })
   expect_identical(bootstrap_allocation(NULL, NULL, NULL, seed = 5L), "delegated")
@@ -339,18 +329,17 @@ test_that("the public operation always delegates exactly 399 attempted fits", {
   expect_error(bootstrap_allocation(NULL, NULL, NULL, seed = 5L, attempts = 1L), "unused")
 })
 
-test_that("bootstrap replay preserves RNG, physical inputs and paired scenario parameters", {
-  f <- .bootstrap_test_fixture(); fit <- .bootstrap_test_fit(f)
-  observation <- .bootstrap_test_observation(f)
-  supply <- f$S; supply[2] <- supply[2] * 1.2
-  scenario <- clm_allocation(prepare_allocation(f$D, supply, f$distance,
+test_that("bootstrap replay preserves the caller's RNG, inputs and paired scenario parameters", {
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  observation <- alloc_bootstrap_observation()
+  supply <- f$supply; supply[2] <- supply[2] * 1.2
+  scenario <- clm_allocation(prepare_allocation(f$demand, supply, f$distance,
     metadata = f$inputs$input_metadata), fit_v0 = TRUE)
   calls <- list()
-  testthat::local_mocked_bindings(.allocation_case_fit = function(model, observed, starts,
-      lower, upper, weights, eps = 1e-9) {
-    calls[[length(calls) + 1L]] <<- weights
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    calls[[length(calls) + 1L]] <<- list(...)[[6]]
     # A valid constrained inner fit remains in the bootstrap distribution.
-    .bootstrap_test_mock_fit(f, theta = f$lower, boundary = TRUE)
+    alloc_mock_case_fit(f, theta = f$lower, boundary = TRUE)
   })
   before <- serialize(list(f$inputs, f$y, fit, observation, f$starts, supply), NULL)
   local_test_seed(921)
@@ -368,93 +357,96 @@ test_that("bootstrap replay preserves RNG, physical inputs and paired scenario p
   expect_equal(run$draws$seed, 4421L + seq_len(4L))
   expect_equal(run$attempted, 4)
   expect_equal(run$successful, 4)
-  expect_true(all(run$draws$success))
   expect_equal(length(calls), 8)
-  expect_true(all(vapply(calls, function(w) sum(w) == length(f$S) &&
+  expect_true(all(vapply(calls, function(w) sum(w) == length(f$supply) &&
     all(w >= 0 & w == floor(w)), logical(1))))
-  base <- sum(.bootstrap_test_mean(f, f$lower))
-  changed <- sum(.bootstrap_test_mean(f, f$lower, supply))
-  expect_equal(run$draws$regional_rho, rep(base / sum(f$D), 4), tolerance = 1e-10)
+  base <- sum(.case_mean(f, f$lower))
+  changed <- sum(.case_mean(f, f$lower, supply))
+  expect_equal(run$draws$regional_rho, rep(base / sum(f$demand), 4), tolerance = 1e-10)
   expect_equal(run$draws$delta_contacts, rep(changed - base, 4), tolerance = 1e-10)
-  expect_equal(run$draws$regional_A, rep(sum(f$S) / sum(f$D), 4), tolerance = 1e-10)
+  expect_equal(run$draws$regional_A, rep(sum(f$supply) / sum(f$demand), 4), tolerance = 1e-10)
   expect_true(all(run$intervals$status[run$intervals$quantity != "regional_A"] ==
     "incomplete_bootstrap"))
-  expected <- .bootstrap_test_preserve_rng({
+  expected <- .preserve_caller_rng({
     RNGkind("Mersenne-Twister", "Inversion", "Rejection")
     do.call(rbind, lapply(4421L + seq_len(4L), function(seed) {
       set.seed(seed)
-      tabulate(sample.int(length(f$S), length(f$S), replace = TRUE), nbins = length(f$S))
+      tabulate(sample.int(length(f$supply), length(f$supply), replace = TRUE),
+               nbins = length(f$supply))
     }))
   })
   expect_equal(unname(run$multiplicities), expected)
   expect_identical(serialize(list(f$inputs, f$y, fit, observation, f$starts, supply), NULL), before)
+  # A caller without any RNG state still has none afterwards.
+  .preserve_caller_rng({
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+    .run_allocation_bootstrap(f$model, fit, observation, seed = 71L, attempts = 1L)
+    expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+  })
+  # The saved-result methods read the run without changing it.
+  expect_identical(as.data.frame(run), run$intervals)
+  expect_identical(as.data.frame(run, type = "draws"), run$draws)
+  expect_identical(as.data.frame(run, type = "starts"), run$starts)
+  report <- summary(run)
+  expect_equal(report$counts, data.frame(planned = 399L, attempted = 4L, successful = 4L))
+  expect_equal(report$diagnostics$inner_boundary_attempts, 4)
+  expect_identical(report$capacity_support, run$capacity_support)
+  expect_output(print(run), "independent_facilities")
 })
 
 test_that("absent facilities stay in resampling while unsupported capacity is disclosed", {
-  f <- .bootstrap_test_fixture()
+  f <- alloc_generated_case()
   f$distance[, 1:2] <- Inf
-  f$S[2] <- 0
-  f$inputs <- prepare_allocation(f$D, f$S, f$distance)
+  f$supply[2] <- 0
+  f$inputs <- prepare_allocation(f$demand, f$supply, f$distance)
   f$model <- clm_allocation(f$inputs, fit_v0 = TRUE)
-  f$y <- setNames(round(evaluate_allocation(f$model, f$truth)$utilization), names(f$S))
-  fit <- .bootstrap_test_fit(f)
-  changed_supply <- f$S; changed_supply[1] <- changed_supply[1] * 2
-  scenario <- clm_allocation(prepare_allocation(f$D, changed_supply, f$distance), fit_v0 = TRUE)
+  f$y <- stats::setNames(round(.case_mean(f, f$truth)), names(f$supply))
+  fit <- alloc_count_fit(f)
+  changed_supply <- f$supply; changed_supply[1] <- changed_supply[1] * 2
+  scenario <- clm_allocation(prepare_allocation(f$demand, changed_supply, f$distance), fit_v0 = TRUE)
   calls <- list()
-  testthat::local_mocked_bindings(.allocation_case_fit = function(model, observed, starts,
-      lower, upper, weights, eps = 1e-9) {
-    calls[[length(calls) + 1L]] <<- list(ids = model$substrate$facility_ids,
-      supply = as.numeric(model$substrate$S), weights = weights)
-    .bootstrap_test_mock_fit(f)
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    args <- list(...)
+    calls[[length(calls) + 1L]] <<- list(ids = args[[1]]$substrate$facility_ids,
+      supply = as.numeric(args[[1]]$substrate$S), weights = args[[6]])
+    alloc_mock_case_fit(f)
   })
-  result <- .run_allocation_bootstrap(f$model, fit, .bootstrap_test_observation(f), scenario,
+  result <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(), scenario,
     seed = 513L, attempts = 4L)
   expect_equal(result$attempted, 4)
-  expect_identical(result$facility_ids, names(f$S))
-  expect_identical(colnames(result$multiplicities), names(f$S))
-  expect_true(all(rowSums(result$multiplicities) == length(f$S)))
+  expect_identical(result$facility_ids, names(f$supply))
+  expect_identical(colnames(result$multiplicities), names(f$supply))
+  expect_true(all(rowSums(result$multiplicities) == length(f$supply)))
   expect_true(any(result$multiplicities[, 1] > 0))
-  expect_true(all(vapply(calls, function(z) identical(z$ids, names(f$S)) &&
-    identical(z$supply, as.numeric(f$S)) && identical(names(z$weights), names(f$S)), logical(1))))
-  expected_A <- sum(f$S[-c(1, 2)]) / sum(f$D)
+  expect_true(all(vapply(calls, function(z) identical(z$ids, names(f$supply)) &&
+    identical(z$supply, as.numeric(f$supply)) && identical(names(z$weights), names(f$supply)),
+    logical(1))))
+  expected_A <- sum(f$supply[-c(1, 2)]) / sum(f$demand)
   expect_equal(result$draws$regional_A, rep(expected_A, 4), tolerance = 1e-12)
   expect_equal(result$draws$delta_contacts, rep(0, 4), tolerance = 1e-12)
-  expect_identical(result$capacity_support$supported_facility_ids, names(f$S)[-c(1, 2)])
-  expect_identical(result$capacity_support$unsupported_facility_ids, names(f$S)[1])
-  expect_equal(result$capacity_support$unsupported_supply, f$S[1])
-  expect_equal(result$capacity_support$total_supply, sum(f$S))
-  expect_equal(result$capacity_support$attributed_supply, sum(f$S[-c(1, 2)]))
+  expect_identical(result$capacity_support$supported_facility_ids, names(f$supply)[-c(1, 2)])
+  expect_identical(result$capacity_support$unsupported_facility_ids, names(f$supply)[1])
+  expect_equal(result$capacity_support$unsupported_supply, f$supply[1])
+  expect_equal(result$capacity_support$total_supply, sum(f$supply))
+  expect_equal(result$capacity_support$attributed_supply, sum(f$supply[-c(1, 2)]))
   identity <- result$intervals[result$intervals$quantity == "regional_A", ]
   expect_identical(identity$status, "fixed_input_identity")
   expect_equal(identity$estimate, expected_A, tolerance = 1e-12)
   expect_true(is.na(identity$lower) && is.na(identity$upper))
 })
 
-test_that("bootstrap restores the absence of a caller RNG state", {
-  f <- .bootstrap_test_fixture(); fit <- .bootstrap_test_fit(f)
-  testthat::local_mocked_bindings(.allocation_case_fit = function(...) .bootstrap_test_mock_fit(f))
-  .bootstrap_test_preserve_rng({
-    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
-      rm(".Random.seed", envir = .GlobalEnv)
-    }
-    result <- .run_allocation_bootstrap(f$model, fit, .bootstrap_test_observation(f),
-      seed = 71L, attempts = 1L)
-    expect_equal(result$attempted, 1)
-    expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
-  })
-})
-
 test_that("checkpoint resume retains completed failures and refuses changed contracts", {
-  f <- .bootstrap_test_fixture(); fit <- .bootstrap_test_fit(f)
-  observation <- .bootstrap_test_observation(f)
-  path <- tempfile(fileext = ".rds")
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  observation <- alloc_bootstrap_observation()
+  path <- withr::local_tempfile(fileext = ".rds")
   calls <- 0L; interrupt <- TRUE
-  testthat::local_mocked_bindings(.allocation_case_fit = function(model, observed, starts,
-      lower, upper, weights, eps = 1e-9) {
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
     calls <<- calls + 1L
     if (interrupt && calls == 3L) stop(structure(
       list(message = "test interruption", call = NULL), class = c("interrupt", "condition")))
-    .bootstrap_test_mock_fit(f, success = calls != 2L)
+    alloc_mock_case_fit(f, success = calls != 2L)
   })
   local_test_seed(952); rng <- .Random.seed
   partial <- .run_allocation_bootstrap(f$model, fit, observation, seed = 735L,
@@ -502,16 +494,15 @@ test_that("checkpoint resume retains completed failures and refuses changed cont
 })
 
 test_that("ordinary fit exceptions remain completed failures alongside real start tables", {
-  f <- .bootstrap_test_fixture(); fit <- .bootstrap_test_fit(f)
-  prototype <- .allocation_case_fit(f$model, f$y, f$starts, f$lower, f$upper,
-    setNames(rep(1, length(f$S)), names(f$S)))
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  prototype <- .case_fit()
   calls <- 0L
   testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
     calls <<- calls + 1L
     if (calls == 1L) stop("injected ordinary fit exception")
     prototype
   })
-  result <- .run_allocation_bootstrap(f$model, fit, .bootstrap_test_observation(f),
+  result <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(),
     seed = 413L, attempts = 3L)
   expect_equal(calls, 3)
   expect_equal(result$attempted, 3)
@@ -519,22 +510,22 @@ test_that("ordinary fit exceptions remain completed failures alongside real star
   expect_identical(result$draws$success, c(FALSE, TRUE, TRUE))
   expect_match(result$draws$status[1], "injected ordinary fit exception")
   expect_equal(nrow(result$starts), 3 * nrow(f$starts))
-  expect_true(all(result$starts$errors[result$starts$attempt == 1] == "injected ordinary fit exception"))
+  expect_true(all(result$starts$errors[result$starts$attempt == 1] ==
+    "injected ordinary fit exception"))
 })
 
 test_that("checkpoint write failures stop instead of silently extending the run", {
-  f <- .bootstrap_test_fixture(); fit <- .bootstrap_test_fit(f)
-  observation <- .bootstrap_test_observation(f)
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
   calls <- 0L
   testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
     calls <<- calls + 1L
-    .bootstrap_test_mock_fit(f)
+    alloc_mock_case_fit(f)
   })
   testthat::local_mocked_bindings(.allocation_bootstrap_save = function(...) {
     stop("injected checkpoint write failure")
   })
-  result <- .run_allocation_bootstrap(f$model, fit, observation, seed = 212L,
-    checkpoint = tempfile(fileext = ".rds"), attempts = 4L)
+  result <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(), seed = 212L,
+    checkpoint = withr::local_tempfile(fileext = ".rds"), attempts = 4L)
   expect_identical(result$status, "incomplete")
   expect_true(calls <= 1L)
   expect_true(result$attempted <= 1L)
@@ -544,34 +535,14 @@ test_that("checkpoint write failures stop instead of silently extending the run"
 test_that("the bootstrap engine runs end to end and withholds intervals when incomplete", {
   # The allocation-workflow vignette loads a stored 399-attempt result, so this
   # test keeps the real engine (fits, multistart, diagnostics) executed in checks.
-  i <- seq_len(30)
-  j <- seq_len(10)
-  travel <- sqrt(outer(seq(2, 58, length.out = 30), seq(4, 56, length.out = 10), "-")^2 +
-    outer(8 * sin(i * .73), 7 * sin(j * 1.31), "-")^2) + 2
-  dimnames(travel) <- list(paste0("o", i), paste0("f", j))
-  demand <- setNames(80 + 35 * (1 + sin(i * .23)), rownames(travel))
-  supply <- setNames(rep(c(5, 7, 6, 8, 9), 2), colnames(travel))
-  score <- exp(-travel^2 / (2 * 12^2)) * rep(supply, each = length(demand))
-  probability <- score / (rowSums(score) + 45)
-  local_test_seed(2490001)
-  observed <- setNames(rpois(10, colSums(probability * demand)), names(supply))
-  model <- clm_allocation(prepare_allocation(demand, supply, travel),
-                          family = "gaussian", fit_v0 = TRUE)
-  starts <- rbind(near = c(sigma = 10, v0 = 40), far = c(sigma = 20, v0 = 20))
-  fit <- fit_allocation(model, observed, starts,
-    lower = c(sigma = 2, v0 = 1), upper = c(sigma = 60, v0 = 500),
-    output = "utilization", loss = "poisson", gradient = TRUE,
-    control = list(maxit = 300, factr = 10, pgtol = 1e-8))
-  observation <- list(event = "allocated service requests",
-    period = "one_reference_period", sampling = "independent_facilities")
-
-  boot <- .run_allocation_bootstrap(model, fit, observation, seed = 11L, attempts = 3L)
-
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  boot <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(),
+    seed = 11L, attempts = 2L)
   expect_s3_class(boot, "ae_allocation_bootstrap")
-  expect_equal(boot$planned, 399L)
-  expect_equal(boot$attempted, 3L)
   expect_identical(boot$status, "incomplete")
-  expect_true(all(is.na(boot$intervals$lower)))
-  expect_true(all(is.na(boot$intervals$upper)))
+  expect_equal(boot$attempted, 2L)
   expect_gt(boot$successful, 0L)
+  expect_equal(nrow(boot$starts), 2L * nrow(f$starts))
+  expect_true(all(boot$draws$score_norm[boot$draws$success] <= 1e-3))
+  expect_true(all(is.na(boot$intervals$lower) & is.na(boot$intervals$upper)))
 })
