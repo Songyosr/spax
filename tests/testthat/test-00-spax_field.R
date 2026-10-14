@@ -2,7 +2,7 @@
 
 test_that("fields rekey data to canonical L/V keys and expose accessors", {
   single <- .spax_raster_field(field_rast(1), domain = "I", role = "demand")
-  expect_s3_class(single, c("spax_raster_field", "spax_field"))
+  expect_equal(class(single), c("spax_raster_field", "spax_field"))
   expect_equal(.field_backend(single), "raster")
   expect_equal(.field_domain(single), "I")
   expect_equal(.field_role(single), "demand")
@@ -18,7 +18,7 @@ test_that("fields rekey data to canonical L/V keys and expose accessors", {
   expect_equal(unname(terra::values(.field_data(lifted))[1, ]), c(1, 2))
 
   vec <- .spax_vector_field(c(H1 = 10, H2 = 20), domain = "J", role = "supply")
-  expect_s3_class(vec, c("spax_vector_field", "spax_field"))
+  expect_equal(class(vec), c("spax_vector_field", "spax_field"))
   expect_equal(.field_backend(vec), "vector")
   expect_equal(.field_data(vec), c(V1 = 10, V2 = 20))
   expect_equal(.field_node_index(vec),
@@ -239,11 +239,7 @@ test_that("print shows the backend and the index frame", {
   raster_field <- .spax_raster_field(field_rast(1), domain = "I")
   vector_field <- .spax_vector_field(c(H1 = 10), domain = "J")
 
-  expect_output(
-    {
-      expect_invisible(print(raster_field))
-      print(vector_field)
-    },
-    "backend: raster(.|\n)*frame:(.|\n)*backend: vector"
-  )
+  expect_output(expect_invisible(print(raster_field)),
+                "backend: raster(.|\n)*frame:")
+  expect_output(print(vector_field), "backend: vector(.|\n)*frame:")
 })
