@@ -142,12 +142,14 @@ test_that(".sae_problem binds and solves through the compact SAE map", {
 
 test_that("SAE generated data are recovered through the NFXP runner", {
   problem <- ae_toy_problem("sae", kappa = 1 / 3, beta = 20)
+  target <- .solve_problem(problem, c(sigma = 2), lambda = 0.7, tol = 1e-10,
+                           max_iter = 500)$utilization
   fit <- ae_recovery_fit(problem)
 
   expect_s3_class(fit, "sae_problem_nfxp_fit")
   expect_equal(fit$convergence, 0)
   expect_lt(fit$loss, 1e-6)
   expect_equal(fit$theta, c(sigma = 2), tolerance = 1e-3)
-  expect_equal(fit$predicted, fit$observed, tolerance = 1e-4)
+  expect_equal(unname(fit$predicted), target, tolerance = 1e-4)
   expect_lt(fit$spectral_radius, 1)
 })

@@ -125,13 +125,16 @@ test_that(".haae_problem binds theta onto the compact HAAE map", {
 
 test_that("HAAE generated data are recovered through the NFXP runner", {
   problem <- ae_toy_problem("haae", kappa = 1 / 3)
+  target <- .solve_problem(problem, c(sigma = 2), lambda = 0.7, tol = 1e-10,
+                           max_iter = 500)$utilization
   fit <- ae_recovery_fit(problem)
 
   expect_s3_class(fit, "haae_problem_nfxp_fit")
   expect_equal(fit$convergence, 0)
   expect_lt(fit$loss, 1e-6)
   expect_equal(fit$theta, c(sigma = 2), tolerance = 1e-3)
-  expect_equal(fit$predicted, fit$observed, tolerance = 1e-4)
+  expect_equal(unname(fit$predicted), target, tolerance = 1e-4)
+  expect_output(print(fit), "haae")
   expect_s3_class(summary(fit), "summary.ae_problem_nfxp_fit")
   expect_s4_class(.fit_output_surface(fit, "pooled"), "SpatRaster")
 
