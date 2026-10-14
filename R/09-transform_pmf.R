@@ -19,7 +19,8 @@
 
   totals <- colSums(as.matrix(vals), na.rm = TRUE)
   if (any(totals <= 0)) {
-    stop("Sum of all values in 'x' is zero - cannot create PMF")
+    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+         "cannot create PMF")
   }
 
   invisible(TRUE)
@@ -30,8 +31,9 @@
 #' Converts raster or vector inputs into a probability mass function where all
 #' values sum to 1. Raster inputs are normalised directly, each layer of a
 #' multi-layer raster separately, while vector inputs are first rasterised
-#' using a supplied template: points in the same cell add up, and a polygon's
-#' value is copied to every cell it covers.
+#' using a supplied template: points in the same cell add up (missing values
+#' are ignored, and each part of a multipoint carries the feature's full
+#' value), and a polygon's value is copied to every cell it covers.
 #'
 #' @param x A `SpatRaster` containing values to normalise, or a `SpatVector`
 #'   whose attribute values will be rasterised.
@@ -44,7 +46,7 @@
 #' @param snap Logical; skip validation checks when `TRUE`. Default is `FALSE`.
 #'
 #' @return If `return_total = FALSE`, returns a `SpatRaster` whose cells sum to
-#'   1. If `return_total = TRUE`, returns a list with components:
+#'   1 in each layer. If `return_total = TRUE`, returns a list with components:
 #'   \describe{
 #'     \item{pmf}{`SpatRaster` of probabilities}
 #'     \item{total}{Numeric total of the original values, one per layer}
@@ -82,7 +84,8 @@ transform_pmf <- function(x, value_col = NULL, template = NULL,
 
   total <- terra::global(x, "sum", na.rm = TRUE)$sum # one per layer
   if (!isTRUE(all(total > 0))) {
-    stop("Sum of all values in 'x' is zero - cannot create PMF")
+    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+         "cannot create PMF")
   }
 
   pmf <- x / total

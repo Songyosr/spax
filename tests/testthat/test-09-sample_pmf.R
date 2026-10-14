@@ -28,6 +28,7 @@ test_that("sample_pmf validates its inputs", {
     expect_error(sample_pmf(pmf, n = n), "n must be a non-negative integer")
   }
   expect_error(sample_pmf(pmf, n = -1, snap = TRUE), "n must be a non-negative integer")
+  expect_error(sample_pmf(c(pmf, pmf), n = 10), "single layer")
 
   bad_method <- function(value) function() value
   expect_error(sample_pmf(pmf, method = bad_method("a")), "must return numeric")
@@ -64,6 +65,14 @@ test_that("each realization holds the drawn number of samples", {
     "Using total population"
   )
   expect_equal(layer_sums(custom), 30)
+
+  # A fractional total is rounded before it is used as a binomial size.
+  expect_message(
+    rounded <- sample_pmf(toy_rast(c(0.5, 2, 3), 1, 3), prob = 0.5,
+                          method = "binomial", seed = seed),
+    "Using total population 6"
+  )
+  expect_true(layer_sums(rounded) <= 6)
 
   # Raw density with only prob: the total is the size parameter.
   raw <- sample_test_pmf(normalized = FALSE)

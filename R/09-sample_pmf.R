@@ -5,13 +5,14 @@
 #' surface using a vectorized approach. The function supports both deterministic sampling
 #' with fixed sample sizes and probabilistic sampling based on population parameters.
 #'
-#' @param x SpatRaster representing spatial distribution. Can be either:
+#' @param x Single-layer SpatRaster representing spatial distribution. Can be either:
 #'   - A PMF where values sum to 1
 #'   - Raw density values that will be converted to PMF (except in snap mode)
 #' @param n Integer or NULL. Fixed number of samples for deterministic sampling.
 #'        If specified, overrides probabilistic sampling parameters.
 #' @param size Integer or NULL. Population size parameter for probability distributions.
-#'        If NULL and input is density (not PMF), will be calculated from data.
+#'        If NULL and input is density (not PMF), the rounded total of the data
+#'        is used.
 #' @param prob Numeric between 0 and 1. Probability parameter for sampling methods
 #'        (e.g., disease prevalence, detection probability).
 #' @param method Character string or function specifying sampling method:
@@ -74,7 +75,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     pmf_result <- .chck_n_convert_pmf(x)
     x <- pmf_result$pmf
     if (is.null(size) && is.null(n) && !is.null(pmf_result$total)) {
-      size <- pmf_result$total
+      size <- round(pmf_result$total)
       if (is.numeric(size) && !is.na(size) && size > 0) {
         message("Using total population ", format(round(size), scientific = FALSE), " as size parameter")
       }
@@ -173,6 +174,9 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   # Essential validation (always run)
   if (!inherits(x, "SpatRaster")) {
     stop("Input 'x' must be a SpatRaster object")
+  }
+  if (terra::nlyr(x) != 1) {
+    stop("Input 'x' must have a single layer")
   }
 
   # Extended validation (skip if snap=TRUE)

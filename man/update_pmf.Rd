@@ -7,9 +7,11 @@
 update_pmf(prior, likelihood, normalize = TRUE, density = FALSE, snap = FALSE)
 }
 \arguments{
-\item{prior}{SpatRaster containing prior PMF}
+\item{prior}{SpatRaster containing prior PMF (each layer summing to 1)}
 
-\item{likelihood}{SpatRaster containing likelihood surface}
+\item{likelihood}{SpatRaster containing likelihood surface. With several
+layers, prior and likelihood must have the same number of layers, or one
+of them a single layer that applies to every layer of the other.}
 
 \item{normalize}{Logical; if TRUE ensure output sums to 1 (default TRUE),
 each layer of a multi-layer posterior separately}

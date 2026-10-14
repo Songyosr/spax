@@ -124,12 +124,14 @@
 
 #' Rasterize vector values onto a template
 #'
-#' Points that fall in the same cell add up; a polygon's value is copied to
-#' every cell it covers.
+#' Points that fall in the same cell add up (missing values are ignored, and
+#' each part of a multipoint carries the feature's full value); a polygon's
+#' value is copied to every cell it covers.
 #' @keywords internal
 .rasterize_values <- function(x, template, value_col) {
   if (all(terra::geomtype(x) == "points")) {
-    return(terra::rasterize(x, template, field = value_col, fun = "sum"))
+    return(terra::rasterize(x, template, field = value_col, fun = "sum",
+                            na.rm = TRUE))
   }
   terra::rasterize(x, template, field = value_col)
 }

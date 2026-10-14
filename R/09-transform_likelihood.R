@@ -28,7 +28,8 @@
 #' - Values < 1 indicate lower than expected
 #'
 #' @param x SpatRaster or SpatVector containing observed values. Point values
-#'   in the same cell add up; a polygon's value is copied to every cell it covers.
+#'   in the same cell add up (missing values are ignored); a polygon's value is
+#'   copied to every cell it covers.
 #' @param value_col Character; name of column if x is SpatVector
 #' @param template SpatRaster; template for rasterization if x is SpatVector
 #' @param method Character; method to compute reference value:

@@ -11,8 +11,10 @@
 #' and likelihood are high, representing areas supported by both prior
 #' beliefs and observed data.
 #'
-#' @param prior SpatRaster containing prior PMF
-#' @param likelihood SpatRaster containing likelihood surface
+#' @param prior SpatRaster containing prior PMF (each layer summing to 1)
+#' @param likelihood SpatRaster containing likelihood surface. With several
+#'   layers, prior and likelihood must have the same number of layers, or one
+#'   of them a single layer that applies to every layer of the other.
 #' @param normalize Logical; if TRUE ensure output sums to 1 (default TRUE),
 #'   each layer of a multi-layer posterior separately
 #' @param density Logical; if TRUE return density surface instead of PMF
@@ -47,6 +49,12 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
     .chck_raster_input(prior)
     .chck_raster_input(likelihood, prior) # Use prior as template
     .chck_pmf_validity(prior)
+    n_prior <- terra::nlyr(prior)
+    n_likelihood <- terra::nlyr(likelihood)
+    if (n_prior != n_likelihood && n_prior != 1 && n_likelihood != 1) {
+      stop("prior and likelihood must have the same number of layers, ",
+           "or one of them a single layer")
+    }
   }
 
   # Calculate unnormalized posterior

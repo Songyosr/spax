@@ -7,7 +7,8 @@
 .rasterize_values(x, template, value_col)
 }
 \description{
-Points that fall in the same cell add up; a polygon's value is copied to
-every cell it covers.
+Points that fall in the same cell add up (missing values are ignored, and
+each part of a multipoint carries the feature's full value); a polygon's
+value is copied to every cell it covers.
 }
 \keyword{internal}

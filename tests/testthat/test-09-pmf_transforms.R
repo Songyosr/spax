@@ -39,10 +39,10 @@ test_that("transform_pmf divides a raster by its total", {
   expect_equal(terra::values(with_total$pmf), terra::values(pmf))
 
   # Each layer of a multi-layer raster is a separate PMF.
-  two <- toy_rast(c(1, 3, 2, 2), 2, 1, nlyr = 2)
+  two <- toy_rast(c(1, 3, 10, 30), 2, 1, nlyr = 2)
   both <- transform_pmf(two, return_total = TRUE)
-  expect_equal(unname(terra::values(both$pmf)), cbind(c(0.25, 0.75), c(0.5, 0.5)))
-  expect_equal(both$total, c(4, 4))
+  expect_equal(unname(terra::values(both$pmf)), cbind(c(0.25, 0.75), c(0.25, 0.75)))
+  expect_equal(both$total, c(4, 40))
   expect_error(transform_pmf(toy_rast(c(1, 3, 0, 0), 2, 1, nlyr = 2)),
                "Sum of all values")
 })
@@ -53,10 +53,10 @@ test_that("transform_pmf rejects inputs that cannot form a PMF", {
                "values in x must be >= 0")
   expect_error(transform_pmf(toy_rast(-1, 2, 2)), "values in x must be >= 0")
   expect_error(transform_pmf(toy_rast(NA_real_, 2, 2)), "contains only NA values")
-  expect_error(transform_pmf(toy_rast(0, 2, 2)), "Sum of all values in 'x' is zero")
+  expect_error(transform_pmf(toy_rast(0, 2, 2)), "Sum of all values in 'x'")
   # snap skips validation, but a zero total is still refused
   expect_error(transform_pmf(toy_rast(0, 2, 2), snap = TRUE),
-               "Sum of all values in 'x' is zero")
+               "Sum of all values in 'x'")
 })
 
 test_that("transform_likelihood scales a raster by a reference value", {
@@ -118,6 +118,16 @@ test_that("vector input is rasterised onto the template", {
                                                   method = "sum"))[, 1],
                on_cells(cells, c(7, 1) / 8))
 
+  # A missing point value is ignored rather than blanking its cell.
+  with_na <- terra::vect(cbind(c(0.2, 0.8, 2.5), c(0.5, 0.5, 1.5)),
+                         atts = data.frame(cases = c(2, NA, 1)), crs = "EPSG:3857")
+  expect_equal(terra::values(transform_pmf(with_na, "cases", f$template))[, 1],
+               on_cells(cells, c(2, 1) / 3))
+  # rasterize_demand inherits the summing.
+  expect_equal(terra::values(rasterize_demand(shared, "cases",
+                                              template = f$template))[, 1],
+               on_cells(cells, c(7, 1) / 8))
+
   # A polygon's value is copied to every cell it covers (8 cells each).
   expect_equal(terra::values(transform_pmf(f$areas, "cases", f$template))[, 1],
                rep(rep(c(10, 30), each = 2), 4) / 320)
@@ -170,6 +180,15 @@ test_that("update_pmf multiplies the prior by the likelihood", {
   product2 <- c(0.2, 0.4, 0.9, 0.8)
   expect_equal(unname(terra::values(update_pmf(prior, layered))),
                cbind(product / sum(product), product2 / sum(product2)))
+  expect_equal(unname(terra::values(update_pmf(prior, layered, density = TRUE))),
+               unname(cbind(product, product2)))
+  # A multi-layer prior pairs layer by layer; every layer must be a PMF.
+  priors <- c(prior, transform_pmf(toy_rast(c(4, 3, 2, 1), 2, 2)))
+  expect_equal(unname(terra::values(update_pmf(priors, layered)))[, 2],
+               c(0.8, 0.6, 0.6, 0.2) / 2.2)
+  expect_error(update_pmf(c(prior, prior * 2), layered), "PMF must sum to 1")
+  expect_error(update_pmf(priors, c(layered, layered[[1]])),
+               "same number of layers")
 
   expect_error(update_pmf(c(0.5, 0.5), likelihood), "must be a SpatRaster")
   expect_error(update_pmf(prior, toy_rast(1, 3, 3)), "same resolution")
