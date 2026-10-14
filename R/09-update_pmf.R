@@ -59,8 +59,8 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
     posterior <- transform_pmf(posterior, snap = TRUE)
   }
 
-  # Convert to density if requested
-  if (density) {
+  # Convert to density if requested; an unnormalized posterior already is one
+  if (density && normalize) {
     posterior <- posterior * total
   }
 
@@ -77,7 +77,8 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
 #'
 #' @param x SpatVector containing observations
 #' @param value_col Character name of column containing values
-#' @param prior Optional SpatRaster prior PMF (if NULL, uses uniform prior)
+#' @param prior Optional SpatRaster prior PMF. If NULL, a uniform prior over
+#'   the template's non-missing cells is used.
 #' @param template SpatRaster template (required if prior = NULL)
 #' @param density Logical; if TRUE return density surface
 #' @param standardize Logical; if TRUE standardize likelihood values
@@ -110,9 +111,14 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
     stop("Either prior or template must be provided")
   }
 
-  # Create prior if not provided
+  # Uniform prior over the template's cells (cells missing in the template
+  # stay missing) when none is given
   if (is.null(prior)) {
-    prior <- transform_pmf(x, value_col, template)
+    .chck_class(template, "SpatRaster", "template")
+    prior <- terra::init(template[[1]], 1)
+    if (terra::hasValues(template)) prior <- terra::mask(prior, template[[1]])
+    prior <- transform_pmf(prior, snap = TRUE)
+    names(prior) <- "prior"
   } else {
     .chck_raster_input(prior)
     .chck_pmf_validity(prior)

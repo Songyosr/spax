@@ -135,8 +135,10 @@ test_that("update_pmf multiplies the prior by the likelihood", {
   expect_equal(posterior(), product / sum(product))
   expect_equal(posterior(snap = TRUE), product / sum(product))
   expect_equal(posterior(normalize = FALSE), product)
-  # The density is the posterior PMF scaled by the prior-weighted likelihood.
+  # The density is the posterior PMF scaled by the prior-weighted likelihood,
+  # with or without normalizing first.
   expect_equal(posterior(density = TRUE), product)
+  expect_equal(posterior(normalize = FALSE, density = TRUE), product)
 
   expect_error(update_pmf(c(0.5, 0.5), likelihood), "must be a SpatRaster")
   expect_error(update_pmf(prior, toy_rast(1, 3, 3)), "same resolution")
@@ -157,8 +159,17 @@ test_that("rasterize_demand updates a prior with observed counts", {
   expect_equal(terra::values(rasterize_demand(f$points, "cases", prior = prior,
                                               density = TRUE))[, 1],
                on_cells(f$cells, product))
+  # Without a prior the prior is uniform, so the posterior follows the
+  # likelihood alone.
   from_template <- rasterize_demand(f$points, "cases", template = f$template)
-  expect_equal(terra::global(from_template, "sum", na.rm = TRUE)[[1]], 1)
+  expect_equal(terra::values(from_template)[, 1],
+               on_cells(f$cells, c(2, 5, 1) / 8))
+  # Cells missing in the template carry no prior mass.
+  masked <- f$template
+  masked[f$cells[3]] <- NA
+  expect_equal(terra::values(rasterize_demand(f$points, "cases",
+                                              template = masked))[, 1],
+               on_cells(f$cells[1:2], c(2, 5) / 7))
 
   expect_error(rasterize_demand(f$points, "cases"), "Either prior or template")
   expect_error(rasterize_demand(f$points, "missing", prior = prior), "not found")

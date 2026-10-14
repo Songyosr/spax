@@ -18,7 +18,8 @@ rasterize_demand(
 
 \item{value_col}{Character name of column containing values}
 
-\item{prior}{Optional SpatRaster prior PMF (if NULL, uses uniform prior)}
+\item{prior}{Optional SpatRaster prior PMF. If NULL, a uniform prior over
+the template's non-missing cells is used.}
 
 \item{template}{SpatRaster template (required if prior = NULL)}
 
