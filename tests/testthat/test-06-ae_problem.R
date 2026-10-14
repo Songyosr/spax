@@ -53,7 +53,11 @@ test_that("feedback solves reach a contraction fixed point with diagnostics", {
 
   bare <- .solve_problem(p, theta, lambda = 0.7, tol = 1e-10, diagnostics = FALSE)
   expect_null(bare$spectral_radius)
+  # The step size is measured in the requested norm.
   l2 <- .solve_problem(p, theta, lambda = 0.7, tol = 1e-10, norm = "l2")
+  first_step <- 0.7 * (step$map(p$state$init) - p$state$init)
+  expect_equal(fit$history$error[1], max(abs(first_step)))
+  expect_equal(l2$history$error[1], sqrt(sum(first_step^2)))
   expect_equal(l2$x_star, fit$x_star, tolerance = 1e-8)
 })
 
