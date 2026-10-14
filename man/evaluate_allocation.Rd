@@ -8,10 +8,35 @@ evaluate_allocation(model, theta, coverage_args = list(), ...)
 }
 \arguments{
 \item{model}{A corrected CLM declared over checked prepared inputs.}
-\item{theta}{A complete model parameter vector. Named parameters align to the model contract; unnamed values follow its declared order. This operation estimates no parameters and is not a causal intervention estimator.}
-\item{coverage_args}{Named reporting controls for compact coverage, including optional \code{norm}, \code{units}, reporting floors and classification cuts. A norm must have the same declared supply-per-demand scale as capacity attribution.}
+
+\item{theta}{A complete model parameter vector. Named parameters align to the
+model contract; unnamed values follow its declared order. This operation
+estimates no parameters and is not a causal intervention estimator.}
+
+\item{coverage_args}{Named reporting controls for compact coverage, including
+optional \code{norm}, \code{units}, reporting floors and classification cuts. A norm
+must have the same declared supply-per-demand scale as capacity attribution.}
+
 \item{...}{Named controls passed to the existing fixed-parameter solver.}
 }
-\value{The existing \code{ae_equilibrium} with its portable prediction snapshot and compact \code{coverage}. Coverage uses raw supply units without kappa; proportional attributed capacity is not a delivered-service measure or a hard constraint on expected utilization.}
-\description{Solves once and constructs compact coverage from the saved evaluated outputs. The existing equilibrium result carries its prediction snapshot; adding coverage does not retain the original model or create a scenario type. The caller changes system supply/demand by preparing a new model explicitly.}
-\seealso{\code{\link{prepare_allocation}}, \code{\link{clm_allocation}}, \code{\link{fit_allocation}}, \code{\link{predict_allocation}}}
+\value{
+The existing \code{ae_equilibrium} with its portable prediction snapshot
+and compact \code{coverage}. Coverage uses raw supply units without kappa;
+proportional attributed capacity is not a delivered-service measure or a
+hard constraint on expected utilization.
+}
+\description{
+Solves once and constructs compact coverage from the saved evaluated outputs.
+The existing equilibrium result carries its prediction snapshot;
+adding coverage does not retain the original model or create a scenario type.
+The caller changes system supply/demand by preparing a new model explicitly.
+}
+\seealso{
+Other experimental allocation workflow: 
+\code{\link{bootstrap_allocation}()},
+\code{\link{clm_allocation}()},
+\code{\link{fit_allocation}()},
+\code{\link{predict_allocation}()},
+\code{\link{prepare_allocation}()}
+}
+\concept{experimental allocation workflow}

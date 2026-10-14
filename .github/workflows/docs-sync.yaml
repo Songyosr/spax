@@ -1,0 +1,60 @@
+name: Documentation sync
+
+"on":
+  pull_request:
+    branches: [develop, codex-assist-main]
+  push:
+    branches: [develop, codex-assist-main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  roxygen:
+    name: roxygen output matches committed man/ and NAMESPACE
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # roxygenise() loads the package, so hard dependencies are needed.
+          dependencies: '"hard"'
+          extra-packages: |
+            any::pkgload
+            any::desc
+            any::pak
+      - name: Install the roxygen2 version recorded in DESCRIPTION
+        shell: Rscript {0}
+        run: |
+          note <- desc::desc_get_field("RoxygenNote")
+          pak::pkg_install(paste0("roxygen2@", note))
+          stopifnot(as.character(utils::packageVersion("roxygen2")) == note)
+          cat("roxygen2", note, "\n")
+      - name: Regenerate documentation and NAMESPACE
+        shell: Rscript {0}
+        run: roxygen2::roxygenise()
+      - name: Fail if regenerated files differ from the commit
+        shell: bash
+        run: |
+          changes="$(git status --porcelain -- man NAMESPACE)"
+          if [ -n "$changes" ]; then
+            echo "Committed man/ or NAMESPACE is out of sync with roxygen comments."
+            echo "Run roxygen2::roxygenise() (roxygen2 $(Rscript -e 'cat(desc::desc_get_field("RoxygenNote"))')) and commit the result."
+            echo "$changes"
+            git --no-pager diff --stat -- man NAMESPACE
+            git --no-pager diff -- man NAMESPACE | head -200
+            exit 1
+          fi
+          echo "man/ and NAMESPACE match roxygen output."

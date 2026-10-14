@@ -43,6 +43,7 @@
 #'   proportional capacity attribution uses supply per unit of demand.
 #' @family experimental allocation workflow
 #' @export
+#' @md
 prepare_allocation <- function(demand, supply, distance,
                                origin_ids = names(demand),
                                facility_ids = colnames(distance),
@@ -72,6 +73,7 @@ prepare_allocation <- function(demand, supply, distance,
 #'   Parameter order is sigma, then v0 and beta when their flags are true.
 #' @family experimental allocation workflow
 #' @export
+#' @md
 clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"),
                             kappa = 1, beta = 1, v0 = 0,
                             fit_v0 = FALSE, fit_beta = FALSE) {
@@ -126,6 +128,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #'   diagnostics, boundaries, warnings/errors and descriptive disagreement.
 #' @family experimental allocation workflow
 #' @export
+#' @md
 fit_allocation <- function(model, observed, starts, lower, upper,
                             output = "utilization", loss = "weighted_sse",
                             loss_args = list(), loss_grad = NULL,
@@ -173,6 +176,7 @@ fit_allocation <- function(model, observed, starts, lower, upper,
 #'   These diagnostics establish neither identification nor global optimality.
 #' @name allocation-fit-methods
 #' @exportS3Method stats::coef
+#' @md
 coef.ae_problem_nfxp_fit <- function(object, ...) {
   .chck_class(object, "ae_problem_nfxp_fit", "object")
   object$theta
@@ -180,6 +184,7 @@ coef.ae_problem_nfxp_fit <- function(object, ...) {
 
 #' @rdname allocation-fit-methods
 #' @exportS3Method stats::coef
+#' @md
 coef.ae_multistart_fit <- function(object, ...) {
   .chck_class(object, "ae_multistart_fit", "object")
   coef.ae_problem_nfxp_fit(.selected_allocation_fit(object))
@@ -187,6 +192,7 @@ coef.ae_multistart_fit <- function(object, ...) {
 
 #' @rdname allocation-fit-methods
 #' @exportS3Method stats::fitted
+#' @md
 fitted.ae_problem_nfxp_fit <- function(object, ...) {
   .chck_class(object, "ae_problem_nfxp_fit", "object")
   object$predicted
@@ -194,6 +200,7 @@ fitted.ae_problem_nfxp_fit <- function(object, ...) {
 
 #' @rdname allocation-fit-methods
 #' @exportS3Method stats::fitted
+#' @md
 fitted.ae_multistart_fit <- function(object, ...) {
   .chck_class(object, "ae_multistart_fit", "object")
   fitted.ae_problem_nfxp_fit(.selected_allocation_fit(object))
@@ -201,6 +208,7 @@ fitted.ae_multistart_fit <- function(object, ...) {
 
 #' @rdname allocation-fit-methods
 #' @exportS3Method base::summary
+#' @md
 summary.ae_multistart_fit <- function(object, ...) {
   .chck_class(object, "ae_multistart_fit", "object")
   structure(list(status = object$status, selected_start = object$best_start,
@@ -216,7 +224,7 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' Evaluate a declared allocation model at supplied fixed parameters
 #'
 #' Solves once and constructs compact coverage from the saved evaluated outputs.
-#' The existing equilibrium result carries its SPAX-039 prediction snapshot;
+#' The existing equilibrium result carries its prediction snapshot;
 #' adding coverage does not retain the original model or create a scenario type.
 #' The caller changes system supply/demand by preparing a new model explicitly.
 #' @param model A corrected CLM declared over checked prepared inputs.
@@ -233,6 +241,7 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   hard constraint on expected utilization.
 #' @family experimental allocation workflow
 #' @export
+#' @md
 evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
   .check_allocation_model(model)
   if (!is.list(coverage_args) || (length(coverage_args) &&
@@ -251,7 +260,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 
 #' Predict requested origins against a saved fitted or evaluated CLM
 #'
-#' Numeric output preserves the SPAX-039 result and its separate probability,
+#' Numeric output preserves the existing prediction result and its separate probability,
 #' demand and capacity validity. Raster conversion is explicit and permits one
 #' vector only; inspect numeric validity before interpreting a map. Supply/theta
 #' overrides are deliberately absent. A changed system requires reevaluation.
@@ -289,6 +298,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #'   retain guarded zero mass and a false probability-valid flag.
 #' @family experimental allocation workflow
 #' @export
+#' @md
 predict_allocation <- function(source, distance, origin_ids = rownames(distance),
                                 demand = NULL, outputs = c("rho", "A", "abar"),
                                 missing_travel = c("unknown", "legacy_zero"),

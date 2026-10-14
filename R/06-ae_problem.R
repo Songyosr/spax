@@ -9,6 +9,7 @@
 #' Single source of truth for the sigma validity bounds. Both the bind closure
 #' and the problem object read this, so the contract cannot drift between them.
 #' @keywords internal
+#' @md
 .decay_theta_contract <- function() {
   list(names = "sigma", lower = 0, upper = Inf)
 }
@@ -19,6 +20,7 @@
 #' runners and loss functions can bind to known quantities without defensive
 #' NULL checks.
 #' @keywords internal
+#' @md
 .validate_ae_outputs <- function(outputs) {
   if (!is.list(outputs)) {
     stop("AE outputs must be a list")
@@ -35,6 +37,7 @@
 #' A boundary optimum usually means the search box, not the model, picked the
 #' answer. `par` is the optimized value on the log scale (matching the optimizer).
 #' @keywords internal
+#' @md
 .warn_search_boundary <- function(par, lower, upper, name = "parameter") {
   par <- as.numeric(par)
   lower <- as.numeric(lower)
@@ -66,6 +69,7 @@
 #' The shared finalizer records this raster route's legacy missing-edge policy
 #' and stores plain template geometry plus cell mapping for safe serialization.
 #' @keywords internal
+#' @md
 .interaction_substrate <- function(demand, supply, distance,
                                    id_col = NULL, supply_cols = NULL) {
   .chck_raster_alignment(demand, distance[[1]], "demand", "distance")
@@ -96,6 +100,7 @@
 
 #' Construct an SAE model spec
 #' @keywords internal
+#' @md
 .sae_spec <- function(family = c("gaussian", "exponential", "power"),
                       kappa = 1, beta = 20, eps = 1e-8) {
   family <- match.arg(family)
@@ -119,6 +124,7 @@
 
 #' Construct an HAAE model spec
 #' @keywords internal
+#' @md
 .haae_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, eps = 1e-8, a_min = 1e-6,
                        a_max = Inf) {
@@ -153,6 +159,7 @@
 #' `v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
 #' caller.
 #' @keywords internal
+#' @md
 .huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE) {
   contract <- .decay_theta_contract()
   append_param <- function(contract, name) {
@@ -181,6 +188,7 @@
 #' conditional-logit share (DEC-013); `"huff_decay"` preserves the historical
 #' extra decay factor used for one-pass HAAE comparisons.
 #' @keywords internal
+#' @md
 .huff_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, beta = 1, v0 = 0,
                        fit_v0 = FALSE, fit_beta = FALSE,
@@ -218,6 +226,7 @@
 
 #' Create an AE inner problem object
 #' @keywords internal
+#' @md
 .new_problem <- function(model, substrate, state, theta, bind, metadata = list()) {
   if (!is.function(bind)) {
     stop("`bind` must be a function")
@@ -237,6 +246,7 @@
 
 #' Compile a model spec and substrate into problem closures
 #' @keywords internal
+#' @md
 .compile_ae_map <- function(spec, substrate) {
   if (!is.list(spec) || is.null(spec$model)) {
     stop("`spec` must be a model spec")
@@ -254,6 +264,7 @@
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @keywords internal
+#' @md
 .sae_problem <- function(demand, supply = NULL, distance = NULL,
                          family = c("gaussian", "exponential", "power"),
                          kappa = 1, beta = 20, eps = 1e-8,
@@ -287,6 +298,7 @@
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @keywords internal
+#' @md
 .haae_problem <- function(demand, supply = NULL, distance = NULL,
                           family = c("gaussian", "exponential", "power"),
                           kappa = 1, eps = 1e-8, a_min = 1e-6,
@@ -326,6 +338,7 @@
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @keywords internal
+#' @md
 .huff_problem <- function(demand, supply = NULL, distance = NULL,
                           family = c("gaussian", "exponential", "power"),
                           kappa = 1, beta = 1, v0 = 0,
@@ -488,6 +501,7 @@
 #' theta. Only these outputs bypass implicit state differentiation; the promise
 #' is the provider's responsibility and is never inferred from a model name.
 #' @keywords internal
+#' @md
 .bind_theta <- function(problem, theta) {
   .chck_class(problem, "ae_problem", "problem")
   bound <- problem$bind(theta)
@@ -503,6 +517,7 @@
 
 #' Evaluate a problem map at one state and theta
 #' @keywords internal
+#' @md
 .problem_map <- function(problem, x, theta) {
   .bind_theta(problem, theta)$map(x)
 }
@@ -511,6 +526,7 @@
 #' @param requested_outputs Optional output names to materialize. `NULL` keeps
 #'   the provider's existing default outputs.
 #' @keywords internal
+#' @md
 .problem_outputs <- function(problem, x, theta, requested_outputs = NULL) {
   .problem_step_outputs(.bind_theta(problem, theta), x, requested_outputs)
 }
@@ -519,6 +535,7 @@
 #' @param requested_outputs Optional output names to materialize. `NULL` keeps
 #'   the provider's existing default outputs.
 #' @keywords internal
+#' @md
 .problem_outputs_at <- function(problem, theta, state, requested_outputs = NULL) {
   .chck_class(problem, "ae_problem", "problem")
   .validate_problem_state(problem, state)
@@ -529,6 +546,7 @@
 
 #' List model outputs that can be rewrapped onto the demand-cell surface
 #' @keywords internal
+#' @md
 .problem_available_surfaces <- function(problem, outputs) {
   .chck_class(problem, "ae_problem", "problem")
   if (!is.list(outputs)) {
@@ -540,6 +558,7 @@
 
 #' Rewrap one origin-side problem output onto the demand raster template
 #' @keywords internal
+#' @md
 .problem_output_surface <- function(problem, theta, state, output) {
   .chck_class(problem, "ae_problem", "problem")
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
@@ -559,6 +578,7 @@
 
 #' Evaluate the state Jacobian provider at one state and theta
 #' @keywords internal
+#' @md
 .problem_jac_state <- function(problem, x, theta) {
   step <- .bind_theta(problem, theta)
   if (!is.function(step$jac_state)) {
@@ -576,6 +596,7 @@
 #' @param requested_outputs Optional output names to materialize in addition to
 #'   the provider's default outputs. `NULL` retains the legacy output callback.
 #' @keywords internal
+#' @md
 .solve_problem <- function(problem, theta, x0 = NULL, lambda = 1,
                            tol = 1e-8, max_iter = 1000,
                            norm = c("max", "l2"),
@@ -658,6 +679,7 @@
 #' use `reuse = FALSE` for stateful/mutating providers or callbacks that alter
 #' model behavior. This is not a persistent cache across targets or scenarios.
 #' @keywords internal
+#' @md
 .fit_problem_nfxp <- function(problem, observed, init, lower, upper,
                               output = "utilization",
                               loss = .weighted_sse_loss,
@@ -909,6 +931,7 @@
 
 #' Fit one decay parameter for an AE problem by weighted SSE
 #' @keywords internal
+#' @md
 .fit_problem_decay <- function(problem, observed, init, lower, upper,
                                lambda = 1, tol = 1e-8, max_iter = 1000,
                                eta = 1, control = list(maxit = 25),
@@ -960,6 +983,7 @@
 #' reorder independently prepared fits. Legacy fits without identity metadata
 #' can still be compared to each other, but not to fits with declared identity.
 #' @keywords internal
+#' @md
 .compare_problem_fits <- function(fits) {
   if (!is.list(fits) || length(fits) < 2L) {
     stop("`fits` must be a list of at least two AE problem fits")
@@ -1055,6 +1079,7 @@
 #' across problems, or a named list keyed by problem label for per-problem
 #' theta contracts. Solver/runner options in `...` are shared by all legs.
 #' @keywords internal
+#' @md
 .fit_problem_ladder <- function(problems, observed, init, lower, upper,
                                 output = "utilization",
                                 loss = .weighted_sse_loss,
@@ -1111,6 +1136,7 @@
 #' their lengths happen to equal the origin count. Older/custom fits without
 #' axis metadata retain legacy shape-based discovery; see `.fit_available_surfaces`.
 #' @keywords internal
+#' @md
 .fit_output_surface <- function(fit, output) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
@@ -1130,6 +1156,7 @@
 #' Always reports predicted facility utilization. Observations/residuals are
 #' included only for utilization-vector targets, not origin or matrix targets.
 #' @keywords internal
+#' @md
 .ae_fit_facility_table <- function(fit) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (is.null(fit$target_dim) && identical(fit$output, "utilization")) {
@@ -1348,6 +1375,7 @@
 
 #' Validate a calibration value as a finite numeric vector or matrix
 #' @keywords internal
+#' @md
 .chck_target_numeric <- function(x, name = "Input") {
   .chck_is_numeric(x, name = name)
   if (!is.null(dim(x)) && length(dim(x)) != 2L) {
@@ -1365,6 +1393,7 @@
 #' cases) and are excluded from the loss; predicted/observed comparison is
 #' over flattened (column-major) values at the observed cells only.
 #' @keywords internal
+#' @md
 .fit_target_meta <- function(observed, name = "observed") {
   .chck_is_numeric(observed, name = name)
   if (!is.null(dim(observed)) && length(dim(observed)) != 2L) {
@@ -1392,6 +1421,7 @@
 
 #' Does a predicted output have the same shape as the calibration target?
 #' @keywords internal
+#' @md
 .fit_target_shape_ok <- function(predicted, target) {
   if (!is.numeric(predicted)) {
     return(FALSE)
@@ -1405,6 +1435,7 @@
 
 #' Require shape agreement between a predicted output and the target
 #' @keywords internal
+#' @md
 .check_fit_target_shape <- function(predicted, target, output) {
   if (.fit_target_shape_ok(predicted, target)) {
     return(invisible(TRUE))

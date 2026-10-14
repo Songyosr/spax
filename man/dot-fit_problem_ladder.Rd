@@ -19,10 +19,10 @@
 }
 \description{
 The nested static-vs-feedback question (DEC-012): fit every problem in the
-ladder against the *same* observed target with the *same* loss, then put
+ladder against the \emph{same} observed target with the \emph{same} loss, then put
 the legs side by side. Comparability is guaranteed by construction; the
-result reports, it does not decide. `init`/`lower`/`upper` are shared
+result reports, it does not decide. \code{init}/\code{lower}/\code{upper} are shared
 across problems, or a named list keyed by problem label for per-problem
-theta contracts. Solver/runner options in `...` are shared by all legs.
+theta contracts. Solver/runner options in \code{...} are shared by all legs.
 }
 \keyword{internal}

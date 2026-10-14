@@ -25,6 +25,7 @@
 #'   `support`, `input_metadata` and `reporting_settings` attributes.
 #' @name allocation-result-tables
 #' @exportS3Method base::as.data.frame
+#' @md
 as.data.frame.ae_problem_nfxp_fit <- function(x, row.names = NULL, optional = FALSE,
                                              type = c("parameters"), ...) {
   .chck_class(x, "ae_problem_nfxp_fit", "x")
@@ -38,6 +39,7 @@ as.data.frame.ae_problem_nfxp_fit <- function(x, row.names = NULL, optional = FA
 
 #' @rdname allocation-result-tables
 #' @exportS3Method base::as.data.frame
+#' @md
 as.data.frame.ae_multistart_fit <- function(x, row.names = NULL, optional = FALSE,
                                            type = c("parameters"), ...) {
   .chck_class(x, "ae_multistart_fit", "x")
@@ -48,6 +50,7 @@ as.data.frame.ae_multistart_fit <- function(x, row.names = NULL, optional = FALS
 
 #' @rdname allocation-result-tables
 #' @exportS3Method base::as.data.frame
+#' @md
 as.data.frame.ae_coverage <- function(x, row.names = NULL, optional = FALSE,
                                      type = c("regional", "cells"), ...) {
   .chck_class(x, "ae_coverage", "x")
@@ -61,6 +64,7 @@ as.data.frame.ae_coverage <- function(x, row.names = NULL, optional = FALSE,
 
 #' @rdname allocation-result-tables
 #' @exportS3Method base::as.data.frame
+#' @md
 as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional = FALSE,
                                                  type = c("estimates", "draws", "starts"), ...) {
   .chck_class(x, "ae_allocation_bootstrap", "x")
@@ -82,6 +86,7 @@ as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional 
 #' @param ... Additional print arguments.
 #' @return The summary, invisibly.
 #' @export
+#' @md
 print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
   cat("<summary.ae_multistart_fit>\n")
   cat("status: ", x$status, "; selected start: ",
@@ -106,6 +111,7 @@ print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
 #' @param ... Arguments forwarded to the selected-fit plot method.
 #' @return The selected diagnostic method's result, invisibly.
 #' @exportS3Method graphics::plot
+#' @md
 plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), ...) {
   .chck_class(x, "ae_multistart_fit", "x")
   plot.ae_problem_nfxp_fit(.selected_allocation_fit(x), type = match.arg(type), ...)
@@ -138,6 +144,7 @@ plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), .
 #'   Print and plot methods return their input invisibly.
 #' @name allocation-bootstrap-methods
 #' @export
+#' @md
 print.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
   .chck_class(x, "ae_allocation_bootstrap", "x")
   print(summary(x), digits = digits, ...)
@@ -146,6 +153,7 @@ print.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
 
 #' @rdname allocation-bootstrap-methods
 #' @exportS3Method base::summary
+#' @md
 summary.ae_allocation_bootstrap <- function(object, ...) {
   .chck_class(object, "ae_allocation_bootstrap", "object")
   draws <- object$draws
@@ -162,6 +170,7 @@ summary.ae_allocation_bootstrap <- function(object, ...) {
 
 #' @rdname allocation-bootstrap-methods
 #' @export
+#' @md
 print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
   cat("<ae_allocation_bootstrap>\n")
   cat("status: ", x$status, "\n", sep = "")
@@ -209,6 +218,7 @@ print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
 
 #' @rdname allocation-bootstrap-methods
 #' @exportS3Method graphics::plot
+#' @md
 plot.ae_allocation_bootstrap <- function(x, quantity = NULL,
                                          type = c("interval", "draws"), ...) {
   .chck_class(x, "ae_allocation_bootstrap", "x")

@@ -9,6 +9,7 @@
 #' `origin_ids` / `facility_ids` in the substrate. No axis is inferred from
 #' an output name or a coincident vector length.
 #' @keywords internal
+#' @md
 .problem_output_identity <- function(problem, output) {
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {
     stop("`output` must be a length-one character value")
@@ -61,6 +62,7 @@
 #' targets, but their fitted vectors are no longer relabelled as facilities
 #' merely because lengths agree. Declare axes and IDs for identity-safe names.
 #' @keywords internal
+#' @md
 .bind_problem_target <- function(problem, observed, output = "utilization") {
   identity <- .problem_output_identity(problem, output)
   if (inherits(observed, "ae_bound_target")) {
@@ -120,6 +122,7 @@
 
 #' Apply target-axis names without changing raw model outputs
 #' @keywords internal
+#' @md
 .name_bound_target <- function(value, target) {
   ids <- target$identity$ids
   if (!length(ids)) return(value)
@@ -143,6 +146,7 @@
 
 #' Read the canonical observation identity retained by a fitted object
 #' @keywords internal
+#' @md
 .fit_observation_identity <- function(fit) {
   a <- fit$target_alignment
   if (is.null(a) || !length(a$ids) || all(vapply(a$ids, is.null, logical(1)))) {
