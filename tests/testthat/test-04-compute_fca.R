@@ -1,14 +1,14 @@
 # compute_fca(): the typed FCA engine behind the public wrappers, and the
 # supply processing that binds supply values to kernel facility IDs.
 
-# Gaussian kernel (sigma = 2.4) whose cell sums fall on both sides of 1, with
-# cell 9 reaching no facility, cell 1 reaching only facility2 and the demand
-# of cell 5 missing.
+# Gaussian kernel (sigma = 2.4) whose cell sums fall on both sides of 1 (cell
+# 1 sums to 1.031, so "semi" differs from "identity"), with cell 9 reaching no
+# facility, cell 3 reaching only facility2 and the demand of cell 5 missing.
 compute_fca_inputs <- function() {
   td <- fca_toy()
   K <- exp(-unname(terra::values(td$distance))^2 / (2 * 2.4^2))
   K[9, ] <- NA
-  K[1, 1] <- NA
+  K[3, 1] <- NA
   D <- terra::values(td$demand)[, 1]
   D[5] <- NA
   c(td, list(D = D, K = K, demand_na = terra::setValues(td$demand, D),
@@ -35,6 +35,7 @@ test_that("compute_fca matches the FCA oracle for every normalization and supply
   expected_S <- list(vector = f$supply_vector, matrix = f$supply_matrix,
                      data_frame = f$supply_matrix[, 2:1])
 
+  results <- list()
   for (norm in c("identity", "standard", "semi")) {
     for (shape in names(supplies)) {
       result <- do.call(compute_fca, c(
@@ -42,20 +43,24 @@ test_that("compute_fca matches the FCA oracle for every normalization and supply
              access_kernel = f$kernel, demand_normalize = norm),
         supplies[[shape]]
       ))
-      expect_equal(fca_values(result),
+      results[[norm]] <- fca_values(result)
+      expect_equal(results[[norm]],
                    fca_oracle(f$D, f$K, f$K, expected_S[[shape]], norm),
                    info = paste(norm, shape))
     }
   }
+  # Guard the fixture: the three normalizations must give different results.
+  expect_false(isTRUE(all.equal(results$semi, results$identity)))
+  expect_false(isTRUE(all.equal(results$semi, results$standard)))
 
-  # A facility that no demand reaches gets a ratio of 0, not Inf or NaN.
-  Kz <- f$K
-  Kz[, 2] <- 0
+  # A facility that no demand reaches gets a ratio of 0, not Inf or NaN, even
+  # though the access step still reaches it.
+  Kd <- f$K
+  Kd[, 2] <- 0
   expect_equal(
     fca_values(compute_fca(f$demand_na, f$supply_vector,
-                           terra::setValues(f$kernel, Kz),
-                           terra::setValues(f$kernel, Kz))),
-    fca_oracle(f$D, Kz, Kz, f$supply_vector)
+                           terra::setValues(f$kernel, Kd), f$kernel)),
+    fca_oracle(f$D, Kd, f$K, f$supply_vector)
   )
 })
 
