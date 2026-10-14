@@ -9,15 +9,25 @@
   list(ratio = ratio, static = .fix_problem_parameter(ratio, "feedback_scale", 1))
 }
 
+# Distinct per-leg values, so a leg reading another leg's entry is visible.
+.compare_starts <- function() {
+  list(
+    init = list(ratio = c(sigma = 1.5, v0 = 20, feedback_scale = 1.2),
+                static = c(sigma = 1.8, v0 = 25)),
+    lower = list(ratio = c(sigma = 0.5, v0 = 1, feedback_scale = 1),
+                 static = c(sigma = 0.4, v0 = 2)),
+    upper = c(sigma = 4, v0 = 100, feedback_scale = 3)
+  )
+}
+
 .fit_compare_ladder <- function(problems, observed) {
+  starts <- .compare_starts()
   .fit_problem_ladder(
     problems,
     observed = observed,
-    init = list(ratio = c(sigma = 1.5, v0 = 20, feedback_scale = 1.2),
-                static = c(sigma = 1.5, v0 = 20)),
-    lower = list(ratio = c(sigma = 0.5, v0 = 1, feedback_scale = 1),
-                 static = c(sigma = 0.5, v0 = 1)),
-    upper = c(sigma = 4, v0 = 100, feedback_scale = 3),
+    init = starts$init,
+    lower = starts$lower,
+    upper = starts$upper,
     output = "flow",
     lambda = 0.7,
     tol = 1e-10,
@@ -31,9 +41,23 @@ test_that("the ladder compares both legs on one masked target and detects feedba
   observed <- .solve_problem(problems$ratio, ae_ratio_truth(), lambda = 0.7,
                              tol = 1e-10)$outputs$flow
   observed[2, 1] <- NA  # one suppressed flow cell
+  original <- .fit_problem_nfxp
+  seen <- list()
+  testthat::local_mocked_bindings(
+    .fit_problem_nfxp = function(problem, observed, init, lower, upper, ...) {
+      seen[[length(seen) + 1L]] <<- list(init = init, lower = lower, upper = upper)
+      original(problem, observed, init, lower, upper, ...)
+    })
 
   out <- .fit_compare_ladder(problems, observed)
   tab <- out$table
+  # Each leg receives its own start and lower bound and the shared upper bound.
+  starts <- .compare_starts()
+  for (i in 1:2) {
+    expect_identical(seen[[i]]$init, starts$init[[i]])
+    expect_identical(seen[[i]]$lower, starts$lower[[i]])
+    expect_identical(seen[[i]]$upper, starts$upper)
+  }
   expect_named(out, c("fits", "table"))
   expect_named(out$fits, c("ratio", "static"))
   expect_s3_class(out$fits$ratio, "ratio_problem_nfxp_fit")
@@ -54,7 +78,7 @@ test_that("the ladder compares both legs on one masked target and detects feedba
   # Feedback-generated data: the feedback leg recovers the truth and the
   # static null cannot match it.
   expect_lt(tab$loss[1], 1e-8)
-  expect_gt(tab$loss[2], 100 * tab$loss[1])
+  expect_gt(tab$loss[2], 0.1)
   expect_equal(out$fits$ratio$theta, ae_ratio_truth(), tolerance = 1e-3)
   # Only the feedback leg depends on the state (dT/dU = 0 under the null).
   expect_gt(tab$spectral_radius[1], 0)
@@ -109,6 +133,9 @@ test_that("comparability guards reject fits that differ in what they target", {
   expect_error(compare(other), "observation identities")
   legacy <- edited("target_alignment", NULL)
   expect_no_error(.compare_problem_fits(list(a = legacy, b = other)))
+  # Providers without an allocation form report NA.
+  formless <- .compare_problem_fits(list(a = base, b = edited("allocation_form", NULL)))
+  expect_identical(formless$allocation_form, c("clm", NA_character_))
 
   expect_error(.compare_problem_fits(list(base)), "at least two")
   expect_error(.compare_problem_fits(list(a = base, a = base)), "unique labels")
