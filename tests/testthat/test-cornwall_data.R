@@ -38,6 +38,17 @@ test_that("Cornwall travel matrix matches the tables and the travel grid", {
   expect_identical(names(travel), cornwall_gp$practice)
   expect_true(terra::compareGeom(pop, travel, stopOnError = FALSE))
 
+  # Grid times are whole minutes from 1 to 180, only for populated cells, and
+  # no cell reaches both the Scilly practice and a mainland practice.
+  times <- terra::values(travel)
+  expect_true(all(times >= 1 & times <= 180, na.rm = TRUE))
+  reaches_mainland <- rowSums(!is.na(times[, !scilly_gp])) > 0
+  reaches_scilly <- !is.na(times[, scilly_gp])
+  expect_true(any(reaches_mainland) && any(reaches_scilly))
+  expect_false(any(reaches_mainland & reaches_scilly))
+  expect_false(any((reaches_mainland | reaches_scilly) &
+                     is.na(terra::values(pop)[, 1])))
+
   skip_if_no_proj()
   centroids <- sf::st_transform(sf::st_as_sf(
     sf::st_drop_geometry(cornwall_lsoa), coords = c("cent_x", "cent_y"),
@@ -47,4 +58,11 @@ test_that("Cornwall travel matrix matches the tables and the travel grid", {
   expect_equal(unname(as.matrix(travel[cells[mainland]])[, !scilly_gp]),
                unname(cornwall_travel[mainland, !scilly_gp]),
                ignore_attr = TRUE)
+})
+
+test_that("read_spax_example lists and loads the bundled rasters", {
+  expect_setequal(read_spax_example(),
+                  c("cornwall_gp_travel.tif", "cornwall_pop.tif"))
+  expect_equal(names(read_spax_example("cornwall_pop.tif")), "pop")
+  expect_error(read_spax_example("cornwall_beds.tif"), "not found")
 })
