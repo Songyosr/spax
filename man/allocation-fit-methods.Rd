@@ -36,3 +36,6 @@ summaries retain failed starts, boundaries, warnings/errors and descriptive
 disagreement. A search with no eligible fit remains inspectable by summary,
 while coefficient and fitted extraction fail clearly.
 }
+\seealso{
+\code{\link[=fit_allocation]{fit_allocation()}}
+}

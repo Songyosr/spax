@@ -58,6 +58,8 @@ prepare_allocation <- function(demand, supply, distance,
 
 #' Declare corrected static CLM over checked allocation inputs
 #'
+#' Declare corrected static CLM over checked allocation inputs.
+#'
 #' @param inputs An `ae_prepared_inputs` object from checked preparation.
 #' @param family Travel kernel: Gaussian, exponential or power. Gaussian sigma
 #'   is a travel scale, exponential sigma a rate, and power sigma an exponent.
@@ -126,6 +128,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #'   optimizer `control`, `keep_fits` and descriptive disagreement tolerances.
 #' @return The existing `ae_multistart_fit`, retaining selected fit, all per-start
 #'   diagnostics, boundaries, warnings/errors and descriptive disagreement.
+#' @seealso [allocation-fit-methods] for methods on saved fits.
 #' @family experimental allocation workflow
 #' @export
 #' @md
@@ -175,6 +178,7 @@ fit_allocation <- function(model, observed, starts, lower, upper,
 #'   selected fit summary, per-start table, boundaries, disagreement and messages.
 #'   These diagnostics establish neither identification nor global optimality.
 #' @name allocation-fit-methods
+#' @seealso [fit_allocation()]
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_problem_nfxp_fit <- function(object, ...) {

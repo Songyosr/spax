@@ -67,6 +67,8 @@ boundaries, failed runs and disagreement retain the existing multistart
 result; a selected fit is not a claim of identification or global optimality.
 }
 \seealso{
+\link{allocation-fit-methods} for methods on saved fits.
+
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{clm_allocation}()},

@@ -37,7 +37,7 @@ The existing private \code{ae_problem} for built-in corrected static CLM.
 Parameter order is sigma, then v0 and beta when their flags are true.
 }
 \description{
-Declare corrected static CLM over checked allocation inputs
+Declare corrected static CLM over checked allocation inputs.
 }
 \seealso{
 Other experimental allocation workflow: 
