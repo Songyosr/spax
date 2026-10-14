@@ -16,8 +16,11 @@ An sf object with 2027 features and 5 fields:
 }
 }
 \source{
-Computed using OSRM with OpenStreetMap data.
-Hospital locations from \code{\link{hc12_hos}}.
+Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+(map data (c) OpenStreetMap contributors, ODbL 1.0).
+Hospital locations from \code{\link{hc12_hos}}. The licence status of these
+derived layers has not been finally determined; see
+\code{system.file("COPYRIGHTS", package = "spax")}.
 }
 \usage{
 hos_iscvec

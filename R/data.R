@@ -11,8 +11,13 @@
 #' This dataset includes only the boundary area for Health Region 12, useful for masking or spatial extent analysis.
 #'
 #' @source
-#' Data processed from Thailand's official administrative boundaries, available at
-#' [Humanitarian Data Exchange (HDX)](https://data.humdata.org/dataset/thailand-administrative-boundaries).
+#' Royal Thai Survey Department (RTSD) administrative level 1 boundaries
+#' (file tha_admbnda_adm1_rtsd_20220121, published 2022-01-21), distributed by
+#' UN OCHA as a Common Operational Dataset, originally through the COD/FOD
+#' Registry on HumanitarianResponse.info and now through the
+#' \href{https://data.humdata.org/dataset/cod-ab-tha}{Humanitarian Data Exchange (HDX)};
+#' subset to Health Region 12 and reprojected to EPSG:32647. The current HDX listing is licensed CC BY-IGO 3.0; see
+#' \code{system.file("COPYRIGHTS", package = "spax")} for attribution and terms.
 #'
 #' @examples
 #' \dontrun{
@@ -51,8 +56,13 @@
 #' This dataset provides detailed administrative information for Region 12 provinces in Thailand.
 #'
 #' @source
-#' Data processed from Thailand's official administrative boundaries, available at
-#' [Humanitarian Data Exchange (HDX)](https://data.humdata.org/dataset/thailand-administrative-boundaries).
+#' Royal Thai Survey Department (RTSD) administrative level 1 boundaries
+#' (file tha_admbnda_adm1_rtsd_20220121, published 2022-01-21), distributed by
+#' UN OCHA as a Common Operational Dataset, originally through the COD/FOD
+#' Registry on HumanitarianResponse.info and now through the
+#' \href{https://data.humdata.org/dataset/cod-ab-tha}{Humanitarian Data Exchange (HDX)};
+#' subset to Health Region 12 and reprojected to EPSG:32647. The current HDX listing is licensed CC BY-IGO 3.0; see
+#' \code{system.file("COPYRIGHTS", package = "spax")} for attribution and terms.
 #'
 #' @examples
 #' \dontrun{
@@ -73,7 +83,11 @@
 #' Health Facilities in Thailand's Region 12
 #'
 #' A collection of spatial datasets containing information about health facilities
-#' in Thailand's Region 12 (Southern Border Provinces) for the year 2020 (B.E. 2563).
+#' in Thailand's Health Region 12 (Songkhla, Satun, Trang, Phatthalung, Pattani,
+#' Yala and Narathiwat). The preparation script requests provider and
+#' service-population statistics for B.E. 2563 (2020) and, as written,
+#' health-volunteer counts for B.E. 2565 (2022); the original API responses
+#' were not retained.
 #' The data is split into two complementary datasets: primary health centers (PHC)
 #' and hospitals.
 #'
@@ -102,17 +116,18 @@
 #'   \item All facilities are level "1-Community"
 #'   \item No inpatient beds (bed = 0)
 #'   \item Typically staffed by 1-4 healthcare providers
-#'   \item Strong health volunteer presence (s_hv > 0)
+#'   \item Most have health volunteers (s_hv > 0 for 810 of 819)
 #'   \item Serves defined population catchments
 #' }
 #'
 #' \strong{hc12_hos}: Hospitals (n=77)
 #' \itemize{
 #'   \item Includes general (level 2) and regional hospitals (level 3)
-#'   \item Has inpatient beds (30-591 beds)
+#'   \item Inpatient beds range from 0 to 591; 14 records have bed = 0, where
+#'         the preparation script also coded missing values as 0
 #'   \item Larger healthcare workforce
 #'   \item Limited health volunteer involvement
-#'   \item Population data not available at facility level
+#'   \item Service-area population is reported for 29 of 77 hospitals
 #' }
 #'
 #' @note
@@ -124,8 +139,13 @@
 #'
 #' @source
 #' Office of the Permanent Secretary, Ministry of Public Health. (2020).
-#' Government Open Data Services. Retrieved December 19, 2024, from
+#' Government Open Data Services. Accessed December 2024 (preparation script
+#' dated 2024-12-19), from
 #' https://opendata.moph.go.th
+#'
+#' Redistribution terms for these data have not been confirmed; see
+#' \code{system.file("COPYRIGHTS", package = "spax")}. Coordinates are exact,
+#' and the recoded facility identifiers are not an anonymisation.
 #'
 #' The dataset combines three main data sources from the MoPH API:
 #' \itemize{
@@ -184,8 +204,11 @@ NULL
 #' recommended for accessibility analysis within the spax package.
 #'
 #' @source
-#' Computed using OSRM with OpenStreetMap data.
-#' Hospital locations from \code{\link{hc12_hos}}.
+#' Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+#' (map data (c) OpenStreetMap contributors, ODbL 1.0).
+#' Hospital locations from \code{\link{hc12_hos}}. The licence status of these
+#' derived layers has not been finally determined; see
+#' \code{system.file("COPYRIGHTS", package = "spax")}.
 #'
 #' @references
 #' Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data.

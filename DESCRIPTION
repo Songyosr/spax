@@ -15,6 +15,7 @@ Description: Spatial accessibility analysis using floating catchment area (FCA)
     A conditional facility-case bootstrap is available for a restricted Gaussian
     allocation model and an explicitly declared observation process.
 License: MIT + file LICENSE
+Copyright: See file inst/COPYRIGHTS for third-party example data.
 Encoding: UTF-8
 LazyData: TRUE
 LazyDataCompression: xz

@@ -11,8 +11,13 @@ An `sf` object with the following attributes:
 }
 }
 \source{
-Data processed from Thailand's official administrative boundaries, available at
-[Humanitarian Data Exchange (HDX)](https://data.humdata.org/dataset/thailand-administrative-boundaries).
+Royal Thai Survey Department (RTSD) administrative level 1 boundaries
+(file tha_admbnda_adm1_rtsd_20220121, published 2022-01-21), distributed by
+UN OCHA as a Common Operational Dataset, originally through the COD/FOD
+Registry on HumanitarianResponse.info and now through the
+\href{https://data.humdata.org/dataset/cod-ab-tha}{Humanitarian Data Exchange (HDX)};
+subset to Health Region 12 and reprojected to EPSG:32647. The current HDX listing is licensed CC BY-IGO 3.0; see
+\code{system.file("COPYRIGHTS", package = "spax")} for attribution and terms.
 }
 \usage{
 bound0

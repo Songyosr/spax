@@ -6,8 +6,8 @@
 \format{
 A GeoTIFF file containing a multi-layer raster with:
 \describe{
-  \item{Dimensions}{509 rows × 647 columns × 77 layers}
-  \item{Resolution}{520.4038 × 520.4038 meters}
+  \item{Dimensions}{509 rows x 647 columns x 77 layers}
+  \item{Resolution}{520.4038 x 520.4038 meters}
   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
   \item{Values}{Travel time in minutes}
@@ -15,8 +15,11 @@ A GeoTIFF file containing a multi-layer raster with:
 }
 }
 \source{
-Computed using OSRM with OpenStreetMap data.
-Hospital locations from \code{\link{hc12_hos}}.
+Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+(map data (c) OpenStreetMap contributors, ODbL 1.0).
+Hospital locations from \code{\link{hc12_hos}}. The licence status of these
+derived layers has not been finally determined; see
+\code{system.file("COPYRIGHTS", package = "spax")}.
 }
 \description{
 A multi-layer GeoTIFF containing travel time isochrones for 77 hospitals in Thailand's Region 12.
@@ -35,6 +38,8 @@ Travel times were calculated using the following time-break structure:
   \item 5-minute intervals from 35 to 60 minutes
   \item 15-minute intervals from 75 to 180 minutes
 }
+Each cell stores the midpoint of its band (maximum 172.5 minutes). NA marks
+cells outside the region or beyond 180 minutes.
 }
 \examples{
 \dontrun{

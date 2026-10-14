@@ -4,13 +4,19 @@
 \alias{phc_iscr}
 \title{Example Primary Health Center Travel Time Isochrones}
 \format{
-A multi-layer GeoTIFF file. Each layer represents travel time to one
-primary health center, with layer names restored from the companion
-`phc_iscr_names.rds` file.
+A multi-layer GeoTIFF file (509 rows x 647 columns x 819 layers,
+520.4038 m cells, EPSG:32647, on the same grid as \code{hos_iscr}). Each
+layer represents travel time in minutes to one primary health center, with
+layer names restored from the companion `phc_iscr_names.rds` file. Cells
+store band midpoints and are cut at 60 minutes (maximum 57.5); NA marks cells
+outside the region or beyond the cut.
 }
 \source{
-Computed using OSRM with OpenStreetMap data.
-Primary health center locations from \code{\link{hc12_phc}}.
+Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+(map data (c) OpenStreetMap contributors, ODbL 1.0).
+Primary health center locations from \code{\link{hc12_phc}}. The licence
+status of these derived layers has not been finally determined; see
+\code{system.file("COPYRIGHTS", package = "spax")}.
 }
 \description{
 A GeoTIFF containing travel time isochrones for primary health centers in
