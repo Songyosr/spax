@@ -31,7 +31,7 @@ dimnames; unobserved entries are not allowed.}
 }
 \value{
 A data frame with one row per model: parameters, number of fitted
-parameters \code{k}, Poisson \code{loss}, \code{gain} over the static fit and
+parameters \code{k}, Poisson \code{loss}, \code{converged}, \code{gain} over the static fit and
 \code{share_of_free_gain}, with the interpretation as attribute \code{note}.
 }
 \description{
@@ -52,7 +52,9 @@ feedback rule produces, so it bounds what a cross-section can attribute to
 feedback. When the ratio models recover most of the free model's gain, the
 gain is equally consistent with facility differences unrelated to load,
 including supply that follows load (for example staffing set by list size).
-A single cross-section therefore does not identify gamma; that needs supply
-that changes over time or capacity that binds.
+In a single cross-section gamma is identified only through the assumed
+load-response form and cannot be separated from load-correlated facility
+differences; separating them needs supply that changes over time or capacity
+that binds.
 }
 \keyword{internal}

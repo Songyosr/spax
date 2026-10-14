@@ -16,8 +16,10 @@
 #' feedback. When the ratio models recover most of the free model's gain, the
 #' gain is equally consistent with facility differences unrelated to load,
 #' including supply that follows load (for example staffing set by list size).
-#' A single cross-section therefore does not identify gamma; that needs supply
-#' that changes over time or capacity that binds.
+#' In a single cross-section gamma is identified only through the assumed
+#' load-response form and cannot be separated from load-correlated facility
+#' differences; separating them needs supply that changes over time or capacity
+#' that binds.
 #'
 #' @param inputs Prepared inputs from `prepare_allocation()`.
 #' @param observed Origin-by-facility flow matrix with the prepared IDs as
@@ -27,7 +29,7 @@
 #' @param gamma_upper,b_upper Upper bounds for gamma and b.
 #' @param solve_control Named solver controls for the feedback solves.
 #' @return A data frame with one row per model: parameters, number of fitted
-#'   parameters `k`, Poisson `loss`, `gain` over the static fit and
+#'   parameters `k`, Poisson `loss`, `converged`, `gain` over the static fit and
 #'   `share_of_free_gain`, with the interpretation as attribute `note`.
 #' @keywords internal
 #' @md
@@ -40,6 +42,10 @@
   if (!is.matrix(observed) || !identical(dimnames(observed), ids) ||
       anyNA(observed) || any(observed < 0)) {
     stop("observed must be a complete nonnegative flow matrix with the prepared IDs")
+  }
+  if (!identical(sort(names(lower)), c("sigma", "v0")) ||
+      !identical(sort(names(upper)), c("sigma", "v0"))) {
+    stop("lower and upper must be named sigma and v0")
   }
   if (!is.matrix(starts) || !identical(colnames(starts), c("sigma", "v0"))) {
     stop("starts must be a matrix with columns sigma and v0")
@@ -78,6 +84,8 @@
       gamma = if ("feedback_scale" %in% pars) th[["feedback_scale"]] - 1 else 0,
       b = if ("supply_scale" %in% pars) th[["supply_scale"]] - 1 else 1,
       boundary = isTRUE(any(fit$boundary[fit$best_start, ])),
+      converged = identical(fit$best$convergence, 0L) &&
+        isTRUE(fit$best$equilibrium$converged),
       stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, rows)
@@ -86,7 +94,8 @@
   free <- .clm_free_attractiveness_fit(inputs, observed, best$sigma, best$v0)
   out <- rbind(out, data.frame(model = "free", k = length(ids[[2]]) + 1L,
     loss = free$loss, sigma = free$sigma, v0 = free$v0, gamma = NA_real_,
-    b = NA_real_, boundary = FALSE, stringsAsFactors = FALSE))
+    b = NA_real_, boundary = FALSE, converged = free$converged,
+    stringsAsFactors = FALSE))
 
   out$gain <- out$loss[out$model == "static"] - out$loss
   free_gain <- out$gain[out$model == "free"]
@@ -97,8 +106,9 @@
     "The free model sets each facility's attractiveness separately and bounds",
     "what a cross-section can attribute to feedback. A ratio model that",
     "recovers most of the free gain is equally consistent with facility",
-    "differences unrelated to load, such as supply that follows load, so a",
-    "single cross-section does not identify gamma.")
+    "differences unrelated to load, such as supply that follows load. In a",
+    "single cross-section gamma is identified only by the assumed functional",
+    "form and cannot be separated from load-correlated facility differences.")
   out
 }
 
@@ -131,6 +141,7 @@
   opt <- stats::optim(p0, function(p) value(p)$loss, function(p) value(p)$grad,
                       method = "BFGS", control = list(maxit = 5000, reltol = 1e-14))
   if (opt$convergence != 0) warning("free-attractiveness fit did not converge")
-  list(loss = opt$value, sigma = exp(opt$par[J]), v0 = exp(opt$par[J + 1]),
+  list(loss = opt$value, converged = opt$convergence == 0,
+       sigma = exp(opt$par[J]), v0 = exp(opt$par[J + 1]),
        attractiveness = exp(c(log(S[1]), opt$par[seq_len(J - 1)])))
 }
