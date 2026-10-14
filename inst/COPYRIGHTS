@@ -6,8 +6,53 @@ Package code
 The spax R code, documentation and generated vignette examples are licensed
 under the MIT licence (see the LICENSE file). The MIT licence does not cover
 the third-party example data listed below, which remain subject to their own
-terms. All bundled example data cover Thailand's Health Region 12 (Songkhla,
-Satun, Trang, Phatthalung, Pattani, Yala and Narathiwat).
+terms. The bundled example data cover NHS Cornwall and Isles of Scilly
+(England) and Thailand's Health Region 12 (Songkhla, Satun, Trang,
+Phatthalung, Pattani, Yala and Narathiwat).
+
+
+Cornwall GP example: data/cornwall_*.rda, inst/extdata/cornwall_*
+------------------------------------------------------------------
+Built by data-raw/cornwall_gp.R from the sources below, subset to NHS
+Cornwall and Isles of Scilly Integrated Care Board (QT6) and its 337 LSOA
+2021 areas, joined on practice and LSOA codes and reprojected as needed.
+
+GP registrations and workforce (cornwall_gp, cornwall_lsoa, cornwall_flows):
+Patients Registered at a GP Practice (July 2026) and General Practice
+Workforce (30 June 2026). Copyright (c) 2026 NHS England. Contains public
+sector information licensed under the Open Government Licence v3.0,
+https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/.
+
+Small-area boundaries, population-weighted centroids and population
+(cornwall_lsoa): Source: Office for National Statistics licensed under the
+Open Government Licence v3.0 (LSOA 2021 boundaries with rural-urban
+classification, LSOA 2021 population-weighted centroids, mid-2024 small area
+population estimates via Nomis). Contains OS data (c) Crown copyright and
+database right 2025.
+
+Practice locations (cornwall_gp): ONS Postcode Directory, November 2025.
+Contains OS data (c) Crown copyright and database right 2025. Contains Royal
+Mail data (c) Royal Mail copyright and database right 2025. Source: Office
+for National Statistics licensed under the Open Government Licence v3.0.
+
+Population grid (cornwall_pop.tif): WorldPop (www.worldpop.org) and the
+Center for International Earth Science Information Network (CIESIN),
+Columbia University (2018). Global High Resolution Population Denominators
+Project, 2020 UN-adjusted 1 km estimates for the United Kingdom,
+https://doi.org/10.5258/SOTON/WP00671. Licensed under Creative Commons
+Attribution 4.0 International (CC BY 4.0),
+https://creativecommons.org/licenses/by/4.0/. Modifications: cropped to the
+area and weighted by the share of each cell inside it.
+
+Travel times (cornwall_travel, cornwall_gp_travel.tif): derived by the
+package author from the Malaria Atlas Project 2019 global motorised friction
+surface (Weiss D.J. et al. (2020) Global maps of travel time to healthcare
+facilities. Nature Medicine 26, 1835-1838,
+https://doi.org/10.1038/s41591-020-1059-1) with least-cost paths over land,
+from the practice and centroid locations above. The Malaria Atlas Project
+publishes its maps under Creative Commons Attribution; its website states
+version 3.0 and the Google Earth Engine catalogue entry states version 4.0.
+The version applying to the downloaded surface has not been confirmed.
 
 
 Administrative boundaries: data/bound0.rda, data/bound1.rda
