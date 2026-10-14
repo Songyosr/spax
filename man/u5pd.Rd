@@ -6,17 +6,21 @@
 \format{
 A GeoTIFF file containing a raster with:
 \describe{
-  \item{Dimensions}{865 rows × 1100 columns}
+  \item{Dimensions}{509 rows × 647 columns}
   \item{Resolution}{520.4038 × 520.4038 meters}
-  \item{Extent}{505677.7, 842408.5, 620846.3, 885639.2 (xmin, xmax, ymin, ymax)}
+  \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
   \item{Values}{Population density (children per grid cell)}
-  \item{Range}{Minimum: 0, Maximum: 33.19188}
+  \item{Range}{Minimum: 0, Maximum: 83.07421}
 }
 }
 \source{
-Meta. (2024). High Resolution Population Density Maps. Data for Good at Meta.
-Retrieved from \url{https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps}
+Meta Data for Good and the Center for International Earth Science
+Information Network (CIESIN). High Resolution Population Density Maps,
+Thailand, children under five, 2020, distributed through the Humanitarian
+Data Exchange. Underlying imagery: Maxar Technologies. Licensed CC BY 4.0;
+see \code{system.file("COPYRIGHTS", package = "spax")}.
+\url{https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps}
 }
 \description{
 A raster containing population density estimates for children under five years old

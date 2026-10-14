@@ -105,10 +105,15 @@ read_spax_example <- function(dataset = NULL) {
 #'   \item 5-minute intervals from 35 to 60 minutes
 #'   \item 15-minute intervals from 75 to 180 minutes
 #' }
+#' Each cell stores the midpoint of its band (maximum 172.5 minutes). NA marks
+#' cells outside the region or beyond 180 minutes.
 #'
 #' @source
-#' Computed using OSRM with OpenStreetMap data.
-#' Hospital locations from \code{\link{hc12_hos}}.
+#' Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+#' (map data (c) OpenStreetMap contributors, ODbL 1.0).
+#' Hospital locations from \code{\link{hc12_hos}}. The licence status of these
+#' derived layers has not been finally determined; see
+#' \code{system.file("COPYRIGHTS", package = "spax")}.
 #'
 #' @references
 #' Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data.
@@ -135,13 +140,19 @@ NULL
 #' Thailand's Health Region 12. The data is stored in `inst/extdata` and should
 #' be loaded with `read_spax_example("phc_iscr.tif")`.
 #'
-#' @format A multi-layer GeoTIFF file. Each layer represents travel time to one
-#' primary health center, with layer names restored from the companion
-#' `phc_iscr_names.rds` file.
+#' @format A multi-layer GeoTIFF file (509 rows x 647 columns x 819 layers,
+#' 520.4038 m cells, EPSG:32647, on the same grid as \code{hos_iscr}). Each
+#' layer represents travel time in minutes to one primary health center, with
+#' layer names restored from the companion `phc_iscr_names.rds` file. Cells
+#' store band midpoints and are cut at 60 minutes (maximum 57.5); NA marks cells
+#' outside the region or beyond the cut.
 #'
 #' @source
-#' Computed using OSRM with OpenStreetMap data.
-#' Primary health center locations from \code{\link{hc12_phc}}.
+#' Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+#' (map data (c) OpenStreetMap contributors, ODbL 1.0).
+#' Primary health center locations from \code{\link{hc12_phc}}. The licence
+#' status of these derived layers has not been finally determined; see
+#' \code{system.file("COPYRIGHTS", package = "spax")}.
 #'
 #' @examples
 #' \dontrun{
@@ -165,16 +176,20 @@ NULL
 #'
 #' @format A GeoTIFF file containing a raster with:
 #' \describe{
-#'   \item{Dimensions}{865 rows × 1100 columns}
+#'   \item{Dimensions}{509 rows × 647 columns}
 #'   \item{Resolution}{520.4038 × 520.4038 meters}
-#'   \item{Extent}{505677.7, 842408.5, 620846.3, 885639.2 (xmin, xmax, ymin, ymax)}
+#'   \item{Extent}{505646.5, 842347.8, 620843.7, 885729.2 (xmin, xmax, ymin, ymax)}
 #'   \item{CRS}{WGS 84 / UTM zone 47N (EPSG:32647)}
 #'   \item{Values}{Population density (children per grid cell)}
-#'   \item{Range}{Minimum: 0, Maximum: 33.19188}
+#'   \item{Range}{Minimum: 0, Maximum: 83.07421}
 #' }
 #'
-#' @source Meta. (2024). High Resolution Population Density Maps. Data for Good at Meta.
-#' Retrieved from \url{https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps}
+#' @source Meta Data for Good and the Center for International Earth Science
+#' Information Network (CIESIN). High Resolution Population Density Maps,
+#' Thailand, children under five, 2020, distributed through the Humanitarian
+#' Data Exchange. Underlying imagery: Maxar Technologies. Licensed CC BY 4.0;
+#' see \code{system.file("COPYRIGHTS", package = "spax")}.
+#' \url{https://dataforgood.facebook.com/dfg/tools/high-resolution-population-density-maps}
 #'
 #' @details
 #' This dataset was processed from Meta's High Resolution Population Density Maps

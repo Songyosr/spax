@@ -15,8 +15,11 @@ A GeoTIFF file containing a multi-layer raster with:
 }
 }
 \source{
-Computed using OSRM with OpenStreetMap data.
-Hospital locations from \code{\link{hc12_hos}}.
+Computed by the package author using OSRM with a 2024 OpenStreetMap extract
+(map data (c) OpenStreetMap contributors, ODbL 1.0).
+Hospital locations from \code{\link{hc12_hos}}. The licence status of these
+derived layers has not been finally determined; see
+\code{system.file("COPYRIGHTS", package = "spax")}.
 }
 \description{
 A multi-layer GeoTIFF containing travel time isochrones for 77 hospitals in Thailand's Region 12.
@@ -35,6 +38,8 @@ Travel times were calculated using the following time-break structure:
   \item 5-minute intervals from 35 to 60 minutes
   \item 15-minute intervals from 75 to 180 minutes
 }
+Each cell stores the midpoint of its band (maximum 172.5 minutes). NA marks
+cells outside the region or beyond 180 minutes.
 }
 \examples{
 \dontrun{

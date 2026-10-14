@@ -28,6 +28,10 @@ Office of the Permanent Secretary, Ministry of Public Health. (2020).
 Government Open Data Services. Retrieved December 19, 2024, from
 https://opendata.moph.go.th
 
+Redistribution terms for these data have not been confirmed; see
+\code{system.file("COPYRIGHTS", package = "spax")}. Coordinates are exact,
+and the recoded facility identifiers are not an anonymisation.
+
 The dataset combines three main data sources from the MoPH API:
 \itemize{
   \item Facility locations and characteristics (GIS service)
@@ -37,7 +41,9 @@ The dataset combines three main data sources from the MoPH API:
 }
 \description{
 A collection of spatial datasets containing information about health facilities
-in Thailand's Region 12 (Southern Border Provinces) for the year 2020 (B.E. 2563).
+in Thailand's Health Region 12 (Songkhla, Satun, Trang, Phatthalung, Pattani,
+Yala and Narathiwat). Provider statistics are for 2020 (B.E. 2563);
+health-volunteer counts are for B.E. 2565.
 The data is split into two complementary datasets: primary health centers (PHC)
 and hospitals.
 }
@@ -56,7 +62,7 @@ The data is split into two datasets:
 \strong{hc12_hos}: Hospitals (n=77)
 \itemize{
   \item Includes general (level 2) and regional hospitals (level 3)
-  \item Has inpatient beds (30-591 beds)
+  \item Inpatient beds range from 0 to 591; 14 records report 0 beds
   \item Larger healthcare workforce
   \item Limited health volunteer involvement
   \item Population data not available at facility level
