@@ -117,6 +117,13 @@ test_that("vector input is rasterised onto the template", {
                                                   template = f$template,
                                                   method = "sum"))[, 1],
                on_cells(cells, c(7, 1) / 8))
+
+  # A polygon's value is copied to every cell it covers (8 cells each).
+  expect_equal(terra::values(transform_pmf(f$areas, "cases", f$template))[, 1],
+               rep(rep(c(10, 30), each = 2), 4) / 320)
+  expect_equal(terra::values(transform_likelihood(f$areas, "cases",
+                                                  template = f$template))[, 1],
+               rep(rep(c(10, 30), each = 2), 4) / 20)
 })
 
 test_that("vector input needs a numeric column and an overlapping template", {

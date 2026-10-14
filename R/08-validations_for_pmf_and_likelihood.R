@@ -128,6 +128,8 @@
 #' every cell it covers.
 #' @keywords internal
 .rasterize_values <- function(x, template, value_col) {
-  fun <- if (all(terra::geomtype(x) == "points")) "sum" else "last"
-  terra::rasterize(x, template, field = value_col, fun = fun)
+  if (all(terra::geomtype(x) == "points")) {
+    return(terra::rasterize(x, template, field = value_col, fun = "sum"))
+  }
+  terra::rasterize(x, template, field = value_col)
 }
