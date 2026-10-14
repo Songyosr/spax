@@ -15,10 +15,10 @@ ae_toy_inputs <- function(shape = c("2x2", "1x4"), demand = c(10, 20, 30, 40)) {
   list(demand = d, distance = distance, supply = c(a = 30, b = 45))
 }
 
-# A provider built on the toy inputs. `...` goes to the model constructor.
-ae_toy_problem <- function(model = c("huff", "sae", "haae"), shape = "2x2",
+# A raster-input provider (`.<model>_problem`) on the toy inputs. `...` goes
+# to the model constructor.
+ae_toy_problem <- function(model = "huff", shape = "2x2",
                            demand = c(10, 20, 30, 40), ...) {
-  model <- match.arg(model)
   f <- ae_toy_inputs(shape, demand)
   get(paste0(".", model, "_problem"))(f$demand, f$supply, f$distance, ...)
 }
