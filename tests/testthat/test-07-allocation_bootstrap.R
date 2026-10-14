@@ -353,7 +353,7 @@ test_that("bootstrap replay preserves RNG, physical inputs and paired scenario p
     .bootstrap_test_mock_fit(f, theta = f$lower, boundary = TRUE)
   })
   before <- serialize(list(f$inputs, f$y, fit, observation, f$starts, supply), NULL)
-  set.seed(921)
+  local_test_seed(921)
   rng <- .Random.seed; kind <- RNGkind()
   run <- .run_allocation_bootstrap(f$model, fit, observation, scenario,
     seed = 4421L, attempts = 4L)
@@ -456,7 +456,7 @@ test_that("checkpoint resume retains completed failures and refuses changed cont
       list(message = "test interruption", call = NULL), class = c("interrupt", "condition")))
     .bootstrap_test_mock_fit(f, success = calls != 2L)
   })
-  set.seed(952); rng <- .Random.seed
+  local_test_seed(952); rng <- .Random.seed
   partial <- .run_allocation_bootstrap(f$model, fit, observation, seed = 735L,
     checkpoint = path, attempts = 4L)
   expect_identical(.Random.seed, rng)
@@ -553,7 +553,7 @@ test_that("the bootstrap engine runs end to end and withholds intervals when inc
   supply <- setNames(rep(c(5, 7, 6, 8, 9), 2), colnames(travel))
   score <- exp(-travel^2 / (2 * 12^2)) * rep(supply, each = length(demand))
   probability <- score / (rowSums(score) + 45)
-  set.seed(2490001)
+  local_test_seed(2490001)
   observed <- setNames(rpois(10, colSums(probability * demand)), names(supply))
   model <- clm_allocation(prepare_allocation(demand, supply, travel),
                           family = "gaussian", fit_v0 = TRUE)

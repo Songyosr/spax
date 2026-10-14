@@ -16,7 +16,8 @@
 #'   \item{boundary}{sf polygon of study area}
 #' @keywords internal
 .create_test_data <- function(seed = 42) {
-  # Set seed for reproducibility
+  # Seed locally; the caller's random state is restored on exit.
+  withr::local_preserve_seed()
   set.seed(seed)
 
   # Create small demand raster with random population (1-100)

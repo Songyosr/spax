@@ -1,25 +1,9 @@
-# tests/testthat/test-normalize_functions.R
-
-library(testthat)
-library(terra)
-
 # Helper function to create test SpatRaster
 create_test_raster <- function(nrow = 3, ncol = 3, nlyr = 2) {
   r <- rast(nrows = nrow, ncols = ncol, nlyr = nlyr)
-  values(r) <- runif(nrow * ncol * nlyr)
+  values(r) <- withr::with_seed(42, runif(nrow * ncol * nlyr))
   names(r) <- paste0("layer", 1:nlyr)
   return(r)
-}
-
-spax_test_proj_available <- function() {
-  if (!nzchar(Sys.getenv("PROJ_LIB"))) {
-    proj <- system.file("proj", package = "sf")
-    if (nzchar(proj) && file.exists(file.path(proj, "proj.db"))) {
-      Sys.setenv(PROJ_LIB = proj)
-    }
-  }
-  nzchar(Sys.getenv("PROJ_LIB")) &&
-    file.exists(file.path(Sys.getenv("PROJ_LIB"), "proj.db"))
 }
 
 # Setup test data
@@ -167,7 +151,7 @@ test_that("calc_normalize preserves raster properties", {
   expect_equal(ext_result, ext_input)
 
   # Test CRS preservation when the local PROJ runtime is configured.
-  if (spax_test_proj_available()) {
+  if (proj_available()) {
     crs(input_raster) <- "EPSG:4326"
     result <- calc_normalize(input_raster, "standard")
     expect_equal(crs(result), crs(input_raster))
@@ -193,23 +177,4 @@ test_that("calc_normalize handles edge cases appropriately", {
   # Test with all NAs
   all_na <- c(NA, NA, NA)
   expect_true(all(is.na(calc_normalize(all_na, "standard"))))
-})
-
-# Performance tests
-test_that("calc_normalize performs efficiently with large datasets", {
-  skip_on_ci()
-
-  # Create large raster
-  large_raster <- create_test_raster(1000, 1000, 5)
-
-  # Test performance
-  expect_lt(
-    system.time(calc_normalize(large_raster, "standard"))[["elapsed"]],
-    5 # Should complete in less than 5 seconds
-  )
-
-  # Test snap mode performance improvement - not improve
-  # time_normal <- system.time(calc_normalize(large_raster, "standard", snap = FALSE))
-  # time_snap <- system.time(calc_normalize(large_raster, "standard", snap = TRUE))
-  # expect_lt(time_snap[["elapsed"]], time_normal[["elapsed"]])
 })

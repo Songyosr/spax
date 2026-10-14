@@ -38,6 +38,7 @@ test_that("Cornwall travel matrix matches the tables and the travel grid", {
   expect_identical(names(travel), cornwall_gp$practice)
   expect_true(terra::compareGeom(pop, travel, stopOnError = FALSE))
 
+  skip_if_no_proj()
   centroids <- sf::st_transform(sf::st_as_sf(
     sf::st_drop_geometry(cornwall_lsoa), coords = c("cent_x", "cent_y"),
     crs = 27700), 4326)

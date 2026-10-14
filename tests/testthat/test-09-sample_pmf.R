@@ -1,30 +1,12 @@
-# tests/testthat/test-02-sample_pmf.R
-
-# Initialize random seed for all tests in this file
-set.seed(42)
-
-# Helper function to create test data with proper seed handling
+# Fixed test PMF; draws inside each test use a test-local seed.
 create_test_pmf <- function(nrows = 5, ncols = 5, normalized = TRUE) {
-  set.seed(42) # Ensure consistent random values
   r <- terra::rast(nrows = nrows, ncols = ncols)
-  values <- runif(nrows * ncols)
+  values <- withr::with_seed(42, runif(nrows * ncols))
   if (normalized) {
     values <- values / sum(values)
   }
   terra::values(r) <- values
   return(r)
-}
-
-# Test setup function for common test data and seed initialization
-setup_test_data <- function() {
-  set.seed(42) # Reset seed for each test
-  pmf <- create_test_pmf()
-  list(
-    pmf = pmf,
-    pmf_norm = create_test_pmf(normalized = TRUE),
-    pmf_raw = create_test_pmf(normalized = FALSE),
-    pmf_single = create_test_pmf(nrows = 1, ncols = 1)
-  )
 }
 
 # 1. Basic Input Validation Tests --------------------------------------------
@@ -72,6 +54,7 @@ test_that("sample_pmf validates input types correctly", {
 # 2. PMF Input Validation Tests ---------------------------------------------
 
 test_that("sample_pmf handles different input formats correctly", {
+  local_test_seed(42)
   # Already normalized PMF
   pmf_norm <- create_test_pmf(normalized = TRUE)
   expect_no_error(sample_pmf(pmf_norm, n = 10))
@@ -94,6 +77,7 @@ test_that("sample_pmf handles different input formats correctly", {
 # 3. Sample Size Generation Tests ------------------------------------------
 
 test_that("sample_pmf generates correct number of samples", {
+  local_test_seed(42)
   pmf <- create_test_pmf()
 
   # Fixed size
@@ -121,6 +105,7 @@ test_that("sample_pmf generates correct number of samples", {
 # 4. Evolution Tests ------------------------------------------------------
 
 test_that("sample_pmf evolution works correctly", {
+  local_test_seed(42)
   pmf <- create_test_pmf()
   n <- 100
   iterations <- 5
@@ -157,6 +142,7 @@ test_that("sample_pmf evolution works correctly", {
 # 5. Spatial Distribution Tests -------------------------------------------
 
 test_that("sample_pmf maintains spatial distribution properties", {
+  local_test_seed(42)
   # Create PMF with clear spatial gradient
   r <- terra::rast(nrows = 10, ncols = 10)
   terra::values(r) <- seq(0.1, 1, length.out = 100)
@@ -195,6 +181,7 @@ test_that("sample_pmf provides reproducible results with seeds", {
 # 7. Edge Cases Tests ---------------------------------------------------
 
 test_that("sample_pmf handles edge cases appropriately", {
+  local_test_seed(42)
   # Single cell raster
   pmf_single <- create_test_pmf(nrows = 1, ncols = 1)
   expect_no_error(sample_pmf(pmf_single, n = 10))

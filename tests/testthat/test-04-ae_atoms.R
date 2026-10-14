@@ -1,7 +1,7 @@
 # SPAX-002: atom layer (.ae_*) over spax_field
 
 mk_fields <- function() {
-  set.seed(42)
+  local_test_seed(42)
   kern <- c(
     terra::rast(nrows = 4, ncols = 4, vals = runif(16)),
     terra::rast(nrows = 4, ncols = 4, vals = runif(16))
@@ -125,7 +125,7 @@ test_that(".ae_spread equals spread_weighted (recomposed verb)", {
 })
 
 test_that(".ae_spread matches spread_weighted at moderate size", {
-  set.seed(7)
+  local_test_seed(7)
   big <- c(
     terra::rast(nrows = 40, ncols = 40, vals = runif(1600)),
     terra::rast(nrows = 40, ncols = 40, vals = runif(1600)),
@@ -511,6 +511,7 @@ test_that(".ae_combine broadcasts a subset-axis vector over a product-axis raste
 })
 
 test_that(".ae_combine propagates NA from the raster operand (no lift mask)", {
+  local_test_seed(11)
   f <- mk_fields()
   kr <- c(
     terra::rast(nrows = 4, ncols = 4, vals = runif(16)),
