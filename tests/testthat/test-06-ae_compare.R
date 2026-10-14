@@ -1,7 +1,8 @@
 # SPAX-030: nested static-vs-feedback comparison. The ladder pairs the
-# ratio-feedback model with its static null (feedback_scale fixed at 1);
-# the legs have different theta contracts, so starts and bounds are given
-# per problem.
+# ratio-feedback model with its static null (feedback_scale fixed at 1).
+# The legs have different theta contracts, so starts and lower bounds are
+# per-problem lists; the shared upper bound names every parameter and each
+# leg reads only its own.
 
 .compare_ladder <- function() {
   ratio <- ae_ratio_problem()
@@ -16,8 +17,7 @@
                 static = c(sigma = 1.5, v0 = 20)),
     lower = list(ratio = c(sigma = 0.5, v0 = 1, feedback_scale = 1),
                  static = c(sigma = 0.5, v0 = 1)),
-    upper = list(ratio = c(sigma = 4, v0 = 100, feedback_scale = 3),
-                 static = c(sigma = 4, v0 = 100)),
+    upper = c(sigma = 4, v0 = 100, feedback_scale = 3),
     output = "flow",
     lambda = 0.7,
     tol = 1e-10,
