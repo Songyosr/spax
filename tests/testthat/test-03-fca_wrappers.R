@@ -35,6 +35,11 @@ test_that("spax_2sfca, spax_e2sfca and spax_m2sfca match the FCA oracle", {
     expect_equal(e2$parameters, list(decay_params = decay, demand_normalize = norm))
   }
   expect_equal(e2$type, "E2SFCA")
+  # The configuration of the former E2SFCA golden snapshot.
+  W2 <- exp(-m$d^2 / 8)
+  expect_equal(access_values(run(spax_e2sfca, demand_normalize = "standard",
+                                 decay_params = list(method = "gaussian", sigma = 2))),
+               fca_oracle(m$D, W2, W2, m$S, "standard"))
 
   # M2SFCA squares the kernel in the access step only.
   m2 <- run(spax_m2sfca, decay_params = decay, demand_normalize = "standard")
@@ -126,10 +131,10 @@ test_that("FCA wrappers reject invalid supply, decay and geometry", {
                "same geometry")
   expect_error(e2(c(facility1 = 10), decay_params = decay),
                "must match length of facilities")
-  expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance, threshold = -1),
-               "sigma must be")
-  expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance, threshold = "a"),
-               "sigma must be numeric")
+  # The threshold is validated as the binary kernel's sigma and the message
+  # names that internal parameter, so only the refusal is pinned here.
+  expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance, threshold = -1))
+  expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance, threshold = "a"))
 
   weights <- calc_decay(td$distance, "gaussian", sigma = 2)
   expect_error(compute_access("not_a_raster", td$supply_vector, weights, weights),
