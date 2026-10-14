@@ -1,17 +1,10 @@
+# SAE provider. Keep or retire is an open maintainer decision; every SAE-
+# specific check lives here so retiring SAE means deleting this file.
+
 .mk_sae_data <- function() {
-  demand <- terra::rast(nrows = 2, ncols = 2)
-  terra::values(demand) <- c(10, 20, 30, 40)
-
-  k1 <- terra::rast(nrows = 2, ncols = 2)
-  k2 <- terra::rast(nrows = 2, ncols = 2)
-  terra::values(k1) <- c(1, 2, 4, 5)
-  terra::values(k2) <- c(5, 4, 2, 1)
-  distance <- c(k1, k2)
-  names(distance) <- c("facility1", "facility2")
-  kernel <- calc_decay(distance, method = "gaussian", sigma = 2, snap = TRUE)
-
-  supply <- c(facility1 = 30, facility2 = 45)
-  list(demand = demand, distance = distance, kernel = kernel, supply = supply)
+  td <- ae_toy_inputs("2x2")
+  td$kernel <- calc_decay(td$distance, method = "gaussian", sigma = 2, snap = TRUE)
+  td
 }
 
 .manual_sae_state <- function(c, D, K, S, kappa, beta, eps) {
@@ -38,7 +31,7 @@
 test_that(".sae_state matches explicit compact matrix algebra", {
   td <- .mk_sae_data()
   plan <- .sae_compact_plan(td$demand, td$supply, td$kernel, kappa = 1 / 3)
-  c <- c(facility1 = 0.6, facility2 = 0.8)
+  c <- c(a = 0.6, b = 0.8)
   beta <- 20
   eps <- 1e-8
 
@@ -58,6 +51,9 @@ test_that(".sae_state matches explicit compact matrix algebra", {
   expect_equal(got$adequacy, expected$adequacy, tolerance = 1e-12)
   expect_equal(got$access, expected$access, tolerance = 1e-12)
   expect_equal(got$allocation, expected$allocation, tolerance = 1e-12)
+  # The smooth cap tends to 1 + log1p(exp(-beta)) / beta, not exactly 1.
+  expect_gt(.sae_soft_cap(100, beta = 1), 1)
+  expect_equal(.sae_soft_cap(100, beta = 1), 1 + log1p(exp(-1)))
 })
 
 test_that(".sae_jacobian_state matches finite differences at an interior state", {
@@ -66,18 +62,9 @@ test_that(".sae_jacobian_state matches finite differences at an interior state",
   c <- c(0.45, 0.65)
 
   analytic <- .sae_jacobian_state(c, plan = plan, beta = 20, eps = 1e-8)
-  check <- grad_check(
-    .sae_map,
-    x = c,
-    analytic_jac = analytic$jac_state,
-    plan = plan,
-    beta = 20,
-    eps = 1e-8,
-    tolerance = 1e-5
-  )
+  fd <- fd_jacobian_state(.sae_map, c, plan = plan, beta = 20, eps = 1e-8)
 
-  expect_true(check$passed)
-  expect_lte(check$max_abs, 1e-5)
+  expect_equal(analytic$jac_state, fd, tolerance = 1e-5, ignore_attr = TRUE)
 })
 
 test_that(".sae_jacobian_state supports damped-iteration stability diagnostics", {
@@ -98,7 +85,7 @@ test_that(".sae_jacobian_state supports damped-iteration stability diagnostics",
   expect_lt(spectral_radius(iteration_jac), 1)
 })
 
-test_that(".sae_compact_plan keeps the first slice scalar", {
+test_that("SAE keeps the first slice to one supply measure", {
   td <- .mk_sae_data()
   supply <- cbind(doctors = td$supply, nurses = td$supply)
 
@@ -106,4 +93,61 @@ test_that(".sae_compact_plan keeps the first slice scalar", {
     .sae_compact_plan(td$demand, supply, td$kernel, kappa = 1 / 3),
     "one supply measure"
   )
+  expect_error(.sae_problem(td$demand, supply, td$distance), "one supply measure")
+})
+
+test_that(".sae_problem binds and solves through the compact SAE map", {
+  td <- .mk_sae_data()
+  theta <- c(sigma = 2)
+  p <- .sae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, beta = 20, eps = 1e-8
+  )
+  step <- .bind_theta(p, theta)
+  plan <- .sae_compact_plan(td$demand, td$supply, td$kernel, kappa = 1 / 3)
+  x <- c(0.45, 0.65)
+
+  expect_s3_class(p, "ae_problem")
+  expect_s3_class(step, "ae_bound_step")
+  expect_equal(step$map(x), .sae_map(x, plan = plan, beta = 20, eps = 1e-8),
+               tolerance = 1e-12)
+  expect_equal(step$outputs(x)$utilization,
+               .sae_state(x, plan = plan, beta = 20, eps = 1e-8)$utilization,
+               tolerance = 1e-12)
+  expect_equal(step$jac_state(x)$jac_state,
+               .sae_jacobian_state(x, plan = plan, beta = 20, eps = 1e-8)$jac_state,
+               tolerance = 1e-12)
+
+  old <- solve_equilibrium(
+    map = .sae_map, x0 = c(1, 1), plan = plan, beta = 20, eps = 1e-8,
+    lambda = 0.7, tol = 1e-10, max_iter = 500, check = FALSE
+  )
+  new <- .solve_problem(p, theta = theta, lambda = 0.7, tol = 1e-10,
+                        max_iter = 500, check = FALSE)
+  expect_true(new$converged)
+  expect_equal(new$x_star, old$x_star, tolerance = 1e-10)
+  expect_equal(
+    new$utilization,
+    .sae_state(old$x_star, plan = plan, beta = 20, eps = 1e-8)$utilization,
+    tolerance = 1e-10
+  )
+
+  # Declared axes cover every default output; only access is a surface.
+  out <- .problem_outputs_at(p, theta, p$state$init)
+  expect_setequal(names(p$metadata$spec$output_axes), names(out))
+  expect_identical(.problem_available_surfaces(p, out), "access")
+  expect_true(all(out$access >= 0 & out$access <= 1 + 1e-9))
+  expect_equal(out$access, rowSums(out$allocation), tolerance = 1e-10)
+})
+
+test_that("SAE generated data are recovered through the NFXP runner", {
+  problem <- ae_toy_problem("sae", kappa = 1 / 3, beta = 20)
+  fit <- ae_recovery_fit(problem)
+
+  expect_s3_class(fit, "sae_problem_nfxp_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta, c(sigma = 2), tolerance = 1e-3)
+  expect_equal(fit$predicted, fit$observed, tolerance = 1e-4)
+  expect_lt(fit$spectral_radius, 1)
 })

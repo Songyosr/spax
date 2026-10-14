@@ -1,17 +1,10 @@
+# HAAE provider. Keep or retire is an open maintainer decision; every HAAE-
+# specific check lives here so retiring HAAE means deleting this file.
+
 .mk_haae_data <- function() {
-  demand <- terra::rast(nrows = 2, ncols = 2)
-  terra::values(demand) <- c(10, 20, 30, 40)
-
-  k1 <- terra::rast(nrows = 2, ncols = 2)
-  k2 <- terra::rast(nrows = 2, ncols = 2)
-  terra::values(k1) <- c(1, 2, 4, 5)
-  terra::values(k2) <- c(5, 4, 2, 1)
-  distance <- c(k1, k2)
-  names(distance) <- c("facility1", "facility2")
-  kernel <- calc_decay(distance, method = "gaussian", sigma = 2, snap = TRUE)
-
-  supply <- c(facility1 = 30, facility2 = 45)
-  list(demand = demand, distance = distance, kernel = kernel, supply = supply)
+  td <- ae_toy_inputs("2x2")
+  td$kernel <- calc_decay(td$distance, method = "gaussian", sigma = 2, snap = TRUE)
+  td
 }
 
 .manual_haae_state <- function(a, D, K, S, kappa, eps, a_min, a_max) {
@@ -34,7 +27,7 @@
 test_that(".haae_state matches explicit compact matrix algebra", {
   td <- .mk_haae_data()
   plan <- .haae_compact_plan(td$demand, td$supply, td$kernel, kappa = 1 / 3)
-  a <- c(facility1 = 0.6, facility2 = 1.2)
+  a <- c(a = 0.6, b = 1.2)
   eps <- 1e-8
 
   got <- .haae_state(a, plan = plan, eps = eps, a_min = 1e-6)
@@ -61,18 +54,9 @@ test_that(".haae_jacobian_state matches finite differences at an interior state"
   a <- c(0.7, 1.1)
 
   analytic <- .haae_jacobian_state(a, plan = plan, eps = 1e-8, a_min = 1e-6)
-  check <- grad_check(
-    .haae_map,
-    x = a,
-    analytic_jac = analytic$jac_state,
-    plan = plan,
-    eps = 1e-8,
-    a_min = 1e-6,
-    tolerance = 1e-5
-  )
+  fd <- fd_jacobian_state(.haae_map, a, plan = plan, eps = 1e-8, a_min = 1e-6)
 
-  expect_true(check$passed)
-  expect_lte(check$max_abs, 1e-5)
+  expect_equal(analytic$jac_state, fd, tolerance = 1e-5, ignore_attr = TRUE)
 })
 
 test_that(".haae_jacobian_state supports damped-iteration stability diagnostics", {
@@ -93,7 +77,7 @@ test_that(".haae_jacobian_state supports damped-iteration stability diagnostics"
   expect_lt(spectral_radius(iteration_jac), 1)
 })
 
-test_that(".haae_compact_plan keeps the first slice scalar", {
+test_that("HAAE keeps the first slice to one supply measure", {
   td <- .mk_haae_data()
   supply <- cbind(doctors = td$supply, nurses = td$supply)
 
@@ -101,4 +85,60 @@ test_that(".haae_compact_plan keeps the first slice scalar", {
     .haae_compact_plan(td$demand, supply, td$kernel, kappa = 1 / 3),
     "one supply measure"
   )
+  expect_error(.haae_problem(td$demand, supply, td$distance), "one supply measure")
+})
+
+test_that(".haae_problem binds theta onto the compact HAAE map", {
+  td <- .mk_haae_data()
+  theta <- c(sigma = 2)
+  p <- .haae_problem(
+    td$demand, td$supply, td$distance,
+    family = "gaussian", kappa = 1 / 3, eps = 1e-8, a_min = 1e-6
+  )
+  step <- .bind_theta(p, theta)
+  plan <- .haae_compact_plan(td$demand, td$supply, td$kernel, kappa = 1 / 3)
+  x <- c(0.7, 1.1)
+
+  expect_equal(step$map(x), .haae_map(x, plan = plan, eps = 1e-8, a_min = 1e-6),
+               tolerance = 1e-12)
+  expect_equal(step$outputs(x)$utilization,
+               .haae_state(x, plan = plan, eps = 1e-8, a_min = 1e-6)$utilization,
+               tolerance = 1e-12)
+  expect_equal(step$jac_state(x)$jac_state,
+               .haae_jacobian_state(x, plan = plan, eps = 1e-8,
+                                    a_min = 1e-6)$jac_state,
+               tolerance = 1e-12)
+
+  # Declared axes cover every default output; access and pooled are surfaces.
+  out <- .problem_outputs_at(p, theta, p$state$init)
+  expect_setequal(names(p$metadata$spec$output_axes), names(out))
+  expect_setequal(.problem_available_surfaces(p, out), c("access", "pooled"))
+  expect_equal(out$access, rowSums(out$allocation), tolerance = 1e-10)
+  expect_true(all(out$access >= 0 & out$access <= 1 + 1e-9))
+  # HAAE inherits kernel weights above one for power distances below one unit.
+  terra::values(td$distance) <- 0.5
+  h <- .haae_problem(td$demand, td$supply, td$distance, family = "power")
+  ho <- .problem_outputs_at(h, c(sigma = 1), h$state$init)
+  expect_true(all(ho$access > 1))
+  expect_true(all(ho$pooled > ho$access))
+})
+
+test_that("HAAE generated data are recovered through the NFXP runner", {
+  problem <- ae_toy_problem("haae", kappa = 1 / 3)
+  fit <- ae_recovery_fit(problem)
+
+  expect_s3_class(fit, "haae_problem_nfxp_fit")
+  expect_equal(fit$convergence, 0)
+  expect_lt(fit$loss, 1e-6)
+  expect_equal(fit$theta, c(sigma = 2), tolerance = 1e-3)
+  expect_equal(fit$predicted, fit$observed, tolerance = 1e-4)
+  expect_s3_class(summary(fit), "summary.ae_problem_nfxp_fit")
+  expect_s4_class(.fit_output_surface(fit, "pooled"), "SpatRaster")
+
+  # One suppressed allocation cell; sigma stays identified.
+  flows <- ae_recovery_fit(problem, output = "allocation", missing = 3)
+  expect_equal(flows$model, "haae")
+  expect_equal(unname(flows$theta_hat["sigma"]), 2, tolerance = 1e-3)
+  expect_lt(flows$loss, 1e-8)
+  expect_equal(flows$n_observed, 7L)
 })
