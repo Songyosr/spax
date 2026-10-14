@@ -5,6 +5,9 @@
 The changes below are available on `codex-assist-main`. They are not a new stable
 release; record the source commit when reproducing an analysis.
 
+* New vignette, "Reach and availability of GP care in Cornwall", fits the
+  static CLM to small area × practice registrations and splits access into
+  reach and availability.
 * **Breaking:** the Thailand Health Region 12 example data have been removed
   from the package, because their redistribution terms could not be fully
   confirmed. All examples and tests now use the open Cornwall GP data.

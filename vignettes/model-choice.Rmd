@@ -118,6 +118,10 @@ evaluated without fitting, while an eligible fit can be inspected without
 refitting. An outside option does not automatically represent unmet need, and
 Poisson fitting does not impose exact total matching.
 
+For a fit to real, openly licensed data, see [Reach and availability of GP
+care in Cornwall](cornwall-gp.html), which fits the same model to small area ×
+practice registrations and splits access into reach and availability.
+
 This tiny example is not an uncertainty demonstration. Continue to the
 [full allocation workflow](allocation-workflow.html) for the generated
 80-origin, 40-facility example with all 399 bootstrap attempts, at least 380
