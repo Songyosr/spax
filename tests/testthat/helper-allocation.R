@@ -9,6 +9,8 @@
 # files. Every read checks that the shared value is byte-identical to the value
 # first stored, so a block that modifies it (for example through an enclosed
 # environment) makes the next reader fail instead of leaking state.
+# A block must make its first call to a memoised fixture before installing any
+# mock: a value first computed under a mock would be stored and shared.
 .alloc_memo_store <- new.env(parent = emptyenv())
 
 alloc_memo <- function(key, code) {

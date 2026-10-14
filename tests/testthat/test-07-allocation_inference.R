@@ -102,7 +102,8 @@ test_that("underflow is not structural absence and a live floor suppresses inter
 
 test_that("co-location preserves aggregate support while distinguishing totals and flows", {
   f <- alloc_generated_case(colocated = TRUE)
-  info <- .allocation_inference(f$model, alloc_generated_fit(colocated = TRUE), .observation(f, f$y))
+  info <- .allocation_inference(f$model, alloc_generated_fit(colocated = TRUE),
+                                .observation(f, f$y))
   callback <- function(theta, z) {
     c(sigma = unname(theta[1]), v0 = unname(theta[2]),
       rho = sum(z$utilization) / sum(f$demand), A = sum(f$supply) / sum(f$demand))
@@ -124,8 +125,8 @@ test_that("co-location preserves aggregate support while distinguishing totals a
   expect_identical(.allocation_estimands(grouped, callback, transforms, fixed)$table$status[1:2],
                    rep("unsupported_local_direction", 2))
   # Origin-facility flows identify both directions.
-  flow_info <- .allocation_inference(f$model, alloc_generated_fit(colocated = TRUE, output = "flow"),
-                                     .observation(f, f$flow, "flow"))
+  flow_fit <- alloc_generated_fit(colocated = TRUE, output = "flow")
+  flow_info <- .allocation_inference(f$model, flow_fit, .observation(f, f$flow, "flow"))
   expect_equal(flow_info$diagnostics$rank, 2)
   expect_error(.allocation_estimands(info, function(theta, z) c(a = 1, a = 2)), "unique named")
   wrong <- q$gradient_log[4:1, , drop = FALSE]
@@ -167,7 +168,8 @@ test_that("paired scenario inference uses the difference gradient and one covari
     .observation(f, f$y, sampling = "independent_groups", groups = groups))
   expect_false(few$valid_regular_interval)
   expect_equal(few$diagnostics$independent_groups, 8)
-  expect_true(all(grepl("few_independent_groups", .allocation_estimands(few, callback)$table$status)))
+  few_q <- .allocation_estimands(few, callback)
+  expect_true(all(grepl("few_independent_groups", few_q$table$status)))
   one <- stats::setNames(rep("one", length(f$supply)), names(f$supply))
   one_info <- .allocation_inference(f$model, fit,
     .observation(f, f$y, sampling = "independent_groups", groups = one))
@@ -185,7 +187,9 @@ test_that("paired scenario inference uses the difference gradient and one covari
 
 test_that("grouped total covariances remain diagnostics without regular intervals", {
   f <- alloc_generated_case(); fit <- alloc_generated_fit()
-  callback <- function(theta, z) c(sigma = unname(theta[1]), rho = sum(z$utilization) / sum(f$demand))
+  callback <- function(theta, z) {
+    c(sigma = unname(theta[1]), rho = sum(z$utilization) / sum(f$demand))
+  }
   groups <- stats::setNames(names(f$supply), names(f$supply))
   observation <- .observation(f, f$y, sampling = "independent_groups", groups = groups)
   for (adjustment in c("HC3", "none")) {

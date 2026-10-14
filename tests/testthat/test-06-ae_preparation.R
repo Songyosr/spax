@@ -75,7 +75,8 @@ test_that("identity, shape, supply and metadata errors fail at preparation", {
   }
   wrong <- f$M; rownames(wrong)[1] <- "unknown"
   expect_error(prepare_allocation(f$D, f$S, wrong, missing_demand = "exclude"), "exactly match")
-  expect_error(prepare_allocation(f$D, f$S, t(f$M), facility_ids = c("b", "a")), "origin-by-facility")
+  expect_error(prepare_allocation(f$D, f$S, t(f$M), facility_ids = c("b", "a")),
+               "origin-by-facility")
   expect_error(prepare_allocation(f$D, f$S[-1], f$M), "supply must")
   for (bad in c(-1, NA, Inf)) {
     f$S[1] <- bad
@@ -100,7 +101,8 @@ test_that("checked CLM rejects invalid finite kernels and attractiveness transfo
   for (raw in list(list(supply = c(f1 = 2)), list(distance = matrix(1)), list(supply_cols = "x"))) {
     expect_error(do.call(.huff_problem, c(list(p), raw)), "cannot be combined")
   }
-  tiny <- prepare_allocation(c(o1 = 1), c(f1 = 2), matrix(1e-200, 1, 1, dimnames = list("o1", "f1")))
+  tiny <- prepare_allocation(c(o1 = 1), c(f1 = 2),
+                             matrix(1e-200, 1, 1, dimnames = list("o1", "f1")))
   expect_error(.bind_theta(clm_allocation(tiny, family = "power"), c(sigma = 2)),
                "kernel is invalid on finite")
   p <- prepare_allocation(c(o1 = 1), c(f1 = 1e200), matrix(1, 1, 1, dimnames = list("o1", "f1")))
@@ -144,7 +146,8 @@ test_that("spatial mapping is independent of registry order and validates both z
   f <- .prepared_fixture()
   template <- terra::rast(nrows = 2, ncols = 4, xmin = 20, xmax = 24, ymin = 0, ymax = 2)
   cells <- stats::setNames(c(7, 3, 8, 4, 2, 5), f$ids)
-  p <- .prepare_fixture(f, spatial = list(template = template, cell_index = cells[c(5, 1, 6, 2, 4, 3)]))
+  p <- .prepare_fixture(f, spatial = list(template = template,
+                                          cell_index = cells[c(5, 1, 6, 2, 4, 3)]))
   expect_s3_class(p$template, "ae_spatial_template")
   expect_identical(p$cell_index, unname(cells))
   cov <- .problem_coverage(clm_allocation(p, v0 = 5), c(sigma = 2), norm = 3)
@@ -164,7 +167,8 @@ test_that("spatial mapping is independent of registry order and validates both z
   wrong <- cells; names(wrong)[1] <- "other"
   expect_error(.prepare_fixture(f, spatial = list(template = template, cell_index = wrong)),
                "exactly match")
-  expect_error(.prepare_fixture(f, spatial = list(template = c(template, template), cell_index = cells)),
+  expect_error(.prepare_fixture(f, spatial = list(template = c(template, template),
+                                                  cell_index = cells)),
                "one-layer")
   expect_error(.prepare_fixture(f, spatial = list(template = template)), "template and cell_index")
 })
