@@ -107,9 +107,8 @@ test_that("calc_decay validates distance, method and sigma unless snapped", {
                calc_decay(d, "gaussian", sigma = 2))
   expect_no_error(calc_decay(d, "exponential", sigma = -1, snap = TRUE))
   expect_error(calc_decay(d, "triangular", snap = TRUE), "Invalid method")
-  # Classed numerics such as units objects are refused.
-  skip_if_not_installed("units")
-  expect_error(calc_decay(units::set_units(c(1, 2), "km"), "gaussian", sigma = 1),
+  # Classed numerics (units objects, for example) are refused.
+  expect_error(calc_decay(structure(c(1, 2), class = "km"), "gaussian", sigma = 1),
                "distance must be one of")
 })
 
