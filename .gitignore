@@ -14,6 +14,7 @@ junk/
 # data-raw is local except tracked, reproducible build scripts
 data-raw/*
 !data-raw/cornwall_gp.R
+!data-raw/precompute-vignette-bootstrap.R
 tests/.DS_Store
 
 # Local Obsidian / LLM wiki vault

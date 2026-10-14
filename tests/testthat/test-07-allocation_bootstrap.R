@@ -540,3 +540,38 @@ test_that("checkpoint write failures stop instead of silently extending the run"
   expect_true(result$attempted <= 1L)
   expect_true(any(grepl("checkpoint", result$reasons)))
 })
+
+test_that("the bootstrap engine runs end to end and withholds intervals when incomplete", {
+  # The allocation-workflow vignette loads a stored 399-attempt result, so this
+  # test keeps the real engine (fits, multistart, diagnostics) executed in checks.
+  i <- seq_len(30)
+  j <- seq_len(10)
+  travel <- sqrt(outer(seq(2, 58, length.out = 30), seq(4, 56, length.out = 10), "-")^2 +
+    outer(8 * sin(i * .73), 7 * sin(j * 1.31), "-")^2) + 2
+  dimnames(travel) <- list(paste0("o", i), paste0("f", j))
+  demand <- setNames(80 + 35 * (1 + sin(i * .23)), rownames(travel))
+  supply <- setNames(rep(c(5, 7, 6, 8, 9), 2), colnames(travel))
+  score <- exp(-travel^2 / (2 * 12^2)) * rep(supply, each = length(demand))
+  probability <- score / (rowSums(score) + 45)
+  set.seed(2490001)
+  observed <- setNames(rpois(10, colSums(probability * demand)), names(supply))
+  model <- clm_allocation(prepare_allocation(demand, supply, travel),
+                          family = "gaussian", fit_v0 = TRUE)
+  starts <- rbind(near = c(sigma = 10, v0 = 40), far = c(sigma = 20, v0 = 20))
+  fit <- fit_allocation(model, observed, starts,
+    lower = c(sigma = 2, v0 = 1), upper = c(sigma = 60, v0 = 500),
+    output = "utilization", loss = "poisson", gradient = TRUE,
+    control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+  observation <- list(event = "allocated service requests",
+    period = "one_reference_period", sampling = "independent_facilities")
+
+  boot <- .run_allocation_bootstrap(model, fit, observation, seed = 11L, attempts = 3L)
+
+  expect_s3_class(boot, "ae_allocation_bootstrap")
+  expect_equal(boot$planned, 399L)
+  expect_equal(boot$attempted, 3L)
+  expect_identical(boot$status, "incomplete")
+  expect_true(all(is.na(boot$intervals$lower)))
+  expect_true(all(is.na(boot$intervals$upper)))
+  expect_gt(boot$successful, 0L)
+})

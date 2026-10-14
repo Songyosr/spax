@@ -18,11 +18,12 @@ standard R methods used below. An FCA accessibility index and CLM contact
 probability retain their different meanings.
 
 The first section is a small fit and prediction example. The second section
-executes the complete 399-attempt facility bootstrap, including scenario
-evaluation, tables, plots and a fresh installed R process. It is intentionally
-more expensive and needs no network connection. Allow it to finish before
-starting another resource-intensive validation; shortening the attempt count
-would not demonstrate the supported interval procedure.
+shows the complete 399-attempt facility bootstrap, including scenario
+evaluation, tables, plots and a fresh installed R process. The 399-attempt run
+takes about three minutes, so it is precomputed when the package is built (see
+"Precomputed bootstrap result" below); every other step is executed live. The
+attempt count is never shortened: a shorter run would not demonstrate the
+supported interval procedure.
 
 This example allocates mutually exclusive service requests to facilities or an
 outside category during one reference period. Demand is request opportunities,
@@ -213,7 +214,7 @@ Prepare a supply-only scenario that increases the second facility's capacity by
 parameters. This pairs the contrast while allowing attraction, allocation and
 loads to respond to supply. It does not estimate a causal intervention effect.
 
-```{r paired-bootstrap}
+```{r paired-bootstrap-inputs}
 boot_scenario_supply <- boot_supply
 boot_scenario_supply["facility2"] <- 1.2 * boot_scenario_supply["facility2"]
 boot_scenario_inputs <- prepare_allocation(boot_demand, boot_scenario_supply,
@@ -222,8 +223,44 @@ boot_scenario <- clm_allocation(boot_scenario_inputs, family = "gaussian",
   fit_v0 = TRUE)
 observation <- list(event = "allocated service requests",
   period = "one_reference_period", sampling = "independent_facilities")
+rebuild_boot <- identical(Sys.getenv("SPAX_REBUILD_VIGNETTE_BOOTSTRAP"), "true")
+```
+
+```{r paired-bootstrap, eval = rebuild_boot}
 boot <- bootstrap_allocation(boot_model, boot_fit, observation,
   scenario = boot_scenario, seed = 20260930)
+```
+
+### Precomputed bootstrap result
+
+The chunk above is the exact call, but it is not run while this vignette is
+built, because its 399 attempts take about three minutes. Its unmodified result
+is stored in `allocation-bootstrap.rds`, which the package maintainer
+regenerates by rendering this vignette with the environment variable
+`SPAX_REBUILD_VIGNETTE_BOOTSTRAP=true`; the same chunk then runs live and saves
+its result. The file is the complete 399-attempt object: nothing is subsampled
+or summarized. To reproduce it, run the chunk above yourself. The checks below
+confirm that the stored result matches the inputs and fit computed live in this
+vignette, that all 399 attempts were made, and that the package version matches.
+
+```{r paired-bootstrap-load}
+boot_file <- "allocation-bootstrap.rds"
+if (rebuild_boot) {
+  attr(boot, "spax_version") <- as.character(utils::packageVersion("spax"))
+  saveRDS(boot, boot_file, compress = "xz")
+}
+boot <- readRDS(boot_file)
+stopifnot(inherits(boot, "ae_allocation_bootstrap"),
+  boot$seed == 20260930L, boot$planned == 399L, boot$attempted == 399L,
+  identical(boot$facility_ids, names(boot_supply)),
+  identical(boot$observation, observation),
+  isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6)))
+c(status = boot$status, attempted = boot$attempted, successful = boot$successful,
+  built_with_spax = attr(boot, "spax_version"),
+  running_spax = as.character(utils::packageVersion("spax")))
+```
+
+```{r paired-bootstrap-results}
 summary(boot)
 as.data.frame(boot)
 head(as.data.frame(boot, type = "draws"))

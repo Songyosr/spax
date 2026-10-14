@@ -5,6 +5,13 @@
 The changes below are available on `codex-assist-main`. They are not a new stable
 release; record the source commit when reproducing an analysis.
 
+* The allocation-workflow vignette now loads its full 399-attempt bootstrap
+  result from `vignettes/allocation-bootstrap.rds` instead of recomputing it,
+  cutting the vignette rebuild from about 200 s to under 30 s. The printed call,
+  seed and every reported number are unchanged; the vignette stops if the
+  stored result does not match the live fit. Regenerate it with
+  `data-raw/precompute-vignette-bootstrap.R` whenever bootstrap or fitting code
+  changes. A test now runs the real bootstrap engine for three attempts.
 * New open example data for the 55 GP practices of NHS Cornwall and Isles of
   Scilly: `cornwall_gp`, `cornwall_lsoa`, `cornwall_flows`, `cornwall_travel`,
   and the `cornwall_pop.tif` and `cornwall_gp_travel.tif` grids read with
