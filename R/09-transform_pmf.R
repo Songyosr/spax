@@ -49,8 +49,7 @@
 #'   }
 #'
 #' @examples
-#' \dontrun{
-#' pop <- terra::rast(u5pd)
+#' pop <- read_spax_example("cornwall_pop.tif")
 #'
 #' # Basic PMF
 #' pmf <- transform_pmf(pop)
@@ -58,7 +57,6 @@
 #' # Include total for later reuse
 #' result <- transform_pmf(pop, return_total = TRUE)
 #' result$total
-#' }
 #'
 #' @export
 transform_pmf <- function(x, value_col = NULL, template = NULL,

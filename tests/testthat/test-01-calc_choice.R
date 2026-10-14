@@ -82,16 +82,17 @@ test_that("calc_choice validates inputs correctly", {
 test_that("calc_choice handles real-world data correctly", {
   skip_if_not_installed("terra")
 
-  # Convert isochrones to decay weights first
-  weights <- read_spax_example("hos_iscr.tif") |>
-    calc_decay(method = "gaussian", sigma = 30)
-  doctor_attr <- hc12_hos$s_doc |> sf::st_drop_geometry()
+  # Convert travel times to decay weights first
+  weights <- read_spax_example("cornwall_gp_travel.tif") |>
+    calc_decay(method = "gaussian", sigma = 10)
+  gp_attr <- cornwall_gp$gp_fte_extg
 
-  result <- calc_choice(weights, attractiveness = doctor_attr)
+  result <- calc_choice(weights, attractiveness = gp_attr)
 
   # Basic structure tests
   expect_s4_class(result, "SpatRaster")
-  expect_equal(terra::nlyr(result), length(doctor_attr))
+  expect_equal(terra::nlyr(result), length(gp_attr))
+  expect_identical(names(result), cornwall_gp$practice)
 
   # Probability sum test
   sum_layer <- terra::app(result, sum, na.rm = TRUE)

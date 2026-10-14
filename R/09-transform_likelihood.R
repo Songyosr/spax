@@ -40,17 +40,9 @@
 #' @return SpatRaster of likelihood values
 #'
 #' @examples
-#' \dontrun{
 #' # From raster input
-#' pop <- rast(u5pd)
+#' pop <- read_spax_example("cornwall_pop.tif")
 #' lik1 <- transform_likelihood(pop)
-#'
-#' # From vector input
-#' lik2 <- transform_likelihood(
-#'   case_spatial,
-#'   value_col = "cases",
-#'   template = pop
-#' )
 #'
 #' # With custom reference
 #' lik3 <- transform_likelihood(
@@ -58,7 +50,6 @@
 #'   method = "custom",
 #'   ref_value = 100
 #' )
-#' }
 #' @export
 transform_likelihood <- function(x, value_col = NULL, template = NULL,
                                  method = "mean", ref_value = NULL,

@@ -23,7 +23,8 @@ a filename, loads that specific dataset.
 # List available datasets
 read_spax_example()
 
-# Load a specific dataset
-hos_iscr <- read_spax_example("hos_iscr.tif")
+# Load a specific dataset: travel time to each Cornwall GP practice
+travel <- read_spax_example("cornwall_gp_travel.tif")
+names(travel)[1:3]
 
 }

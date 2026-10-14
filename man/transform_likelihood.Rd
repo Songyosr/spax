@@ -46,17 +46,9 @@ The likelihood surface shows where values are higher or lower than expected:
 - Values < 1 indicate lower than expected
 }
 \examples{
-\dontrun{
 # From raster input
-pop <- rast(u5pd)
+pop <- read_spax_example("cornwall_pop.tif")
 lik1 <- transform_likelihood(pop)
-
-# From vector input
-lik2 <- transform_likelihood(
-  case_spatial,
-  value_col = "cases",
-  template = pop
-)
 
 # With custom reference
 lik3 <- transform_likelihood(
@@ -64,5 +56,4 @@ lik3 <- transform_likelihood(
   method = "custom",
   ref_value = 100
 )
-}
 }
