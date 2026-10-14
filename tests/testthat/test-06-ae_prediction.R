@@ -62,26 +62,30 @@ test_that("requested axes and demand align independently without affecting saved
   expect_error(predict_allocation(source, M, demand = c(1, Inf, 2)), "demand")
   expect_error(predict_allocation(source, M, demand = c(wrong = 1, new1 = 2, new7 = 3)),
                "exactly match")
-  expect_error(predict_allocation(source, M, outputs = "utilization"), "unsupported prediction outputs")
+  expect_error(predict_allocation(source, M, outputs = "utilization"),
+               "unsupported prediction outputs")
 })
 
 test_that("unknown travel, known absence and zero denominators remain distinct", {
-  source <- alloc_prediction_sources()[["gaussian fixed"]]$solved
   M <- rbind(unknown = c(1, NA, Inf), absent = c(Inf, Inf, Inf), known = c(1, 2, 3))
   colnames(M) <- c("b", "a", "c")
   out <- c("rho", "outside_share", "A", "abar", "allocation", "flow")
-  x <- predict_allocation(source, M, demand = c(0, NA, 0), outputs = out)
-  expect_identical(x$validity$status, c("unknown_travel", "known_absence", "valid"))
-  expect_identical(x$validity$probability_valid, c(FALSE, TRUE, TRUE))
-  expect_identical(x$validity$unknown_travel, c(TRUE, FALSE, FALSE))
-  expect_false(any(x$validity$legacy_kernel_imputed))
-  expect_true(is.na(x$outputs$rho[1]))
-  expect_true(all(is.na(x$outputs$allocation[1, ])))
-  expect_true(all(is.na(x$outputs$flow[1:2, ])))
-  expect_true(all(x$outputs$flow[3, ] == 0))
-  expect_equal(unname(x$outputs$rho[2]), 0)
-  expect_equal(unname(x$outputs$outside_share[2]), 1)
-  expect_true(is.na(x$outputs$abar[2]))
+  # Nonfinite travel never reaches any kernel, including the power kernel.
+  for (family in c("gaussian", "exponential", "power")) {
+    source <- alloc_prediction_sources()[[paste(family, "fixed")]]$solved
+    x <- predict_allocation(source, M, demand = c(0, NA, 0), outputs = out)
+    expect_identical(x$validity[c("status", "probability_valid", "unknown_travel")],
+      data.frame(status = c("unknown_travel", "known_absence", "valid"),
+                 probability_valid = c(FALSE, TRUE, TRUE),
+                 unknown_travel = c(TRUE, FALSE, FALSE), row.names = rownames(M)),
+      info = family)
+    expect_false(any(x$validity$legacy_kernel_imputed), info = family)
+    expect_equal(unname(c(x$outputs$rho[1:2], x$outputs$outside_share[2], x$outputs$abar[2])),
+                 c(NA, 0, 1, NA), info = family)
+    expect_true(all(is.na(x$outputs$allocation[1, ])) && all(is.na(x$outputs$flow[1:2, ])) &&
+                  all(x$outputs$flow[3, ] == 0), info = family)
+  }
+  source <- alloc_prediction_sources()[["gaussian fixed"]]$solved
   # Explicit legacy_zero imputation on a checked source only omits the unknown edge.
   imputed <- predict_allocation(source, M, demand = c(0, 1, 2), outputs = out,
                                 missing_travel = "legacy_zero")
@@ -108,16 +112,18 @@ test_that("unknown travel, known absence and zero denominators remain distinct",
   }
   power <- alloc_prediction_sources()[["power fixed"]]$solved
   expect_error(predict_allocation(power, zero), "strictly positive")
-  expect_error(predict_allocation(power, zero, missing_travel = "legacy_zero"), "strictly positive")
+  expect_error(predict_allocation(power, zero, missing_travel = "legacy_zero"),
+               "strictly positive")
   one <- matrix(1, 1, 1, dimnames = list("old", "f"))
   strict <- .solve_problem(clm_allocation(prepare_allocation(c(old = 1), c(f = 1), one),
                                           family = "power", v0 = 1), c(sigma = 2))
   expect_error(predict_allocation(strict, one * 1e-200), "kernel is invalid on finite")
-  expect_error(predict_allocation(strict, one * -Inf, missing_travel = "legacy_zero"), "nonnegative")
+  expect_error(predict_allocation(strict, one * -Inf, missing_travel = "legacy_zero"),
+               "nonnegative")
   # A checked power source keeps +Inf as known absence even at sigma = 0.
   absent <- matrix(Inf, 1, 1, dimnames = list("new", "f"))
-  numeric_source <- .solve_problem(clm_allocation(prepare_allocation(c(new = 1), c(f = 1), absent),
-                                                  family = "power", v0 = 2), c(sigma = 0))
+  numeric_source <- .solve_problem(clm_allocation(
+    prepare_allocation(c(new = 1), c(f = 1), absent), family = "power", v0 = 2), c(sigma = 0))
   predicted <- predict_allocation(numeric_source, absent, outputs = c("rho", "outside_share"))
   expect_equal(unname(predicted$outputs$rho), 0)
   expect_equal(unname(predicted$outputs$outside_share), 1)
@@ -136,16 +142,25 @@ test_that("scenario snapshots remain coherent and edited records are rejected", 
   expect_equal(unname(changed$outputs$A), ref$A)
   expect_false(isTRUE(all.equal(changed$outputs$rho, base$outputs$rho)))
   expect_identical(solved$prediction_snapshot$theta, fit$theta)
-  # Redundant small records must agree with the snapshot.
-  bad <- fit; bad$theta[1] <- bad$theta[1] * 2
-  expect_error(predict_allocation(bad, case$distance), "conflicts")
-  bad <- fit; bad$coverage_meta$facility_ids <- rev(bad$coverage_meta$facility_ids)
-  expect_error(predict_allocation(bad, case$distance), "conflicts")
+  # Each redundant small record must agree with the snapshot on its own.
+  bump <- function(v) { v[1] <- v[1] * 2 + 1; v }
+  tampers <- list(
+    list(fit, "theta", bump), list(fit, "theta_hat", bump),
+    list(fit, c("outputs", "utilization"), bump),
+    list(fit, c("coverage_meta", "supply"), bump),
+    list(fit, c("coverage_meta", "facility_ids"), rev),
+    list(solved, "utilization", bump),
+    list(solved, c("evaluated_clm", "spec", "v0"), bump),
+    list(solved, c("evaluated_clm", "theta"), bump),
+    list(solved, c("evaluated_clm", "facility_ids"), rev),
+    list(solved, c("evaluated_clm", "supply"), bump))
+  for (tamper in tampers) {
+    bad <- tamper[[1]]
+    bad[[tamper[[2]]]] <- tamper[[3]](bad[[tamper[[2]]]])
+    expect_error(predict_allocation(bad, case$distance), "conflicts",
+                 info = paste(tamper[[2]], collapse = "$"))
+  }
   bad <- fit; bad$prediction_snapshot <- solved$prediction_snapshot
-  expect_error(predict_allocation(bad, case$distance), "conflicts")
-  bad <- solved; bad$utilization[1] <- 99
-  expect_error(predict_allocation(bad, case$distance), "conflicts")
-  bad <- solved; bad$evaluated_clm$spec$v0 <- 99
   expect_error(predict_allocation(bad, case$distance), "conflicts")
   # Each snapshot field is validated on its own.
   edits <- list(
@@ -182,7 +197,8 @@ test_that("vector requests do not solve load data or materialize matrix outputs"
   entry <- alloc_prediction_sources()[["gaussian fixed"]]
   testthat::local_mocked_bindings(
     .solve_problem = function(...) stop("unexpected solve"),
-    .fit_problem_nfxp = function(...) stop("unexpected fit"))
+    .fit_problem_nfxp = function(...) stop("unexpected fit"),
+    .clm_prediction_flow = function(...) stop("unexpected flow"))
   testthat::local_mocked_bindings(values = function(...) stop("unexpected raster read"),
     extract = function(...) stop("unexpected raster extraction"), .package = "terra")
   x <- predict_allocation(entry$solved, entry$case$distance)
@@ -217,14 +233,16 @@ test_that("normalization order preserves finite counts and capacity at extreme s
 
   # When the final capacity itself cannot fit in a double, probability remains valid.
   source <- .solve_problem(system(1e-200, 1e200, v0 = 1), c(sigma = 1))
-  probability <- predict_allocation(source, M, demand = 10, outputs = c("rho", "allocation", "flow"))
+  probability <- predict_allocation(source, M, demand = 10,
+                                    outputs = c("rho", "allocation", "flow"))
   expect_true(probability$validity$probability_valid)
   expect_false(probability$validity$capacity_valid)
   expect_true(probability$validity$capacity_overflow)
   expect_identical(probability$validity$status, "capacity_numerical_overflow")
   expect_true(all(is.finite(probability$outputs$allocation)))
   expect_true(all(is.finite(probability$outputs$flow)))
-  capacity <- predict_allocation(source, M, outputs = c("A", "abar", "A_supported", "abar_supported"))
+  capacity <- predict_allocation(source, M,
+                                 outputs = c("A", "abar", "A_supported", "abar_supported"))
   expect_true(all(is.na(unlist(capacity$outputs))))
 
   # Multiplying P*S first would underflow, while P*(S/U) is representable.
