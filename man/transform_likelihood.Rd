@@ -50,6 +50,14 @@ The likelihood surface shows where values are higher or lower than expected:
 pop <- read_spax_example("cornwall_pop.tif")
 lik1 <- transform_likelihood(pop)
 
+# From vector input: residents aged 65+ by small area, on the same grid
+areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+lik2 <- transform_likelihood(
+  areas,
+  value_col = "pop_65p",
+  template = pop
+)
+
 # With custom reference
 lik3 <- transform_likelihood(
   pop,
