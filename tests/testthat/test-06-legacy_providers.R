@@ -190,6 +190,8 @@ test_that("legacy raster sources impute unknown travel and invalid kernels only 
   power <- .solve_problem(.huff_problem(d, f$supply, travel, family = "power"), c(sigma = 2))
   expect_error(predict_allocation(power, zeros), "strictly positive")
   guarded <- predict_allocation(power, zeros, missing_travel = "legacy_zero")
+  # Current behaviour; maintainer decision pending (test audit 2026-10-14).
+  # The guard applies because calc_decay(0, "power") returns Inf.
   expect_true(guarded$validity$legacy_kernel_imputed[1])
   # A legacy source zeroes nonfinite attractiveness; prediction imputes it only on request.
   overflow <- .solve_problem(.huff_problem(d, c(b = 1e200, a = 4, c = 2), travel, beta = 2,
