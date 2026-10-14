@@ -6,9 +6,9 @@
 
 # Memoised fixtures ------------------------------------------------------------
 # Expensive fits are computed once per test run and shared across blocks and
-# files. Every read checks that the shared value is byte-identical to the value
-# first stored, so a block that modifies it (for example through an enclosed
-# environment) makes the next reader fail instead of leaking state.
+# files. Every read checks that the shared value still equals a copy of the
+# value first stored, so a block that modifies it (for example through an
+# enclosed environment) makes the next reader fail instead of leaking state.
 # A block must make its first call to a memoised fixture before installing any
 # mock: a value first computed under a mock would be stored and shared.
 .alloc_memo_store <- new.env(parent = emptyenv())
@@ -19,7 +19,10 @@ alloc_memo <- function(key, code) {
     value <- code
     entry <- list(value = value, bytes = serialize(value, NULL))
     assign(key, entry, envir = .alloc_memo_store)
-  } else if (!identical(serialize(entry$value, NULL), entry$bytes)) {
+  } else if (!isTRUE(all.equal(entry$value, unserialize(entry$bytes)))) {
+    # all.equal() rather than raw bytes: R may byte-compile a stored function
+    # in place when it runs (e.g. with kept package source), which changes the
+    # serialized bytes but not the fixture. It still compares environments.
     stop("shared allocation fixture '", key, "' was modified after it was stored")
   }
   entry$value
