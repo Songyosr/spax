@@ -23,7 +23,7 @@ test_that("sample_pmf validates its inputs", {
   expect_error(sample_pmf(pmf, n = 10, method = "invalid"), "Unknown method string")
   expect_error(sample_pmf(toy_rast(0, 5, 5), n = 10), "Sum of all values")
   expect_error(sample_pmf(toy_rast(NA_real_, 5, 5), n = 10), "only NA values")
-  for (n in list(-1, 2.5, NA_real_)) {
+  for (n in list(-1, 2.5, NA_real_, Inf, c(1, 2), TRUE)) {
     expect_error(sample_pmf(pmf, n = n), "n must be a non-negative integer")
   }
 

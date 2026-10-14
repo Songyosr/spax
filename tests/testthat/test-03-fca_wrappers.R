@@ -131,7 +131,7 @@ test_that("FCA wrappers reject invalid supply, decay and geometry", {
                "same geometry")
   expect_error(e2(c(facility1 = 10), decay_params = decay),
                "must match length of facilities")
-  for (threshold in list(-1, "a", c(1, 2), Inf)) {
+  for (threshold in list(-1, "a", c(1, 2), Inf, NA_real_, NULL)) {
     expect_error(spax_2sfca(td$demand, td$supply_vector, td$distance,
                             threshold = threshold),
                  "threshold must be a single positive number")
@@ -172,6 +172,9 @@ test_that("spax objects print, summarise and plot their accessibility", {
   expect_output(print(s), "Median")
   # Custom probabilities are labelled by percentage.
   expect_output(print(summary(result, quantiles = c(0.1, 0.9))), "10%:(.|\n)*90%:")
+  # Labels follow stats::quantile().
+  expect_equal(names(summary(result, quantiles = 1 / 3)$accessibility$nurses$quantiles),
+               names(stats::quantile(0, 1 / 3)))
 
   withr::local_pdf(NULL)
   expect_no_error(plot(result))

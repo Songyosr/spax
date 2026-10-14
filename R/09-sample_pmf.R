@@ -232,7 +232,8 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                                   method = "poisson", iterations = 1, ...) {
   # Fixed sample size takes precedence
   if (!is.null(n)) {
-    if (!is.numeric(n) || anyNA(n) || any(n < 0) || any(n != round(n))) {
+    if (!is.numeric(n) || length(n) != 1 || !is.finite(n) || n < 0 ||
+        n != round(n)) {
       stop("n must be a non-negative integer")
     }
     return(rep(n, iterations))

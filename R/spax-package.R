@@ -116,8 +116,11 @@
 #' @importFrom ggplot2 scale_color_viridis_d scale_fill_viridis_d scale_size_continuous
 #' @importFrom ggplot2 labs mean_cl_normal theme element_text theme_minimal
 #' @importFrom tibble tibble
+#' @importFrom sf st_drop_geometry
 ## usethis namespace: end
 NULL
+# sf is imported so that loading spax registers sf's methods for the sf
+# example datasets (cornwall_gp, cornwall_lsoa).
 
 # Non-standard-evaluation column names used in data.frame pipelines
 # (e.g. gather_demand). Declared to satisfy R CMD check's "no visible

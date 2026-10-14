@@ -78,10 +78,11 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
 #' @param x SpatVector containing observations
 #' @param value_col Character name of column containing values
 #' @param prior Optional SpatRaster prior PMF. If NULL, a uniform prior over
-#'   the template's non-missing cells is used.
+#'   the non-missing cells of the template's first layer is used.
 #' @param template SpatRaster template (required if prior = NULL)
 #' @param density Logical; if TRUE return density surface
-#' @param standardize Logical; if TRUE standardize likelihood values
+#' @param standardize Must be FALSE. Standardized (z-score) likelihood values
+#'   include negative values, so they cannot form a posterior PMF.
 #' @return SpatRaster containing posterior PMF or density surface
 #'
 #' @examples
@@ -110,6 +111,10 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
   if (is.null(prior) && is.null(template)) {
     stop("Either prior or template must be provided")
   }
+  if (isTRUE(standardize)) {
+    stop("standardize = TRUE gives negative likelihood values, which cannot ",
+         "form a posterior PMF")
+  }
 
   # Uniform prior over the template's cells (cells missing in the template
   # stay missing) when none is given
@@ -117,8 +122,10 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
     .chck_class(template, "SpatRaster", "template")
     prior <- terra::init(template[[1]], 1)
     if (terra::hasValues(template)) prior <- terra::mask(prior, template[[1]])
+    if (!isTRUE(terra::global(prior, "sum", na.rm = TRUE)[[1]] > 0)) {
+      stop("template has no non-missing cells")
+    }
     prior <- transform_pmf(prior, snap = TRUE)
-    names(prior) <- "prior"
   } else {
     .chck_raster_input(prior)
     .chck_pmf_validity(prior)

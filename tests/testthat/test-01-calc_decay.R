@@ -78,6 +78,8 @@ test_that("calc_decay validates distance, method and sigma unless snapped", {
   expect_error(calc_decay("a", "gaussian", sigma = 1), "distance must be one of")
   expect_error(calc_decay(matrix("a", 2, 2), "gaussian", sigma = 1),
                "distance must be one of")
+  expect_error(calc_decay(matrix(TRUE, 2, 2), "gaussian", sigma = 1),
+               "distance must be one of")
   # Integer distances are numeric.
   expect_equal(calc_decay(1:3, "gaussian", sigma = 2),
                calc_decay(c(1, 2, 3), "gaussian", sigma = 2))
@@ -94,6 +96,10 @@ test_that("calc_decay validates distance, method and sigma unless snapped", {
                calc_decay(d, "gaussian", sigma = 2))
   expect_no_error(calc_decay(d, "exponential", sigma = -1, snap = TRUE))
   expect_error(calc_decay(d, "triangular", snap = TRUE), "Invalid method")
+  # Classed numerics such as units objects are refused.
+  skip_if_not_installed("units")
+  expect_error(calc_decay(units::set_units(c(1, 2), "km"), "gaussian", sigma = 1),
+               "distance must be one of")
 })
 
 test_that("a raster sigma gives each cell its own catchment", {

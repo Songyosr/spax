@@ -95,7 +95,7 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
       mean = stats$mean,
       sd = stats$sd,
       quantiles = stats::setNames(as.numeric(quants[1, ]),
-                                  paste0(100 * quantiles, "%")),
+                                  names(stats::quantile(0, quantiles))),
       coverage = list(
         cells_total = n_cells,
         cells_covered = n_covered,

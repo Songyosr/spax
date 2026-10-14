@@ -172,6 +172,12 @@ test_that("rasterize_demand updates a prior with observed counts", {
                on_cells(f$cells[1:2], c(2, 5) / 7))
 
   expect_error(rasterize_demand(f$points, "cases"), "Either prior or template")
+  expect_error(rasterize_demand(f$points, "cases", template = f$template,
+                                standardize = TRUE), "negative likelihood")
+  empty <- f$template
+  terra::values(empty) <- NA_real_
+  expect_error(rasterize_demand(f$points, "cases", template = empty),
+               "no non-missing cells")
   expect_error(rasterize_demand(f$points, "missing", prior = prior), "not found")
   expect_error(rasterize_demand(f$points, "cases", prior = f$template),
                "PMF must sum to 1")
