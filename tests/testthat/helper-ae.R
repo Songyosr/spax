@@ -70,12 +70,12 @@ ae_identity_inputs <- function(n = 5) {
 # A custom provider whose map returns theta, so the fixed point is x* = theta
 # and every fitted value is known exactly. `outputs(theta)` adds outputs;
 # `step` adds or replaces bound-step entries.
-ae_identity_problem <- function(names = c("alpha", "beta"),
-                                facility_ids = c("facility1", "facility2")[seq_along(names)],
+ae_identity_problem <- function(params = c("alpha", "beta"),
+                                facility_ids = paste0("facility", seq_along(params)),
                                 outputs = function(theta) list(), step = list(),
                                 substrate = list(), spec = list()) {
-  n <- length(names)
-  contract <- list(names = names, lower = rep(0, n), upper = rep(10, n))
+  n <- length(params)
+  contract <- list(names = params, lower = rep(0, n), upper = rep(10, n))
   .new_problem(
     model = "toy",
     substrate = c(list(facility_ids = facility_ids), substrate),
