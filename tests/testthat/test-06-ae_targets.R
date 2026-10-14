@@ -12,6 +12,27 @@
        upper = c(sigma = 5, v0 = 30), rows = c(3L, 1L, 2L), cols = c(2L, 3L, 1L))
 }
 
+# The saved alignment records which input axes were named and the two
+# permutations: canonical_to_input reads the input in canonical order and
+# input_to_canonical maps it back.
+expect_alignment <- function(bound, input, named) {
+  a <- bound$alignment
+  expect_identical(a$named, named)
+  expect_identical(
+    unname(input[a$canonical_to_input[[1]], a$canonical_to_input[[2]], drop = FALSE]),
+    unname(bound$observed)
+  )
+  expect_identical(
+    unname(bound$observed[a$input_to_canonical[[1]], a$input_to_canonical[[2]],
+                          drop = FALSE]),
+    unname(input)
+  )
+  for (k in 1:2) {
+    expect_identical(a$input_to_canonical[[k]][a$canonical_to_input[[k]]],
+                     seq_len(dim(input)[k]))
+  }
+}
+
 .identity_fit <- function(f, observed, output = "allocation", ...) {
   .fit_problem_nfxp(f$p, observed, f$init, f$lower, f$upper,
     output = output, gradient = TRUE, control = list(maxit = 50), ...)
@@ -21,20 +42,24 @@ test_that("named axes align independently and retain nonconsecutive origin keys"
   f <- .identity_fixture()
   expect_identical(f$p$substrate$origin_ids, c("1", "3", "5"))
   ref <- .bind_problem_target(f$p, f$y, "allocation")
-  perm <- .bind_problem_target(f$p, f$y[f$rows, f$cols], "allocation")
+  input <- f$y[f$rows, f$cols]
+  perm <- .bind_problem_target(f$p, input, "allocation")
   expect_identical(perm$observed, ref$observed)
   expect_identical(perm$mask, ref$mask)
   expect_identical(perm$values, ref$values)
+  expect_alignment(perm, input, c(TRUE, TRUE))
   for (axis in 1:2) {
     partial <- if (axis == 1) f$y[f$rows, , drop = FALSE] else f$y[, f$cols, drop = FALSE]
     dn <- dimnames(partial); dn[3 - axis] <- list(NULL); dimnames(partial) <- dn
     bound <- .bind_problem_target(f$p, partial, "allocation")
     expect_equal(unname(bound$observed), unname(f$y))
+    expect_alignment(bound, partial, seq_len(2) == axis)
   }
   unnamed <- unname(f$y)
   positional <- .bind_problem_target(f$p, unnamed, "allocation")
   expect_identical(positional$observed, unnamed)
   expect_identical(positional$mask, as.numeric(!is.na(unnamed)) == 1)
+  expect_alignment(positional, unnamed, c(FALSE, FALSE))
 })
 
 test_that("single fits canonicalize matrix and facility targets without changing raw outputs", {
@@ -47,7 +72,10 @@ test_that("single fits canonicalize matrix and facility targets without changing
   expect_equal(a$predicted, b$predicted, tolerance = 1e-12)
   expect_identical(a$target_mask, b$target_mask)
   expect_equal(a$outputs, b$outputs, tolerance = 1e-12)
-  # Fits from permuted inputs share one canonical identity and compare.
+  # Fits save the binding's alignment record and, from permuted inputs,
+  # share one canonical identity and compare.
+  expect_identical(b$target_alignment,
+                   .bind_problem_target(f$p, f$y[f$rows, f$cols], "allocation")$alignment)
   expect_no_error(.compare_problem_fits(list(a = a, b = b)))
   y <- f$utilization; y[2] <- NA_real_
   av <- .identity_fit(f, y, "utilization")
@@ -97,6 +125,9 @@ test_that("multistart and profile results do not depend on observation order", {
   expect_equal(a$table$loss, b$table$loss, tolerance = 1e-12)
   expect_equal(a$best$predicted, b$best$predicted, tolerance = 1e-12)
   expect_identical(b$best$target_mask, as.numeric(!is.na(f$y)) == 1)
+  observed <- !is.na(f$y)
+  expect_equal(as.numeric(a$best$predicted)[observed], as.numeric(f$y)[observed],
+               tolerance = 1e-4)
   args <- list(problem = f$p, parameter = "sigma", values = c(low = 1.8, truth = 2),
                init = f$init, lower = f$lower, upper = f$upper,
                output = "allocation", gradient = TRUE, control = list(maxit = 50))
@@ -107,6 +138,8 @@ test_that("multistart and profile results do not depend on observation order", {
   expect_equal(a$table$loss, b$table$loss, tolerance = 1e-12)
   expect_equal(a$best$predicted, b$best$predicted, tolerance = 1e-12)
   expect_identical(b$best$target_mask, as.numeric(!is.na(f$y)) == 1)
+  expect_equal(as.numeric(a$best$predicted)[observed], as.numeric(f$y)[observed],
+               tolerance = 1e-4)
 })
 
 test_that("wrapper eligibility uses the canonical mask even for nonfinite unobserved predictions", {
