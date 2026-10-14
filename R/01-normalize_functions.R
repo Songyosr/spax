@@ -16,11 +16,14 @@
 #'
 #'        - Or a custom function(x, ...)
 #'
-#' @param ref_value Optional reference value for "reference" method
+#' @param ref_value Optional reference value for "reference" method. When
+#'   `NULL`, the maximum of `x` is used; for a SpatRaster that is each cell's
+#'   maximum across layers.
 #' @param a0 Non-negative numeric value representing outside option weight (default = 0)
 #' @param snap Logical; if TRUE, avoid input validation
 #' @param ... Additional arguments passed to custom normalization function
-#' @return Object of the same class as input containing normalized weights
+#' @return Object of the same class as input containing normalized weights.
+#'   A SpatRaster is normalized cell by cell across its layers.
 #' @examples
 #' library(terra)
 #'
@@ -127,8 +130,14 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
     "standard" = terra::ifel(x_sum + a0 > 0, x / (x_sum + a0), 0 * x),
     "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
       "reference" = {
-        if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
-        terra::ifel(ref_value > 0, x / ref_value, NA_real_) # Avoid division by zero
+        if (is.null(ref_value)) {
+          ref_value <- max(x, na.rm = TRUE) # each cell's maximum across layers
+          terra::ifel(ref_value > 0, x / ref_value, NA_real_) # Avoid division by zero
+        } else if (ref_value > 0) {
+          x / ref_value
+        } else {
+          terra::init(x, NA_real_)
+        }
       }
     )
 

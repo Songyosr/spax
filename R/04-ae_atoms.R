@@ -743,6 +743,9 @@ Math.spax_field <- function(x, ...) {
 .ae_ratio <- function(num, denom, zero = 0) {
   safe_div <- function(a, b) {
     if (inherits(a, "SpatRaster") || inherits(b, "SpatRaster")) {
+      # terra::ifel() needs a raster test: lift a numeric denominator onto the
+      # numerator's grid, with the same per-layer recycling as `a / b`.
+      if (!inherits(b, "SpatRaster")) b <- terra::init(a, 0) + b
       return(terra::ifel(b == 0, zero, a / b))
     }
     out <- a / b

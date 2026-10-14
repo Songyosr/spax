@@ -54,8 +54,15 @@ test_that("calc_normalize normalizes each raster cell across layers", {
                  info = paste("raster case", i))
   }
 
-  reference <- terra::values(calc_normalize(r, "reference"))
-  expect_true(max(reference, na.rm = TRUE) <= 1 + 1e-10)
+  # Reference: by default each cell's maximum across layers (missing when it
+  # is not positive); a given reference value applies to every cell.
+  cell_max <- pmax(V[, 1], V[, 2], na.rm = TRUE)
+  expect_equal(unname(terra::values(calc_normalize(r, "reference"))),
+               V * ifelse(cell_max > 0, 1 / cell_max, NA))
+  expect_equal(unname(terra::values(calc_normalize(r, "reference", ref_value = 4))),
+               V / 4)
+  expect_true(all(is.na(terra::values(calc_normalize(r, "reference",
+                                                     ref_value = 0)))))
 })
 
 test_that("calc_normalize validates its inputs unless snapped", {

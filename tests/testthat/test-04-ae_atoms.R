@@ -312,6 +312,10 @@ test_that(".ae_ratio divides zero-safely", {
   num <- .mk_axis_field(c("fac_a", "fac_b"), c(6, 8))
   den <- .mk_axis_field(c("fac_b", "fac_a"), c(0, 3))
   expect_equal(.first_cell(.ae_ratio(num, den)), c(2, 0))
+
+  # A raster numerator over a facility vector, aligned by ID.
+  den <- .spax_vector_field(c(fac_b = 0, fac_a = 3), domain = "facility")
+  expect_equal(.first_cell(.ae_ratio(num, den)), c(2, 0))
 })
 
 test_that("E2SFCA inner step composes from atoms (gather -> ratio -> spread)", {

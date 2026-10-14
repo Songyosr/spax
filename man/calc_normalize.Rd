@@ -28,7 +28,9 @@ calc_normalize(
 
        - Or a custom function(x, ...)}
 
-\item{ref_value}{Optional reference value for "reference" method}
+\item{ref_value}{Optional reference value for "reference" method. When
+`NULL`, the maximum of `x` is used; for a SpatRaster that is each cell's
+maximum across layers.}
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0)}
 
@@ -37,7 +39,8 @@ calc_normalize(
 \item{...}{Additional arguments passed to custom normalization function}
 }
 \value{
-Object of the same class as input containing normalized weights
+Object of the same class as input containing normalized weights.
+  A SpatRaster is normalized cell by cell across its layers.
 }
 \description{
 Normalizes weights using different methods with support for outside options.
