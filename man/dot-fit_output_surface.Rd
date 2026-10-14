@@ -9,6 +9,6 @@
 \description{
 Declared axes prevent facility vectors being interpreted as surfaces when
 their lengths happen to equal the origin count. Older/custom fits without
-axis metadata retain legacy shape-based discovery; see `.fit_available_surfaces`.
+axis metadata retain legacy shape-based discovery; see \code{.fit_available_surfaces}.
 }
 \keyword{internal}

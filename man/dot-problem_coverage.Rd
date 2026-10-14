@@ -7,7 +7,7 @@
 .problem_coverage(problem, theta, state = NULL, ...)
 }
 \description{
-Solves once if `state` is absent; otherwise evaluates outputs at that state.
+Solves once if \code{state} is absent; otherwise evaluates outputs at that state.
 This entry point also supports older saved problems without refitting targets.
 }
 \keyword{internal}

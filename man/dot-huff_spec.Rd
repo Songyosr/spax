@@ -16,11 +16,11 @@
 }
 \description{
 The no-state member of the ladder: attractiveness is exogenous
-(`a_j = (kappa * S_j)^beta`), allocation is one Huff pass, and `v0` is the
-optional outside-option mass (`0` = pure Huff). With `fit_v0` / `fit_beta`,
+(\code{a_j = (kappa * S_j)^beta}), allocation is one Huff pass, and \code{v0} is the
+optional outside-option mass (\code{0} = pure Huff). With \code{fit_v0} / \code{fit_beta},
 the outside option and/or the supply elasticity join the fitted theta;
-otherwise they (and `kappa`) are constants. `allocation = "clm"` is the
-conditional-logit share (DEC-013); `"huff_decay"` preserves the historical
+otherwise they (and \code{kappa}) are constants. \code{allocation = "clm"} is the
+conditional-logit share (DEC-013); \code{"huff_decay"} preserves the historical
 extra decay factor used for one-pass HAAE comparisons.
 }
 \keyword{internal}

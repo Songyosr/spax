@@ -4,17 +4,47 @@
 \alias{clm_allocation}
 \title{Declare corrected static CLM over checked allocation inputs}
 \usage{
-clm_allocation(inputs, family = c("gaussian", "exponential", "power"),
-  kappa = 1, beta = 1, v0 = 0, fit_v0 = FALSE, fit_beta = FALSE)
+clm_allocation(
+  inputs,
+  family = c("gaussian", "exponential", "power"),
+  kappa = 1,
+  beta = 1,
+  v0 = 0,
+  fit_v0 = FALSE,
+  fit_beta = FALSE
+)
 }
 \arguments{
 \item{inputs}{An \code{ae_prepared_inputs} object from checked preparation.}
-\item{family}{Travel kernel: Gaussian, exponential or power. Gaussian sigma is a travel scale, exponential sigma a rate, and power sigma an exponent. Power requires strictly positive finite travel distances.}
-\item{kappa}{Positive supply scale used in attractiveness, not in reported raw supply or capacity attribution.}
+
+\item{family}{Travel kernel: Gaussian, exponential or power. Gaussian sigma
+is a travel scale, exponential sigma a rate, and power sigma an exponent.
+Power requires strictly positive finite travel distances.}
+
+\item{kappa}{Positive supply scale used in attractiveness, not in reported
+raw supply or capacity attribution.}
+
 \item{beta}{Positive supply elasticity in \code{(kappa * supply)^beta}.}
-\item{v0}{Nonnegative outside-option weight, not an outside probability. With zero outside weight and zero inside opportunity, the existing guard returns zero mass; that row is not a normalized choice distribution.}
+
+\item{v0}{Nonnegative outside-option weight, not an outside probability.
+With zero outside weight and zero inside opportunity, the existing guard
+returns zero mass; that row is not a normalized choice distribution.}
+
 \item{fit_v0, fit_beta}{Logical flags promoting these constants to parameters.}
 }
-\value{The existing private \code{ae_problem} for built-in corrected static CLM. Parameter order is sigma, then v0 and beta when their flags are true.}
-\description{Declare corrected static CLM over checked allocation inputs.}
-\seealso{\code{\link{prepare_allocation}}, \code{\link{fit_allocation}}, \code{\link{evaluate_allocation}}, \code{\link{predict_allocation}}}
+\value{
+The existing private \code{ae_problem} for built-in corrected static CLM.
+Parameter order is sigma, then v0 and beta when their flags are true.
+}
+\description{
+Declare corrected static CLM over checked allocation inputs.
+}
+\seealso{
+Other experimental allocation workflow: 
+\code{\link{bootstrap_allocation}()},
+\code{\link{evaluate_allocation}()},
+\code{\link{fit_allocation}()},
+\code{\link{predict_allocation}()},
+\code{\link{prepare_allocation}()}
+}
+\concept{experimental allocation workflow}

@@ -25,6 +25,7 @@
 #' zone joins do not require a template. Declared input units and policies are
 #' retained separately, without converting the supplied quantities.
 #' @keywords internal
+#' @md
 .ae_coverage <- function(fit, norm = NULL, units = NULL, observed = NULL,
                          rho_floor = 0, contact_need_floor = 0,
                          contact_cut = NULL, adequacy_cut = norm) {
@@ -127,6 +128,7 @@
 #' Solves once if `state` is absent; otherwise evaluates outputs at that state.
 #' This entry point also supports older saved problems without refitting targets.
 #' @keywords internal
+#' @md
 .problem_coverage <- function(problem, theta, state = NULL, ...) {
   .chck_class(problem, "ae_problem", "problem")
   if (!identical(problem$metadata$spec$allocation, "clm")) {
@@ -184,6 +186,7 @@
 #' Floors are applied after aggregating raw values. All original demand stays
 #' in the denominator, including low-contact/unreachable cells.
 #' @keywords internal
+#' @md
 .coverage_aggregate <- function(x, zones = NULL) {
   .chck_class(x, "ae_coverage", "x")
   d <- x$cells
@@ -227,6 +230,7 @@
 #' unclassified cells are NA. Other output names are numeric cell-table columns.
 #' Numeric-only coverage has no map; provide a spatial mapping at preparation.
 #' @keywords internal
+#' @md
 .coverage_surface <- function(x, output = "A") {
   .chck_class(x, "ae_coverage", "x")
   values <- x$cells
@@ -240,6 +244,7 @@
 #' @method format ae_coverage
 #' @keywords internal
 #' @export
+#' @md
 format.ae_coverage <- function(x, digits = 4, ...) {
   h <- x$regional
   paste0("<ae_coverage> ", x$model, "/", x$family, " (",
@@ -254,6 +259,7 @@ format.ae_coverage <- function(x, digits = 4, ...) {
 #' @method print ae_coverage
 #' @keywords internal
 #' @export
+#' @md
 print.ae_coverage <- function(x, digits = 4, ...) {
   cat(format(x, digits = digits), "\n")
   if (!is.null(x$settings$norm)) {
@@ -272,6 +278,7 @@ print.ae_coverage <- function(x, digits = 4, ...) {
 #' @method summary ae_coverage
 #' @keywords internal
 #' @exportS3Method base::summary
+#' @md
 summary.ae_coverage <- function(object, ...) {
   numeric_summary <- function(v) {
     v <- v[is.finite(v)]
@@ -297,6 +304,7 @@ summary.ae_coverage <- function(object, ...) {
 #' @method print summary.ae_coverage
 #' @keywords internal
 #' @export
+#' @md
 print.summary.ae_coverage <- function(x, ...) {
   cat(x$description, "\n")
   print(x$regional)
@@ -318,6 +326,7 @@ print.summary.ae_coverage <- function(x, ...) {
 #' @method plot ae_coverage
 #' @keywords internal
 #' @exportS3Method graphics::plot
+#' @md
 plot.ae_coverage <- function(x, type = c("coverage", "contact", "adequacy", "quadrant", "all"), ...) {
   type <- match.arg(type)
   if (type == "all") {

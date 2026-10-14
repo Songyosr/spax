@@ -21,6 +21,7 @@
 #' supply units/periods and travel units; unspecified fields remain NA and no
 #' unit conversion is performed. The result is private `ae_prepared_inputs`.
 #' @keywords internal
+#' @md
 .prepare_allocation <- function(demand, supply, distance,
                                 origin_ids = names(demand),
                                 facility_ids = colnames(distance),

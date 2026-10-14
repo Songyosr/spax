@@ -186,6 +186,7 @@
 #' metadata follows `.prepare_allocation()` and is saved as plain geometry.
 #' Raster reconstruction is deferred to `.prediction_surface()`.
 #' @keywords internal
+#' @md
 .predict_clm <- function(source, distance, origin_ids = rownames(distance),
                          demand = NULL, outputs = c("rho", "A", "abar"),
                          missing_travel = c("unknown", "legacy_zero"), spatial = NULL) {
@@ -387,6 +388,7 @@
 #' cells remain NA. Matrix outputs require explicit numeric access and cannot be
 #' silently flattened into a surface. This never evaluates the CLM again.
 #' @keywords internal
+#' @md
 .prediction_surface <- function(x, output = "A") {
   .chck_class(x, "ae_clm_prediction", "x")
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {

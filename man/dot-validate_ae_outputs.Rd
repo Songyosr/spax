@@ -7,7 +7,7 @@
 .validate_ae_outputs(outputs)
 }
 \description{
-Every bound step's `outputs(x)` must expose `target` and `utilization` so
+Every bound step's \code{outputs(x)} must expose \code{target} and \code{utilization} so
 runners and loss functions can bind to known quantities without defensive
 NULL checks.
 }
