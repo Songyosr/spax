@@ -1,201 +1,124 @@
-# Fixed test PMF; draws inside each test use a test-local seed.
-create_test_pmf <- function(nrows = 5, ncols = 5, normalized = TRUE) {
-  r <- terra::rast(nrows = nrows, ncols = ncols)
-  values <- withr::with_seed(42, runif(nrows * ncols))
-  if (normalized) {
-    values <- values / sum(values)
-  }
-  terra::values(r) <- values
-  return(r)
+# sample_pmf(): count realizations drawn from a PMF raster.
+
+# A fixed 5 x 5 PMF (or the raw weights behind it); no random draws.
+sample_test_pmf <- function(normalized = TRUE, nrows = 5, ncols = 5) {
+  w <- seq_len(nrows * ncols) %% 7 + 1
+  toy_rast(if (normalized) w / sum(w) else w, nrows, ncols)
 }
 
-# 1. Basic Input Validation Tests --------------------------------------------
+layer_sums <- function(x) unname(colSums(terra::values(x), na.rm = TRUE))
 
-test_that("sample_pmf validates input types correctly", {
-  pmf <- create_test_pmf()
+test_that("sample_pmf validates its inputs", {
+  pmf <- sample_test_pmf()
 
-  # Invalid input type
-  expect_error(
-    sample_pmf(as.matrix(terra::values(pmf)), n = 10),
-    "Input 'x' must be a SpatRaster object"
-  )
+  expect_error(sample_pmf(as.matrix(terra::values(pmf)), n = 10),
+               "must be a SpatRaster")
+  expect_error(sample_pmf(pmf, method = "poisson"),
+               "Either n or both size and prob")
+  expect_error(sample_pmf(pmf, size = 100, prob = 1.5), "prob must be between 0 and 1")
+  expect_error(sample_pmf(pmf, n = 10, evolve_prop = 2),
+               "evolve_prop must be between 0 and 1")
+  expect_error(sample_pmf(pmf, n = 10, iterations = 0),
+               "iterations must be a positive integer")
+  expect_error(sample_pmf(pmf, n = 10, method = "invalid"), "Unknown method string")
+  expect_error(sample_pmf(toy_rast(0, 5, 5), n = 10), "Sum of all values")
+  expect_error(sample_pmf(toy_rast(NA_real_, 5, 5), n = 10))
 
-  # Missing both n and size/prob
-  expect_error(
-    sample_pmf(pmf, method = "poisson"),
-    "Either n or both size and prob must be specified"
-  )
-
-  # Invalid probability
-  expect_error(
-    sample_pmf(pmf, size = 100, prob = 1.5),
-    "prob must be between 0 and 1"
-  )
-
-  # Invalid evolution proportion
-  expect_error(
-    sample_pmf(pmf, n = 10, evolve_prop = 2),
-    "evolve_prop must be between 0 and 1"
-  )
-
-  # Invalid iterations
-  expect_error(
-    sample_pmf(pmf, n = 10, iterations = 0),
-    "iterations must be a positive integer"
-  )
-
-  # Invalid method
-  expect_error(
-    sample_pmf(pmf, n = 10, method = "invalid"),
-    "Unknown method string"
-  )
+  bad_method <- function(value) function() value
+  expect_error(sample_pmf(pmf, method = bad_method("a")), "must return numeric")
+  expect_error(sample_pmf(pmf, method = bad_method(c(1, 2))), "must return 1 values")
+  expect_error(sample_pmf(pmf, method = bad_method(-1)), "non-negative integer")
+  expect_error(sample_pmf(pmf, method = bad_method(1.5)), "non-negative integer")
 })
 
-# 2. PMF Input Validation Tests ---------------------------------------------
-
-test_that("sample_pmf handles different input formats correctly", {
-  local_test_seed(42)
-  # Already normalized PMF
-  pmf_norm <- create_test_pmf(normalized = TRUE)
-  expect_no_error(sample_pmf(pmf_norm, n = 10))
-
-  # Non-normalized density
-  pmf_raw <- create_test_pmf(normalized = FALSE)
-  expect_no_error(sample_pmf(pmf_raw, n = 10))
-
-  # Input with all zeros
-  pmf_zero <- create_test_pmf()
-  terra::values(pmf_zero) <- 0
-  expect_error(sample_pmf(pmf_zero, n = 10))
-
-  # Input with all NAs
-  pmf_na <- create_test_pmf()
-  terra::values(pmf_na) <- NA
-  expect_error(sample_pmf(pmf_na, n = 10))
-})
-
-# 3. Sample Size Generation Tests ------------------------------------------
-
-test_that("sample_pmf generates correct number of samples", {
-  local_test_seed(42)
-  pmf <- create_test_pmf()
-
-  # Fixed size
-  n <- 50
-  result_fixed <- sample_pmf(pmf, n = n)
-  expect_equal(sum(terra::values(result_fixed), na.rm = TRUE), n)
-
-  # Poisson sampling
-  size <- 1000
-  prob <- 0.05
-  result_pois <- sample_pmf(pmf, size = size, prob = prob, method = "poisson")
-  # Check mean is roughly size * prob
-  expect_true(abs(sum(terra::values(result_pois), na.rm = TRUE) - size * prob) < size * prob * 0.5)
-
-  # Binomial sampling
-  result_binom <- sample_pmf(pmf, size = size, prob = prob, method = "binomial")
-  expect_true(sum(terra::values(result_binom), na.rm = TRUE) <= size)
-
-  # Custom sampling function
-  custom_fn <- function() rpois(1, lambda = 30)
-  result_custom <- sample_pmf(pmf, method = custom_fn)
-  expect_true(is.numeric(sum(terra::values(result_custom), na.rm = TRUE)))
-})
-
-# 4. Evolution Tests ------------------------------------------------------
-
-test_that("sample_pmf evolution works correctly", {
-  local_test_seed(42)
-  pmf <- create_test_pmf()
-  n <- 100
-  iterations <- 5
-
-  # Independent sampling (evolve_prop = 1)
-  result_indep <- sample_pmf(pmf, n = n, iterations = iterations, evolve_prop = 1)
-  expect_equal(terra::nlyr(result_indep), iterations)
-  expect_equal(sum(terra::values(result_indep), na.rm = TRUE), n * iterations)
-
-  # No evolution (evolve_prop = 0)
-  expect_warning(
-    result_no_evol <- sample_pmf(
-      pmf, n = n, iterations = iterations, evolve_prop = 0
-    ),
-    "evolve_prop = 0"
-  )
-  expect_equal(terra::nlyr(result_no_evol), 1)
-  expect_equal(sum(terra::values(result_no_evol), na.rm = TRUE), n)
-
-  # Partial evolution
-  evolve_prop <- 0.5
-  result_partial <- sample_pmf(pmf, n = n, iterations = iterations, evolve_prop = evolve_prop)
-  expect_equal(terra::nlyr(result_partial), iterations)
-
-  # Check that subsequent layers have some correlation
-  for (i in 2:iterations) {
-    layer1 <- terra::values(result_partial[[i - 1]])
-    layer2 <- terra::values(result_partial[[i]])
-    correlation <- cor(layer1, layer2, use = "complete.obs")
-    expect_true(correlation > 0) # Should have positive correlation due to sample retention
-  }
-})
-
-# 5. Spatial Distribution Tests -------------------------------------------
-
-test_that("sample_pmf maintains spatial distribution properties", {
-  local_test_seed(42)
-  # Create PMF with clear spatial gradient
-  r <- terra::rast(nrows = 10, ncols = 10)
-  terra::values(r) <- seq(0.1, 1, length.out = 100)
-  pmf <- transform_pmf(r)
-
-  # Generate large number of samples
-  n <- 10000
-  result <- sample_pmf(pmf, n = n)
-
-  # Compare empirical vs expected proportions
-  empirical_props <- terra::values(result) / n
-  expected_props <- terra::values(pmf)
-
-  # Correlation between empirical and expected should be high
-  correlation <- cor(empirical_props, expected_props, use = "complete.obs")
-  expect_true(correlation > 0.7) # Arbitrary threshold, adjust based on needs
-})
-
-# 6. Reproducibility Tests -----------------------------------------------
-
-test_that("sample_pmf provides reproducible results with seeds", {
-  pmf <- create_test_pmf()
-  n <- 100
+test_that("each realization holds the drawn number of samples", {
+  pmf <- sample_test_pmf()
   seed <- 42
 
-  # Same seed should give same results
-  result1 <- sample_pmf(pmf, n = n, seed = seed)
-  result2 <- sample_pmf(pmf, n = n, seed = seed)
-  expect_equal(terra::values(result1), terra::values(result2))
+  fixed <- sample_pmf(pmf, n = 50, iterations = 3, seed = seed)
+  expect_equal(terra::nlyr(fixed), 3)
+  expect_equal(layer_sums(fixed), c(50, 50, 50))
 
-  # Different seeds should give different results
-  result3 <- sample_pmf(pmf, n = n, seed = seed + 1)
-  expect_false(identical(terra::values(result1), terra::values(result3)))
+  # Built-in methods draw one sample size per iteration from their law.
+  draws <- list(
+    poisson = withr::with_seed(seed, rpois(4, 1000 * 0.05)),
+    binomial = withr::with_seed(seed, rbinom(4, 1000, 0.05)),
+    nbinom = withr::with_seed(seed, rnbinom(4, 1000, 0.05))
+  )
+  for (method in names(draws)) {
+    sampled <- sample_pmf(pmf, size = 1000, prob = 0.05, method = method,
+                          iterations = 4, seed = seed)
+    expect_equal(layer_sums(sampled), draws[[method]], info = method)
+  }
+
+  # A custom method sets the sample size directly; with raw weights the total
+  # is reported as the size parameter.
+  expect_message(
+    custom <- sample_pmf(sample_test_pmf(normalized = FALSE),
+                         method = function(k) k, k = 30, seed = seed),
+    "Using total population"
+  )
+  expect_equal(layer_sums(custom), 30)
 })
 
-# 7. Edge Cases Tests ---------------------------------------------------
+test_that("zero cells are NA unless replace_0 = FALSE", {
+  pmf <- sample_test_pmf()
 
-test_that("sample_pmf handles edge cases appropriately", {
-  local_test_seed(42)
-  # Single cell raster
-  pmf_single <- create_test_pmf(nrows = 1, ncols = 1)
-  expect_no_error(sample_pmf(pmf_single, n = 10))
+  sparse <- terra::values(sample_pmf(pmf, n = 3, seed = 1))[, 1]
+  kept <- terra::values(sample_pmf(pmf, n = 3, replace_0 = FALSE, seed = 1))[, 1]
+  expect_true(all(is.na(sparse) | sparse > 0))
+  expect_equal(kept, ifelse(is.na(sparse), 0, sparse))
 
-  # Very small sample size
-  pmf <- create_test_pmf()
-  result_small <- sample_pmf(pmf, n = 1)
-  expect_equal(sum(terra::values(result_small), na.rm = TRUE), 1)
+  expect_true(all(is.na(terra::values(sample_pmf(pmf, n = 0, seed = 1)))))
+  expect_true(all(terra::values(sample_pmf(pmf, n = 0, replace_0 = FALSE,
+                                           seed = 1)) == 0))
+  expect_equal(layer_sums(sample_pmf(sample_test_pmf(nrows = 1, ncols = 1),
+                                     n = 10, seed = 1)), 10)
+})
 
-  # Zero samples
-  result_zero <- sample_pmf(pmf, n = 0)
-  expect_true(all(is.na(terra::values(result_zero))))
+test_that("evolve_prop controls how samples carry over between iterations", {
+  pmf <- sample_test_pmf()
 
-  # Extreme evolution proportions
-  expect_no_error(sample_pmf(pmf, n = 10, evolve_prop = 0.001))
-  expect_no_error(sample_pmf(pmf, n = 10, evolve_prop = 0.999))
+  expect_warning(
+    frozen <- sample_pmf(pmf, n = 100, iterations = 5, evolve_prop = 0, seed = 1),
+    "evolve_prop = 0"
+  )
+  expect_equal(terra::nlyr(frozen), 1)
+  expect_equal(layer_sums(frozen), 100)
+
+  for (prop in c(0.001, 0.5, 0.999)) {
+    evolving <- sample_pmf(pmf, n = 100, iterations = 5, evolve_prop = prop,
+                           seed = 1)
+    expect_equal(layer_sums(evolving), rep(100, 5), info = prop)
+  }
+
+  # Retained samples make consecutive realizations positively correlated.
+  partial <- terra::values(sample_pmf(pmf, n = 100, iterations = 5,
+                                      evolve_prop = 0.5, replace_0 = FALSE,
+                                      seed = 42))
+  expect_true(all(diag(cor(partial[, -5], partial[, -1])) > 0))
+})
+
+test_that("samples follow the PMF and seeds reproduce them", {
+  pmf <- transform_pmf(toy_rast(seq(0.1, 1, length.out = 100), 10, 10))
+  many <- sample_pmf(pmf, n = 10000, replace_0 = FALSE, seed = 42)
+  expect_gt(cor(terra::values(many)[, 1] / 10000, terra::values(pmf)[, 1]), 0.7)
+
+  small <- sample_test_pmf()
+  first <- sample_pmf(small, n = 100, seed = 42)
+  expect_equal(terra::values(sample_pmf(small, n = 100, seed = 42)),
+               terra::values(first))
+  expect_false(identical(terra::values(sample_pmf(small, n = 100, seed = 43)),
+                         terra::values(first)))
+
+  # A given seed leaves the caller's random stream untouched.
+  local_test_seed(1)
+  before <- .Random.seed
+  sample_pmf(small, n = 10, seed = 42)
+  expect_identical(.Random.seed, before)
+
+  # In snap mode the input is not converted, only flagged.
+  expect_message(sample_pmf(sample_test_pmf(normalized = FALSE), n = 5,
+                            snap = TRUE, seed = 1),
+                 "must be PMF in snap mode")
 })
