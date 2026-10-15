@@ -11,11 +11,15 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = FALSE,
   comment = "",
+  class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
   dpi = 100
 )
 ```
+
+This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html).
 
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
@@ -33,11 +37,9 @@ and the demand-side and access-side weights be $G_{ij}$ and $H_{ij}$. Then
 L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 \]
 
-This guide rebuilds the E2SFCA surface of [Getting
-started](fca-methods.html) one step at a time and checks each step against
-`spax_e2sfca()`. It uses the same inputs: WorldPop 2020 residents per cell,
-GP FTE excluding GPs in training, and travel minutes to each mainland Cornwall
-practice. The calculation covers all of mainland Cornwall; the maps zoom in on
+This guide rebuilds the E2SFCA surface of [Getting started](spax.html) one
+step at a time and checks each step against `spax_e2sfca()`, with the same
+inputs and the same 10-minute Gaussian decay. The calculation covers all of mainland Cornwall; the maps zoom in on
 the area around Truro so that individual cells stay visible.
 
 ```{r inputs}
@@ -291,22 +293,14 @@ practices outside the window whose small remaining demand gives them very high
 ratios. Calculate on the full study area and crop
 only for display.
 
-## Change the model explicitly
+## Change the access-side weights
 
-`spax_2sfca()` uses a binary 15-minute catchment for both steps.
-`spax_m2sfca()` keeps $W$ on the demand side but uses $W^2$ on the access side.
-$W^2$ is below $W$ except at zero travel time, and far below it for distant
-practices, so M2SFCA discounts cells whose practices are far away.
+`spax_m2sfca()` keeps $W$ on the demand side but uses $W^2$ on the access side,
+so $G = W$ and $H = W^2$. $W^2$ is below $W$ except at zero travel time, and
+far below it for distant practices, so M2SFCA discounts cells whose practices
+are far away. The same matrix formula reproduces it:
 
-```{r alternatives}
-twosfca <- spax_2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  threshold = 15,
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
+```{r m2sfca}
 m2sfca <- spax_m2sfca(
   demand = pop,
   supply = gp,
@@ -326,25 +320,10 @@ stopifnot(isTRUE(all.equal(
   tolerance = 1e-10,
   check.attributes = FALSE
 )))
-
-# Cell quantiles and the resident-weighted mean of each index
-per_1000 <- function(x) 1000 * values(x$accessibility, mat = FALSE)
-describe <- function(x) {
-  c(
-    quantile(per_1000(x), c(0.05, 0.5, 0.95), na.rm = TRUE),
-    resident_weighted = weighted.mean(per_1000(x), D, na.rm = TRUE)
-  )
-}
-round(
-  sapply(list(E2SFCA = e2sfca, M2SFCA = m2sfca, `2SFCA` = twosfca), describe),
-  2
-)
 ```
 
-E2SFCA and 2SFCA have the same resident-weighted mean, total supply per
-resident, because each uses one kernel for both steps. M2SFCA does not: the
-squared access weights are smaller than the demand-side weights, so part of
-the supply is not spread back to anyone. None of these indices is a fitted
-statistical model. An allocation model instead defines choice probabilities
-with an outside option; see [Choosing a model](model-choice.html) and the
-[allocation workflow](allocation-workflow.html).
+[Comparing FCA methods](fca-methods.html) maps E2SFCA, 2SFCA and M2SFCA side
+by side and explains why only M2SFCA loses part of the supply. None of these
+indices is a fitted statistical model. An allocation model instead defines
+choice probabilities with an outside option; see [Choosing an FCA index or an
+allocation model](model-choice.html).

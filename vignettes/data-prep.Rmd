@@ -11,11 +11,15 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = FALSE,
   comment = "",
+  class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
   dpi = 100
 )
 ```
+
+This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html).
 
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
@@ -26,9 +30,9 @@ library(dplyr)
 
 Every FCA or allocation analysis needs three aligned inputs: demand counts at
 origins, supply at facilities, and travel between them. This guide prepares
-them from the open Cornwall GP data bundled with spax and shows three common
-problems: facility IDs that must match, unknown travel times, and demand that
-arrives as small-area totals rather than a grid. Everything runs offline.
+them from the Cornwall data and shows three problems you are likely to meet
+with your own data: facility IDs that must match, unknown travel times, and
+demand that arrives as small-area totals rather than a grid.
 
 ```{r data}
 # WorldPop 2020 residents per cell
@@ -342,5 +346,7 @@ workflow](allocation-workflow.html) for what the prepared inputs feed into.
 
 ## Continue
 
-- [Inspect the FCA calculation](e2sfca-steps.html) step by step.
-- [Choose resolution and output size](grid-resolution.html).
+- [Comparing FCA methods](fca-methods.html): E2SFCA, 2SFCA and M2SFCA on
+  these inputs.
+- [The E2SFCA calculation step by step](e2sfca-steps.html).
+- [Grid resolution, support and computational cost](grid-resolution.html).
