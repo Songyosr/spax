@@ -11,7 +11,8 @@
 #   Rscript data-raw/precompute-vignette-bootstrap.R
 #
 # Rerun whenever bootstrap_allocation(), the fitting code, the vignette's
-# generated inputs or the package version change, then commit the .rds file.
+# generated bootstrap inputs or the package version change, then commit the
+# .rds file. The vignette's Cornwall sections do not enter the stored result.
 stopifnot(file.exists("DESCRIPTION"), file.exists("vignettes/allocation-workflow.Rmd"))
 Sys.setenv(SPAX_REBUILD_VIGNETTE_BOOTSTRAP = "true")
 out <- tempfile("allocation-workflow-")

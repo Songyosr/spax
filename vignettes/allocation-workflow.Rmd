@@ -1,179 +1,326 @@
 ---
-title: "A generated allocation fit and capacity scenario"
+title: "Fitting an allocation model to GP registrations in Cornwall"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{A generated allocation fit and capacity scenario}
+  %\VignetteIndexEntry{Fitting an allocation model to GP registrations in Cornwall}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-This workflow is experimental. Its model family is corrected static CLM with an
-explicit outside option; a broader recipe interface is not part of this example.
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+  fig.height = 4.5, dpi = 100)
+```
 
-For model selection and the existing public FCA interface, begin with
-[Choosing an FCA index or an allocation model](model-choice.html). The
-[preparation guide](spax-102-data-prep.html) explains counts, units, IDs and
-missing travel; [saved-result inspection](function-naming.html) describes the
-standard R methods used below. An FCA accessibility index and CLM contact
-probability retain their different meanings.
+This guide runs the experimental allocation workflow from start to finish on
+the open Cornwall GP data that ship with spax: prepare inputs, declare a model,
+fit it to observed registrations, inspect the saved fit, predict at new
+locations, compare a change in one practice's supply, and save results that a
+fresh R session can read. A final section shows the facility bootstrap on
+generated data, where the true parameters are known.
 
-The first section is a small fit and prediction example. The second section
-shows the complete 399-attempt facility bootstrap, including scenario
-evaluation, tables, plots and a fresh installed R process. The 399-attempt run
-takes about three minutes, so it is precomputed when the package is built (see
-"Precomputed bootstrap result" below); every other step is executed live. The
-attempt count is never shortened: a shorter run would not demonstrate the
-supported interval procedure.
+The model is a corrected static conditional logit (CLM) with an explicit
+outside option. Each practice attracts residents in proportion to its supply,
+discounted by travel time; the outside option competes with all practices. For
+choosing between this model and an FCA index, see [Choosing an FCA index or an
+allocation model](model-choice.html). The [preparation
+guide](spax-102-data-prep.html) explains counts, units, IDs and missing
+travel, and [saved-result inspection](function-naming.html) describes the
+standard R methods used below. The interface is experimental.
 
-This example allocates mutually exclusive service requests to facilities or an
-outside category during one reference period. Demand is request opportunities,
-supply is service slots, and travel is minutes. Supply affects attraction and
-proportional capacity attribution in this toy model. Attributed capacity is
-neither delivered service nor a hard limit on facility utilization. The outside
-category is not automatically unmet need.
-
-```{r setup}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```{r packages}
 library(spax)
-origin_ids <- paste0("o", 1:8)
-facility_ids <- paste0("f", 1:4)
-demand <- setNames(c(1200, 800, 1000, 900, 1500, 1100, 0, NA), origin_ids)
-supply <- setNames(c(80, 60, 90, 70), facility_ids)
-travel <- outer(c(2, 7, 13, 18, 23, 29, 10, 21), c(3, 11, 20, 28),
-                function(origin, facility) abs(origin - facility) + 2)
-dimnames(travel) <- list(origin_ids, facility_ids)
-units <- list(demand_units = "requests", demand_period = "one_reference_period",
-              supply_units = "service_slots", supply_period = "one_reference_period",
-              travel_units = "minutes")
+library(ggplot2)
 ```
 
-For a reproducible demonstration, generate rounded expected facility counts
-using a declared travel scale and outside weight. These are synthetic counts,
-not empirical evidence for any travel family or feedback mechanism.
+## The data
 
-```{r generated-counts}
-active <- which(is.finite(demand) & demand > 0)
-weights <- sweep(exp(-travel[active, ]^2 / (2 * 9^2)), 2, supply, "*")
-probability <- weights / (rowSums(weights) + 30)
-observed <- setNames(round(colSums(probability * demand[active])), facility_ids)
-observed <- observed[c("f3", "f1", "f4", "f2")] # names determine alignment
+`cornwall_lsoa` holds 337 small areas (LSOAs) and the number of their
+residents registered with a GP practice anywhere in England. `cornwall_gp`
+holds 55 practices with their GP full-time equivalents (FTE).
+`cornwall_flows` counts registered residents by small area and practice, and
+`cornwall_travel` gives motorised travel minutes between them. Sources and
+licences are listed in `system.file("COPYRIGHTS", package = "spax")`.
+
+The Isles of Scilly have no road link to the mainland, so their travel times to
+mainland practices are `NA`. This guide models mainland Cornwall only and drops
+the Scilly small area and practice throughout.
+
+```{r inputs}
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+gp <- sf::st_drop_geometry(cornwall_gp)
+mainland_area <- !areas$scilly
+mainland_gp <- !gp$scilly
+travel <- cornwall_travel[areas$lsoa[mainland_area], gp$practice[mainland_gp]]
+
+# Demand: residents registered with any practice in England.
+demand <- setNames(areas$registered[mainland_area], areas$lsoa[mainland_area])
+# Supply: GP FTE excluding GPs in training.
+supply <- setNames(gp$gp_fte_extg[mainland_gp], gp$practice[mainland_gp])
+
+# Observed flows: registered residents by small area (rows) and practice.
+observed <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+keep <- cornwall_flows$lsoa %in% rownames(travel) &
+  cornwall_flows$practice %in% colnames(travel)
+observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
+  cornwall_flows$patients[keep]
+dim(travel)
+c(registered = sum(demand), at_mainland_practices = sum(observed))
 ```
 
-Preparation records positive, zero and unknown demand separately. Only finite
-positive demand contributes to fitted facility loads. Strict numeric preparation
-rejects unknown active travel unless its policy is explicitly changed.
+Registrations are a stock: who is registered where in July 2026, not a count of
+visits. Because demand counts every registered resident, the outside option
+stands for registration with a practice outside mainland Cornwall (in Devon,
+for example, or on the Isles of Scilly). It is not unmet need: almost everyone
+is registered with some practice.
 
-```{r prepare-and-fit}
-prepared <- prepare_allocation(demand, supply, travel,
-  missing_demand = "exclude", metadata = units)
-model <- clm_allocation(prepared, family = "gaussian", fit_v0 = TRUE)
-starts <- rbind(near = c(sigma = 8, v0 = 25),
-                short = c(sigma = 5, v0 = 60),
-                long = c(sigma = 15, v0 = 15))
+## Prepare, declare and fit
+
+`prepare_allocation()` aligns demand, supply and travel by their names and
+checks them once. Unit and period labels are declarations attached to the
+results; spax does not convert units. `clm_allocation()` then declares the
+model: a Gaussian travel kernel with scale σ (minutes) and a fitted outside
+weight v0.
+
+```{r prepare}
+cornwall_units <- list(
+  demand_units = "registered residents", demand_period = "July 2026",
+  supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
+  travel_units = "minutes")
+inputs <- prepare_allocation(demand, supply, travel, metadata = cornwall_units)
+model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+```
+
+`fit_allocation()` runs one fit from each supplied start and keeps the best
+converged one. Here the target is the small area × practice flow matrix and
+the loss is Poisson, chosen explicitly: asking for counts does not choose a
+likelihood. Registrations are not independent event counts, so treat the
+Poisson loss as a fitting criterion rather than a full observation model.
+Joint Poisson fitting does not force the modelled total to match the observed
+total.
+
+```{r fit}
+starts <- rbind(near = c(sigma = 3, v0 = 0.05), middle = c(sigma = 6, v0 = 0.01),
+  far = c(sigma = 12, v0 = 0.002))
 fit <- fit_allocation(model, observed, starts,
-  lower = c(sigma = 1, v0 = 1), upper = c(sigma = 30, v0 = 150),
-  output = "utilization", loss = "poisson", gradient = TRUE,
-  control = list(maxit = 150))
+  lower = c(sigma = 0.5, v0 = 1e-6), upper = c(sigma = 60, v0 = 10),
+  output = "flow", loss = "poisson", gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
 summary(fit)
-coef(fit)
-fitted(fit)
+as.data.frame(fit)
 ```
 
-The output includes eligible and failed starts, boundaries, messages and
-disagreement among the supplied starts. Agreement is a numerical diagnostic,
-not proof of a global optimum or parameter identification. Choosing expected
-counts as the target does not choose a likelihood; Poisson is explicit here.
-Joint Poisson fitting does not impose exact total matching.
+The summary keeps every start, its convergence, boundaries and messages. All
+three starts converge away from the bounds and stop very close to each other,
+but the disagreement flag uses deliberately strict default tolerances, so read
+the gaps in the per-start table rather than the flag alone. Agreement among the
+supplied starts is a numerical check; it does not prove a global optimum or
+that the parameters are identified. A σ of about 4.4 minutes means
+registration is very local: a practice 9 minutes away keeps only about 12% of
+the pull it would have next door.
 
-Evaluate at the selected parameters, then request predictions for every origin.
-Requested demand multiplies predicted probabilities into expected counts. It
-does not change the saved facility loads. Origin o7 has known zero demand;
-o8 has unknown demand. Their contact probabilities may still be available.
+## Fitted against observed
 
-```{r evaluate-and-predict}
-baseline <- evaluate_allocation(model, theta = coef(fit))
-baseline$coverage$regional
-prediction <- predict_allocation(baseline, travel, demand = demand,
-  outputs = c("rho", "A", "abar", "flow"))
-prediction$validity
-data.frame(origin_id = origin_ids, rho = prediction$outputs$rho,
-           A = prediction$outputs$A, abar = prediction$outputs$abar)
-prediction$outputs$flow
+`fitted()` returns the saved fitted flows; nothing is recomputed. Summing over
+small areas gives each practice's modelled registered list.
+
+```{r practice-fit, fig.width = 5, fig.height = 4.5}
+practices <- data.frame(practice = colnames(observed),
+  observed = colSums(observed), fitted = colSums(fitted(fit)))
+cor(practices$observed, practices$fitted)
+ggplot(practices, aes(observed / 1000, fitted / 1000)) +
+  geom_abline(linetype = 2, colour = "grey50") +
+  geom_point() +
+  coord_equal() +
+  labs(x = "Observed registered residents (thousands)",
+    y = "Modelled registered residents (thousands)",
+    title = "Practice lists from mainland residents") +
+  theme_minimal()
 ```
 
-Probability validity, demand availability and capacity attribution have
-different conditions. Unknown travel can invalidate a normalized choice row.
-A facility with positive supply and zero saved load can have valid contact
-probability at a new origin while its unqualified capacity attribution remains
-unknown. The prediction result preserves these distinctions.
+The model gives each practice an attraction proportional to its GP FTE and
+uses only supply and travel. Practices with more registered patients per GP FTE
+than their neighbours therefore have larger observed than modelled lists and
+sit below the dashed line.
 
-Here rho is the inside-contact probability. With facility load U and supply S,
-A is the sum over facilities of P times S/U: attributed slots per request
-opportunity. For rho above zero, abar=A/rho is attributed slots per inside-contact
-request. These are capacity-attribution measures under the stated model; flow is
-the expected request count D times P. Requested demand and travel must use the
-saved reference period and units. The interface does not convert units.
+The outside share is the other observable output. Each small area's modelled
+outside share can be compared with the share of its residents registered
+outside mainland Cornwall.
 
-Change one facility's capacity by preparing and evaluating a new system at the
-same theta. This is a model-based fixed-parameter scenario, not an estimated
-causal intervention effect. Changing supply updates attraction, allocation and
-facility loads as well as proportional capacity attribution.
+```{r outside-map, fig.height = 4.5}
+evaluated <- evaluate_allocation(model, coef(fit))
+baseline <- predict_allocation(evaluated, travel, demand = demand,
+  outputs = c("outside_share", "flow"))
+table(baseline$validity$status)
+outside <- rbind(
+  data.frame(lsoa = names(demand), share = 1 - rowSums(observed) / demand,
+    source = "Observed"),
+  data.frame(lsoa = names(demand), share = baseline$outputs$outside_share,
+    source = "Modelled"))
+outside$source <- factor(outside$source, c("Observed", "Modelled"))
+outside_map <- merge(cornwall_lsoa[mainland_area, "lsoa"], outside)
+ggplot(outside_map) +
+  geom_sf(aes(fill = 100 * share), colour = NA) +
+  facet_wrap(~source) +
+  scale_fill_viridis_c(option = "mako", direction = -1, trans = "sqrt",
+    name = "Registered\noutside (%)") +
+  labs(title = "Share of residents registered outside mainland Cornwall") +
+  theme_void()
+```
 
-```{r capacity-scenario}
+`evaluate_allocation()` solves the model once at fixed parameters; it estimates
+nothing. `predict_allocation()` then returns the requested outputs for any set
+of origins, with separate validity flags. Here `flow` is requested demand times
+choice probability, in registered residents. Requested demand only scales the
+predicted flows; it never changes the saved practice loads.
+
+Observed registration outside mainland Cornwall is concentrated in a few areas
+along the Devon border. A single constant outside weight cannot reproduce that
+pattern: the model spreads a small outside share everywhere and puts its largest
+values where practices are far away, so treat the modelled outside share as
+approximate.
+
+## Predict at new locations
+
+Prediction does not need the fitted small areas. Each cell of the bundled
+1 km population grid has its own travel times to every practice, so the saved
+model can predict at every populated cell. A `spatial` mapping from requested
+origins to raster cells turns one output into a map.
+
+```{r grid-predict}
+pop <- read_spax_example("cornwall_pop.tif")
+grid_travel <- terra::values(read_spax_example("cornwall_gp_travel.tif"))
+populated <- which(is.finite(terra::values(pop)[, 1]) &
+  terra::values(pop)[, 1] > 0)
+grid_travel <- grid_travel[populated, colnames(travel)]
+rownames(grid_travel) <- paste0("cell", populated)
+grid <- predict_allocation(evaluated, grid_travel,
+  outputs = c("outside_share", "allocation"))
+table(grid$validity$status)
+```
+
+Cells on the Isles of Scilly have no travel time to mainland practices, so
+their prediction is marked unknown rather than imputed. Inspect these flags
+before reading a map.
+
+```{r grid-map, fig.height = 4}
+grid_spatial <- list(template = pop,
+  cell_index = setNames(populated, rownames(grid_travel)))
+grid_outside <- predict_allocation(evaluated, grid_travel,
+  outputs = "outside_share", spatial = grid_spatial, type = "raster")
+terra::plot(grid_outside, axes = FALSE, col = hcl.colors(50, "Mako", rev = TRUE),
+  main = "Modelled outside share (proportion), 1 km grid")
+grid_pop <- terra::values(pop)[populated, 1]
+far_out <- grid$outputs$outside_share > 0.5
+c(cells = sum(far_out, na.rm = TRUE),
+  population_percent = round(100 * sum(grid_pop[which(far_out)]) / sum(grid_pop), 2))
+```
+
+Some grid cells far from every practice get a high outside share because the
+fitted travel scale is short and the outside weight is constant. The
+`r sum(far_out, na.rm = TRUE)` cells above 0.5 hold
+`r round(100 * sum(grid_pop[which(far_out)]) / sum(grid_pop), 2)`% of the
+grid's population, but their values are an
+extrapolation of the model, not a measure of unmet need. The grid population
+(WorldPop 2020) and the registrations (NHS England 2026) are different sources
+and dates, so the grid is used here only for locations.
+
+## Change one practice's supply
+
+A scenario changes the system and evaluates it again at the same parameters.
+Here Marazion Surgery is closed by setting its GP FTE to zero; known zero
+supply is kept, so the practice stays in the network with no attraction. This
+is a model-based, fixed-parameter scenario, not an estimate of what a real
+closure would cause: changing supply moves attraction, allocation and every
+practice's modelled load together.
+
+```{r scenario}
+closed <- "L82047"
+gp$name[gp$practice == closed]
 scenario_supply <- supply
-scenario_supply["f2"] <- 1.2 * scenario_supply["f2"]
-scenario_inputs <- prepare_allocation(demand, scenario_supply, travel,
-  missing_demand = "exclude", metadata = units)
-scenario_model <- clm_allocation(scenario_inputs, family = "gaussian", fit_v0 = TRUE)
-scenario <- evaluate_allocation(scenario_model, theta = coef(fit))
-scenario_prediction <- predict_allocation(scenario, travel, demand = demand,
-  outputs = c("rho", "A", "abar"))
-data.frame(origin_id = origin_ids,
-  baseline_contact = prediction$outputs$rho,
-  scenario_contact = scenario_prediction$outputs$rho,
-  baseline_attribution = prediction$outputs$A,
-  scenario_attribution = scenario_prediction$outputs$A)
+scenario_supply[closed] <- 0
+scenario_model <- clm_allocation(
+  prepare_allocation(demand, scenario_supply, travel,
+    metadata = cornwall_units),
+  family = "gaussian", fit_v0 = TRUE)
+scenario <- evaluate_allocation(scenario_model, coef(fit))
+changed <- predict_allocation(scenario, travel, demand = demand,
+  outputs = c("outside_share", "flow"))
+practices$baseline <- colSums(baseline$outputs$flow)
+practices$scenario <- colSums(changed$outputs$flow)
+practices$change <- practices$scenario - practices$baseline
+practices$name <- gp$name[match(practices$practice, gp$practice)]
+head(practices[order(-abs(practices$change)),
+  c("name", "baseline", "scenario", "change")], 7)
+c(outside_change = sum(demand * changed$outputs$outside_share) -
+  sum(demand * baseline$outputs$outside_share))
 ```
 
-The evaluated source contains a small prediction snapshot. Saving it does not
-require retaining the original model closure or travel matrix. A fresh process
-can read the saved source and predict from a new requested travel matrix.
+The modelled list of the closed practice moves to nearby practices in
+Penzance and St Ives Bay, with a small part going to the outside option. Where
+a closed practice has no near neighbour, a larger part goes to the outside
+option; that follows from the constant outside weight, not from evidence about
+where patients would go.
+
+```{r scenario-map, fig.height = 5}
+moved <- data.frame(lsoa = names(demand),
+  share = baseline$outputs$flow[, closed] / demand)
+moved_map <- merge(cornwall_lsoa[mainland_area, "lsoa"], moved)
+gained <- merge(cornwall_gp[mainland_gp, "practice"],
+  practices[practices$change > 10, c("practice", "change")])
+west <- sf::st_bbox(c(xmin = 130000, ymin = 18000, xmax = 185000,
+  ymax = 48000), crs = sf::st_crs(cornwall_lsoa))
+ggplot() +
+  geom_sf(data = moved_map, aes(fill = 100 * share), colour = "white",
+    linewidth = 0.05) +
+  geom_sf(data = gained, aes(size = change), shape = 21, fill = "orange") +
+  geom_sf(data = cornwall_gp[cornwall_gp$practice == closed, ], shape = 4,
+    size = 3, stroke = 1.2) +
+  scale_fill_viridis_c(option = "mako", direction = -1,
+    name = "Residents at the\nclosed practice (%)") +
+  scale_size_area(name = "Modelled\nregistrations\ngained") +
+  coord_sf(xlim = west[c("xmin", "xmax")], ylim = west[c("ymin", "ymax")]) +
+  labs(title = "Closing Marazion Surgery (x): who moves and where to",
+    subtitle = "Modelled baseline share of residents at the practice; points are receiving practices") +
+  theme_void()
+```
+
+## Save and reload
+
+The evaluated scenario carries a small prediction snapshot. Saving it does not
+keep the model or the travel matrix, and the restored object predicts the same
+values.
 
 ```{r save-and-reload}
 saved <- tempfile(fileext = ".rds")
 saveRDS(scenario, saved)
 restored <- readRDS(saved)
-restored_prediction <- predict_allocation(restored, travel, demand = demand,
-  outputs = c("rho", "A", "abar"))
-stopifnot(identical(restored_prediction, scenario_prediction))
+stopifnot(identical(
+  predict_allocation(restored, travel, demand = demand,
+    outputs = c("outside_share", "flow")),
+  changed))
 unlink(saved)
 ```
 
-An optional map needs an explicit mapping from origin IDs to raster cells.
-This synthetic grid has no geographic interpretation. Mapping is separate
-from origin registry order, and map construction does not change load support.
+## Facility bootstrap on generated data
 
-```{r optional-map, fig.width=5, fig.height=3}
-template <- terra::rast(nrows = 2, ncols = 4, xmin = 0, xmax = 4,
-                        ymin = 0, ymax = 2, crs = "EPSG:3857")
-spatial <- list(template = template,
-  cell_index = setNames(c(6, 2, 8, 1, 7, 3, 4, 5), origin_ids))
-contact_map <- predict_allocation(restored, travel, outputs = "rho",
-  spatial = spatial, type = "raster")
-terra::plot(contact_map)
-```
+The bootstrap is shown on a generated network, not on Cornwall, for three
+reasons. Its eligibility rule (all 399 attempts made and at least 380 finite
+successful values) was validated on generated designs of this size. A known
+truth lets you see whether the intervals cover it. And the method resamples
+facility totals treated as independent counts in one period, whereas Cornwall
+registrations are a stock of who is registered where; that observation law
+would need its own justification before an interval could be read.
 
-## Facility-count bootstrap on a larger generated network
-
-The four-facility example above explains preparation and prediction support. For
-uncertainty, use a separate generated network of 80 origins and 40 facilities.
-The observation unit is one facility total during the declared period. Here the
-counts are generated independently from a Poisson law. Independence across
-facilities is an explicit assumption; it does not follow merely from mutually
-exclusive allocation destinations. In an application, that law needs its own
-justification.
+The generated network has 80 origins and 40 facilities. Facility totals are
+drawn independently from a Poisson law with σ = 12 and v0 = 45. Independence
+across facilities is an assumption declared below; it does not follow from
+mutually exclusive destinations.
 
 ```{r bootstrap-generated-inputs}
+units <- list(demand_units = "requests", demand_period = "one_reference_period",
+  supply_units = "service_slots", supply_period = "one_reference_period",
+  travel_units = "minutes")
 i <- seq_len(80)
 j <- seq_len(40)
 boot_travel <- sqrt(
@@ -198,21 +345,13 @@ boot_fit <- fit_allocation(boot_model, boot_observed, boot_starts,
   lower = c(sigma = 2, v0 = 1), upper = c(sigma = 60, v0 = 500),
   output = "utilization", loss = "poisson", gradient = TRUE,
   control = list(maxit = 300, factr = 10, pgtol = 1e-8))
-as.data.frame(boot_fit)
-summary(boot_fit)
+rbind(truth = truth, estimate = coef(boot_fit))
 ```
 
-The fit table contains saved parameter estimates. Diagnostic plotting delegates
-to the selected fit and does not refit the model.
-
-```{r selected-fit-plot, fig.width=5, fig.height=4}
-plot(boot_fit, type = "fit")
-```
-
-Prepare a supply-only scenario that increases the second facility's capacity by
-20%. Each bootstrap draw evaluates both baseline and changed supply at the same
-parameters. This pairs the contrast while allowing attraction, allocation and
-loads to respond to supply. It does not estimate a causal intervention effect.
+The target here is facility totals (`output = "utilization"`), the observation
+unit the bootstrap resamples. The paired scenario raises the second facility's
+supply by 20%; each bootstrap draw evaluates baseline and scenario at the same
+parameters.
 
 ```{r paired-bootstrap-inputs}
 boot_scenario_supply <- boot_supply
@@ -233,15 +372,14 @@ boot <- bootstrap_allocation(boot_model, boot_fit, observation,
 
 ### Precomputed bootstrap result
 
-The chunk above is the exact call, but it is not run while this vignette is
-built, because its 399 attempts take about three minutes. Its unmodified result
-is stored in `allocation-bootstrap.rds`, which the package maintainer
-regenerates by rendering this vignette with the environment variable
-`SPAX_REBUILD_VIGNETTE_BOOTSTRAP=true`; the same chunk then runs live and saves
-its result. The file is the complete 399-attempt object: nothing is subsampled
-or summarized. To reproduce it, run the chunk above yourself. The checks below
-confirm that the stored result matches the inputs and fit computed live in this
-vignette, that all 399 attempts were made, and that the package version matches.
+The chunk above is the exact call, but its 399 attempts take about three
+minutes, so it is not run while this guide is built. Its unmodified result is
+stored in `allocation-bootstrap.rds`, regenerated by
+`data-raw/precompute-vignette-bootstrap.R`, which renders this guide with
+`SPAX_REBUILD_VIGNETTE_BOOTSTRAP=true` so that the chunk runs live and saves its
+result. Nothing is subsampled or summarized; run the chunk yourself to
+reproduce it. The checks below confirm that the stored result matches the
+inputs and fit computed live here and that all 399 attempts were made.
 
 ```{r paired-bootstrap-load}
 boot_file <- "allocation-bootstrap.rds"
@@ -254,6 +392,7 @@ stopifnot(inherits(boot, "ae_allocation_bootstrap"),
   boot$seed == 20260930L, boot$planned == 399L, boot$attempted == 399L,
   identical(boot$facility_ids, names(boot_supply)),
   identical(boot$observation, observation),
+  identical(boot$input_metadata, units),
   isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6)))
 c(status = boot$status, attempted = boot$attempted, successful = boot$successful,
   built_with_spax = attr(boot, "spax_version"),
@@ -268,89 +407,63 @@ head(as.data.frame(boot, type = "starts"))
 ```
 
 The procedure makes 399 predetermined attempts. It resamples facility
-observation contributions while keeping all facilities in the allocation
-denominator. It retains unsuccessful attempts and successful inner-boundary
-fits; it does not replace failed attempts until a desired success count is
-reached. Inspect the actual and planned denominators and each saved quantity's
-status. An eligible interval requires a complete run of all 399 attempts, at least
-380 finite successful values and an eligible original fit. A refused original
-may have zero attempted draws and
-still preserve its point estimates and diagnostic reasons.
+observations while keeping every facility and its supply in the allocation.
+Failed attempts are kept and not replaced, and successful fits on an inner
+boundary stay in the distribution. An interval is reported only when all 399
+attempts were made, at least 380 values are finite and the original fit is
+eligible; otherwise the result keeps its point estimates and reasons but
+withholds intervals.
 
-These are pointwise percentile bootstrap intervals conditional on the declared observation
-assumption, fixed demand, supply, travel, included facilities and mean model.
-Generated-study acceptance does not establish an application's observation law
-or guarantee exact 95% coverage. Regional A is supported raw supply per retained
-demand and has no sampling interval. Supply at facilities without a finite edge
-on retained demand support is excluded from attributed capacity; the summary
-displays total, attributed and unsupported supply separately. The grouped-total HC3 refusal
-is unchanged; this facility bootstrap is a separate supported procedure.
+In the table, `regional_rho` is the modelled share of demand allocated to any
+facility rather than the outside option, and `delta_contacts` is the paired
+change in modelled facility totals under the supply scenario. `regional_A` is
+supply divided by demand on the fixed inputs and has no interval; supply at
+facilities without a finite travel edge to retained demand would be reported
+separately as unsupported.
 
-```{r bootstrap-plot, fig.width=6, fig.height=4}
-plot(boot, quantity = "regional_rho", type = "interval")
+```{r bootstrap-truth, fig.width = 7, fig.height = 3.5}
+oldpar <- par(mfrow = c(1, 2))
+for (q in c("sigma", "v0")) {
+  plot(boot, quantity = q, main = paste(q, "(dashed line: truth)"))
+  abline(v = truth[[q]], col = "orange", lwd = 2, lty = 2)
+}
+par(oldpar)
 ```
 
-Coverage extraction returns saved regional or cell tables. The cells are the
-retained positive-demand origins, with canonical origin IDs; extraction does not
-expand prediction support or create spatial uncertainty intervals. Unit and
-support declarations remain attached as attributes, so keep them when exporting
-tables to a format that drops R attributes.
+In this generated design both intervals contain the true values (dashed). They
+are pointwise percentile intervals conditional on the declared observation law
+and on fixed demand, supply, travel and facilities. Acceptance in generated
+studies does not establish an application's observation law or guarantee exact
+95% coverage, and the paired scenario is model-based, not causal.
 
-```{r saved-coverage-tables}
-boot_evaluated <- evaluate_allocation(boot_model, coef(boot_fit))
-regional_table <- as.data.frame(boot_evaluated$coverage)
-cell_table <- as.data.frame(boot_evaluated$coverage, type = "cells")
-regional_table
-head(cell_table)
-attr(cell_table, "input_metadata")
-```
+## Export and reload in a fresh session
 
-CSV files make these saved tables available to other software. They do not
-retain R attributes or result classes. Keep an RDS bundle alongside them to
-preserve observation declarations, units, support, reporting settings and the
-complete saved results. The estimates and draws include `delta_contacts`, the
-paired change in expected inside contacts under the supply scenario.
+CSV files make saved tables available to other software but drop R classes and
+attributes. Keep an RDS bundle alongside them to preserve the fit, declarations,
+units and the complete results.
 
 ```{r export-saved-results}
 export_dir <- tempfile("allocation-results-")
 dir.create(export_dir)
-export_tables <- list(estimates = as.data.frame(boot),
-  draws = as.data.frame(boot, type = "draws"),
-  starts = as.data.frame(boot, type = "starts"),
-  parameters = as.data.frame(boot_fit, type = "parameters"),
-  regional = regional_table, cells = cell_table)
+export_tables <- list(parameters = as.data.frame(fit),
+  practices = practices,
+  bootstrap_estimates = as.data.frame(boot),
+  bootstrap_draws = as.data.frame(boot, type = "draws"),
+  bootstrap_starts = as.data.frame(boot, type = "starts"))
 for (name in names(export_tables)) {
   write.csv(export_tables[[name]], file.path(export_dir, paste0(name, ".csv")),
     row.names = FALSE)
 }
 bundle_path <- file.path(export_dir, "allocation-results.rds")
-saveRDS(list(bootstrap = boot, fit = boot_fit, coverage = boot_evaluated$coverage,
-  tables = export_tables,
-  metadata = list(observation = boot$observation,
-    input_metadata = attr(cell_table, "input_metadata"),
-    support = attr(cell_table, "support"),
-    reporting_settings = attr(cell_table, "reporting_settings"))), bundle_path)
+saveRDS(list(fit = fit, scenario = scenario, bootstrap = boot,
+  closed = closed, tables = export_tables), bundle_path)
 list.files(export_dir)
-as.data.frame(boot)[as.data.frame(boot)$quantity == "delta_contacts", ]
 ```
 
-The optional map remains a point prediction. This artificial 8-by-10 grid has no
-geographic meaning; a bootstrap of regional quantities does not provide cellwise
-or simultaneous map intervals.
-
-```{r generated-point-map, fig.width=5, fig.height=4}
-boot_template <- terra::rast(nrows = 8, ncols = 10, xmin = 0, xmax = 10,
-  ymin = 0, ymax = 8, crs = "EPSG:3857")
-boot_spatial <- list(template = boot_template,
-  cell_index = setNames(seq_len(80), names(boot_demand)))
-boot_contact_map <- predict_allocation(boot_evaluated, boot_travel,
-  outputs = "rho", spatial = boot_spatial, type = "raster")
-terra::plot(boot_contact_map, main = "Generated point contact probability")
-```
-
-Finally, inspect the saved results in a new R process using the installed
-package. This check reads saved tables and summaries without solving or drawing
-another bootstrap sample, and exercises printing and plotting after reload.
+Finally, a new R process with the installed package reads the bundle. It checks
+the saved tables, predicts the scenario again from the bundled Cornwall travel
+times, and prints and plots the saved results without refitting or drawing a
+new bootstrap sample.
 
 ```{r fresh-installed-reload}
 child_path <- tempfile(fileext = ".R")
@@ -359,25 +472,26 @@ writeLines(c(
   paste0(".libPaths(c(", literal(dirname(find.package("spax"))), ", .libPaths()))"),
   "library(spax)",
   paste0("saved <- readRDS(", literal(bundle_path), ")"),
-  "stopifnot(identical(as.data.frame(saved$bootstrap), saved$tables$estimates))",
-  "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'draws'), saved$tables$draws))",
-  "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'starts'), saved$tables$starts))",
   "stopifnot(identical(as.data.frame(saved$fit), saved$tables$parameters))",
-  "stopifnot(identical(as.data.frame(saved$coverage), saved$tables$regional))",
-  "stopifnot(identical(as.data.frame(saved$coverage, type = 'cells'), saved$tables$cells))",
-  "stopifnot(identical(saved$bootstrap$observation, saved$metadata$observation))",
-  "stopifnot(identical(attr(saved$tables$cells, 'input_metadata'), saved$metadata$input_metadata))",
-  "stopifnot(inherits(summary(saved$bootstrap), 'summary.ae_allocation_bootstrap'))",
+  "stopifnot(identical(as.data.frame(saved$bootstrap), saved$tables$bootstrap_estimates))",
+  "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'draws'), saved$tables$bootstrap_draws))",
+  "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'starts'), saved$tables$bootstrap_starts))",
+  "areas <- sf::st_drop_geometry(cornwall_lsoa)",
+  "gp <- sf::st_drop_geometry(cornwall_gp)",
+  "travel <- cornwall_travel[areas$lsoa[!areas$scilly], gp$practice[!gp$scilly]]",
+  "demand <- setNames(areas$registered[!areas$scilly], areas$lsoa[!areas$scilly])",
+  "flow <- predict_allocation(saved$scenario, travel, demand = demand, outputs = 'flow')$outputs$flow",
+  "stopifnot(isTRUE(all.equal(unname(colSums(flow)), unname(saved$tables$practices$scenario))))",
+  "stopifnot(colSums(flow)[[saved$closed]] == 0)",
   "stopifnot(inherits(summary(saved$fit), 'summary.ae_multistart_fit'))",
-  "print(saved$bootstrap)",
-  "print(summary(saved$bootstrap))",
+  "stopifnot(inherits(summary(saved$bootstrap), 'summary.ae_allocation_bootstrap'))",
   "print(summary(saved$fit))",
-  "print(as.data.frame(saved$bootstrap))",
+  "print(summary(saved$bootstrap))",
   "plot_path <- tempfile(fileext = '.pdf')",
   "grDevices::pdf(plot_path)",
-  "plot(saved$bootstrap, quantity = 'regional_rho')",
-  "plot(saved$bootstrap, quantity = 'regional_rho', type = 'draws')",
   "plot(saved$fit, type = 'fit')",
+  "plot(saved$bootstrap, quantity = 'sigma')",
+  "plot(saved$bootstrap, quantity = 'sigma', type = 'draws')",
   "grDevices::dev.off()",
   "stopifnot(file.info(plot_path)$size > 0)",
   "unlink(plot_path)",
@@ -388,3 +502,12 @@ status <- system2(rscript, c("--vanilla", shQuote(child_path)))
 stopifnot(status == 0L)
 unlink(child_path)
 ```
+
+## Sources
+
+Registrations and workforce: NHS England, Open Government Licence v3.0.
+Boundaries and centroids: Office for National Statistics, Open Government
+Licence v3.0; contains OS data. Population grid: WorldPop 2020, Creative
+Commons Attribution 4.0. Travel times are derived from the Malaria Atlas
+Project motorised friction surface (Weiss et al. 2020, Creative Commons
+Attribution). Full attributions: `system.file("COPYRIGHTS", package = "spax")`.
