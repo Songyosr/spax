@@ -27,7 +27,9 @@
 #' - Values = 1 indicate as expected
 #' - Values < 1 indicate lower than expected
 #'
-#' @param x SpatRaster or SpatVector containing observed values
+#' @param x SpatRaster or SpatVector containing observed values. Point values
+#'   in the same cell add up (missing values are ignored); a polygon's value is
+#'   copied to every cell it covers.
 #' @param value_col Character; name of column if x is SpatVector
 #' @param template SpatRaster; template for rasterization if x is SpatVector
 #' @param method Character; method to compute reference value:
@@ -40,15 +42,17 @@
 #' @return SpatRaster of likelihood values
 #'
 #' @examples
-#' \dontrun{
 #' # From raster input
-#' pop <- rast(u5pd)
+#' pop <- read_spax_example("cornwall_pop.tif")
 #' lik1 <- transform_likelihood(pop)
 #'
-#' # From vector input
+#' # From vector input: density of residents aged 65+ by small area. Rasterizing
+#' # copies a polygon's value to every cell it covers, so use a density, not a count.
+#' areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas$dens_65 <- areas$pop_65p / terra::expanse(areas, unit = "km")
 #' lik2 <- transform_likelihood(
-#'   case_spatial,
-#'   value_col = "cases",
+#'   areas,
+#'   value_col = "dens_65",
 #'   template = pop
 #' )
 #'
@@ -58,7 +62,6 @@
 #'   method = "custom",
 #'   ref_value = 100
 #' )
-#' }
 #' @export
 transform_likelihood <- function(x, value_col = NULL, template = NULL,
                                  method = "mean", ref_value = NULL,
@@ -84,7 +87,7 @@ transform_likelihood <- function(x, value_col = NULL, template = NULL,
 
   # Convert vector to raster if needed
   if (inherits(x, "SpatVector")) {
-    x <- terra::rasterize(x, template, field = value_col)
+    x <- .rasterize_values(x, template, value_col)
   }
 
   # Core computation

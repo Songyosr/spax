@@ -19,35 +19,6 @@ implicit_gradient <- function(jac_state, jac_param) {
   solve(diag(nrow(jac_state)) - jac_state, jac_param)
 }
 
-#' Check an analytic Jacobian against finite differences
-#' @keywords internal
-grad_check <- function(fn, x, analytic_jac, ..., eps = 1e-6,
-                       tolerance = 1e-6,
-                       method = c("central", "forward")) {
-  fd <- fd_jacobian(fn, x, ..., eps = eps, method = method)
-  analytic <- if (is.function(analytic_jac)) {
-    analytic_jac(x, ...)
-  } else {
-    analytic_jac
-  }
-  .chck_numeric_matrix(analytic, "analytic_jac")
-  analytic <- .coerce_numeric_matrix(analytic)
-  if (!identical(dim(fd), dim(analytic))) {
-    stop("analytic and finite-difference Jacobians must have the same dimensions")
-  }
-  diff <- analytic - fd
-  denom <- pmax(abs(fd), abs(analytic), 1)
-  max_abs <- max(abs(diff))
-  max_rel <- max(abs(diff) / denom)
-  list(
-    passed = max_abs <= tolerance || max_rel <= tolerance,
-    max_abs = max_abs,
-    max_rel = max_rel,
-    analytic = analytic,
-    finite_difference = fd
-  )
-}
-
 .coerce_numeric_matrix <- function(x) {
   x <- as.matrix(x)
   storage.mode(x) <- "double"

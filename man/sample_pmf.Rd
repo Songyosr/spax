@@ -19,7 +19,7 @@ sample_pmf(
 )
 }
 \arguments{
-\item{x}{SpatRaster representing spatial distribution. Can be either:
+\item{x}{Single-layer SpatRaster representing spatial distribution. Can be either:
 - A PMF where values sum to 1
 - Raw density values that will be converted to PMF (except in snap mode)}
 
@@ -27,7 +27,8 @@ sample_pmf(
 If specified, overrides probabilistic sampling parameters.}
 
 \item{size}{Integer or NULL. Population size parameter for probability distributions.
-If NULL and input is density (not PMF), will be calculated from data.}
+If NULL and input is density (not PMF), the rounded total of the data
+is used.}
 
 \item{prob}{Numeric between 0 and 1. Probability parameter for sampling methods
 (e.g., disease prevalence, detection probability).}

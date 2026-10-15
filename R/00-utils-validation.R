@@ -77,15 +77,6 @@
   invisible(TRUE)
 }
 
-#' Check if value is integer
-#' @keywords internal
-.chck_is_integer <- function(x, name = "Input") {
-  if (!is.numeric(x) || any(x != as.integer(x), na.rm = TRUE)) {
-    stop(sprintf("%s must be integer value(s)", name))
-  }
-  invisible(TRUE)
-}
-
 # 2. Basic Value Checks --------------------------------------------------------
 #' Check if value is in valid range
 #' @keywords internal
@@ -160,12 +151,18 @@
   invisible(TRUE)
 }
 
-# 6. NA Handling --------------------------------------------------------------
-#' Check if values contain NAs when not allowed
+#' Check that numeric or raster weights are non-negative (NA is allowed)
 #' @keywords internal
-.chck_no_na <- function(x, name = "Input") {
-  if (any(is.na(x))) {
-    stop(sprintf("%s contains NA values", name))
+.chck_nonnegative_weights <- function(x, name = "weights") {
+  lowest <- if (inherits(x, "SpatRaster")) {
+    suppressWarnings(min(terra::global(x, "min", na.rm = TRUE)[[1]], na.rm = TRUE))
+  } else if (is.numeric(x)) {
+    suppressWarnings(min(x, na.rm = TRUE))
+  } else {
+    NA_real_
+  }
+  if (isTRUE(lowest < 0)) {
+    stop(sprintf("%s must be non-negative", name))
   }
   invisible(TRUE)
 }

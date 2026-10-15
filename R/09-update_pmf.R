@@ -11,9 +11,12 @@
 #' and likelihood are high, representing areas supported by both prior
 #' beliefs and observed data.
 #'
-#' @param prior SpatRaster containing prior PMF
-#' @param likelihood SpatRaster containing likelihood surface
-#' @param normalize Logical; if TRUE ensure output sums to 1 (default TRUE)
+#' @param prior SpatRaster containing prior PMF (each layer summing to 1)
+#' @param likelihood SpatRaster containing likelihood surface. With several
+#'   layers, prior and likelihood must have the same number of layers, or one
+#'   of them a single layer that applies to every layer of the other.
+#' @param normalize Logical; if TRUE ensure output sums to 1 (default TRUE),
+#'   each layer of a multi-layer posterior separately
 #' @param density Logical; if TRUE return density surface instead of PMF
 #' @param snap Logical; if TRUE skip validation
 #' @return SpatRaster containing either:
@@ -21,23 +24,23 @@
 #'         - Posterior density if density = TRUE
 #'
 #' @examples
-#' \dontrun{
-#' # Create prior from population
+#' pop <- read_spax_example("cornwall_pop.tif")
+#'
+#' # Group small areas into larger units (LSOA names end in a letter; dropping it
+#' # gives the containing MSOA) so every unit covers several grid cells
+#' areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas$msoa <- sub("[A-Z]$", "", areas$name)
+#' msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
+#'
+#' # Likelihood from a rate, not a count: the share of residents registered
+#' # with a GP outside Cornwall (counts would double-count population)
+#' msoa$out_rate <- msoa$sum_registered_out / msoa$sum_registered
+#' likelihood <- transform_likelihood(msoa, value_col = "out_rate", template = pop)
+#'
+#' # Prior from population; the posterior is proportional to population times
+#' # the out-of-area rate
 #' prior <- transform_pmf(pop)
-#'
-#' # Create likelihood from cases
-#' likelihood <- transform_likelihood(
-#'   case_spatial,
-#'   value_col = "cases",
-#'   template = pop
-#' )
-#'
-#' # Update prior with likelihood
 #' posterior <- update_pmf(prior, likelihood)
-#'
-#' # Get density surface
-#' density <- update_pmf(prior, likelihood, density = TRUE)
-#' }
 #' @export
 update_pmf <- function(prior, likelihood, normalize = TRUE,
                        density = FALSE, snap = FALSE) {
@@ -46,6 +49,12 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
     .chck_raster_input(prior)
     .chck_raster_input(likelihood, prior) # Use prior as template
     .chck_pmf_validity(prior)
+    n_prior <- terra::nlyr(prior)
+    n_likelihood <- terra::nlyr(likelihood)
+    if (n_prior != n_likelihood && n_prior != 1 && n_likelihood != 1) {
+      stop("prior and likelihood must have the same number of layers, ",
+           "or one of them a single layer")
+    }
   }
 
   # Calculate unnormalized posterior
@@ -59,8 +68,8 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
     posterior <- transform_pmf(posterior, snap = TRUE)
   }
 
-  # Convert to density if requested
-  if (density) {
+  # Convert to density if requested; an unnormalized posterior already is one
+  if (density && normalize) {
     posterior <- posterior * total
   }
 
@@ -77,10 +86,12 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
 #'
 #' @param x SpatVector containing observations
 #' @param value_col Character name of column containing values
-#' @param prior Optional SpatRaster prior PMF (if NULL, uses uniform prior)
+#' @param prior Optional SpatRaster prior PMF. If NULL, a uniform prior over
+#'   the non-missing cells of the template's first layer is used.
 #' @param template SpatRaster template (required if prior = NULL)
 #' @param density Logical; if TRUE return density surface
-#' @param standardize Logical; if TRUE standardize likelihood values
+#' @param standardize Must be FALSE. Standardized (z-score) likelihood values
+#'   include negative values, so they cannot form a posterior PMF.
 #' @return SpatRaster containing posterior PMF or density surface
 #'
 #' @examples
@@ -109,10 +120,21 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
   if (is.null(prior) && is.null(template)) {
     stop("Either prior or template must be provided")
   }
+  if (!isFALSE(standardize)) {
+    stop("standardize = TRUE gives negative likelihood values, which cannot ",
+         "form a posterior PMF")
+  }
 
-  # Create prior if not provided
+  # Uniform prior over the template's cells (cells missing in the template
+  # stay missing) when none is given
   if (is.null(prior)) {
-    prior <- transform_pmf(x, value_col, template)
+    .chck_class(template, "SpatRaster", "template")
+    prior <- terra::init(template[[1]], 1)
+    if (terra::hasValues(template)) prior <- terra::mask(prior, template[[1]])
+    if (!isTRUE(terra::global(prior, "sum", na.rm = TRUE)[[1]] > 0)) {
+      stop("template has no non-missing cells")
+    }
+    prior <- transform_pmf(prior, snap = TRUE)
   } else {
     .chck_raster_input(prior)
     .chck_pmf_validity(prior)

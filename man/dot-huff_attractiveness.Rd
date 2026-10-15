@@ -8,8 +8,8 @@
 }
 \description{
 Classic Huff uses `beta = 1` (attractiveness proportional to supply). A
-global scale on `a` cancels in the choice normalization, so `kappa` does not
-change utilization; it is kept for parity with the feedback models' supply
-scaling.
+global scale on `a` cancels when `v0 = 0`. With a positive outside option,
+scaling attractiveness changes the inside/outside balance unless `v0` is
+scaled by the same factor.
 }
 \keyword{internal}

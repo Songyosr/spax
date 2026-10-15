@@ -1,341 +1,243 @@
-make_field_raster <- function(n = 1) {
-  rasters <- lapply(seq_len(n), function(i) {
-    r <- terra::rast(nrows = 2, ncols = 2)
-    terra::values(r) <- rep(i, terra::ncell(r))
-    r
-  })
-  terra::rast(rasters)
-}
+# spax_field: raster/vector constructors, coercion, rewrap and accessors.
 
-test_that("raster field constructs a single-layer I field", {
-  r <- make_field_raster(1)
+test_that("fields rekey data to canonical L/V keys and expose accessors", {
+  single <- .spax_raster_field(field_rast(1), domain = "I", role = "demand")
+  expect_equal(class(single), c("spax_raster_field", "spax_field"))
+  expect_equal(.field_backend(single), "raster")
+  expect_equal(.field_domain(single), "I")
+  expect_equal(.field_role(single), "demand")
+  expect_null(.field_axis_values(single, "I"))
+  expect_equal(.field_layer_index(single), data.frame(layer = "L1"))
 
-  field <- .spax_raster_field(r, domain = "I", role = "demand")
+  lifted <- .spax_raster_field(field_rast(2, c("H1", "H2")),
+                               domain = c("I", "J"), role = "kernel")
+  expect_equal(names(.field_data(lifted)), c("L1", "L2"))
+  expect_equal(.field_layer_index(lifted),
+               data.frame(layer = c("L1", "L2"), J = c("H1", "H2")))
+  expect_equal(.field_layer_axes(lifted), "J")
+  expect_equal(unname(terra::values(.field_data(lifted))[1, ]), c(1, 2))
 
-  expect_s3_class(field, "spax_raster_field")
-  expect_s3_class(field, "spax_field")
-  expect_equal(.field_backend(field), "raster")
-  expect_equal(.field_domain(field), "I")
-  expect_null(.field_axis_values(field, "I"))
-  expect_equal(names(.field_data(field)), "L1")
-  expect_equal(.field_layer_index(field), data.frame(layer = "L1"))
+  vec <- .spax_vector_field(c(H1 = 10, H2 = 20), domain = "J", role = "supply")
+  expect_equal(class(vec), c("spax_vector_field", "spax_field"))
+  expect_equal(.field_backend(vec), "vector")
+  expect_equal(.field_data(vec), c(V1 = 10, V2 = 20))
+  expect_equal(.field_node_index(vec),
+               data.frame(key = c("V1", "V2"), J = c("H1", "H2")))
+
+  expect_error(.field_axis_values(vec, "K"), "axis must be in field domain")
 })
 
-test_that("raster field lifts semantic layer names into a frame", {
-  r <- make_field_raster(2)
-  names(r) <- c("H1", "H2")
-
-  field <- .spax_raster_field(r, domain = c("I", "J"), role = "kernel")
-
-  expect_equal(names(.field_data(field)), c("L1", "L2"))
-  expect_equal(
-    .field_layer_index(field),
-    data.frame(layer = c("L1", "L2"), J = c("H1", "H2"))
-  )
-  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
-  expect_match(.field_meta(field)$provenance, "semantic layer names lifted", all = FALSE)
-})
-
-test_that("raster field accepts explicit product-axis frame", {
-  r <- make_field_raster(4)
-  names(r) <- c("raw1", "raw2", "raw3", "raw4")
-  frame <- data.frame(
-    layer = names(r),
+test_that("raster layer frames come from explicit frames or allowed positions", {
+  product <- data.frame(
+    layer = c("raw1", "raw2", "raw3", "raw4"),
     J = c("H1", "H1", "H2", "H2"),
     mode = c("car", "walk", "car", "walk")
   )
-
   field <- .spax_raster_field(
-    r,
+    field_rast(4, product$layer),
     domain = c("I", "J", "mode"),
-    index = list(layer = frame),
+    index = list(layer = product),
     role = "distance"
   )
-
-  expect_equal(names(.field_data(field)), paste0("L", 1:4))
+  # Raw layer names give way to the field's own keys.
+  expect_equal(names(.field_data(field)), .field_layer_index(field)$layer)
+  expect_equal(.field_layer_index(field)[-1], product[-1])
   expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
   expect_equal(.field_axis_values(field, "mode"), c("car", "walk"))
-  expect_equal(
-    .field_layer_index(field),
-    data.frame(
-      layer = paste0("L", 1:4),
-      J = c("H1", "H1", "H2", "H2"),
-      mode = c("car", "walk", "car", "walk")
-    )
+
+  # Labels become character and keep their first-appearance order.
+  coerced <- .spax_raster_field(
+    field_rast(3, c("raw1", "raw2", "raw3")),
+    domain = c("I", "J", "scenario"),
+    frame = data.frame(layer = c("raw1", "raw2", "raw3"), J = c(2, 1, 2),
+                       scenario = factor(c("b", "a", "c")))
   )
+  expect_equal(.field_axis_values(coerced, "J"), c("2", "1"))
+  expect_equal(.field_axis_values(coerced, "scenario"), c("b", "a", "c"))
+
+  # terra's default layer names carry no IDs: positions only on request.
+  expect_error(.spax_raster_field(field_rast(2), domain = c("I", "J")),
+               "semantic axis IDs are required")
+  positional <- .spax_raster_field(field_rast(2), domain = c("I", "draw"),
+                                   allow_positional = TRUE)
+  expect_equal(.field_axis_values(positional, "draw"), c("draw_1", "draw_2"))
 })
 
-test_that("raster field allows row-order linkage with a real frame", {
-  r <- make_field_raster(2)
-  names(r) <- c("raw1", "raw2")
-  frame <- data.frame(J = c("H1", "H2"))
+test_that("a keyed layer frame binds by join; a keyless one by row order", {
+  r <- field_rast(2, c("H1", "H2"))
 
-  expect_warning(
-    field <- .spax_raster_field(r, domain = c("I", "J"), frame = frame),
-    "assuming row order"
+  # Keyed rows in reversed order still bind to the matching layer.
+  keyed <- .spax_raster_field(
+    r, domain = c("I", "J"),
+    frame = data.frame(layer = c("H2", "H1"), J = c("valH2", "valH1"))
   )
-
-  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
-  expect_match(.field_meta(field)$provenance, "layer linkage assumed", all = FALSE)
-})
-
-test_that("raster field binds a keyed frame by join, not row order", {
-  r <- make_field_raster(2)
-  names(r) <- c("H1", "H2") # layer 1 = H1, layer 2 = H2
-
-  # Correctly keyed, but rows supplied in reversed order.
-  frame <- data.frame(
-    layer = c("H2", "H1"),
-    J = c("valH2", "valH1"),
-    stringsAsFactors = FALSE
-  )
-
-  field <- .spax_raster_field(r, domain = c("I", "J"), frame = frame)
-
-  # L1 is raster layer 1 (H1) and must carry valH1, not valH2.
-  expect_equal(
-    .field_layer_index(field),
-    data.frame(layer = c("L1", "L2"), J = c("valH1", "valH2"))
-  )
-})
-
-test_that("raster field rejects a provided key that does not match layer names", {
-  r <- make_field_raster(2)
-  names(r) <- c("H1", "H2")
-  frame <- data.frame(
-    layer = c("H1", "H3"),
-    J = c("a", "b"),
-    stringsAsFactors = FALSE
-  )
-
+  expect_equal(.field_layer_index(keyed)$J, c("valH1", "valH2"))
   expect_error(
-    .spax_raster_field(r, domain = c("I", "J"), frame = frame),
+    .spax_raster_field(r, domain = c("I", "J"),
+                       frame = data.frame(layer = c("H1", "H3"), J = c("a", "b"))),
     "must match raster layer names"
   )
-})
 
-test_that("raster field coerces axis labels to character and preserves first appearance", {
-  r <- make_field_raster(3)
-  names(r) <- c("raw1", "raw2", "raw3")
-  frame <- data.frame(
-    layer = names(r),
-    J = c(2, 1, 2),
-    scenario = factor(c("b", "a", "c"))
-  )
-
-  field <- .spax_raster_field(
-    r,
-    domain = c("I", "J", "scenario"),
-    frame = frame
-  )
-
-  expect_equal(.field_axis_values(field, "J"), c("2", "1"))
-  expect_equal(.field_axis_values(field, "scenario"), c("b", "a", "c"))
-})
-
-test_that("raster field rejects invalid raster domains and layer frames", {
-  r2 <- make_field_raster(2)
-  names(r2) <- c("lyr.1", "lyr.2")
-
-  expect_error(
-    .spax_raster_field(r2, domain = "J", allow_positional = TRUE),
-    "domain must include I"
-  )
-  expect_error(
-    .spax_raster_field(r2, domain = "I"),
-    "multi-layer raster fields"
-  )
-  expect_error(
-    .spax_raster_field(r2, domain = c("I", "J")),
-    "semantic axis IDs are required"
-  )
-
-  bad_rows <- data.frame(layer = "a", J = "H1")
-  expect_error(
-    .spax_raster_field(r2, domain = c("I", "J"), frame = bad_rows),
-    "one row per raster layer"
-  )
-
-  duplicate_keys <- data.frame(layer = c("a", "a"), J = c("H1", "H2"))
-  expect_error(
-    .spax_raster_field(r2, domain = c("I", "J"), frame = duplicate_keys),
-    "unique values"
-  )
-
-  missing_values <- data.frame(layer = c("a", "b"), J = c("H1", NA))
-  expect_error(
-    .spax_raster_field(r2, domain = c("I", "J"), frame = missing_values),
-    "must not contain missing"
-  )
-
-  duplicate_coordinates <- data.frame(layer = c("a", "b"), J = c("H1", "H1"))
-  expect_error(
-    .spax_raster_field(r2, domain = c("I", "J"), frame = duplicate_coordinates),
-    "duplicate coordinate tuples"
-  )
-})
-
-test_that("raster field can generate positional IDs only when explicitly allowed", {
-  r <- make_field_raster(2)
-  names(r) <- c("lyr.1", "lyr.2")
-
-  field <- .spax_raster_field(
-    r,
-    domain = c("I", "draw"),
-    allow_positional = TRUE
-  )
-
-  expect_equal(.field_axis_values(field, "draw"), c("draw_1", "draw_2"))
-  expect_match(.field_meta(field)$provenance, "positional semantic IDs", all = FALSE)
-})
-
-test_that("vector field provides minimal axis accessor parity", {
-  x <- c(H1 = 10, H2 = 20)
-
-  field <- .spax_vector_field(x, domain = "J", role = "supply")
-
-  expect_s3_class(field, "spax_vector_field")
-  expect_equal(.field_backend(field), "vector")
-  expect_equal(names(.field_data(field)), c("V1", "V2"))
-  expect_equal(
-    .field_node_index(field),
-    data.frame(key = c("V1", "V2"), J = c("H1", "H2"))
-  )
-  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
-  expect_error(.spax_vector_field(c(10, 20), domain = "J"), "must have names")
-})
-
-test_that("vector field accepts explicit multi-axis frames with partial products", {
-  x <- c(10, 4, 20)
-  frame <- data.frame(
-    J = c("H1", "H1", "H2"),
-    mode = c("car", "walk", "car")
-  )
-
-  field <- .spax_vector_field(x, domain = c("J", "mode"), frame = frame)
-
-  expect_s3_class(field, "spax_vector_field")
-  expect_equal(names(.field_data(field)), c("V1", "V2", "V3"))
-  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
-  expect_equal(.field_axis_values(field, "mode"), c("car", "walk"))
-  expect_equal(
-    .field_index_frame(field),
-    data.frame(
-      key = c("V1", "V2", "V3"),
-      J = c("H1", "H1", "H2"),
-      mode = c("car", "walk", "car")
-    )
-  )
-})
-
-test_that("vector field warns on row-order assumption only for named data", {
-  # Named data + keyless frame: a real second ordering, so warn (parallel to raster).
-  named <- c(H1 = 10, H2 = 20)
   expect_warning(
-    field <- .spax_vector_field(named, domain = "J",
-                                       frame = data.frame(J = c("H1", "H2"))),
+    keyless <- .spax_raster_field(field_rast(2, c("raw1", "raw2")),
+                                  domain = c("I", "J"),
+                                  frame = data.frame(J = c("H1", "H2"))),
     "assuming row order"
   )
-  expect_match(.field_meta(field)$provenance, "node linkage assumed", all = FALSE)
+  expect_equal(.field_axis_values(keyless, "J"), c("H1", "H2"))
+})
 
-  # Unnamed data + keyless frame is the normal positional contract: no warning.
+test_that("raster constructor rejects invalid domains and layer frames", {
+  r2 <- field_rast(2)
+  bad_frame <- function(...) {
+    .spax_raster_field(r2, domain = c("I", "J"), frame = data.frame(...))
+  }
+
+  expect_error(.spax_raster_field(r2, domain = "J", allow_positional = TRUE),
+               "domain must include I")
+  expect_error(.spax_raster_field(r2, domain = "I"), "multi-layer raster fields")
+  expect_error(bad_frame(layer = "a", J = "H1"), "one row per raster layer")
+  expect_error(bad_frame(layer = c("a", "a"), J = c("H1", "H2")), "unique values")
+  expect_error(bad_frame(layer = c("a", NA), J = c("H1", "H2")),
+               "must not contain missing")
+  expect_error(bad_frame(layer = c("a", "b"), J = c("H1", NA)),
+               "must not contain missing")
+  expect_error(bad_frame(layer = c("a", "b"), J = c("H1", "H1")),
+               "duplicate coordinate tuples")
+})
+
+test_that("vector fields bind node frames by key or by position", {
+  partial <- .spax_vector_field(
+    c(10, 4, 20), domain = c("J", "mode"),
+    frame = data.frame(J = c("H1", "H1", "H2"), mode = c("car", "walk", "car"))
+  )
+  expect_equal(names(.field_data(partial)), field_index_frame(partial)$key)
+  expect_equal(field_index_frame(partial)[-1],
+               data.frame(J = c("H1", "H1", "H2"), mode = c("car", "walk", "car")))
+  expect_equal(.field_axis_values(partial, "mode"), c("car", "walk"))
+
+  # A key column is a join key against the value names.
+  keyed <- .spax_vector_field(
+    c(a = 10, b = 20), domain = "J",
+    frame = data.frame(key = c("b", "a"), J = c("Hb", "Ha"))
+  )
+  expect_equal(.field_node_index(keyed)$J, c("Ha", "Hb"))
+
+  # Named values with a keyless frame override a real ordering: warn.
+  expect_warning(
+    .spax_vector_field(c(H1 = 10, H2 = 20), domain = "J",
+                       frame = data.frame(J = c("H1", "H2"))),
+    "assuming row order"
+  )
   expect_no_warning(
-    .spax_vector_field(c(10, 4, 20), domain = c("J", "mode"),
-                              frame = data.frame(J = c("H1", "H1", "H2"),
-                                                 mode = c("car", "walk", "car")))
+    .spax_vector_field(c(10, 20), domain = "J", frame = data.frame(J = c("H1", "H2")))
+  )
+  expect_equal(
+    .field_axis_values(.spax_vector_field(c(10, 20), domain = "J",
+                                          allow_positional = TRUE), "J"),
+    c("J_1", "J_2")
   )
 })
 
-test_that("vector field rejects invalid node frames", {
-  expect_error(
-    .spax_vector_field(c(10, 4), domain = c("J", "mode")),
-    "multi-axis vector fields"
-  )
-  expect_error(
-    .spax_vector_field(c(10, 4), domain = c("J", "mode"),
-                              frame = data.frame(J = "H1", mode = "car")),
-    "one row per vector element"
-  )
-  expect_error(
-    .spax_vector_field(c(10, 4), domain = c("J", "mode"),
-                              frame = data.frame(J = c("H1", "H1"),
-                                                 mode = c("car", "car"))),
-    "duplicate coordinate tuples"
-  )
-  expect_error(
-    .spax_vector_field(c(10, 4), domain = c("J", "mode"),
-                              frame = data.frame(J = c("H1", NA),
-                                                 mode = c("car", "walk"))),
-    "must not contain missing"
-  )
+test_that("vector constructor rejects invalid values and node frames", {
+  bad_frame <- function(x, ...) {
+    .spax_vector_field(x, domain = c("J", "mode"), frame = data.frame(...))
+  }
+
+  expect_error(.spax_vector_field(c(10, 20), domain = "J"), "must have names")
+  expect_error(.spax_vector_field(c(10, 4), domain = c("J", "mode")),
+               "multi-axis vector fields")
+  expect_error(bad_frame(c(10, 4), J = "H1", mode = "car"),
+               "one row per vector element")
+  expect_error(bad_frame(c(10, 4), J = c("H1", "H1"), mode = c("car", "car")),
+               "duplicate coordinate tuples")
+  expect_error(bad_frame(c(10, 4), J = c("H1", NA), mode = c("car", "walk")),
+               "must not contain missing")
+  expect_error(bad_frame(c(10, 4), key = c("a", NA), J = c("H1", "H2"),
+                         mode = c("car", "car")),
+               "key must not contain missing")
+  expect_error(bad_frame(c(10, 4), key = c("a", "a"), J = c("H1", "H2"),
+                         mode = c("car", "car")),
+               "key must contain unique values")
+  expect_error(bad_frame(c(a = 10, b = 4), key = c("a", "c"), J = c("H1", "H2"),
+                         mode = c("car", "car")),
+               "key must match vector names")
+  expect_error(.spax_vector_field(matrix(1:2), domain = "J",
+                                  allow_positional = TRUE),
+               "atomic vector")
 })
 
-test_that(".as_spax_field coerces raw rasters and passes through fields", {
-  r <- make_field_raster(2)
-  names(r) <- c("H1", "H2")
-
-  field <- .as_spax_field(r, domain = c("I", "J"), role = "kernel")
-
-  expect_s3_class(field, "spax_raster_field")
-  expect_equal(.field_domain(field), c("I", "J"))
-  expect_equal(.field_role(field), "kernel")
-  expect_equal(.field_axis_values(field, "J"), c("H1", "H2"))
-  expect_identical(.as_spax_field(field, domain = c("J", "I")), field)
-  expect_error(.as_spax_field(field, domain = "I"), "field domain")
+test_that("common validation rejects bad domains, roles and indexes", {
+  r1 <- field_rast(1)
+  expect_error(.spax_raster_field(r1, domain = character()),
+               "domain must be a non-empty")
+  expect_error(.spax_raster_field(r1, domain = c("I", "I")),
+               "unique axis names")
+  expect_error(.spax_vector_field(c(H1 = 1), domain = "J", role = ""),
+               "role must be a non-missing")
+  expect_warning(.spax_vector_field(c(H1 = 1), domain = "J", role = "banana"),
+                 "not in known spax_field roles")
+  # The constructors build their own index; the shared validator guards
+  # finished objects.
+  expect_error(.chck_spax_field(1, domain = "J", index = list(data.frame())),
+               "index must be a named list")
+  expect_error(.chck_spax_field(NULL, domain = "J"), "data is required")
 })
 
-test_that(".as_spax_field supports positional raw raster and vector doors", {
-  r <- make_field_raster(2)
-  names(r) <- c("lyr.1", "lyr.2")
-  raster_field <- .as_spax_field(
-    r,
-    domain = c("I", "facility"),
-    role = "kernel",
-    allow_positional = TRUE
-  )
+test_that(".as_spax_field coerces raw inputs and passes fields through", {
+  raster_field <- .as_spax_field(field_rast(2, c("H1", "H2")),
+                                 domain = c("I", "J"), role = "kernel")
+  expect_s3_class(raster_field, "spax_raster_field")
+  expect_equal(.field_role(raster_field), "kernel")
+  expect_equal(.field_axis_values(raster_field, "J"), c("H1", "H2"))
 
-  expect_equal(.field_axis_values(raster_field, "facility"),
+  positional <- .as_spax_field(field_rast(2), domain = c("I", "facility"),
+                               role = "kernel", allow_positional = TRUE)
+  expect_equal(.field_axis_values(positional, "facility"),
                c("facility_1", "facility_2"))
 
-  vector_field <- .as_spax_field(c(H1 = 10, H2 = 20),
-                                 domain = "facility",
+  vector_field <- .as_spax_field(c(H1 = 10, H2 = 20), domain = "facility",
                                  role = "supply")
-
   expect_s3_class(vector_field, "spax_vector_field")
   expect_equal(.field_axis_values(vector_field, "facility"), c("H1", "H2"))
+
+  # A prepared field is trusted once its domain matches, in any order.
+  expect_identical(.as_spax_field(raster_field, domain = c("J", "I")),
+                   raster_field)
+  expect_error(.as_spax_field(raster_field, domain = "I"), "field domain")
+  expect_error(.as_spax_field(list(1, 2), domain = "J"), "unsupported input type")
 })
 
-test_that(".rewrap_field reuses canonical structure and rekeys data", {
-  r <- make_field_raster(2)
-  names(r) <- c("H1", "H2")
-  raster_field <- .spax_raster_field(r, domain = c("I", "J"))
+test_that(".rewrap_field keeps the structure and rekeys new data", {
+  raster_field <- .spax_raster_field(field_rast(2, c("H1", "H2")),
+                                     domain = c("I", "J"))
   raster_data <- .field_data(raster_field) * 2
   names(raster_data) <- c("raw_a", "raw_b")
-
   raster_rewrapped <- .rewrap_field(raster_field, raster_data, role = "map")
 
   expect_s3_class(raster_rewrapped, "spax_raster_field")
-  expect_equal(names(.field_data(raster_rewrapped)), c("L1", "L2"))
-  expect_equal(.field_index_frame(raster_rewrapped), .field_index_frame(raster_field))
+  expect_equal(names(.field_data(raster_rewrapped)),
+               .field_layer_index(raster_field)$layer)
+  expect_equal(field_index_frame(raster_rewrapped),
+               field_index_frame(raster_field))
   expect_equal(.field_role(raster_rewrapped), "map")
+  expect_error(.rewrap_field(raster_field, raster_data[[1]]),
+               "one layer per index row")
 
   vector_field <- .spax_vector_field(c(H1 = 10, H2 = 20), domain = "J")
-  vector_data <- unname(.field_data(vector_field) + 1)
-
-  vector_rewrapped <- .rewrap_field(vector_field, vector_data)
-
-  expect_s3_class(vector_rewrapped, "spax_vector_field")
-  expect_equal(names(.field_data(vector_rewrapped)), c("V1", "V2"))
-  expect_equal(.field_index_frame(vector_rewrapped), .field_index_frame(vector_field))
+  vector_rewrapped <- .rewrap_field(vector_field, c(11, 21))
+  expect_equal(.field_data(vector_rewrapped),
+               setNames(c(11, 21), .field_node_index(vector_field)$key))
+  expect_equal(field_index_frame(vector_rewrapped),
+               field_index_frame(vector_field))
   expect_error(.rewrap_field(vector_field, c(1, 2, 3)), "one value per index row")
 })
 
-test_that("spax_field print methods expose compact debugging surfaces", {
-  r <- make_field_raster(1)
-  raster_field <- .spax_raster_field(r, domain = "I")
+test_that("print shows the backend and the index frame", {
+  raster_field <- .spax_raster_field(field_rast(1), domain = "I")
   vector_field <- .spax_vector_field(c(H1 = 10), domain = "J")
 
-  expect_output(print(raster_field), "backend: raster")
-  expect_output(print(vector_field), "backend: vector")
-  expect_output(print(vector_field), "frame:")
+  expect_output(expect_invisible(print(raster_field)),
+                "backend: raster(.|\n)*frame:")
+  expect_output(print(vector_field), "backend: vector(.|\n)*frame:")
 })

@@ -26,6 +26,9 @@ print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   cat("<ae_problem_nfxp_fit>\n")
   cat("model: ", x$model, "\n", sep = "")
   cat("family: ", x$family, "\n", sep = "")
+  if (!is.null(x$allocation_form)) {
+    cat("allocation_form: ", x$allocation_form, "\n", sep = "")
+  }
   cat("theta:\n")
   theta <- x$theta
   if (is.null(names(theta))) {
@@ -71,6 +74,7 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
     list(
       model = object$model,
       family = object$family,
+      allocation_form = object$allocation_form,
       theta = theta_table,
       fit = data.frame(
         loss = object$loss,
@@ -95,7 +99,11 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   cat("<summary.ae_problem_nfxp_fit>\n")
   cat("model: ", x$model, "\n", sep = "")
-  cat("family: ", x$family, "\n\n", sep = "")
+  cat("family: ", x$family, "\n", sep = "")
+  if (!is.null(x$allocation_form)) {
+    cat("allocation_form: ", x$allocation_form, "\n", sep = "")
+  }
+  cat("\n")
   cat("theta:\n")
   print.data.frame(.ae_round_data_frame(x$theta, digits = digits),
                    row.names = FALSE)

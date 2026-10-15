@@ -12,8 +12,27 @@
 #'        SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
 #'        spatially varying catchment (variable-catchment FCA / V2SFCA).
 #' @param snap Logical; if TRUE, skip input validation
-#' @param ... Additional parameters passed to custom decay functions
+#' @param ... Additional parameters for custom decay functions, or the offset
+#'        \code{c} of the "inverse" kernel
 #' @return Object of the same class as input containing decay weights
+#' @details
+#' Built-in kernels for a distance \eqn{d}, and the \code{sigma} used when
+#' none is given:
+#' \itemize{
+#'   \item \code{"gaussian"}: \eqn{\exp(-d^2 / (2\sigma^2))}{exp(-d^2 / (2 sigma^2))};
+#'     default \eqn{\sigma = 11.64884}{sigma = 11.64884}.
+#'   \item \code{"exponential"}: \eqn{\exp(-\sigma d)}{exp(-sigma d)}; default
+#'     \eqn{\sigma = 0.1}{sigma = 0.1}.
+#'   \item \code{"power"}: \eqn{d^{-\sigma}}{d^(-sigma)}; default
+#'     \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0.
+#'   \item \code{"inverse"}: \eqn{1 / (d + c)}{1 / (d + c)}, with \code{c = 1}
+#'     unless \code{c} is passed in \code{...}; \code{sigma} does not enter
+#'     the weights (a given value is still validated).
+#'   \item \code{"binary"}: 1 when \eqn{d \le \sigma}{d <= sigma}, otherwise 0;
+#'     default \eqn{\sigma = 97.5}{sigma = 97.5}.
+#' }
+#' The defaults are historical values, not recommendations: set \code{sigma}
+#' for the units and scale of your travel times.
 #' @examples
 #' \dontrun{
 #' library(terra)
@@ -136,9 +155,12 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
     return(TRUE)
   }
 
-  # Check distance can be either numeric, matrix, or SpatRaster
-  .chck_class(distance, c("numeric", "matrix", "SpatRaster"), "distance")
-  # if(!is.numeric(distance)) stop("Distance must contain a numeric vector, matrix, or SpatRaster")
+  # Distance: a plain numeric (double or integer) vector or matrix, or a
+  # SpatRaster. Classed numerics such as units objects are refused.
+  if (!inherits(distance, "SpatRaster") &&
+      (!is.numeric(distance) || is.object(distance))) {
+    stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
+  }
 
   # Check method is either a character or function
   if (!is.function(method)) {

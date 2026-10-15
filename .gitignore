@@ -11,8 +11,14 @@ docs
 
 # Ignore junk folder
 junk/
-data-raw/
+# data-raw is local except tracked, reproducible build scripts
+data-raw/*
+!data-raw/cornwall_gp.R
+!data-raw/precompute-vignette-bootstrap.R
 tests/.DS_Store
+# testthat failure snapshots
+tests/testthat/_problems/
+tests/testthat/testthat-problems.rds
 
 # Local Obsidian / LLM wiki vault
 .local-wiki/

@@ -3,25 +3,56 @@ template:
   bootstrap: 5
 
 articles:
-  - title: Get Started
-    navbar: ~
+  - title: Data
+    navbar: Data
     contents:
-      - spax-101-intro
-      - spax-102-data-prep
-      - spax-103-dissection
-      - spax-104-raster-tradeoff
-  - title: Package Conventions
+      - cornwall-data
+      - data-prep
+  - title: FCA accessibility
+    navbar: FCA accessibility
+    contents:
+      - fca-methods
+      - e2sfca-steps
+      - grid-resolution
+  - title: Allocation model
+    navbar: Allocation model
+    contents:
+      - model-choice
+      - allocation-workflow
+      - facility-bootstrap
+  - title: Package conventions
+    navbar: Package conventions
     contents:
       - function-naming
 
 reference:
-  - title: "Core Accessibility Functions"
-    desc: "Main functions for spatial accessibility analysis"
+  - title: "Package Overview and Compatibility"
+    desc: "Choose a workflow, preserve input meaning and reuse saved results safely"
+    contents:
+      - spax-package
+
+  - title: "Public FCA Accessibility"
+    desc: "Raster accessibility surfaces with model-specific normalization and independent supply indicators"
     contents:
       - spax_2sfca
       - spax_e2sfca
       - spax_m2sfca
       - compute_access
+
+  - title: "Experimental Allocation Workflow"
+    desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"
+    contents:
+      - prepare_allocation
+      - clm_allocation
+      - fit_allocation
+      - evaluate_allocation
+      - predict_allocation
+      - bootstrap_allocation
+      - allocation-fit-methods
+      - allocation-result-tables
+      - allocation-bootstrap-methods
+      - print.summary.ae_multistart_fit
+      - plot.ae_multistart_fit
 
   - title: "Distance & Decay Functions"
     desc: "Functions for handling distance relationships"
@@ -42,14 +73,14 @@ reference:
       - transform_demand
 
   - title: "Simulation & Sampling"
-    desc: "Functions for spatial simulation"
+    desc: "Spatial probability and demand sampling helpers; distinct from allocation bootstrap intervals"
     contents:
       - sample_pmf
       - update_pmf
       - transform_likelihood
 
-  - title: "Object Methods"
-    desc: "Print, summary, and plot methods for spax objects"
+  - title: "FCA Object Methods"
+    desc: "Print, summary, and plot methods for public FCA spax objects"
     contents:
       - print.spax
       - summary.spax
@@ -64,14 +95,12 @@ reference:
       - read_spax
       - save_spax
 
-  - title: "Package Data"
-    desc: "Documentation for included datasets"
+  - title: "Cornwall GP Example Data"
+    desc: "Open data for NHS Cornwall and Isles of Scilly GP practices; see inst/COPYRIGHTS for sources and licences"
     contents:
-      - u5pd
-      - hos_iscr
-      - hos_iscvec
-      - phc_iscr
-      - hc12_hos
-      - hc12_phc
-      - bound0
-      - bound1
+      - cornwall_gp
+      - cornwall_lsoa
+      - cornwall_flows
+      - cornwall_travel
+      - cornwall_pop
+      - cornwall_gp_travel

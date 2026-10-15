@@ -8,6 +8,7 @@
 ^docs$
 ^pkgdown$
 ^\.github$
+^\.git$
 ^junk/
 ^data-raw$
 ^README.Rmd$
@@ -17,3 +18,5 @@
 ^CLAUDE\.md$
 ^agents\.md$
 ^claude\.md$
+^tests/testthat/_problems$
+^tests/testthat/testthat-problems\.rds$

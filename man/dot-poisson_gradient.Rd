@@ -7,6 +7,11 @@
 .poisson_gradient(predicted, observed, sensitivity, eps = 1e-09)
 }
 \description{
-Gradient of the Poisson NLL with respect to parameters
+Both the loss and this gradient floor predictions at \code{eps}. Below the
+floor the loss is flat, but the gradient keeps the log-likelihood slope
+\code{1 - y / eps}. For an observed count above \code{eps} this pushes a prediction
+that collapsed towards zero back up instead of stalling the optimizer
+there; for a zero count it keeps the usual slope of 1. The two therefore
+disagree below \code{eps} by design.
 }
 \keyword{internal}

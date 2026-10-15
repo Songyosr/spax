@@ -6,8 +6,8 @@
 \usage{
 .haae_problem(
   demand,
-  supply,
-  distance,
+  supply = NULL,
+  distance = NULL,
   family = c("gaussian", "exponential", "power"),
   kappa = 1,
   eps = 1e-08,
@@ -18,6 +18,7 @@
 )
 }
 \description{
-Construct a private HAAE problem
+\code{demand} can be checked \code{.prepare_allocation()} output; in that case omit raw
+\code{supply}, \code{distance} and supply selectors. Raster arguments remain compatible.
 }
 \keyword{internal}

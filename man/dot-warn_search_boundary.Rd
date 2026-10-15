@@ -8,6 +8,6 @@
 }
 \description{
 A boundary optimum usually means the search box, not the model, picked the
-answer. `par` is the optimized value on the log scale (matching the optimizer).
+answer. \code{par} is the optimized value on the log scale (matching the optimizer).
 }
 \keyword{internal}

@@ -298,29 +298,29 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' library(terra)
 #' library(sf)
 #'
-#' # Convert under-5 population density to proper format
-#' pop_rast <- read_spax_example("u5pd.tif")
-#' hos_iscr <- read_spax_example("hos_iscr.tif")
+#' # Cornwall population grid and travel time to each GP practice
+#' pop_rast <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
 #'
 #' # Drop geometry for supply data
-#' hc12_hos <- hc12_hos |> st_drop_geometry()
+#' gp <- cornwall_gp |> st_drop_geometry()
 #'
 #' # Calculate accessibility with Gaussian decay
 #' result <- spax_e2sfca(
 #'   demand = pop_rast,
-#'   supply = hc12_hos,
-#'   distance = hos_iscr,
+#'   supply = gp,
+#'   distance = travel,
 #'   decay_params = list(
 #'     method = "gaussian",
-#'     sigma = 30 # 30-minute characteristic distance
+#'     sigma = 10 # 10-minute characteristic travel time
 #'   ),
 #'   demand_normalize = "semi", # Prevent demand inflation
-#'   id_col = "id",
-#'   supply_cols = "s_doc"
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
 #' )
 #'
 #' # Extract and plot accessibility surface
-#' plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+#' plot(result$accessibility, main = "GP Accessibility (E2SFCA)")
 #'
 #' # Access facility-level information
 #' head(result$facilities)
@@ -328,15 +328,15 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' # Compare different decay functions
 #' result_exp <- spax_e2sfca(
 #'   demand = pop_rast,
-#'   supply = hc12_hos,
-#'   distance = hos_iscr,
+#'   supply = gp,
+#'   distance = travel,
 #'   decay_params = list(
 #'     method = "exponential",
 #'     sigma = 0.1
 #'   ),
 #'   demand_normalize = "semi",
-#'   id_col = "id",
-#'   supply_cols = "s_doc"
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
 #' )
 #'
 #' # Plot both for comparison
@@ -565,38 +565,38 @@ spax_m2sfca <- function(demand, supply, distance,
 #' library(sf)
 #'
 #' # Load data
-#' pop_rast <- read_spax_example("u5pd.tif")
-#' hos_iscr <- read_spax_example("hos_iscr.tif")
+#' pop_rast <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
 #'
 #' # Drop geometry for supply data
-#' hc12_hos <- hc12_hos |> st_drop_geometry()
+#' gp <- cornwall_gp |> st_drop_geometry()
 #'
-#' # Calculate accessibility to doctors with 30-minute catchment
+#' # Calculate accessibility to GPs with a 15-minute catchment
 #' result <- spax_2sfca(
 #'   demand = pop_rast,
-#'   supply = hc12_hos,
-#'   distance = hos_iscr,
-#'   threshold = 30, # 30-minute catchment
-#'   id_col = "id",
-#'   supply_cols = "s_doc"
+#'   supply = gp,
+#'   distance = travel,
+#'   threshold = 15, # 15-minute catchment
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
 #' )
 #'
 #' # Plot the results
-#' plot(result$accessibility, main = "Doctor Accessibility (Original 2SFCA)")
+#' plot(result$accessibility, main = "GP Accessibility (Original 2SFCA)")
 #'
-#' # Calculate accessibility to multiple supply types
+#' # Calculate accessibility for two supply measures
 #' result_multi <- spax_2sfca(
 #'   demand = pop_rast,
-#'   supply = hc12_hos,
-#'   distance = hos_iscr,
-#'   threshold = 30,
-#'   id_col = "id",
-#'   supply_cols = c("s_doc", "s_nurse")
+#'   supply = gp,
+#'   distance = travel,
+#'   threshold = 15,
+#'   id_col = "practice",
+#'   supply_cols = c("gp_fte_extg", "gp_fte")
 #' )
 #'
-#' # Compare accessibility for different dimensions
+#' # Compare accessibility for different supply measures
 #' plot(result_multi$accessibility,
-#'   main = c("Doctor Accessibility", "Nurse Accessibility")
+#'   main = c("GPs excluding trainees", "All GPs")
 #' )
 #'
 #' @seealso
@@ -607,6 +607,10 @@ spax_m2sfca <- function(demand, supply, distance,
 spax_2sfca <- function(demand, supply, distance, threshold,
                        id_col = NULL, supply_cols = NULL,
                        snap = FALSE) {
+  if (!snap && (!is.numeric(threshold) || length(threshold) != 1 ||
+                !is.finite(threshold) || threshold <= 0)) {
+    stop("threshold must be a single positive number")
+  }
   # Create decay parameters for binary catchment
   decay_params <- list(
     method = "binary",

@@ -1,0 +1,11 @@
+/* Printed R output (chunk option class.output = "spax-output"): a plain
+   page-coloured block with a left rule and slightly muted text, so output
+   is easy to tell apart from the shaded code blocks. Bootstrap variables
+   keep it readable in light and dark mode. */
+pre.spax-output {
+  background-color: var(--bs-body-bg, #ffffff);
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-left: 3px solid var(--bs-secondary-color, #6c757d);
+  border-radius: 0 0.25rem 0.25rem 0;
+  color: var(--bs-secondary-color, #5c636a);
+}

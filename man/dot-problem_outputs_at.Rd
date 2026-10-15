@@ -4,7 +4,11 @@
 \alias{.problem_outputs_at}
 \title{Evaluate rich outputs for a problem at arbitrary theta and state}
 \usage{
-.problem_outputs_at(problem, theta, state)
+.problem_outputs_at(problem, theta, state, requested_outputs = NULL)
+}
+\arguments{
+\item{requested_outputs}{Optional output names to materialize. \code{NULL} keeps
+the provider's existing default outputs.}
 }
 \description{
 Evaluate rich outputs for a problem at arbitrary theta and state

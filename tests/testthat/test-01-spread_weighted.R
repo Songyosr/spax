@@ -1,206 +1,107 @@
-# tests/testthat/test-spread_weighted.R
+# spread_weighted()/spread_access(): spread unit values over weight layers.
 
-#' Create test data for spread_weighted testing
-#' @keywords internal
-create_test_data <- function() {
-  # Create deterministic test data for reliable testing
-  w1 <- matrix(c(
-    1, 2, 3,
-    4, 5, 6,
-    7, 8, 9
-  ), 3, 3, byrow = TRUE)
-  w2 <- matrix(c(
-    9, 8, 7,
-    6, 5, 4,
-    3, 2, 1
-  ), 3, 3, byrow = TRUE)
-
-  list(
-    weights = c(rast(w1), rast(w2)),
-    vector_values = c(10, 20),
-    matrix_values = matrix(c(10, 20, 30, 40), 2, 2,
-      dimnames = list(NULL, c("val1", "val2"))
-    ),
-    df_values = data.frame(
-      id = 1:2,
-      val1 = c(10, 20),
-      val2 = c(30, 40)
-    ),
-    # Add expected results for validation
-    expected_sums = list(
-      vector = sum(w1 * 10 + w2 * 20),
-      matrix_val1 = sum(w1 * 10 + w2 * 20),
-      matrix_val2 = sum(w1 * 30 + w2 * 40)
-    )
-  )
+spread_inputs <- function() {
+  W <- cbind(as.numeric(1:9), as.numeric(9:1))
+  list(W = W, weights = toy_rast(W, nlyr = 2),
+       values = matrix(c(10, 20, 30, 40), 2, 2,
+                       dimnames = list(NULL, c("val1", "val2"))))
 }
-# Test input validation -------------------------------------------------------
 
-test_that("spread_weighted validates inputs correctly", {
-  td <- create_test_data()
+# Per cell: sum_j v_j * w_ij, skipping missing products.
+spread_expected <- function(W, v) rowSums(sweep(W, 2, v, "*"), na.rm = TRUE)
 
-  # Valid inputs should work
-  expect_no_error(
-    spread_weighted(td$vector_values, td$weights)
-  )
+test_that("spread_weighted gives sum_j v_j * w_ij in every cell", {
+  td <- spread_inputs()
+  expected <- cbind(spread_expected(td$W, td$values[, 1]),
+                    spread_expected(td$W, td$values[, 2]))
 
-  # Invalid weights
-  expect_error(
-    spread_weighted(td$vector_values, "not_a_raster"),
-    "weights must be one of the following classes: SpatRaster"
-  )
+  vec <- spread_weighted(td$values[, 1], td$weights)
+  expect_true(terra::compareGeom(vec, td$weights))
+  expect_equal(unname(terra::values(vec))[, 1], expected[, 1])
 
-  # Mismatched lengths
-  expect_error(
-    spread_weighted(c(1, 2, 3), td$weights),
-    "Length of values \\(3\\) must match length of weight layers \\(2\\)"
-  )
+  mat <- spread_weighted(td$values, td$weights)
+  expect_equal(names(mat), c("val1", "val2"))
+  expect_equal(unname(terra::values(mat)), expected)
 
-  # Missing value_cols for data.frame
-  expect_error(
-    spread_weighted(td$df_values, td$weights),
-    "value_cols must be specified"
-  )
+  df <- data.frame(id = 1:2, td$values)
+  from_df <- spread_weighted(df, td$weights, value_cols = c("val2", "val1"),
+                             name_prefix = "s_")
+  expect_equal(names(from_df), c("s_val2", "s_val1"))
+  expect_equal(unname(terra::values(from_df)), expected[, 2:1])
 
-  # Invalid value_cols
-  expect_error(
-    spread_weighted(td$df_values, td$weights, value_cols = "nonexistent"),
-    "Column\\(s\\) not found in values: nonexistent"
-  )
+  expect_equal(names(spread_weighted(unname(td$values), td$weights)),
+               c("value1", "value2"))
+  expect_equal(terra::values(spread_weighted(td$values, td$weights, snap = TRUE)),
+               terra::values(mat))
 })
 
-# Test core functionality ---------------------------------------------------
+test_that("spread_weighted skips missing weights and values", {
+  td <- spread_inputs()
+  W <- td$W
+  W[1, 1] <- NA
+  weights <- toy_rast(W, nlyr = 2)
 
-# Core Functionality Tests ------------------------------------------------
-
-test_that("spread_weighted correctly processes vector input", {
-  td <- create_test_data()
-  result <- spread_weighted(td$vector_values, td$weights)
-
-  expect_s4_class(result, "SpatRaster")
-  expect_equal(dim(result), c(3, 3, 1))
-
-  # Check actual computation
-  actual_sum <- global(result, "sum", na.rm = TRUE)$sum
-  expect_equal(actual_sum, td$expected_sums$vector)
+  expect_equal(unname(terra::values(spread_weighted(c(10, 20), weights)))[, 1],
+               spread_expected(W, c(10, 20)))
+  expect_equal(unname(terra::values(spread_weighted(c(NA, 1), td$weights)))[, 1],
+               td$W[, 2])
+  expect_equal(unname(terra::values(spread_weighted(c(0, 0), td$weights)))[, 1],
+               rep(0, 9))
 })
 
-test_that("spread_weighted correctly processes matrix input", {
-  td <- create_test_data()
-  result <- spread_weighted(td$matrix_values, td$weights)
+test_that("full_output returns the per-unit layers behind each total", {
+  td <- spread_inputs()
 
-  expect_s4_class(result, "SpatRaster")
-  expect_equal(dim(result), c(3, 3, 2))
-  expect_equal(names(result), c("val1", "val2"))
+  vec <- spread_weighted(c(10, 20), td$weights, full_output = TRUE)
+  expect_named(vec, c("total_distribution", "unit_distribution"))
+  expect_equal(unname(terra::values(vec$unit_distribution)),
+               sweep(td$W, 2, c(10, 20), "*"))
+  expect_equal(unname(terra::values(vec$total_distribution))[, 1],
+               spread_expected(td$W, c(10, 20)))
 
-  # Check computations for both columns
-  val1_sum <- global(result[[1]], "sum", na.rm = TRUE)$sum
-  val2_sum <- global(result[[2]], "sum", na.rm = TRUE)$sum
-
-  expect_equal(val1_sum, td$expected_sums$matrix_val1)
-  expect_equal(val2_sum, td$expected_sums$matrix_val2)
+  mat <- spread_weighted(td$values, td$weights, full_output = TRUE)
+  expect_equal(names(mat$total_distribution), c("val1", "val2"))
+  expect_named(mat$unit_distribution, c("val1", "val2"))
+  expect_equal(unname(terra::values(mat$unit_distribution$val2)),
+               sweep(td$W, 2, td$values[, 2], "*"))
 })
 
-# Feature-specific Tests -------------------------------------------------
+test_that("spread_weighted rejects invalid inputs", {
+  td <- spread_inputs()
+  df <- data.frame(id = 1:2, td$values)
+  points <- sf::st_as_sf(data.frame(x = 1:2, y = 1:2, v = c(10, 20)),
+                         coords = c("x", "y"))
 
-test_that("spread_weighted handles name_prefix correctly", {
-  td <- create_test_data()
-  result <- spread_weighted(td$matrix_values, td$weights,
-    name_prefix = "test_"
-  )
-
-  expect_equal(names(result), c("test_val1", "test_val2"))
+  expect_error(spread_weighted(c(10, 20), "not_a_raster"), "weights must be one of")
+  expect_error(spread_weighted(points, td$weights), "is an sf object")
+  expect_error(spread_weighted(list(10, 20), td$weights), "values must be one of")
+  expect_error(spread_weighted(c(1, 2, 3), td$weights),
+               "must match length of weight layers")
+  expect_error(spread_weighted(rbind(td$values, 1), td$weights), "rows in values")
+  expect_error(spread_weighted(df, td$weights), "value_cols must be specified")
+  expect_error(spread_weighted(df, td$weights, value_cols = "nonexistent"),
+               "not found in values")
+  # snap skips validation, but the core still refuses a length mismatch
+  expect_error(spread_weighted(c(1, 2, 3), td$weights, snap = TRUE),
+               "must match number of weight layers")
 })
 
-test_that("spread_weighted full_output provides correct components", {
-  td <- create_test_data()
-  result <- spread_weighted(td$vector_values, td$weights,
-    full_output = TRUE
-  )
+test_that("spread_access spreads ratios like spread_weighted with prefixed names", {
+  td <- spread_inputs()
+  plain <- spread_weighted(td$values, td$weights)
 
-  expect_named(result, c("total_distribution", "unit_distribution"))
-  expect_s4_class(result$total_distribution, "SpatRaster")
-  expect_s4_class(result$unit_distribution, "SpatRaster")
+  acc <- spread_access(td$values, td$weights, plot_prefix = "acc_")
+  expect_equal(names(acc), c("acc_val1", "acc_val2"))
+  expect_equal(unname(terra::values(acc)), unname(terra::values(plain)))
 
-  # Check unit distributions sum to total
-  unit_sum <- global(sum(result$unit_distribution), "sum", na.rm = TRUE)$sum
-  total_sum <- global(result$total_distribution, "sum", na.rm = TRUE)$sum
-  expect_equal(unit_sum, total_sum)
-})
+  full <- spread_access(data.frame(td$values), td$weights, ratio_cols = "val2",
+                        full_output = TRUE, plot_prefix = "acc_")
+  expect_named(full, c("access_scores", "site_specific"))
+  expect_equal(names(full$access_scores), "acc_val2")
+  expect_equal(unname(terra::values(full$access_scores)),
+               unname(terra::values(plain[[2]])))
+  expect_named(full$site_specific, "val2")
 
-# Edge Cases Tests ------------------------------------------------------
-
-test_that("spread_weighted handles edge cases correctly", {
-  td <- create_test_data()
-
-  # Test zero values with value checking
-  zero_result <- spread_weighted(c(0, 0), td$weights)
-  expect_equal(global(zero_result, "sum", na.rm = TRUE)$sum, 0)
-
-  # Test NA handling in weights
-  weights_with_na <- td$weights
-  values(weights_with_na)[1] <- NA
-  na_result <- spread_weighted(td$vector_values, weights_with_na)
-  # Should sum correctly ignoring NA values
-  expect_false(any(is.na(values(na_result))))
-  expect_gt(global(na_result, "sum", na.rm = TRUE)$sum, 0)
-
-  # Test NA handling in values
-  na_val_result <- spread_weighted(c(NA, 1), td$weights)
-  # Should still sum correctly using only non-NA value
-  expect_false(any(is.na(values(na_val_result))))
-  # Only second layer with value 1 should contribute
-  expect_equal(
-    global(na_val_result, "sum", na.rm = TRUE)$sum,
-    sum(values(td$weights[[2]]), na.rm = TRUE)
-  )
-})
-
-# Package Data Tests ---------------------------------------------------
-
-test_that("spread_weighted works correctly with package data", {
-  # Create test weights with explicitly verifiable layers
-  n_facilities <- 2 # Number of rows in our test data
-  weights_m1 <- matrix(1:100, 10, 10)
-  weights_m2 <- matrix(100:1, 10, 10)
-  test_weights <- c(rast(weights_m1), rast(weights_m2))
-
-  # Verify number of layers before proceeding
-  expect_equal(nlyr(test_weights), n_facilities)
-
-  # Apply decay
-  test_weights <- calc_decay(test_weights, method = "gaussian", sigma = 30)
-
-  # Create test data matching number of layers
-  test_df <- data.frame(
-    s_doc = c(10, 20), # 2 rows matching 2 layers
-    s_nurse = c(30, 40)
-  )
-
-  # Test multiple columns with value verification
-  result <- spread_weighted(test_df, test_weights,
-    value_cols = c("s_doc", "s_nurse")
-  )
-
-  expect_s4_class(result, "SpatRaster")
-  expect_equal(names(result), c("s_doc", "s_nurse"))
-  expect_equal(nlyr(result), 2)
-
-  # Verify both layers have expected characteristics
-  expect_true(all(global(result, "max", na.rm = TRUE)$max > 0))
-})
-
-# SPAX-001A regression: spread_access() used to error because it forwarded
-# parallel/n_cores to a canonical spread_weighted() that does not accept them
-# (duplicate-definition / source-load-order bug). It must now run and agree
-# with spread_weighted() on the same inputs.
-test_that("spread_access works and matches spread_weighted (SPAX-001A regression)", {
-  td <- create_test_data()
-
-  expect_no_error(acc <- spread_access(td$vector_values, td$weights))
-  expect_s4_class(acc, "SpatRaster")
-  expect_equal(
-    terra::values(acc),
-    terra::values(spread_weighted(td$vector_values, td$weights))
-  )
+  expect_equal(terra::values(spread_access(c(10, 20), td$weights)),
+               terra::values(spread_weighted(c(10, 20), td$weights)))
 })

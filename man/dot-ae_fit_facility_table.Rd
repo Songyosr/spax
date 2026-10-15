@@ -7,6 +7,7 @@
 .ae_fit_facility_table(fit)
 }
 \description{
-Facility-level table for an AE calibration fit
+Always reports predicted facility utilization. Observations/residuals are
+included only for utilization-vector targets, not origin or matrix targets.
 }
 \keyword{internal}

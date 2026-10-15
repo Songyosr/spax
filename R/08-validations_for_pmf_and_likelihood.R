@@ -67,8 +67,8 @@
       stop(sprintf("Column '%s' not found in input vector", value_col))
     }
 
-    # Check column data
-    values <- x[[value_col]]
+    # Check column data; `[[` on a SpatVector returns a one-column data frame
+    values <- x[[value_col]][[1]]
     if (!is.numeric(values)) {
       stop(sprintf("Column '%s' must contain numeric values", value_col))
     }
@@ -87,8 +87,12 @@
       stop("Input and template must have same CRS")
     }
 
-    # Check that vector intersects template extent
-    if (!terra::intersect(terra::ext(x), terra::ext(template))) {
+    # Bounding-box overlap; terra::intersect() returns NULL for any zero-area
+    # overlap, which would reject single points and collinear points.
+    a <- as.vector(terra::ext(x))
+    b <- as.vector(terra::ext(template))
+    if (!(a[["xmin"]] <= b[["xmax"]] && a[["xmax"]] >= b[["xmin"]] &&
+          a[["ymin"]] <= b[["ymax"]] && a[["ymax"]] >= b[["ymin"]])) {
       stop("Input vector must intersect template extent")
     }
   }
@@ -102,50 +106,32 @@
 #' @return Invisible TRUE if valid, error otherwise
 #' @keywords internal
 .chck_pmf_validity <- function(x, tolerance = 1e-10) {
-  # Check for negative values
+  # Check for negative values (in any layer)
   min_val <- terra::global(x, "min", na.rm = TRUE)$min
-  if (min_val < 0) {
+  if (any(min_val < 0, na.rm = TRUE)) {
     stop("PMF cannot contain negative values")
   }
 
-  # Check sum to 1
+  # Check that every layer sums to 1
   sum_val <- terra::global(x, "sum", na.rm = TRUE)$sum
-  if (abs(sum_val - 1) > tolerance) {
-    stop(sprintf("PMF must sum to 1 (current sum: %f)", sum_val))
+  bad <- which(!is.finite(sum_val) | abs(sum_val - 1) > tolerance)
+  if (length(bad)) {
+    stop(sprintf("PMF must sum to 1 (current sum: %f)", sum_val[bad[1]]))
   }
 
   invisible(TRUE)
 }
 
-#' Validate numeric values for likelihood computation
-#' @param x Numeric vector to validate
-#' @param allow_negative Logical; if TRUE, allow negative values
-#' @param method Character string indicating computation method
-#' @return Invisible TRUE if valid, error otherwise
+#' Rasterize vector values onto a template
+#'
+#' Points that fall in the same cell add up (missing values are ignored, and
+#' each part of a multipoint carries the feature's full value); a polygon's
+#' value is copied to every cell it covers.
 #' @keywords internal
-.chck_likelihood_values <- function(x, allow_negative = FALSE, method = "mean") {
-  # Check for valid numeric values
-  if (!is.numeric(x)) {
-    stop("Values must be numeric")
+.rasterize_values <- function(x, template, value_col) {
+  if (all(terra::geomtype(x) == "points")) {
+    return(terra::rasterize(x, template, field = value_col, fun = "sum",
+                            na.rm = TRUE))
   }
-
-  # Check for negative values if not allowed
-  if (!allow_negative && any(x < 0, na.rm = TRUE)) {
-    stop("Values cannot be negative")
-  }
-
-  # Method-specific validation
-  if (!method %in% c("mean", "sum", "custom")) {
-    stop("Invalid method specified")
-  }
-
-  # Check for zero/NA issues
-  if (method == "mean" && all(is.na(x))) {
-    stop("All values are NA")
-  }
-  if (method == "sum" && sum(x, na.rm = TRUE) == 0) {
-    stop("Sum of values is zero")
-  }
-
-  invisible(TRUE)
+  terra::rasterize(x, template, field = value_col)
 }

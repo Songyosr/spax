@@ -7,6 +7,12 @@
 .bind_theta(problem, theta)
 }
 \description{
-Bind theta once and return the state-only inner-loop step
+Providers keep the required \code{outputs(x)} callback. An optional
+\code{outputs_requested(x, requested_outputs)} callback adds requested outputs
+while retaining \code{target} and \code{utilization}. Without it, requests read the
+legacy outputs. \code{state_independent_outputs} explicitly names outputs whose
+partial derivative with respect to state is zero for every valid state and
+theta. Only these outputs bypass implicit state differentiation; the promise
+is the provider's responsibility and is never inferred from a model name.
 }
 \keyword{internal}

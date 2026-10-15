@@ -7,11 +7,14 @@
 update_pmf(prior, likelihood, normalize = TRUE, density = FALSE, snap = FALSE)
 }
 \arguments{
-\item{prior}{SpatRaster containing prior PMF}
+\item{prior}{SpatRaster containing prior PMF (each layer summing to 1)}
 
-\item{likelihood}{SpatRaster containing likelihood surface}
+\item{likelihood}{SpatRaster containing likelihood surface. With several
+layers, prior and likelihood must have the same number of layers, or one
+of them a single layer that applies to every layer of the other.}
 
-\item{normalize}{Logical; if TRUE ensure output sums to 1 (default TRUE)}
+\item{normalize}{Logical; if TRUE ensure output sums to 1 (default TRUE),
+each layer of a multi-layer posterior separately}
 
 \item{density}{Logical; if TRUE return density surface instead of PMF}
 
@@ -34,21 +37,21 @@ and likelihood are high, representing areas supported by both prior
 beliefs and observed data.
 }
 \examples{
-\dontrun{
-# Create prior from population
+pop <- read_spax_example("cornwall_pop.tif")
+
+# Group small areas into larger units (LSOA names end in a letter; dropping it
+# gives the containing MSOA) so every unit covers several grid cells
+areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas$msoa <- sub("[A-Z]$", "", areas$name)
+msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
+
+# Likelihood from a rate, not a count: the share of residents registered
+# with a GP outside Cornwall (counts would double-count population)
+msoa$out_rate <- msoa$sum_registered_out / msoa$sum_registered
+likelihood <- transform_likelihood(msoa, value_col = "out_rate", template = pop)
+
+# Prior from population; the posterior is proportional to population times
+# the out-of-area rate
 prior <- transform_pmf(pop)
-
-# Create likelihood from cases
-likelihood <- transform_likelihood(
-  case_spatial,
-  value_col = "cases",
-  template = pop
-)
-
-# Update prior with likelihood
 posterior <- update_pmf(prior, likelihood)
-
-# Get density surface
-density <- update_pmf(prior, likelihood, density = TRUE)
-}
 }

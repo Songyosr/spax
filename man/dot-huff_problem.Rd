@@ -6,8 +6,8 @@
 \usage{
 .huff_problem(
   demand,
-  supply,
-  distance,
+  supply = NULL,
+  distance = NULL,
   family = c("gaussian", "exponential", "power"),
   kappa = 1,
   beta = 1,
@@ -15,13 +15,16 @@
   fit_v0 = FALSE,
   fit_beta = FALSE,
   id_col = NULL,
-  supply_cols = NULL
+  supply_cols = NULL,
+  allocation = c("clm", "huff_decay")
 )
 }
 \description{
-The `dT/dstate = 0` member of the ladder: the map is constant, the
+The \code{dT/dstate = 0} member of the ladder: the map is constant, the
 equilibrium is reached in one pass, and the decay parameter enters only
 through the allocation output (not the state target). It calibrates through
 the shared NFXP runner unchanged.
+\code{demand} can be checked \code{.prepare_allocation()} output; in that case omit raw
+\code{supply}, \code{distance} and supply selectors. Raster arguments remain compatible.
 }
 \keyword{internal}

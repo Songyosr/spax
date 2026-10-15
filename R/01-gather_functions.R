@@ -150,20 +150,20 @@ gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, sna
 #' library(terra)
 #'
 #' # Load data
-#' u5pd <- read_spax_example("u5pd.tif")
-#' hos_iscr <- read_spax_example("hos_iscr.tif")
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
 #'
 #' # Calculate probability weights using gaussian decay
 #' weights <- calc_decay(
-#'   hos_iscr,
+#'   travel,
 #'   method = "gaussian",
-#'   sigma = 30
+#'   sigma = 10
 #' ) |>
 #'   calc_normalize(method = "semi") # Normalize to ensure proper probabilities
 #'
-#' # Calculate potential demand for each hospital
-#' hospital_demands <- gather_demand(u5pd, weights)
-#' head(hospital_demands)
+#' # Calculate potential demand for each GP practice
+#' practice_demands <- gather_demand(pop, weights)
+#' head(practice_demands)
 #' @export
 gather_demand <- function(demand, weights) {
   # Validate weights are probabilities

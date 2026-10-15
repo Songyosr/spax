@@ -14,7 +14,8 @@ calc_normalize(
 )
 }
 \arguments{
-\item{x}{Numeric vector, matrix, or SpatRaster of weights}
+\item{x}{Numeric vector, matrix, or SpatRaster of weights. The built-in
+methods require non-negative weights; a custom method receives `x` as is.}
 
 \item{method}{Character string specifying normalization method:
 
@@ -28,7 +29,9 @@ calc_normalize(
 
        - Or a custom function(x, ...)}
 
-\item{ref_value}{Optional reference value for "reference" method}
+\item{ref_value}{Optional reference value for "reference" method. When
+`NULL`, the maximum of `x` is used; for a SpatRaster that is each cell's
+maximum across layers.}
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0)}
 
@@ -37,13 +40,13 @@ calc_normalize(
 \item{...}{Additional arguments passed to custom normalization function}
 }
 \value{
-Object of the same class as input containing normalized weights
+Object of the same class as input containing normalized weights.
+  A SpatRaster is normalized cell by cell across its layers.
 }
 \description{
 Normalizes weights using different methods with support for outside options.
 }
 \examples{
-\dontrun{
 library(terra)
 
 # Example 1: Basic vector normalization
@@ -84,5 +87,4 @@ norm_stack <- calc_normalize(r_stack) # Normalizes each cell across layers
 # Example 8: Handling NA values
 weights_with_na <- c(2, NA, 5, 3)
 calc_normalize(weights_with_na) # NA values are handled appropriately
-}
 }

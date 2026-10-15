@@ -17,9 +17,10 @@
     stop("values in x must be >= 0")
   }
 
-  total <- sum(vals, na.rm = TRUE)
-  if (total <= 0) {
-    stop("Sum of all values in 'x' is zero - cannot create PMF")
+  totals <- colSums(as.matrix(vals), na.rm = TRUE)
+  if (any(totals <= 0)) {
+    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+         "cannot create PMF")
   }
 
   invisible(TRUE)
@@ -28,8 +29,11 @@
 #' Transform input into a probability mass function (PMF)
 #'
 #' Converts raster or vector inputs into a probability mass function where all
-#' values sum to 1. Raster inputs are normalised directly, while vector inputs
-#' are first rasterised using a supplied template.
+#' values sum to 1. Raster inputs are normalised directly, each layer of a
+#' multi-layer raster separately, while vector inputs are first rasterised
+#' using a supplied template: points in the same cell add up (missing values
+#' are ignored, and each part of a multipoint carries the feature's full
+#' value), and a polygon's value is copied to every cell it covers.
 #'
 #' @param x A `SpatRaster` containing values to normalise, or a `SpatVector`
 #'   whose attribute values will be rasterised.
@@ -42,15 +46,14 @@
 #' @param snap Logical; skip validation checks when `TRUE`. Default is `FALSE`.
 #'
 #' @return If `return_total = FALSE`, returns a `SpatRaster` whose cells sum to
-#'   1. If `return_total = TRUE`, returns a list with components:
+#'   1 in each layer. If `return_total = TRUE`, returns a list with components:
 #'   \describe{
 #'     \item{pmf}{`SpatRaster` of probabilities}
-#'     \item{total}{Numeric total of the original values}
+#'     \item{total}{Numeric total of the original values, one per layer}
 #'   }
 #'
 #' @examples
-#' \dontrun{
-#' pop <- terra::rast(u5pd)
+#' pop <- read_spax_example("cornwall_pop.tif")
 #'
 #' # Basic PMF
 #' pmf <- transform_pmf(pop)
@@ -58,7 +61,6 @@
 #' # Include total for later reuse
 #' result <- transform_pmf(pop, return_total = TRUE)
 #' result$total
-#' }
 #'
 #' @export
 transform_pmf <- function(x, value_col = NULL, template = NULL,
@@ -74,15 +76,16 @@ transform_pmf <- function(x, value_col = NULL, template = NULL,
   }
 
   if (inherits(x, "SpatVector")) {
-    x <- terra::rasterize(x, template, field = value_col)
+    x <- .rasterize_values(x, template, value_col)
     if (!snap) {
       .chck_transform_pmf_raster(x)
     }
   }
 
-  total <- terra::global(x, "sum", na.rm = TRUE)$sum
-  if (total <= 0) {
-    stop("Sum of all values in 'x' is zero - cannot create PMF")
+  total <- terra::global(x, "sum", na.rm = TRUE)$sum # one per layer
+  if (!isTRUE(all(total > 0))) {
+    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+         "cannot create PMF")
   }
 
   pmf <- x / total

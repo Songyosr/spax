@@ -20,9 +20,10 @@
 #' Poisson negative log-likelihood for count calibration targets
 #'
 #' Up to the data constant `sum(log(y!))`, `NLL = sum(mu - y log mu)` with `mu`
-#' the predicted count. The MLE matches predicted total to observed total, so
-#' fitting `(sigma, v0)` by this loss identifies the outside-option level from
-#' the marginal total (DEC-013).
+#' the predicted count. Jointly fitting `(sigma, v0)` uses both the count total
+#' and its facility distribution. It does not generally force an exact total
+#' match; that requires an explicit total-matching constraint or a suitable
+#' independently fitted scale parameter.
 #' @keywords internal
 .poisson_loss <- function(predicted, observed, eps = 1e-9) {
   .chck_numeric_vector(predicted, "predicted")
@@ -37,7 +38,15 @@
 }
 
 #' Gradient of the Poisson NLL with respect to parameters
+#'
+#' Both the loss and this gradient floor predictions at `eps`. Below the
+#' floor the loss is flat, but the gradient keeps the log-likelihood slope
+#' `1 - y / eps`. For an observed count above `eps` this pushes a prediction
+#' that collapsed towards zero back up instead of stalling the optimizer
+#' there; for a zero count it keeps the usual slope of 1. The two therefore
+#' disagree below `eps` by design.
 #' @keywords internal
+#' @md
 .poisson_gradient <- function(predicted, observed, sensitivity, eps = 1e-9) {
   .chck_numeric_vector(predicted, "predicted")
   .chck_numeric_vector(observed, "observed")

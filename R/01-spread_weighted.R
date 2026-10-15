@@ -76,25 +76,24 @@
 #'         - unit_distribution: List of unit-specific distribution SpatRasters
 #'         If full_output = FALSE, returns only total_distribution SpatRaster
 #' @examples
-#' \dontrun{
 #' # Example 1: Basic vector input using package data
-#' # Spread doctor counts across space using distance-decay weights
-#' weights <- calc_decay(hos_iscr, method = "gaussian", sigma = 30)
-#' doc_distribution <- spread_weighted(hc12_hos$s_doc, weights)
+#' # Spread GP full-time equivalents across space using distance-decay weights
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' weights <- calc_decay(travel, method = "gaussian", sigma = 10)
+#' gp_distribution <- spread_weighted(cornwall_gp$gp_fte_extg, weights)
 #'
 #' # Example 2: Multiple supply measures
-#' supply_df <- hc12_hos[c("s_doc", "s_nurse")]
+#' supply_df <- sf::st_drop_geometry(cornwall_gp)[c("gp_fte_extg", "gp_fte")]
 #' distributions <- spread_weighted(supply_df, weights,
-#'   value_cols = c("s_doc", "s_nurse")
+#'   value_cols = c("gp_fte_extg", "gp_fte")
 #' )
 #'
 #' # Example 3: With full output for detailed analysis
-#' result <- spread_weighted(hc12_hos$s_doc, weights,
+#' result <- spread_weighted(cornwall_gp$gp_fte_extg, weights,
 #'   full_output = TRUE
 #' )
-#' plot(result$total_distribution, main = "Total Distribution")
-#' plot(result$unit_distribution[[1]], main = "First Unit Distribution")
-#' }
+#' terra::plot(result$total_distribution, main = "Total Distribution")
+#' terra::plot(result$unit_distribution[[1]], main = "First Unit Distribution")
 #' @export
 spread_weighted <- function(values, weights, value_cols = NULL,
                             full_output = FALSE, name_prefix = NULL,

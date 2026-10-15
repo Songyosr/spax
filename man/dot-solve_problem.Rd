@@ -16,10 +16,18 @@
   warn = TRUE,
   check = TRUE,
   diagnostics = TRUE,
-  keep_state_history = FALSE
+  keep_state_history = FALSE,
+  requested_outputs = NULL
 )
 }
+\arguments{
+\item{requested_outputs}{Optional output names to materialize in addition to
+the provider's default outputs. \code{NULL} retains the legacy output callback.}
+}
 \description{
-Solve an AE problem at fixed theta
+Successful built-in corrected CLM evaluations attach a plain O(J) prediction
+snapshot containing the actual specification, theta, aligned supply/load and
+declared input policy/units. Requested-location prediction uses this record
+after serialization without retaining the problem or original travel matrix.
 }
 \keyword{internal}

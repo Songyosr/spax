@@ -95,17 +95,6 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
   )
 }
 
-#' Fixed-point residual under F(x, theta) = x - T_theta(x)
-#' @keywords internal
-equilibrium_residual <- function(map, x, ..., check = TRUE) {
-  if (!is.function(map)) {
-    stop("`map` must be a function")
-  }
-  .chck_numeric_vector(x, "x")
-  x <- .coerce_numeric_vector(x)
-  x - .solver_map_value(map(x, ...), x, check = check)
-}
-
 #' Spectral radius of a square Jacobian
 #' @keywords internal
 spectral_radius <- function(jac) {
@@ -159,17 +148,6 @@ fd_jacobian_state <- function(map, x, ..., eps = 1e-6,
                               method = c("central", "forward"),
                               check = TRUE) {
   fd_jacobian(map, x, ..., eps = eps, method = method, check = check)
-}
-
-#' Finite-difference parameter Jacobian dT/dtheta at fixed state x
-#' @keywords internal
-fd_jacobian_param <- function(map, theta, x, ..., eps = 1e-6,
-                              method = c("central", "forward"),
-                              check = TRUE) {
-  fn <- function(theta_value, ...) {
-    map(x, theta_value, ...)
-  }
-  fd_jacobian(fn, theta, ..., eps = eps, method = method, check = check)
 }
 
 .coerce_numeric_vector <- function(x) {

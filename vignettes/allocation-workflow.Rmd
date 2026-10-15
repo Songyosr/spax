@@ -1,0 +1,571 @@
+---
+title: "Fitting an allocation model to GP registrations in Cornwall"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fitting an allocation model to GP registrations in Cornwall}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "",
+  class.output = "spax-output",
+  fig.width = 7,
+  fig.height = 4.5,
+  dpi = 100
+)
+```
+
+This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html).
+
+This guide runs the experimental allocation workflow from start to finish:
+prepare inputs, declare a model, fit it to observed registrations, inspect the
+saved fit, predict at new locations, compare a change in one practice's supply,
+and export the results and read them back in a fresh R session. Bootstrap
+intervals have their own guide, [Bootstrap intervals for a fitted allocation
+model](facility-bootstrap.html), on generated data.
+
+The model is a corrected static conditional logit (CLM) with an explicit
+outside option. Each practice attracts residents in proportion to its supply,
+discounted by travel time; the outside option competes with all practices. For
+choosing between this model and an FCA index, see [Choosing an FCA index or an
+allocation model](model-choice.html). [Preparing your own
+data](data-prep.html) explains counts, units, IDs and missing travel, and
+[saved-result inspection](function-naming.html) describes the
+standard R methods used below. The interface is experimental.
+
+```{r packages, message = FALSE, warning = FALSE}
+library(spax)
+library(terra)
+library(sf)
+library(dplyr)
+library(ggplot2)
+```
+
+## The data
+
+The model uses four of the bundled objects: small areas with their registered
+residents (`cornwall_lsoa`), practices with their GP full-time equivalents
+(FTE, `cornwall_gp`), registrations by small area and practice
+(`cornwall_flows`) and travel minutes between them (`cornwall_travel`). As in
+the other guides, it covers mainland Cornwall only, because the Isles of
+Scilly have no road link to the mainland.
+
+```{r inputs}
+# Mainland small areas and practices, as plain tables
+areas <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_drop_geometry()
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
+
+# Travel minutes: small areas in rows, practices in columns
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+
+# Demand: residents registered with any practice in England.
+demand <- setNames(areas$registered, areas$lsoa)
+# Supply: GP FTE excluding GPs in training.
+supply <- setNames(gp$gp_fte_extg, gp$practice)
+
+# Observed flows: registered residents by small area (rows) and practice.
+observed <- matrix(
+  0,
+  nrow = nrow(travel),
+  ncol = ncol(travel),
+  dimnames = dimnames(travel)
+)
+keep <- cornwall_flows$lsoa %in% rownames(travel) &
+  cornwall_flows$practice %in% colnames(travel)
+observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
+  cornwall_flows$patients[keep]
+
+dim(travel)
+c(registered = sum(demand), at_mainland_practices = sum(observed))
+```
+
+Registrations are a stock: who is registered where in July 2026, not a count
+of visits. Because demand counts every registered resident, the outside option
+stands for registration with a practice outside mainland Cornwall (in Devon,
+for example, or on the Isles of Scilly). It is not unmet need: almost everyone
+is registered with some practice.
+
+## Prepare, declare and fit
+
+`prepare_allocation()` aligns demand, supply and travel by their names and
+checks them once. Unit and period labels are declarations attached to the
+results; spax does not convert units. `clm_allocation()` then declares the
+model: a Gaussian travel kernel with scale σ (minutes) and a fitted outside
+weight v0.
+
+```{r prepare}
+# Labels kept with the inputs and every result derived from them
+cornwall_units <- list(
+  demand_units = "registered residents",
+  demand_period = "July 2026",
+  supply_units = "GP FTE excluding GPs in training",
+  supply_period = "June 2026",
+  travel_units = "minutes"
+)
+
+inputs <- prepare_allocation(
+  demand = demand,
+  supply = supply,
+  distance = travel,
+  metadata = cornwall_units
+)
+
+model <- clm_allocation(
+  inputs = inputs,
+  family = "gaussian",
+  fit_v0 = TRUE  # estimate the outside weight
+)
+```
+
+`fit_allocation()` runs one fit from each supplied start and keeps the best
+converged one. Here the target is the small area × practice flow matrix and
+the loss is Poisson, chosen explicitly: asking for counts does not choose a
+likelihood. Registrations are not independent event counts, so treat the
+Poisson loss as a fitting criterion rather than a full observation model.
+Joint Poisson fitting does not force the modelled total to match the observed
+total.
+
+```{r fit}
+# Three starting points, from a short to a long travel scale
+starts <- rbind(
+  near = c(sigma = 3, v0 = 0.05),
+  middle = c(sigma = 6, v0 = 0.01),
+  far = c(sigma = 12, v0 = 0.002)
+)
+
+fit <- fit_allocation(
+  model = model,
+  observed = observed,
+  starts = starts,
+  lower = c(sigma = 0.5, v0 = 1e-6),
+  upper = c(sigma = 60, v0 = 10),
+  output = "flow",  # fit the small area x practice matrix
+  loss = "poisson",
+  gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
+)
+
+# Every start, then the selected parameters as a table
+summary(fit)
+as.data.frame(fit)
+```
+
+The summary keeps every start, its convergence, boundaries and messages. All
+three starts converge away from the bounds and stop very close to each other,
+but the disagreement flag uses deliberately strict default tolerances, so read
+the gaps in the per-start table rather than the flag alone. Agreement among the
+supplied starts is a numerical check; it does not prove a global optimum or
+that the parameters are identified. A σ of about 4.4 minutes means
+registration is very local: a practice 9 minutes away keeps only about 12% of
+the pull it would have next door.
+
+## Fitted against observed
+
+`fitted()` returns the saved fitted flows; nothing is recomputed. Summing over
+small areas gives each practice's modelled registered list.
+
+```{r practice-fit, fig.width = 5, fig.height = 4.5}
+# Observed and modelled list size of each practice
+practices <- data.frame(
+  practice = colnames(observed),
+  observed = colSums(observed),
+  fitted = colSums(fitted(fit))
+)
+cor(practices$observed, practices$fitted)
+
+ggplot(practices, aes(observed / 1000, fitted / 1000)) +
+  geom_abline(linetype = 2, colour = "grey50") +
+  geom_point() +
+  coord_equal() +
+  labs(
+    x = "Observed registered residents (thousands)",
+    y = "Modelled registered residents (thousands)",
+    title = "Practice lists from mainland residents"
+  ) +
+  theme_minimal()
+```
+
+The model gives each practice an attraction proportional to its GP FTE and
+uses only supply and travel. Practices with more registered patients per GP FTE
+than their neighbours therefore have larger observed than modelled lists and
+sit below the dashed line.
+
+The outside share is the other observable output. Each small area's modelled
+outside share can be compared with the share of its residents registered
+outside mainland Cornwall.
+
+```{r outside-map, fig.height = 4.5}
+# Solve the model once at the fitted parameters
+evaluated <- evaluate_allocation(model = model, theta = coef(fit))
+
+# Outside shares and flows for the fitted small areas
+baseline <- predict_allocation(
+  source = evaluated,
+  distance = travel,
+  demand = demand,
+  outputs = c("outside_share", "flow")
+)
+table(baseline$validity$status)
+
+# Observed and modelled outside shares in one long table
+outside <- bind_rows(
+  data.frame(
+    lsoa = names(demand),
+    share = 1 - rowSums(observed) / demand,
+    source = "Observed"
+  ),
+  data.frame(
+    lsoa = names(demand),
+    share = baseline$outputs$outside_share,
+    source = "Modelled"
+  )
+) |>
+  mutate(source = factor(source, c("Observed", "Modelled")))
+
+# Join to the small-area polygons for mapping
+outside_map <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(outside, by = "lsoa")
+
+ggplot(outside_map) +
+  geom_sf(aes(fill = 100 * share), colour = NA) +
+  facet_wrap(~source) +
+  scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    trans = "sqrt",
+    name = "Registered\noutside (%)"
+  ) +
+  labs(title = "Share of residents registered outside mainland Cornwall") +
+  theme_void()
+```
+
+`evaluate_allocation()` solves the model once at fixed parameters; it estimates
+nothing. `predict_allocation()` then returns the requested outputs for any set
+of origins, with separate validity flags. Here `flow` is requested demand times
+choice probability, in registered residents. Requested demand only scales the
+predicted flows; it never changes the saved practice loads.
+
+Observed registration outside mainland Cornwall is concentrated in a few areas
+along the Devon border. A single constant outside weight cannot reproduce that
+pattern: the model spreads a small outside share everywhere and puts its largest
+values where practices are far away, so treat the modelled outside share as
+approximate.
+
+## Predict at new locations
+
+Prediction does not need the fitted small areas. Each cell of the bundled
+1 km population grid has its own travel times to every practice, so the saved
+model can predict at every populated cell. A `spatial` mapping from requested
+origins to raster cells turns one output into a map.
+
+```{r grid-predict}
+# Population grid, and the travel grid as a cell x practice matrix
+pop <- read_spax_example("cornwall_pop.tif")
+grid_travel <- values(read_spax_example("cornwall_gp_travel.tif"))
+
+# Keep populated cells and the fitted practices, in the fitted order
+populated <- which(is.finite(values(pop)[, 1]) & values(pop)[, 1] > 0)
+grid_travel <- grid_travel[populated, colnames(travel)]
+rownames(grid_travel) <- paste0("cell", populated)
+
+# Predict at each cell; no demand is needed for probabilities
+grid <- predict_allocation(
+  source = evaluated,
+  distance = grid_travel,
+  outputs = c("outside_share", "allocation")
+)
+table(grid$validity$status)
+```
+
+Cells on the Isles of Scilly have no travel time to mainland practices, so
+their prediction is marked unknown rather than imputed. Inspect these flags
+before reading a map.
+
+```{r grid-map, fig.height = 4}
+# Which raster cell each requested origin belongs to
+grid_spatial <- list(
+  template = pop,
+  cell_index = setNames(populated, rownames(grid_travel))
+)
+
+grid_outside <- predict_allocation(
+  source = evaluated,
+  distance = grid_travel,
+  outputs = "outside_share",
+  spatial = grid_spatial,
+  type = "raster"  # return a map instead of a table
+)
+plot(
+  grid_outside,
+  axes = FALSE,
+  col = hcl.colors(50, "Mako", rev = TRUE),
+  main = "Modelled outside share (proportion), 1 km grid"
+)
+
+# Cells with an outside share above 0.5, and their share of the population
+grid_pop <- values(pop)[populated, 1]
+far_out <- grid$outputs$outside_share > 0.5
+c(
+  cells = sum(far_out, na.rm = TRUE),
+  population_percent = round(
+    100 * sum(grid_pop[which(far_out)]) / sum(grid_pop),
+    2
+  )
+)
+```
+
+Some grid cells far from every practice get a high outside share because the
+fitted travel scale is short and the outside weight is constant. The
+`r sum(far_out, na.rm = TRUE)` cells above 0.5 hold
+`r round(100 * sum(grid_pop[which(far_out)]) / sum(grid_pop), 2)`% of the
+grid's population, but their values are an
+extrapolation of the model, not a measure of unmet need. The grid population
+(WorldPop 2020) and the registrations (NHS England 2026) are different sources
+and dates, so the grid is used here only for locations.
+
+## Change one practice's supply
+
+A scenario changes the system and evaluates it again at the same parameters.
+Here Marazion Surgery is closed by setting its GP FTE to zero; known zero
+supply is kept, so the practice stays in the network with no attraction. This
+is a model-based, fixed-parameter scenario, not an estimate of what a real
+closure would cause: changing supply moves attraction, allocation and every
+practice's modelled load together.
+
+```{r scenario}
+closed <- "L82047"
+gp |>
+  filter(practice == closed) |>
+  pull(name)
+
+# Same inputs, with zero GP FTE at the closed practice
+scenario_supply <- supply
+scenario_supply[closed] <- 0
+scenario_model <- clm_allocation(
+  inputs = prepare_allocation(
+    demand = demand,
+    supply = scenario_supply,
+    distance = travel,
+    metadata = cornwall_units
+  ),
+  family = "gaussian",
+  fit_v0 = TRUE
+)
+
+# Evaluate at the fitted parameters; nothing is refitted
+scenario <- evaluate_allocation(model = scenario_model, theta = coef(fit))
+changed <- predict_allocation(
+  source = scenario,
+  distance = travel,
+  demand = demand,
+  outputs = c("outside_share", "flow")
+)
+
+# Modelled list sizes before and after
+baseline_lists <- colSums(baseline$outputs$flow)
+scenario_lists <- colSums(changed$outputs$flow)
+practices <- practices |>
+  mutate(
+    baseline = baseline_lists,
+    scenario = scenario_lists,
+    change = scenario - baseline,
+    name = gp$name[match(practice, gp$practice)]
+  )
+
+# The seven largest changes
+practices |>
+  arrange(desc(abs(change))) |>
+  select(name, baseline, scenario, change) |>
+  head(7)
+
+# Change in the number of residents modelled outside mainland practices
+c(
+  outside_change = sum(demand * changed$outputs$outside_share) -
+    sum(demand * baseline$outputs$outside_share)
+)
+```
+
+The modelled list of the closed practice moves to nearby practices in
+Penzance and St Ives Bay, with a small part going to the outside option. Where
+a closed practice has no near neighbour, a larger part goes to the outside
+option; that follows from the constant outside weight, not from evidence about
+where patients would go.
+
+```{r scenario-map, fig.height = 5}
+# Each area's modelled share of residents at the closed practice
+moved <- data.frame(
+  lsoa = names(demand),
+  share = baseline$outputs$flow[, closed] / demand
+)
+moved_map <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(moved, by = "lsoa")
+
+# Practices that gain more than 10 modelled registrations, with locations
+gained <- cornwall_gp |>
+  select(practice) |>
+  inner_join(
+    practices |>
+      filter(change > 10) |>
+      select(practice, change),
+    by = "practice"
+  )
+
+# Map window over west Cornwall, in British National Grid metres
+west <- st_bbox(
+  c(xmin = 130000, ymin = 18000, xmax = 185000, ymax = 48000),
+  crs = st_crs(cornwall_lsoa)
+)
+
+ggplot() +
+  geom_sf(
+    data = moved_map,
+    aes(fill = 100 * share),
+    colour = "white",
+    linewidth = 0.05
+  ) +
+  geom_sf(data = gained, aes(size = change), shape = 21, fill = "orange") +
+  geom_sf(
+    data = filter(cornwall_gp, practice == closed),
+    shape = 4,
+    size = 3,
+    stroke = 1.2
+  ) +
+  scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    name = "Residents at the\nclosed practice (%)"
+  ) +
+  scale_size_area(name = "Modelled\nregistrations\ngained") +
+  coord_sf(xlim = west[c("xmin", "xmax")], ylim = west[c("ymin", "ymax")]) +
+  labs(
+    title = "Closing Marazion Surgery (x): who moves and where to",
+    subtitle = paste(
+      "Modelled baseline share of residents at the practice;",
+      "points are receiving practices"
+    )
+  ) +
+  theme_void()
+```
+
+## Save and reload
+
+The evaluated scenario carries a small prediction snapshot. Saving it does not
+keep the model or the travel matrix, and the restored object predicts the same
+values.
+
+```{r save-and-reload}
+# Save the evaluated scenario and read it back
+saved <- tempfile(fileext = ".rds")
+saveRDS(scenario, saved)
+restored <- readRDS(saved)
+
+# The restored object predicts exactly what the original did
+stopifnot(identical(
+  predict_allocation(
+    source = restored,
+    distance = travel,
+    demand = demand,
+    outputs = c("outside_share", "flow")
+  ),
+  changed
+))
+unlink(saved)
+```
+
+## Export and reload in a fresh session
+
+CSV files make saved tables available to other software but drop R classes and
+attributes. Keep an RDS bundle alongside them to preserve the fit, declarations,
+units and the complete results.
+
+```{r export-saved-results}
+export_dir <- tempfile("allocation-results-")
+dir.create(export_dir)
+
+# One CSV file per table
+export_tables <- list(
+  parameters = as.data.frame(fit),
+  practices = practices
+)
+for (name in names(export_tables)) {
+  write.csv(
+    export_tables[[name]],
+    file.path(export_dir, paste0(name, ".csv")),
+    row.names = FALSE
+  )
+}
+
+# One RDS bundle with the full R objects
+bundle_path <- file.path(export_dir, "allocation-results.rds")
+saveRDS(
+  list(
+    fit = fit,
+    scenario = scenario,
+    closed = closed,
+    tables = export_tables
+  ),
+  bundle_path
+)
+list.files(export_dir)
+```
+
+Finally, a new R process with the installed package reads the bundle. It checks
+the saved tables, predicts the scenario again from the bundled Cornwall travel
+times, and prints and plots the saved fit without refitting.
+
+```{r fresh-installed-reload}
+# Write a short script for a new R process
+child_path <- tempfile(fileext = ".R")
+literal <- function(x) paste(capture.output(dput(x)), collapse = "\n")
+writeLines(c(
+  # Use the same installed spax and read the bundle
+  paste0(".libPaths(c(", literal(dirname(find.package("spax"))), ", .libPaths()))"),
+  "library(spax)",
+  paste0("saved <- readRDS(", literal(bundle_path), ")"),
+  # The saved tables match the saved objects
+  "stopifnot(identical(as.data.frame(saved$fit), saved$tables$parameters))",
+  # Predict the closure scenario again from the bundled travel times
+  "areas <- sf::st_drop_geometry(cornwall_lsoa)",
+  "gp <- sf::st_drop_geometry(cornwall_gp)",
+  "travel <- cornwall_travel[areas$lsoa[!areas$scilly], gp$practice[!gp$scilly]]",
+  "demand <- setNames(areas$registered[!areas$scilly], areas$lsoa[!areas$scilly])",
+  "flow <- predict_allocation(saved$scenario, travel, demand = demand, outputs = 'flow')$outputs$flow",
+  "stopifnot(isTRUE(all.equal(unname(colSums(flow)), unname(saved$tables$practices$scenario))))",
+  "stopifnot(colSums(flow)[[saved$closed]] == 0)",
+  # Summaries and plots work without refitting
+  "stopifnot(inherits(summary(saved$fit), 'summary.ae_multistart_fit'))",
+  "print(summary(saved$fit))",
+  "plot_path <- tempfile(fileext = '.pdf')",
+  "grDevices::pdf(plot_path)",
+  "plot(saved$fit, type = 'fit')",
+  "grDevices::dev.off()",
+  "stopifnot(file.info(plot_path)$size > 0)",
+  "unlink(plot_path)",
+  "cat('Fresh installed saved-result inspection passed\\n')"
+), child_path)
+
+# Run it with a clean Rscript and stop if it fails
+rscript <- file.path(
+  R.home("bin"),
+  if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
+)
+status <- system2(rscript, c("--vanilla", shQuote(child_path)))
+stopifnot(status == 0L)
+unlink(child_path)
+```
+
+## Sources
+
+Sources, dates and licences of the Cornwall data are listed in [The Cornwall
+GP example data](cornwall-data.html) and in
+`system.file("COPYRIGHTS", package = "spax")`.

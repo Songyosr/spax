@@ -18,13 +18,15 @@ rasterize_demand(
 
 \item{value_col}{Character name of column containing values}
 
-\item{prior}{Optional SpatRaster prior PMF (if NULL, uses uniform prior)}
+\item{prior}{Optional SpatRaster prior PMF. If NULL, a uniform prior over
+the non-missing cells of the template's first layer is used.}
 
 \item{template}{SpatRaster template (required if prior = NULL)}
 
 \item{density}{Logical; if TRUE return density surface}
 
-\item{standardize}{Logical; if TRUE standardize likelihood values}
+\item{standardize}{Must be FALSE. Standardized (z-score) likelihood values
+include negative values, so they cannot form a posterior PMF.}
 }
 \value{
 SpatRaster containing posterior PMF or density surface

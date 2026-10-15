@@ -15,7 +15,9 @@ transform_likelihood(
 )
 }
 \arguments{
-\item{x}{SpatRaster or SpatVector containing observed values}
+\item{x}{SpatRaster or SpatVector containing observed values. Point values
+in the same cell add up (missing values are ignored); a polygon's value is
+copied to every cell it covers.}
 
 \item{value_col}{Character; name of column if x is SpatVector}
 
@@ -46,15 +48,17 @@ The likelihood surface shows where values are higher or lower than expected:
 - Values < 1 indicate lower than expected
 }
 \examples{
-\dontrun{
 # From raster input
-pop <- rast(u5pd)
+pop <- read_spax_example("cornwall_pop.tif")
 lik1 <- transform_likelihood(pop)
 
-# From vector input
+# From vector input: density of residents aged 65+ by small area. Rasterizing
+# copies a polygon's value to every cell it covers, so use a density, not a count.
+areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas$dens_65 <- areas$pop_65p / terra::expanse(areas, unit = "km")
 lik2 <- transform_likelihood(
-  case_spatial,
-  value_col = "cases",
+  areas,
+  value_col = "dens_65",
   template = pop
 )
 
@@ -64,5 +68,4 @@ lik3 <- transform_likelihood(
   method = "custom",
   ref_value = 100
 )
-}
 }

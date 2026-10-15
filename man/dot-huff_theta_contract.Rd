@@ -7,11 +7,12 @@
 .huff_theta_contract(fit_v0 = FALSE, fit_beta = FALSE)
 }
 \description{
-`fit_v0 = TRUE` promotes the outside-option mass `v0`, and `fit_beta = TRUE`
-the supply elasticity `beta` (attractiveness `a_j = (kappa S_j)^beta`), from
-constants to fitted parameters — making the spec a conditional logit estimated
-jointly in `(sigma, [v0], [beta])` (DEC-013). Appended order is `sigma`, then
-`v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
+\code{fit_v0 = TRUE} promotes the outside-option mass \code{v0}, and \code{fit_beta = TRUE}
+the supply elasticity \code{beta} (attractiveness \verb{a_j = (kappa S_j)^beta}), from
+constants to fitted parameters, estimated jointly in \verb{(sigma, [v0], [beta])}.
+The default \code{clm} allocation is the conditional logit (DEC-013).
+Appended order is \code{sigma}, then
+\code{v0}, then \code{beta}; all bounded \verb{[0, Inf)} with positive search bounds from the
 caller.
 }
 \keyword{internal}
