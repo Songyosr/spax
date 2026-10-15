@@ -43,22 +43,31 @@ the area around Truro so that individual cells stay visible.
 ```{r inputs}
 pop <- read_spax_example("cornwall_pop.tif")
 travel <- read_spax_example("cornwall_gp_travel.tif")
+
+# Mainland only, as in the other guides
 gp <- cornwall_gp |>
-  filter(!scilly) |>                   # mainland only, as in the other guides
+  filter(!scilly) |>
   st_drop_geometry()
 travel <- travel[[gp$practice]]
 pop <- trim(mask(pop, sum(travel)))
 travel <- crop(travel, pop)
+
+# GP FTE named by practice code
 supply <- setNames(gp$gp_fte_extg, gp$practice)
 
+# Map helper: a layer within the Truro display window, with practices
 truro <- ext(-5.30, -4.80, 50.12, 50.42)  # display window only
 practices <- cornwall_gp |>
   filter(!scilly) |>
   st_transform(crs(pop)) |>
   vect()
 show <- function(x, title) {
-  plot(crop(x, truro), axes = FALSE, main = title,
-    col = hcl.colors(50, "viridis"))
+  plot(
+    crop(x, truro),
+    axes = FALSE,
+    main = title,
+    col = hcl.colors(50, "viridis")
+  )
   points(crop(practices, truro), pch = 3, col = "red")
 }
 ```
@@ -70,11 +79,17 @@ travel time. We use $\sigma = 10$ minutes, a choice rather than an estimate.
 `calc_decay()` works on plain numbers and on rasters alike.
 
 ```{r kernel}
+# The weight left after a few travel times
 minutes <- c(0, 5, 10, 15, 20, 30)
-round(setNames(calc_decay(minutes, method = "gaussian", sigma = 10), minutes), 3)
+kernel <- calc_decay(minutes, method = "gaussian", sigma = 10)
+round(setNames(kernel, minutes), 3)
+
+# The same decay applied to every travel layer
 weights <- calc_decay(travel, method = "gaussian", sigma = 10)
-show(weights[["L82001"]],
-  "Step 1: weight of one Truro practice (L82001), 0 to 1")
+show(
+  weights[["L82001"]],
+  "Step 1: weight of one Truro practice (L82001), 0 to 1"
+)
 ```
 
 Each practice has one weight layer. The map shows the layer for a practice in
@@ -90,13 +105,22 @@ practices are close, each of them counts the same resident.
 weights by their sum, and `"semi"` does so only where the sum exceeds 1.
 
 ```{r normalize}
+# Sum of all practices' weights at each cell
 row_sum <- function(w) values(sum(w), mat = FALSE)
-round(rbind(
-  identity = quantile(row_sum(weights), c(0.05, 0.5, 0.95), na.rm = TRUE),
-  standard = quantile(row_sum(calc_normalize(weights, "standard")),
-    c(0.05, 0.5, 0.95), na.rm = TRUE),
-  semi = quantile(row_sum(calc_normalize(weights, "semi")),
-    c(0.05, 0.5, 0.95), na.rm = TRUE)), 2)
+probs <- c(0.05, 0.5, 0.95)
+
+standard <- calc_normalize(weights, method = "standard")
+semi <- calc_normalize(weights, method = "semi")
+
+# Cell quantiles of those sums, before and after normalizing
+round(
+  rbind(
+    identity = quantile(row_sum(weights), probs, na.rm = TRUE),
+    standard = quantile(row_sum(standard), probs, na.rm = TRUE),
+    semi = quantile(row_sum(semi), probs, na.rm = TRUE)
+  ),
+  2
+)
 ```
 
 In mainland Cornwall the weights at the median cell sum to about 4, and even
@@ -113,7 +137,11 @@ $L_j=\sum_i D_iW_{ij}$. With `simplify = TRUE` it returns a vector named by the
 weight layers.
 
 ```{r gather}
-load <- gather_weighted(pop, weights, simplify = TRUE)
+load <- gather_weighted(
+  values = pop,
+  weights = weights,
+  simplify = TRUE                 # one named value per practice
+)
 stopifnot(identical(names(load), gp$practice))
 ```
 
@@ -124,12 +152,16 @@ Index supply by the names of `load`, not by position.
 
 ```{r ratio}
 ratio <- supply[names(load)] / load
+
+# Supply, gathered demand and ratio for six practices near Truro
 near_truro <- c("L82001", "L82028", "L82015", "L82061", "L82045", "L82048")
 data.frame(practice = near_truro) |>
   left_join(select(gp, practice, name), by = "practice") |>
-  mutate(gp_fte = round(supply[practice], 1),
+  mutate(
+    gp_fte = round(supply[practice], 1),
     weighted_residents = round(load[practice]),
-    fte_per_1000 = round(1000 * ratio[practice], 2))
+    fte_per_1000 = round(1000 * ratio[practice], 2)
+  )
 ```
 
 The ratios look small because, with identity weights, each resident is
@@ -147,7 +179,11 @@ sums over practices: $A_i=\sum_j W_{ij}R_j$. It matches values to layers by
 position, so pass the ratios in layer order.
 
 ```{r spread}
-access <- spread_weighted(unname(ratio[names(weights)]), weights)
+# Ratios in layer order, without names: matching is by position
+access <- spread_weighted(
+  values = unname(ratio[names(weights)]),
+  weights = weights
+)
 show(1000 * access, "Step 5: E2SFCA, GP FTE per 1,000 residents")
 ```
 
@@ -155,12 +191,22 @@ A cell's index is a sum of contributions from every practice. For the cell
 containing the central Truro practice, the largest contributions are:
 
 ```{r contributions}
-cell <- cellFromXY(pop, geom(practices[practices$practice == "L82001", ])[,
-  c("x", "y"), drop = FALSE])
+# The grid cell that contains practice L82001
+site <- geom(practices[practices$practice == "L82001", ])
+cell <- cellFromXY(pop, site[, c("x", "y"), drop = FALSE])
+
+# Each practice's contribution: its weight at the cell times its ratio
 w_cell <- unlist(extract(weights, cell))
 parts <- sort(1000 * w_cell * ratio[names(w_cell)], decreasing = TRUE)
-round(c(head(parts, 5), all_others = sum(parts[-(1:5)]),
-  total = sum(parts)), 3)
+
+round(
+  c(
+    head(parts, 5),
+    all_others = sum(parts[-(1:5)]),
+    total = sum(parts)
+  ),
+  3
+)
 ```
 
 ## Check against the packaged functions
@@ -169,23 +215,46 @@ The step-by-step surface, the `spax_e2sfca()` wrapper, the more general
 `compute_access()` and a plain matrix calculation all agree:
 
 ```{r check}
-e2sfca <- spax_e2sfca(pop, gp, travel,
+# The packaged wrapper
+e2sfca <- spax_e2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
   decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity", id_col = "practice",
-  supply_cols = "gp_fte_extg")
-general <- compute_access(pop, supply, weights, weights)
+  demand_normalize = "identity",
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
 
+# The general function, with the same weights on both sides
+general <- compute_access(
+  demand = pop,
+  supply = supply,
+  demand_weights = weights,
+  access_weights = weights
+)
+
+# The same formula with plain matrices: cells in rows, practices in columns
 W <- values(weights)
 D <- values(pop, mat = FALSE)
 ok <- !is.na(D)
 manual <- rep(NA_real_, length(D))
 manual[ok] <- drop(W[ok, ] %*% (supply / colSums(W[ok, ] * D[ok])))
+
+# All three surfaces match the matrix calculation, and so do the loads
 for (answer in list(access, e2sfca$accessibility, general)) {
-  stopifnot(isTRUE(all.equal(values(answer, mat = FALSE), manual,
-    tolerance = 1e-10, check.attributes = FALSE)))
+  stopifnot(isTRUE(all.equal(
+    values(answer, mat = FALSE),
+    manual,
+    tolerance = 1e-10,
+    check.attributes = FALSE
+  )))
 }
-stopifnot(isTRUE(all.equal(drop(load), colSums(W[ok, ] * D[ok]),
-  check.attributes = FALSE)))
+stopifnot(isTRUE(all.equal(
+  drop(load),
+  colSums(W[ok, ] * D[ok]),
+  check.attributes = FALSE
+)))
 ```
 
 The check verifies this calculation with these inputs; it does not make
@@ -198,10 +267,18 @@ but every practice, including those outside the window, would then gather only
 the demand inside it.
 
 ```{r crop-effect}
-cropped <- spax_e2sfca(crop(pop, truro), gp, crop(travel, truro),
+# Calculate on the Truro window only
+cropped <- spax_e2sfca(
+  demand = crop(pop, truro),
+  supply = gp,
+  distance = crop(travel, truro),
   decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity", id_col = "practice",
-  supply_cols = "gp_fte_extg")
+  demand_normalize = "identity",
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+
+# Compare with the full calculation over the same cells
 in_window <- values(crop(e2sfca$accessibility, truro), mat = FALSE)
 relative <- values(cropped$accessibility, mat = FALSE) / in_window - 1
 round(quantile(100 * relative, c(0, 0.5, 1), na.rm = TRUE), 1)
@@ -222,20 +299,46 @@ $W^2$ is below $W$ except at zero travel time, and far below it for distant
 practices, so M2SFCA discounts cells whose practices are far away.
 
 ```{r alternatives}
-twosfca <- spax_2sfca(pop, gp, travel, threshold = 15,
-  id_col = "practice", supply_cols = "gp_fte_extg")
-m2sfca <- spax_m2sfca(pop, gp, travel,
+twosfca <- spax_2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  threshold = 15,
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+m2sfca <- spax_m2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
   decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity", id_col = "practice",
-  supply_cols = "gp_fte_extg")
+  demand_normalize = "identity",
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+
+# M2SFCA by hand: squared weights on the access side only
 m2_manual <- rep(NA_real_, length(D))
 m2_manual[ok] <- drop(W[ok, ]^2 %*% (supply / colSums(W[ok, ] * D[ok])))
-stopifnot(isTRUE(all.equal(values(m2sfca$accessibility, mat = FALSE),
-  m2_manual, tolerance = 1e-10, check.attributes = FALSE)))
+stopifnot(isTRUE(all.equal(
+  values(m2sfca$accessibility, mat = FALSE),
+  m2_manual,
+  tolerance = 1e-10,
+  check.attributes = FALSE
+)))
+
+# Cell quantiles and the resident-weighted mean of each index
 per_1000 <- function(x) 1000 * values(x$accessibility, mat = FALSE)
-round(sapply(list(E2SFCA = e2sfca, M2SFCA = m2sfca, `2SFCA` = twosfca),
-  function(x) c(quantile(per_1000(x), c(0.05, 0.5, 0.95), na.rm = TRUE),
-    resident_weighted = weighted.mean(per_1000(x), D, na.rm = TRUE))), 2)
+describe <- function(x) {
+  c(
+    quantile(per_1000(x), c(0.05, 0.5, 0.95), na.rm = TRUE),
+    resident_weighted = weighted.mean(per_1000(x), D, na.rm = TRUE)
+  )
+}
+round(
+  sapply(list(E2SFCA = e2sfca, M2SFCA = m2sfca, `2SFCA` = twosfca), describe),
+  2
+)
 ```
 
 E2SFCA and 2SFCA have the same resident-weighted mean, total supply per
