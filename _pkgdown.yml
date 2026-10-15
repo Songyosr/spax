@@ -3,20 +3,27 @@ template:
   bootstrap: 5
 
 articles:
-  - title: Public FCA Guides
-    navbar: ~
+  - title: Data
+    navbar: Data
     contents:
-      - model-choice
-      - fca-methods
+      - cornwall-data
       - data-prep
+  - title: FCA accessibility
+    navbar: FCA accessibility
+    contents:
+      - fca-methods
       - e2sfca-steps
       - grid-resolution
-  - title: Package Conventions
+  - title: Allocation model
+    navbar: Allocation model
+    contents:
+      - model-choice
+      - allocation-workflow
+      - facility-bootstrap
+  - title: Reference
+    navbar: Reference
     contents:
       - function-naming
-  - title: Experimental Allocation Workflow
-    contents:
-      - allocation-workflow
 
 reference:
   - title: "Package Overview and Compatibility"
