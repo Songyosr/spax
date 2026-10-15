@@ -8,102 +8,138 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
-  fig.height = 4, dpi = 100)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+  fig.height = 4.5, dpi = 100)
 library(spax)
 ```
 
 Floating catchment area (FCA) methods combine demand, facility supply and travel
-weights to produce an accessibility index. This example uses the existing
-`spax_e2sfca()` interface and a small generated grid. It needs no download,
-routing server or research dataset. For a fitted allocation model with an
-outside option, start with [Choosing a model](model-choice.html).
+weights into an accessibility index. This guide computes an enhanced two-step
+FCA (E2SFCA) surface for general practice (GP) care in Cornwall, England, and
+compares it with the original 2SFCA. All inputs ship with spax: no download,
+routing server or private dataset is needed. For a fitted allocation model with
+an outside option, see [Choosing a model](model-choice.html).
 
-## Declare the inputs and units
+## The inputs and their units
 
-Demand is a **count per cell**, not a density per square kilometre. Supply is
-weekly service slots. Distances below are illustrative travel minutes computed
-from straight-line separation at a constant 500 metres per minute; they are not
-road-network estimates. The projected grid is synthetic and has no geographic
-interpretation.
+```{r inputs}
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+gp <- sf::st_drop_geometry(cornwall_gp)
 
-```{r generated-inputs}
-demand <- terra::rast(nrows = 6, ncols = 8, xmin = 0, xmax = 8000,
-  ymin = 0, ymax = 6000, crs = "EPSG:3857")
-terra::values(demand) <- 20 + (seq_len(terra::ncell(demand)) %% 7) * 5
-names(demand) <- "weekly_requests"
-xy <- terra::xyFromCell(demand, seq_len(terra::ncell(demand)))
-facilities <- data.frame(id = c("clinic_a", "clinic_b", "clinic_c"),
-  x = c(1500, 4500, 7000), y = c(1000, 5000, 2500),
-  slots = c(250, 300, 200))
-travel_values <- vapply(seq_len(nrow(facilities)), function(j) {
-  sqrt((xy[, 1] - facilities$x[j])^2 + (xy[, 2] - facilities$y[j])^2) / 500
-}, numeric(nrow(xy)))
-travel <- terra::rast(demand, nlyrs = nrow(facilities))
-terra::values(travel) <- travel_values
-names(travel) <- facilities$id
-stopifnot(terra::compareGeom(demand, travel),
-  identical(names(travel), facilities$id))
+# Mainland only: the Isles of Scilly have no road link to the mainland.
+gp <- gp[!gp$scilly, ]
+travel <- travel[[gp$practice]]
+# Keep cells with a travel time to every mainland practice, then drop the
+# empty margin the islands leave behind.
+pop <- terra::trim(terra::mask(pop, sum(travel)))
+travel <- terra::crop(travel, pop)
+stopifnot(identical(names(travel), gp$practice),
+  terra::compareGeom(pop, travel))
+c(cells = sum(!is.na(terra::values(pop))), practices = nrow(gp),
+  residents = round(terra::global(pop, "sum", na.rm = TRUE)[[1]]),
+  gp_fte = round(sum(gp$gp_fte_extg), 1))
 ```
 
-Each travel layer names its facility. Supply can be reordered when it is a data
-frame with explicit IDs; an unnamed supply vector or matrix requires the caller
-to maintain the correct facility order. Keep an external record of the demand,
-supply and travel units: the legacy FCA result does not have the allocation
-workflow's structured unit declarations.
+- **Demand** is the WorldPop 2020 population grid: estimated residents per
+  cell of about 1 km (30 arc-seconds). It is a **count per cell**, not a
+  density per square kilometre.
+- **Supply** is `gp_fte_extg`: full-time equivalent GPs at each practice,
+  excluding GPs in training (NHS England, June 2026).
+- **Travel** is motorised travel time in whole minutes from each cell to each
+  practice's main site, one layer per practice. Layer names are practice codes.
 
-## Calculate and inspect the surface
+The population grid and the workforce data come from different sources and
+dates, so the index below compares a 2026 workforce with a 2020 population
+estimate. The analysis covers mainland Cornwall: 54 practices and the grid
+cells that can reach them by road. [Preparing counts, facility IDs and
+travel](spax-102-data-prep.html) explains these steps in detail.
 
-We explicitly choose `demand_normalize = "identity"`: the distance weights are
-used unchanged in the demand denominator. With Gaussian scale 5 minutes, a
-distance of 5 minutes has weight `exp(-1/2)`, not zero.
+## Calculate the E2SFCA surface
 
-```{r calculate}
-result <- spax_e2sfca(demand, facilities[c(3, 1, 2), ], travel,
-  decay_params = list(method = "gaussian", sigma = 5),
-  demand_normalize = "identity", id_col = "id", supply_cols = "slots")
-print(result)
-summary(result)
-plot(result, main = "FCA index: weekly slots per weekly request")
+E2SFCA weights travel with a decay function. We use a Gaussian kernel with a
+scale of 10 minutes: a practice 10 minutes away keeps `exp(-1/2)`, about 61%,
+of its weight, and one 20 minutes away about 14%. The scale is our choice for
+illustration, not a fitted value. `demand_normalize = "identity"` uses the
+weights unchanged when practices gather demand, as in the original E2SFCA.
+
+```{r e2sfca}
+e2sfca <- spax_e2sfca(pop, gp, travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  demand_normalize = "identity", id_col = "practice",
+  supply_cols = "gp_fte_extg")
+e2sfca
 ```
 
-The result is a `spax` object. Its `accessibility` member is a `SpatRaster`;
-`facilities` records supply and `parameters` records the decay and normalization
-choices. This index has supply-per-demand units. It is not a contact probability,
-an observed service rate, or the CLM contact measure `rho`.
+The result is a `spax` object. Its `accessibility` member is a `SpatRaster` of
+GP FTE per resident; `facilities` records the supply used and `parameters` the
+decay and normalization choices. Per resident values are small, so we map GP
+FTE per 1,000 residents.
 
-```{r inspect-and-check}
-head(terra::as.data.frame(result$accessibility, xy = TRUE, na.rm = FALSE))
-result$parameters
-# Independent check of the declared identity-normalized FCA calculation.
-W <- exp(-travel_values^2 / (2 * 5^2))
-D <- terra::values(demand, mat = FALSE)
-load <- colSums(W * D)
-expected <- drop(W %*% (facilities$slots / load))
-stopifnot(isTRUE(all.equal(
-  terra::values(result$accessibility, mat = FALSE), expected,
-  check.attributes = FALSE, tolerance = 1e-10)))
+```{r e2sfca-map}
+practices <- sf::st_transform(cornwall_gp[!cornwall_gp$scilly, ], 4326)
+per_1000 <- 1000 * e2sfca$accessibility
+terra::plot(per_1000, axes = FALSE, col = hcl.colors(50, "viridis"),
+  main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)")
+terra::points(terra::vect(practices), pch = 3, cex = 0.5, col = "red")
 ```
 
-The spatial summary describes raster cells; it is not automatically weighted by
-demand. If your question concerns the average request, calculate and label that
-weighted summary explicitly.
+Each cross is a practice. The index is highest in the west of the county,
+from around Camborne and Redruth towards Truro and Falmouth, where several
+practices with many GP FTE lie within a short drive. It is lowest on Bodmin Moor
+and at the tips of the Land's End and Lizard peninsulas, where the nearest
+practices are further away and the decay removes much of their weight.
 
-```{r weighted-summary}
-data.frame(request_weighted_index = weighted.mean(expected, D),
-  total_slots_per_request = sum(facilities$slots) / sum(D))
+```{r e2sfca-values}
+a <- 1000 * terra::values(e2sfca$accessibility, mat = FALSE)
+p <- terra::values(pop, mat = FALSE)
+round(quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE), 2)
+c(resident_weighted_mean = weighted.mean(a, p, na.rm = TRUE),
+  total_fte_per_1000 = 1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE))
 ```
 
-The equality here follows from using the same weights on both sides with
-identity normalization, positive facility loads and this fully observed domain.
-Do not transfer it to other normalizations or incomplete support without
-checking their equations.
+The quantiles describe grid cells, and most cells are rural. Weighting by
+residents answers a different question: the index the average resident sees.
+Here that average equals total GP FTE per 1,000 residents, because both steps
+use the same weights and every practice has residents within reach. The index
+redistributes the supply; it does not create or lose any.
+
+The index has supply-per-demand units. It is not a share of people who use a
+practice, a waiting time or an observed rate of care.
+
+## Compare with the original 2SFCA
+
+The original 2SFCA replaces the decay with a fixed catchment: a practice counts
+fully within 15 minutes and not at all beyond. Both maps below show GP FTE per
+1,000 residents on one colour scale.
+
+```{r twosfca, fig.width = 8, fig.height = 3.6}
+twosfca <- spax_2sfca(pop, gp, travel, threshold = 15,
+  id_col = "practice", supply_cols = "gp_fte_extg")
+both <- c(per_1000, 1000 * twosfca$accessibility)
+names(both) <- c("E2SFCA, Gaussian 10 min", "2SFCA, 15 min")
+terra::plot(both, axes = FALSE, col = hcl.colors(50, "viridis"),
+  range = range(terra::values(both), na.rm = TRUE), mar = c(1, 1, 2, 5))
+```
+
+```{r twosfca-values}
+b <- 1000 * terra::values(twosfca$accessibility, mat = FALSE)
+round(rbind(E2SFCA = quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE),
+  `2SFCA` = quantile(b, c(0.05, 0.5, 0.95), na.rm = TRUE)), 2)
+c(residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),
+  correlation = round(cor(a, b, use = "complete.obs"), 2))
+```
+
+The two surfaces broadly agree (correlation 0.79 across cells), but 2SFCA
+shows sharp steps at the 15-minute edges and a wider spread, and the few
+residents with no practice within 15 minutes get an index of zero. The decay version changes gradually instead. Both depend on choices,
+the threshold or the decay scale, that this guide does not estimate from data.
 
 ## Continue
 
-- [Prepare counts, IDs and travel](spax-102-data-prep.html), including unknown
-  values and an explicitly optional live-routing example.
-- [Inspect the FCA calculation](spax-103-dissection.html) and its alternatives.
+- [Prepare counts, IDs and travel](spax-102-data-prep.html): small-area counts
+  to a demand grid, facility IDs and unknown travel times.
+- [Inspect the FCA calculation](spax-103-dissection.html) step by step.
 - [Choose resolution and output size](spax-104-raster-tradeoff.html).
-- [Fit a static allocation model](allocation-workflow.html) when expected
-  utilization, explicit outside contact and supported uncertainty are required.
+- [Fit a static allocation model](allocation-workflow.html) when expected use,
+  an explicit outside option and supported uncertainty are required.
