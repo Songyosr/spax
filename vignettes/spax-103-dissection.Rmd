@@ -8,114 +8,226 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
-  fig.height = 4, dpi = 100)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+  fig.height = 4.5, dpi = 100)
 library(spax)
 ```
 
-An FCA calculation has two kernels: one determines weighted demand at each
-facility, and the other returns each facility's supply-to-demand ratio to
-origins. Let demand be D_i, supply be S_j, demand weights be G_ij and access
-weights be H_ij. The calculation is
+An FCA calculation has two kernels: one decides how much demand each facility
+gathers, the other spreads each facility's supply-to-demand ratio back to
+origins. Let demand at cell $i$ be $D_i$, supply at practice $j$ be $S_j$,
+and the demand-side and access-side weights be $G_{ij}$ and $H_{ij}$. Then
 
 \[
 L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 \]
 
-The public FCA implementation uses zero for the facility ratio when its weighted
-demand denominator is zero. That is a computational convention, not evidence
-that unused capacity is physically absent. This example has positive loads and
-fully observed inputs, so it does not invoke that convention.
-
-## A small network with explicit IDs
+This guide rebuilds the E2SFCA surface of [Getting
+started](spax-101-intro.html) one step at a time and checks each step against
+`spax_e2sfca()`. It uses the same inputs: WorldPop 2020 residents per cell,
+GP FTE excluding GPs in training, and travel minutes to each mainland Cornwall
+practice. The calculation covers all of mainland Cornwall; the maps zoom in on
+the area around Truro so that individual cells stay visible.
 
 ```{r inputs}
-demand <- terra::rast(nrows = 2, ncols = 3, xmin = 0, xmax = 3,
-  ymin = 0, ymax = 2, crs = "EPSG:3857")
-terra::values(demand) <- c(30, 20, 40, 10, 35, 25)
-distance <- terra::rast(demand, nlyrs = 3)
-travel <- cbind(a = c(2, 4, 8, 3, 6, 10),
-  b = c(8, 3, 5, 9, 4, 7), c = c(11, 8, 2, 10, 7, 3))
-terra::values(distance) <- travel
-names(distance) <- colnames(travel)
-supply <- c(a = 18, b = 25, c = 15) # weekly slots
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly, ]                 # mainland only, as in the other guides
+travel <- travel[[gp$practice]]
+pop <- terra::trim(terra::mask(pop, sum(travel)))
+travel <- terra::crop(travel, pop)
+supply <- setNames(gp$gp_fte_extg, gp$practice)
+
+truro <- terra::ext(-5.30, -4.80, 50.12, 50.42)  # display window only
+practices <- terra::vect(sf::st_transform(cornwall_gp[!cornwall_gp$scilly, ],
+  terra::crs(pop)))
+show <- function(x, title) {
+  terra::plot(terra::crop(x, truro), axes = FALSE, main = title,
+    col = hcl.colors(50, "viridis"))
+  terra::points(terra::crop(practices, truro), pch = 3, col = "red")
+}
 ```
 
-Travel is minutes, demand is weekly requests and supply is weekly slots. The
-grid is only a display template; its coordinates did not generate these travel
-times. A travel layer's facility ID must agree with the corresponding supply ID.
+## Step 1: decay weights
 
-## Decay and normalization are separate choices
+With Gaussian decay, $W_{ij}=\exp(-d_{ij}^2/2\sigma^2)$, where $d_{ij}$ is the
+travel time. We use $\sigma = 10$ minutes, a choice rather than an estimate.
+`calc_decay()` works on plain numbers and on rasters alike.
 
-For Gaussian decay, W_ij = exp(-d_ij^2/(2 sigma^2)). The same sigma has the travel
-unit; it is neither a catchment boundary nor a fitted parameter in this example.
-
-```{r kernels}
-weights <- calc_decay(distance, method = "gaussian", sigma = 5)
-standard <- calc_normalize(weights, method = "standard")
-semi <- calc_normalize(weights, method = "semi")
-data.frame(cell = seq_len(terra::ncell(demand)),
-  raw_sum = rowSums(terra::values(weights)),
-  standard_sum = rowSums(terra::values(standard)),
-  semi_sum = rowSums(terra::values(semi)))
+```{r kernel}
+minutes <- c(0, 5, 10, 15, 20, 30)
+round(setNames(calc_decay(minutes, method = "gaussian", sigma = 10), minutes), 3)
+weights <- calc_decay(travel, method = "gaussian", sigma = 10)
+show(weights[["L82001"]],
+  "Step 1: weight of one Truro practice (L82001), 0 to 1")
 ```
 
-For raster weights and no outside weight, `identity` leaves the kernel unchanged;
-`standard` divides each cell's weights by their sum when that sum is positive;
-`semi` divides only when the sum exceeds 1. These choices change G and therefore
-the denominator L. Normalization is a model choice, not a universal correction
-for an error. In `spax_e2sfca()`, `demand_normalize` acts on the demand-side
-weights; the access-side weights remain W.
+Each practice has one weight layer. The map shows the layer for a practice in
+central Truro (the red crosses are practices): the weight is close to 1 near
+it and fades with travel time. The shape follows the travel-time surface, not
+straight-line distance; the gaps are estuaries.
 
-## Compose the public operations
+## Step 2 (optional): normalize the demand-side weights
 
-Here G=H=W and normalization is explicitly `identity`. The named output of
-`gather_weighted()` is aligned before spreading: `spread_weighted()` uses
-positional values and does not perform an ID join for us.
+The weights of all practices at one cell need not sum to 1. Where many
+practices are close, a resident is counted in full by each of them.
+`calc_normalize()` offers alternatives: `"standard"` divides each cell's
+weights by their sum, and `"semi"` does so only where the sum exceeds 1.
 
-```{r compose}
-weighted_demand <- gather_weighted(demand, weights, simplify = TRUE)
-ratio <- supply[names(weighted_demand)] / weighted_demand
+```{r normalize}
+row_sum <- function(w) terra::values(sum(w), mat = FALSE)
+round(rbind(
+  identity = quantile(row_sum(weights), c(0.05, 0.5, 0.95), na.rm = TRUE),
+  standard = quantile(row_sum(calc_normalize(weights, "standard")),
+    c(0.05, 0.5, 0.95), na.rm = TRUE),
+  semi = quantile(row_sum(calc_normalize(weights, "semi")),
+    c(0.05, 0.5, 0.95), na.rm = TRUE)), 2)
+```
+
+In mainland Cornwall the weights at the median cell sum to about 4, and even
+the 5th percentile is above 1, so `"standard"` and `"semi"` give almost the
+same result here and both differ from `"identity"`. It changes the demand each practice gathers and so the
+index: normalization is a model choice, not a correction. In `spax_e2sfca()`
+the `demand_normalize` argument applies it to the demand side only. We keep
+`"identity"`, so $G = H = W$.
+
+## Step 3: gather demand to practices
+
+`gather_weighted()` sums demand times weight over all cells for each practice:
+$L_j=\sum_i D_iW_{ij}$. With `simplify = TRUE` it returns a vector named by the
+weight layers.
+
+```{r gather}
+load <- gather_weighted(pop, weights, simplify = TRUE)
+stopifnot(identical(names(load), gp$practice))
+```
+
+## Step 4: supply-to-demand ratios
+
+Each practice's ratio is its supply over the demand it gathered, $R_j=S_j/L_j$.
+Index supply by the names of `load`, not by position.
+
+```{r ratio}
+ratio <- supply[names(load)] / load
+near_truro <- c("L82001", "L82028", "L82015", "L82061", "L82045", "L82048")
+data.frame(practice = near_truro,
+  name = gp$name[match(near_truro, gp$practice)],
+  gp_fte = round(supply[near_truro], 1),
+  weighted_residents = round(load[near_truro]),
+  fte_per_1000 = round(1000 * ratio[near_truro], 2), row.names = NULL)
+```
+
+The ratios look small because, with identity weights, each resident is
+counted by several practices; step 5 adds them back up. The two central Truro
+practices share one site, so they gather the same demand.
+
+`spax_e2sfca()` uses a ratio of zero for a practice whose gathered demand is
+zero. That is a computational convention, not evidence of anything; with
+Gaussian weights every practice here gathers some demand, so it is not used.
+
+## Step 5: spread the ratios back to cells
+
+`spread_weighted()` multiplies each practice's ratio by its weight layer and
+sums over practices: $A_i=\sum_j W_{ij}R_j$. It matches values to layers by
+position, so pass the ratios in layer order.
+
+```{r spread}
 access <- spread_weighted(unname(ratio[names(weights)]), weights)
-wrapped <- spax_e2sfca(demand, rev(supply), distance,
-  decay_params = list(method = "gaussian", sigma = 5),
-  demand_normalize = "identity")
-custom <- compute_access(demand, supply, weights, weights)
-W <- exp(-travel^2 / (2 * 5^2))
-D <- terra::values(demand, mat = FALSE)
-manual <- drop(W %*% (supply / colSums(W * D)))
-for (answer in list(access, wrapped$accessibility, custom)) {
+show(1000 * access, "Step 5: E2SFCA, GP FTE per 1,000 residents")
+```
+
+A cell's index is a sum of contributions from every practice. For the cell
+containing the central Truro practice, the largest contributions are:
+
+```{r contributions}
+cell <- terra::cellFromXY(pop, terra::geom(practices[practices$practice ==
+  "L82001", ])[, c("x", "y"), drop = FALSE])
+w_cell <- unlist(terra::extract(weights, cell))
+parts <- sort(1000 * w_cell * ratio[names(w_cell)], decreasing = TRUE)
+round(c(head(parts, 5), all_others = sum(parts[-(1:5)]),
+  total = sum(parts)), 3)
+```
+
+## Check against the packaged functions
+
+The step-by-step surface, the `spax_e2sfca()` wrapper, the more general
+`compute_access()` and a plain matrix calculation all agree:
+
+```{r check}
+e2sfca <- spax_e2sfca(pop, gp, travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  demand_normalize = "identity", id_col = "practice",
+  supply_cols = "gp_fte_extg")
+general <- compute_access(pop, supply, weights, weights)
+
+W <- terra::values(weights)
+D <- terra::values(pop, mat = FALSE)
+ok <- !is.na(D)
+manual <- rep(NA_real_, length(D))
+manual[ok] <- drop(W[ok, ] %*% (supply / colSums(W[ok, ] * D[ok])))
+for (answer in list(access, e2sfca$accessibility, general)) {
   stopifnot(isTRUE(all.equal(terra::values(answer, mat = FALSE), manual,
     tolerance = 1e-10, check.attributes = FALSE)))
 }
-plot(wrapped, main = "Identity-normalized FCA index")
+stopifnot(isTRUE(all.equal(drop(load), colSums(W[ok, ] * D[ok]),
+  check.attributes = FALSE)))
 ```
 
-The wrapper, public component path and independent matrix calculation agree for
-these declared inputs. The check verifies this calculation; it does not imply
-that every accessibility model is mathematically equivalent.
+The check verifies this calculation with these inputs; it does not make
+different accessibility models equivalent.
+
+## Why the calculation covers the whole mainland
+
+Cropping the inputs to the Truro window before calculating would be quicker,
+but every practice, including those outside the window, would then gather only
+the demand inside it.
+
+```{r crop-effect}
+cropped <- spax_e2sfca(terra::crop(pop, truro), gp, terra::crop(travel, truro),
+  decay_params = list(method = "gaussian", sigma = 10),
+  demand_normalize = "identity", id_col = "practice",
+  supply_cols = "gp_fte_extg")
+in_window <- terra::values(terra::crop(e2sfca$accessibility, truro), mat = FALSE)
+relative <- terra::values(cropped$accessibility, mat = FALSE) / in_window - 1
+round(quantile(100 * relative, c(0, 0.5, 1), na.rm = TRUE), 1)
+```
+
+These are percentage differences between the cropped and the full calculation
+for cells in the window. Every cell's index rises: by about half at the median
+and about fifty-fold at the worst cell, on the window's edge, which picks up
+practices outside the window whose small remaining demand gives them very high
+ratios. Calculate on the full study area and crop
+only for display.
 
 ## Change the model explicitly
 
-`spax_2sfca()` uses a binary travel threshold. `spax_m2sfca()` uses W on the
-demand side and W squared on the access side. Neither change is a fitted
-statistical comparison.
+`spax_2sfca()` uses a binary 15-minute catchment for both steps.
+`spax_m2sfca()` keeps $W$ on the demand side but uses $W^2$ on the access side.
+$W^2$ is below $W$ except at zero travel time, and far below it for distant
+practices, so M2SFCA discounts cells whose practices are far away.
 
 ```{r alternatives}
-binary <- spax_2sfca(demand, supply, distance, threshold = 6)
-modified <- spax_m2sfca(demand, supply, distance,
-  decay_params = list(method = "gaussian", sigma = 5),
-  demand_normalize = "identity")
-modified_manual <- drop((W^2) %*% (supply / colSums(W * D)))
-stopifnot(isTRUE(all.equal(terra::values(modified$accessibility, mat = FALSE),
-  modified_manual, tolerance = 1e-10, check.attributes = FALSE)))
-data.frame(cell = seq_along(D), E2SFCA = manual,
-  M2SFCA = modified_manual, binary_FCA = terra::values(binary$accessibility, mat = FALSE))
+twosfca <- spax_2sfca(pop, gp, travel, threshold = 15,
+  id_col = "practice", supply_cols = "gp_fte_extg")
+m2sfca <- spax_m2sfca(pop, gp, travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  demand_normalize = "identity", id_col = "practice",
+  supply_cols = "gp_fte_extg")
+m2_manual <- rep(NA_real_, length(D))
+m2_manual[ok] <- drop(W[ok, ]^2 %*% (supply / colSums(W[ok, ] * D[ok])))
+stopifnot(isTRUE(all.equal(terra::values(m2sfca$accessibility, mat = FALSE),
+  m2_manual, tolerance = 1e-10, check.attributes = FALSE)))
+per_1000 <- function(x) 1000 * terra::values(x$accessibility, mat = FALSE)
+round(sapply(list(E2SFCA = e2sfca, M2SFCA = m2sfca, `2SFCA` = twosfca),
+  function(x) c(quantile(per_1000(x), c(0.05, 0.5, 0.95), na.rm = TRUE),
+    resident_weighted = weighted.mean(per_1000(x), D, na.rm = TRUE))), 2)
 ```
 
-In a corrected static CLM, supply-weighted attraction and an outside option
-instead define choice probabilities. Expected facility loads and contact
-probabilities then have explicit allocation meanings. An FCA index must not be
-relabeled as a CLM probability. [Choosing a model](model-choice.html) explains
-the distinction; [the allocation walkthrough](allocation-workflow.html) shows
-fitting and checking the separate model.
+E2SFCA and 2SFCA have the same resident-weighted mean, total supply per
+resident, because each uses one kernel for both steps. M2SFCA does not: the
+squared access weights are smaller than the demand-side weights, so part of
+the supply is not spread back to anyone. None of these indices is a fitted
+statistical model. An allocation model instead defines choice probabilities
+with an outside option; see [Choosing a model](model-choice.html) and the
+[allocation workflow](allocation-workflow.html).
