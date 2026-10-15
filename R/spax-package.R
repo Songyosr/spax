@@ -99,11 +99,15 @@
 #' The experimental interface is on the \code{develop} branch; it is
 #' not a new stable release. Package and function help are installed with the
 #' package. Use \code{help(package = "spax")} to browse them. Installations
-#' with built articles also expose \code{browseVignettes("spax")} and
-#' \code{vignette("allocation-workflow", package = "spax")}. The allocation
-#' article fits the model to the bundled Cornwall GP registrations and covers
-#' prediction, a supply scenario, maps, export and fresh-session save/reload;
-#' its conditional bootstrap section uses a generated network.
+#' with built articles also expose \code{browseVignettes("spax")}. Start with
+#' \code{vignette("spax", package = "spax")}, which computes one FCA surface;
+#' \code{vignette("cornwall-data", package = "spax")} describes the bundled
+#' Cornwall GP example data. The allocation workflow,
+#' \code{vignette("allocation-workflow", package = "spax")}, fits the model to
+#' the Cornwall GP registrations and covers prediction, a supply scenario,
+#' maps, export and fresh-session save/reload. The conditional bootstrap,
+#' \code{vignette("facility-bootstrap", package = "spax")}, uses a generated
+#' network.
 #'
 #' @aliases allocation-compatibility
 #' @keywords package

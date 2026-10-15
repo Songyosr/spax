@@ -7,6 +7,14 @@ yet; record the source commit when reproducing an analysis.
   maps, instead of generated grids. Only the allocation bootstrap section
   keeps a generated network, where the true parameters are known.
 
+* The guides now follow one reader journey. `vignette("spax")` is a short Get
+  started guide; a new `vignette("cornwall-data")` introduces the example data
+  once, before `data-prep`; the FCA guides are `fca-methods`, `e2sfca-steps`
+  and `grid-resolution` (formerly `spax-101` to `spax-104`); and the
+  allocation track runs from `model-choice` through `allocation-workflow` to a
+  separate `facility-bootstrap` guide. The pkgdown site groups the articles
+  under these headings and sets printed output apart from code.
+
 * **Breaking:** the Thailand Health Region 12 example data have been removed
   from the package, because their redistribution terms could not be fully
   confirmed. All examples and tests now use the open Cornwall GP data.

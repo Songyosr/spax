@@ -37,7 +37,10 @@ commit as well as the package version and retain the input IDs, units,
 observation declaration and saved results.
 
 Package and function help are available from an installed package.
-Installations that include built articles also provide the guides:
+Installations that include built articles also provide the guides, which
+follow one reader journey: Get started, the example data and data
+preparation, the FCA guides, then the allocation model (model choice,
+the workflow and bootstrap intervals):
 
 ``` r
 # Package overview, and notes on reusing saved results
@@ -48,8 +51,11 @@ help("allocation-compatibility", package = "spax")
 # The guides
 browseVignettes("spax")
 # When the installation includes built vignettes:
+vignette("spax", package = "spax")  # Get started
+vignette("cornwall-data", package = "spax")
 vignette("model-choice", package = "spax")
 vignette("allocation-workflow", package = "spax")
+vignette("facility-bootstrap", package = "spax")
 ```
 
 ## Quick start: GP practices in Cornwall
@@ -63,7 +69,8 @@ registrations in `cornwall_flows` and travel minutes in
 travel-time layer per practice. The Isles of Scilly have no road link to
 the mainland, so this example models mainland Cornwall only: it drops
 the islands’ practice and small area, and crops the islands from the
-grids.
+grids. `vignette("cornwall-data", package = "spax")` describes each
+object, its sources and its licences.
 
 ### An FCA accessibility map
 
@@ -107,7 +114,7 @@ plot(
 )
 ```
 
-![](man/figures/README-fca-1.png)<!-- -->
+<img src="man/figures/README-fca-1.png" alt="Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents; values are highest in the west of the county and lowest on Bodmin Moor and at the tips of the western peninsulas."  />
 
 This is an enhanced two-step FCA index: supply per distance-weighted
 population, in GP FTE per 1,000 residents. The 10-minute Gaussian scale
@@ -271,7 +278,7 @@ ggplot(mapped) +
   theme(plot.title = element_text(margin = margin(b = 8)))
 ```
 
-![](man/figures/README-clm-map-1.png)<!-- -->
+<img src="man/figures/README-clm-map-1.png" alt="Two maps of small areas around St Austell: the observed share of residents registered with St Austell Health Group and the modelled probability; the modelled catchment is centred on the same place but spreads more widely."  />
 
 The model reproduces the catchment’s location but spreads it more widely
 than the observed registrations. Registrations record where residents
@@ -305,9 +312,12 @@ with jointly fitted `sigma` and `v0`, `kappa = beta = 1`, complete whole
 facility counts and an unweighted Poisson original fit. It requires an
 explicit event, reference period and independent-facility sampling
 declaration. The Cornwall fit above targets small area × practice flows,
-so it is outside this method. The installed allocation vignette supplies
-a generated example with all 399 attempts, a paired supply comparison
-and fresh-session reporting/export.
+so it is outside this method.
+`vignette("facility-bootstrap", package = "spax")` supplies a generated
+example with all 399 attempts and a paired supply comparison;
+`vignette("allocation-workflow", package = "spax")` covers fitting,
+prediction, a supply scenario and fresh-session export on the Cornwall
+data.
 
 Conditional percentile intervals require an eligible original, a
 complete run of 399 attempts and at least 380 finite successful values
