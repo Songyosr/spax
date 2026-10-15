@@ -55,12 +55,15 @@ mainland practices are `NA`. This guide models mainland Cornwall only and drops
 the Scilly small area and practice throughout.
 
 ```{r inputs}
+# Mainland small areas and practices, as plain tables
 areas <- cornwall_lsoa |>
   filter(!scilly) |>
   st_drop_geometry()
 gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
+
+# Travel minutes: small areas in rows, practices in columns
 travel <- cornwall_travel[areas$lsoa, gp$practice]
 
 # Demand: residents registered with any practice in England.
@@ -69,11 +72,17 @@ demand <- setNames(areas$registered, areas$lsoa)
 supply <- setNames(gp$gp_fte_extg, gp$practice)
 
 # Observed flows: registered residents by small area (rows) and practice.
-observed <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+observed <- matrix(
+  0,
+  nrow = nrow(travel),
+  ncol = ncol(travel),
+  dimnames = dimnames(travel)
+)
 keep <- cornwall_flows$lsoa %in% rownames(travel) &
   cornwall_flows$practice %in% colnames(travel)
 observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
   cornwall_flows$patients[keep]
+
 dim(travel)
 c(registered = sum(demand), at_mainland_practices = sum(observed))
 ```
@@ -93,12 +102,27 @@ model: a Gaussian travel kernel with scale σ (minutes) and a fitted outside
 weight v0.
 
 ```{r prepare}
+# Labels kept with the inputs and every result derived from them
 cornwall_units <- list(
-  demand_units = "registered residents", demand_period = "July 2026",
-  supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
-  travel_units = "minutes")
-inputs <- prepare_allocation(demand, supply, travel, metadata = cornwall_units)
-model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+  demand_units = "registered residents",
+  demand_period = "July 2026",
+  supply_units = "GP FTE excluding GPs in training",
+  supply_period = "June 2026",
+  travel_units = "minutes"
+)
+
+inputs <- prepare_allocation(
+  demand = demand,
+  supply = supply,
+  distance = travel,
+  metadata = cornwall_units
+)
+
+model <- clm_allocation(
+  inputs = inputs,
+  family = "gaussian",
+  fit_v0 = TRUE                   # estimate the outside weight
+)
 ```
 
 `fit_allocation()` runs one fit from each supplied start and keeps the best
@@ -110,12 +134,26 @@ Joint Poisson fitting does not force the modelled total to match the observed
 total.
 
 ```{r fit}
-starts <- rbind(near = c(sigma = 3, v0 = 0.05), middle = c(sigma = 6, v0 = 0.01),
-  far = c(sigma = 12, v0 = 0.002))
-fit <- fit_allocation(model, observed, starts,
-  lower = c(sigma = 0.5, v0 = 1e-6), upper = c(sigma = 60, v0 = 10),
-  output = "flow", loss = "poisson", gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+# Three starting points, from a short to a long travel scale
+starts <- rbind(
+  near = c(sigma = 3, v0 = 0.05),
+  middle = c(sigma = 6, v0 = 0.01),
+  far = c(sigma = 12, v0 = 0.002)
+)
+
+fit <- fit_allocation(
+  model = model,
+  observed = observed,
+  starts = starts,
+  lower = c(sigma = 0.5, v0 = 1e-6),
+  upper = c(sigma = 60, v0 = 10),
+  output = "flow",                # fit the small area x practice matrix
+  loss = "poisson",
+  gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
+)
+
+# Every start, then the selected parameters as a table
 summary(fit)
 as.data.frame(fit)
 ```
@@ -135,16 +173,23 @@ the pull it would have next door.
 small areas gives each practice's modelled registered list.
 
 ```{r practice-fit, fig.width = 5, fig.height = 4.5}
-practices <- data.frame(practice = colnames(observed),
-  observed = colSums(observed), fitted = colSums(fitted(fit)))
+# Observed and modelled list size of each practice
+practices <- data.frame(
+  practice = colnames(observed),
+  observed = colSums(observed),
+  fitted = colSums(fitted(fit))
+)
 cor(practices$observed, practices$fitted)
+
 ggplot(practices, aes(observed / 1000, fitted / 1000)) +
   geom_abline(linetype = 2, colour = "grey50") +
   geom_point() +
   coord_equal() +
-  labs(x = "Observed registered residents (thousands)",
+  labs(
+    x = "Observed registered residents (thousands)",
     y = "Modelled registered residents (thousands)",
-    title = "Practice lists from mainland residents") +
+    title = "Practice lists from mainland residents"
+  ) +
   theme_minimal()
 ```
 
@@ -158,24 +203,47 @@ outside share can be compared with the share of its residents registered
 outside mainland Cornwall.
 
 ```{r outside-map, fig.height = 4.5}
-evaluated <- evaluate_allocation(model, coef(fit))
-baseline <- predict_allocation(evaluated, travel, demand = demand,
-  outputs = c("outside_share", "flow"))
+# Solve the model once at the fitted parameters
+evaluated <- evaluate_allocation(model = model, theta = coef(fit))
+
+# Outside shares and flows for the fitted small areas
+baseline <- predict_allocation(
+  source = evaluated,
+  distance = travel,
+  demand = demand,
+  outputs = c("outside_share", "flow")
+)
 table(baseline$validity$status)
+
+# Observed and modelled outside shares in one long table
 outside <- bind_rows(
-  data.frame(lsoa = names(demand), share = 1 - rowSums(observed) / demand,
-    source = "Observed"),
-  data.frame(lsoa = names(demand), share = baseline$outputs$outside_share,
-    source = "Modelled")) |>
+  data.frame(
+    lsoa = names(demand),
+    share = 1 - rowSums(observed) / demand,
+    source = "Observed"
+  ),
+  data.frame(
+    lsoa = names(demand),
+    share = baseline$outputs$outside_share,
+    source = "Modelled"
+  )
+) |>
   mutate(source = factor(source, c("Observed", "Modelled")))
+
+# Join to the small-area polygons for mapping
 outside_map <- cornwall_lsoa |>
   select(lsoa) |>
   inner_join(outside, by = "lsoa")
+
 ggplot(outside_map) +
   geom_sf(aes(fill = 100 * share), colour = NA) +
   facet_wrap(~source) +
-  scale_fill_viridis_c(option = "mako", direction = -1, trans = "sqrt",
-    name = "Registered\noutside (%)") +
+  scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    trans = "sqrt",
+    name = "Registered\noutside (%)"
+  ) +
   labs(title = "Share of residents registered outside mainland Cornwall") +
   theme_void()
 ```
@@ -200,13 +268,21 @@ model can predict at every populated cell. A `spatial` mapping from requested
 origins to raster cells turns one output into a map.
 
 ```{r grid-predict}
+# Population grid, and the travel grid as a cell x practice matrix
 pop <- read_spax_example("cornwall_pop.tif")
 grid_travel <- values(read_spax_example("cornwall_gp_travel.tif"))
+
+# Keep populated cells and the fitted practices, in the fitted order
 populated <- which(is.finite(values(pop)[, 1]) & values(pop)[, 1] > 0)
 grid_travel <- grid_travel[populated, colnames(travel)]
 rownames(grid_travel) <- paste0("cell", populated)
-grid <- predict_allocation(evaluated, grid_travel,
-  outputs = c("outside_share", "allocation"))
+
+# Predict at each cell; no demand is needed for probabilities
+grid <- predict_allocation(
+  source = evaluated,
+  distance = grid_travel,
+  outputs = c("outside_share", "allocation")
+)
 table(grid$validity$status)
 ```
 
@@ -215,16 +291,36 @@ their prediction is marked unknown rather than imputed. Inspect these flags
 before reading a map.
 
 ```{r grid-map, fig.height = 4}
-grid_spatial <- list(template = pop,
-  cell_index = setNames(populated, rownames(grid_travel)))
-grid_outside <- predict_allocation(evaluated, grid_travel,
-  outputs = "outside_share", spatial = grid_spatial, type = "raster")
-plot(grid_outside, axes = FALSE, col = hcl.colors(50, "Mako", rev = TRUE),
-  main = "Modelled outside share (proportion), 1 km grid")
+# Which raster cell each requested origin belongs to
+grid_spatial <- list(
+  template = pop,
+  cell_index = setNames(populated, rownames(grid_travel))
+)
+
+grid_outside <- predict_allocation(
+  source = evaluated,
+  distance = grid_travel,
+  outputs = "outside_share",
+  spatial = grid_spatial,
+  type = "raster"                 # return a map instead of a table
+)
+plot(
+  grid_outside,
+  axes = FALSE,
+  col = hcl.colors(50, "Mako", rev = TRUE),
+  main = "Modelled outside share (proportion), 1 km grid"
+)
+
+# Cells with an outside share above 0.5, and their share of the population
 grid_pop <- values(pop)[populated, 1]
 far_out <- grid$outputs$outside_share > 0.5
-c(cells = sum(far_out, na.rm = TRUE),
-  population_percent = round(100 * sum(grid_pop[which(far_out)]) / sum(grid_pop), 2))
+c(
+  cells = sum(far_out, na.rm = TRUE),
+  population_percent = round(
+    100 * sum(grid_pop[which(far_out)]) / sum(grid_pop),
+    2
+  )
+)
 ```
 
 Some grid cells far from every practice get a high outside share because the
@@ -250,27 +346,52 @@ closed <- "L82047"
 gp |>
   filter(practice == closed) |>
   pull(name)
+
+# Same inputs, with zero GP FTE at the closed practice
 scenario_supply <- supply
 scenario_supply[closed] <- 0
 scenario_model <- clm_allocation(
-  prepare_allocation(demand, scenario_supply, travel,
-    metadata = cornwall_units),
-  family = "gaussian", fit_v0 = TRUE)
-scenario <- evaluate_allocation(scenario_model, coef(fit))
-changed <- predict_allocation(scenario, travel, demand = demand,
-  outputs = c("outside_share", "flow"))
+  inputs = prepare_allocation(
+    demand = demand,
+    supply = scenario_supply,
+    distance = travel,
+    metadata = cornwall_units
+  ),
+  family = "gaussian",
+  fit_v0 = TRUE
+)
+
+# Evaluate at the fitted parameters; nothing is refitted
+scenario <- evaluate_allocation(model = scenario_model, theta = coef(fit))
+changed <- predict_allocation(
+  source = scenario,
+  distance = travel,
+  demand = demand,
+  outputs = c("outside_share", "flow")
+)
+
+# Modelled list sizes before and after
 baseline_lists <- colSums(baseline$outputs$flow)
 scenario_lists <- colSums(changed$outputs$flow)
 practices <- practices |>
-  mutate(baseline = baseline_lists, scenario = scenario_lists,
+  mutate(
+    baseline = baseline_lists,
+    scenario = scenario_lists,
     change = scenario - baseline,
-    name = gp$name[match(practice, gp$practice)])
+    name = gp$name[match(practice, gp$practice)]
+  )
+
+# The seven largest changes
 practices |>
   arrange(desc(abs(change))) |>
   select(name, baseline, scenario, change) |>
   head(7)
-c(outside_change = sum(demand * changed$outputs$outside_share) -
-  sum(demand * baseline$outputs$outside_share))
+
+# Change in the number of residents modelled outside mainland practices
+c(
+  outside_change = sum(demand * changed$outputs$outside_share) -
+    sum(demand * baseline$outputs$outside_share)
+)
 ```
 
 The modelled list of the closed practice moves to nearby practices in
@@ -280,29 +401,59 @@ option; that follows from the constant outside weight, not from evidence about
 where patients would go.
 
 ```{r scenario-map, fig.height = 5}
-moved <- data.frame(lsoa = names(demand),
-  share = baseline$outputs$flow[, closed] / demand)
+# Each area's modelled share of residents at the closed practice
+moved <- data.frame(
+  lsoa = names(demand),
+  share = baseline$outputs$flow[, closed] / demand
+)
 moved_map <- cornwall_lsoa |>
   select(lsoa) |>
   inner_join(moved, by = "lsoa")
+
+# Practices that gain more than 10 modelled registrations, with locations
 gained <- cornwall_gp |>
   select(practice) |>
-  inner_join(practices |> filter(change > 10) |> select(practice, change),
-    by = "practice")
-west <- st_bbox(c(xmin = 130000, ymin = 18000, xmax = 185000, ymax = 48000),
-  crs = st_crs(cornwall_lsoa))
+  inner_join(
+    practices |>
+      filter(change > 10) |>
+      select(practice, change),
+    by = "practice"
+  )
+
+# Map window over west Cornwall, in British National Grid metres
+west <- st_bbox(
+  c(xmin = 130000, ymin = 18000, xmax = 185000, ymax = 48000),
+  crs = st_crs(cornwall_lsoa)
+)
+
 ggplot() +
-  geom_sf(data = moved_map, aes(fill = 100 * share), colour = "white",
-    linewidth = 0.05) +
+  geom_sf(
+    data = moved_map,
+    aes(fill = 100 * share),
+    colour = "white",
+    linewidth = 0.05
+  ) +
   geom_sf(data = gained, aes(size = change), shape = 21, fill = "orange") +
-  geom_sf(data = filter(cornwall_gp, practice == closed), shape = 4,
-    size = 3, stroke = 1.2) +
-  scale_fill_viridis_c(option = "mako", direction = -1,
-    name = "Residents at the\nclosed practice (%)") +
+  geom_sf(
+    data = filter(cornwall_gp, practice == closed),
+    shape = 4,
+    size = 3,
+    stroke = 1.2
+  ) +
+  scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    name = "Residents at the\nclosed practice (%)"
+  ) +
   scale_size_area(name = "Modelled\nregistrations\ngained") +
   coord_sf(xlim = west[c("xmin", "xmax")], ylim = west[c("ymin", "ymax")]) +
-  labs(title = "Closing Marazion Surgery (x): who moves and where to",
-    subtitle = "Modelled baseline share of residents at the practice; points are receiving practices") +
+  labs(
+    title = "Closing Marazion Surgery (x): who moves and where to",
+    subtitle = paste(
+      "Modelled baseline share of residents at the practice;",
+      "points are receiving practices"
+    )
+  ) +
   theme_void()
 ```
 
@@ -313,13 +464,21 @@ keep the model or the travel matrix, and the restored object predicts the same
 values.
 
 ```{r save-and-reload}
+# Save the evaluated scenario and read it back
 saved <- tempfile(fileext = ".rds")
 saveRDS(scenario, saved)
 restored <- readRDS(saved)
+
+# The restored object predicts exactly what the original did
 stopifnot(identical(
-  predict_allocation(restored, travel, demand = demand,
-    outputs = c("outside_share", "flow")),
-  changed))
+  predict_allocation(
+    source = restored,
+    distance = travel,
+    demand = demand,
+    outputs = c("outside_share", "flow")
+  ),
+  changed
+))
 unlink(saved)
 ```
 
@@ -339,33 +498,63 @@ across facilities is an assumption declared below; it does not follow from
 mutually exclusive destinations.
 
 ```{r bootstrap-generated-inputs}
-units <- list(demand_units = "requests", demand_period = "one_reference_period",
-  supply_units = "service_slots", supply_period = "one_reference_period",
-  travel_units = "minutes")
+units <- list(
+  demand_units = "requests",
+  demand_period = "one_reference_period",
+  supply_units = "service_slots",
+  supply_period = "one_reference_period",
+  travel_units = "minutes"
+)
+
+# Travel minutes between 80 origins and 40 facilities on a wavy strip
 i <- seq_len(80)
 j <- seq_len(40)
 boot_travel <- sqrt(
   outer(seq(2, 58, length.out = 80), seq(4, 56, length.out = 40), "-")^2 +
   outer(8 * sin(i * .73), 7 * sin(j * 1.31), "-")^2) + 2
 dimnames(boot_travel) <- list(paste0("origin", i), paste0("facility", j))
+
+# Demand at each origin and supply at each facility
 boot_demand <- setNames(80 + 35 * (1 + sin(i * .23)), rownames(boot_travel))
 boot_supply <- setNames(rep(c(5, 7, 6, 8, 9), 8), colnames(boot_travel))
+
+# True choice probabilities under the static CLM
 truth <- c(sigma = 12, v0 = 45)
 boot_score <- exp(-boot_travel^2 / (2 * truth[["sigma"]]^2)) *
   rep(boot_supply, each = length(boot_demand))
 boot_probability <- boot_score / (rowSums(boot_score) + truth[["v0"]])
+
+# Observed facility totals: independent Poisson counts around the truth
 set.seed(2490001)
-boot_observed <- setNames(rpois(40, colSums(boot_probability * boot_demand)),
-  names(boot_supply))
-boot_inputs <- prepare_allocation(boot_demand, boot_supply, boot_travel,
-  metadata = units)
+boot_observed <- setNames(
+  rpois(40, colSums(boot_probability * boot_demand)),
+  names(boot_supply)
+)
+
+# Prepare, declare and fit, as for Cornwall
+boot_inputs <- prepare_allocation(
+  demand = boot_demand,
+  supply = boot_supply,
+  distance = boot_travel,
+  metadata = units
+)
 boot_model <- clm_allocation(boot_inputs, family = "gaussian", fit_v0 = TRUE)
-boot_starts <- rbind(short = c(sigma = 8, v0 = 25),
-  medium = c(sigma = 15, v0 = 70), wide = c(sigma = 25, v0 = 15))
-boot_fit <- fit_allocation(boot_model, boot_observed, boot_starts,
-  lower = c(sigma = 2, v0 = 1), upper = c(sigma = 60, v0 = 500),
-  output = "utilization", loss = "poisson", gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+boot_starts <- rbind(
+  short = c(sigma = 8, v0 = 25),
+  medium = c(sigma = 15, v0 = 70),
+  wide = c(sigma = 25, v0 = 15)
+)
+boot_fit <- fit_allocation(
+  model = boot_model,
+  observed = boot_observed,
+  starts = boot_starts,
+  lower = c(sigma = 2, v0 = 1),
+  upper = c(sigma = 60, v0 = 500),
+  output = "utilization",         # facility totals
+  loss = "poisson",
+  gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
+)
 rbind(truth = truth, estimate = coef(boot_fit))
 ```
 
@@ -375,20 +564,40 @@ supply by 20%; each bootstrap draw evaluates baseline and scenario at the same
 parameters.
 
 ```{r paired-bootstrap-inputs}
+# Scenario: 20% more supply at facility2
 boot_scenario_supply <- boot_supply
 boot_scenario_supply["facility2"] <- 1.2 * boot_scenario_supply["facility2"]
-boot_scenario_inputs <- prepare_allocation(boot_demand, boot_scenario_supply,
-  boot_travel, metadata = units)
-boot_scenario <- clm_allocation(boot_scenario_inputs, family = "gaussian",
-  fit_v0 = TRUE)
-observation <- list(event = "allocated service requests",
-  period = "one_reference_period", sampling = "independent_facilities")
+boot_scenario_inputs <- prepare_allocation(
+  demand = boot_demand,
+  supply = boot_scenario_supply,
+  distance = boot_travel,
+  metadata = units
+)
+boot_scenario <- clm_allocation(
+  inputs = boot_scenario_inputs,
+  family = "gaussian",
+  fit_v0 = TRUE
+)
+
+# What was observed, over what period, and how facilities were sampled
+observation <- list(
+  event = "allocated service requests",
+  period = "one_reference_period",
+  sampling = "independent_facilities"
+)
+
+# Run the bootstrap only when rebuilding the stored result (see below)
 rebuild_boot <- identical(Sys.getenv("SPAX_REBUILD_VIGNETTE_BOOTSTRAP"), "true")
 ```
 
 ```{r paired-bootstrap, eval = rebuild_boot}
-boot <- bootstrap_allocation(boot_model, boot_fit, observation,
-  scenario = boot_scenario, seed = 20260930)
+boot <- bootstrap_allocation(
+  model = boot_model,
+  fit = boot_fit,
+  observation = observation,
+  scenario = boot_scenario,
+  seed = 20260930
+)
 ```
 
 ### Precomputed bootstrap result
@@ -403,27 +612,43 @@ reproduce it. The checks below confirm that the stored result matches the
 inputs and fit computed live here and that all 399 attempts were made.
 
 ```{r paired-bootstrap-load}
+# When rebuilding, store the fresh result with the spax version used
 boot_file <- "allocation-bootstrap.rds"
 if (rebuild_boot) {
   attr(boot, "spax_version") <- as.character(packageVersion("spax"))
   saveRDS(boot, boot_file, compress = "xz")
 }
 boot <- readRDS(boot_file)
-stopifnot(inherits(boot, "ae_allocation_bootstrap"),
-  boot$seed == 20260930L, boot$planned == 399L, boot$attempted == 399L,
+
+# The stored result belongs to these inputs, this fit and all 399 attempts
+stopifnot(
+  inherits(boot, "ae_allocation_bootstrap"),
+  boot$seed == 20260930L,
+  boot$planned == 399L,
+  boot$attempted == 399L,
   identical(boot$facility_ids, names(boot_supply)),
   identical(boot$observation, observation),
   identical(boot$input_metadata, units),
-  isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6)))
-c(status = boot$status, attempted = boot$attempted, successful = boot$successful,
+  isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6))
+)
+
+c(
+  status = boot$status,
+  attempted = boot$attempted,
+  successful = boot$successful,
   built_with_spax = attr(boot, "spax_version"),
-  running_spax = as.character(packageVersion("spax")))
+  running_spax = as.character(packageVersion("spax"))
+)
 ```
 
 ```{r paired-bootstrap-results}
 parameters <- c("sigma", "v0")
+
+# Point estimates and intervals for the two parameters
 estimates <- as.data.frame(boot)
 filter(estimates, quantity %in% parameters)
+
+# The first few of the 399 attempts
 draws <- as.data.frame(boot, type = "draws")
 draws |>
   select(attempt, status, all_of(parameters)) |>
@@ -442,6 +667,7 @@ The tables above show the two model parameters; the saved result also holds
 regional and paired-scenario quantities, listed by `as.data.frame(boot)`.
 
 ```{r bootstrap-truth, fig.width = 7, fig.height = 3.5}
+# Two panels side by side; each adds the true value as a dashed line
 oldpar <- par(mfrow = c(1, 2))
 for (q in c("sigma", "v0")) {
   plot(boot, quantity = q, main = paste(q, "(dashed line: truth)"))
@@ -465,18 +691,35 @@ units and the complete results.
 ```{r export-saved-results}
 export_dir <- tempfile("allocation-results-")
 dir.create(export_dir)
-export_tables <- list(parameters = as.data.frame(fit),
+
+# One CSV file per table
+export_tables <- list(
+  parameters = as.data.frame(fit),
   practices = practices,
   bootstrap_estimates = as.data.frame(boot),
   bootstrap_draws = as.data.frame(boot, type = "draws"),
-  bootstrap_starts = as.data.frame(boot, type = "starts"))
+  bootstrap_starts = as.data.frame(boot, type = "starts")
+)
 for (name in names(export_tables)) {
-  write.csv(export_tables[[name]], file.path(export_dir, paste0(name, ".csv")),
-    row.names = FALSE)
+  write.csv(
+    export_tables[[name]],
+    file.path(export_dir, paste0(name, ".csv")),
+    row.names = FALSE
+  )
 }
+
+# One RDS bundle with the full R objects
 bundle_path <- file.path(export_dir, "allocation-results.rds")
-saveRDS(list(fit = fit, scenario = scenario, bootstrap = boot,
-  closed = closed, tables = export_tables), bundle_path)
+saveRDS(
+  list(
+    fit = fit,
+    scenario = scenario,
+    bootstrap = boot,
+    closed = closed,
+    tables = export_tables
+  ),
+  bundle_path
+)
 list.files(export_dir)
 ```
 
@@ -486,16 +729,20 @@ times, and prints and plots the saved results without refitting or drawing a
 new bootstrap sample.
 
 ```{r fresh-installed-reload}
+# Write a short script for a new R process
 child_path <- tempfile(fileext = ".R")
 literal <- function(x) paste(capture.output(dput(x)), collapse = "\n")
 writeLines(c(
+  # Use the same installed spax and read the bundle
   paste0(".libPaths(c(", literal(dirname(find.package("spax"))), ", .libPaths()))"),
   "library(spax)",
   paste0("saved <- readRDS(", literal(bundle_path), ")"),
+  # The saved tables match the saved objects
   "stopifnot(identical(as.data.frame(saved$fit), saved$tables$parameters))",
   "stopifnot(identical(as.data.frame(saved$bootstrap), saved$tables$bootstrap_estimates))",
   "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'draws'), saved$tables$bootstrap_draws))",
   "stopifnot(identical(as.data.frame(saved$bootstrap, type = 'starts'), saved$tables$bootstrap_starts))",
+  # Predict the closure scenario again from the bundled travel times
   "areas <- sf::st_drop_geometry(cornwall_lsoa)",
   "gp <- sf::st_drop_geometry(cornwall_gp)",
   "travel <- cornwall_travel[areas$lsoa[!areas$scilly], gp$practice[!gp$scilly]]",
@@ -503,6 +750,7 @@ writeLines(c(
   "flow <- predict_allocation(saved$scenario, travel, demand = demand, outputs = 'flow')$outputs$flow",
   "stopifnot(isTRUE(all.equal(unname(colSums(flow)), unname(saved$tables$practices$scenario))))",
   "stopifnot(colSums(flow)[[saved$closed]] == 0)",
+  # Summaries and plots work without refitting or resampling
   "stopifnot(inherits(summary(saved$fit), 'summary.ae_multistart_fit'))",
   "stopifnot(inherits(summary(saved$bootstrap), 'summary.ae_allocation_bootstrap'))",
   "print(summary(saved$fit))",
@@ -517,7 +765,12 @@ writeLines(c(
   "unlink(plot_path)",
   "cat('Fresh installed saved-result inspection passed\\n')"
 ), child_path)
-rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+
+# Run it with a clean Rscript and stop if it fails
+rscript <- file.path(
+  R.home("bin"),
+  if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
+)
 status <- system2(rscript, c("--vanilla", shQuote(child_path)))
 stopifnot(status == 0L)
 unlink(child_path)
