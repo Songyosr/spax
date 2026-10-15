@@ -544,7 +544,7 @@ test_that("checkpoint write failures stop instead of silently extending the run"
 })
 
 test_that("the bootstrap engine runs end to end and withholds intervals when incomplete", {
-  # The allocation-workflow vignette loads a stored 399-attempt result, so this
+  # The facility-bootstrap vignette loads a stored 399-attempt result, so this
   # test keeps the real engine (fits, multistart, diagnostics) executed in checks.
   f <- alloc_generated_case(); fit <- alloc_generated_fit()
   boot <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(),
