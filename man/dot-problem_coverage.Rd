@@ -2,7 +2,7 @@
 % Please edit documentation in R/06-ae_coverage.R
 \name{.problem_coverage}
 \alias{.problem_coverage}
-\title{Decompose a CLM allocation problem at specified parameters}
+\title{Coverage outputs of a CLM allocation problem at specified parameters}
 \usage{
 .problem_coverage(problem, theta, state = NULL, ..., solve_control = list())
 }

@@ -1,6 +1,6 @@
 # Private post-fit coverage -------------------------------------------------
 
-#' Decompose a fitted CLM allocation on its retained demand support
+#' Coverage outputs of a fitted CLM allocation on its retained demand support
 #'
 #' Reuses saved allocation and utilization; no solve, raster extraction, or
 #' geometry reconstruction. Requires fits with `coverage_meta` (older saved
@@ -123,7 +123,7 @@
   ans
 }
 
-#' Decompose a CLM allocation problem at specified parameters
+#' Coverage outputs of a CLM allocation problem at specified parameters
 #'
 #' Solves once if `state` is absent; otherwise evaluates outputs at that state.
 #' This entry point also supports older saved problems without refitting targets.

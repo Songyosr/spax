@@ -17,7 +17,6 @@ articles:
   - title: Experimental Allocation Workflow
     contents:
       - allocation-workflow
-      - cornwall-gp
 
 reference:
   - title: "Package Overview and Compatibility"

@@ -2,7 +2,7 @@
 % Please edit documentation in R/06-ae_coverage.R
 \name{.ae_coverage}
 \alias{.ae_coverage}
-\title{Decompose a fitted CLM allocation on its retained demand support}
+\title{Coverage outputs of a fitted CLM allocation on its retained demand support}
 \usage{
 .ae_coverage(
   fit,
