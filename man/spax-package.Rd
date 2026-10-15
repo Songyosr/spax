@@ -114,7 +114,7 @@ experimental development branch.
 
 \section{Installed guides and development status}{
 
-The experimental interface is developed on \code{codex-assist-main}; it is
+The experimental interface is on the \code{develop} branch; it is
 not a new stable release. Package and function help are installed with the
 package. Use \code{help(package = "spax")} to browse them. Installations
 with built articles also expose \code{browseVignettes("spax")} and

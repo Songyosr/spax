@@ -1,9 +1,7 @@
-# spax 0.2.0
+# spax (development version)
 
-## Unreleased changes on codex-assist-main
-
-The changes below are available on `codex-assist-main`. They are not a new stable
-release; record the source commit when reproducing an analysis.
+The changes below are on the development branch and are not a stable release
+yet; record the source commit when reproducing an analysis.
 
 * New vignette, "Reach and availability of GP care in Cornwall", fits the
   static CLM to small area × practice registrations and splits access into
