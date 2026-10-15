@@ -4,9 +4,8 @@ The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
 * The README and the guides now use the bundled Cornwall GP data, with real
-  maps, instead of generated grids. Only the allocation bootstrap section
-  keeps a generated network, where the true parameters are known.
-
+  maps, instead of generated grids. Only the facility bootstrap guide keeps a
+  generated network, where the true parameters are known.
 * The guides now follow one reader journey. `vignette("spax")` is a short Get
   started guide; a new `vignette("cornwall-data")` introduces the example data
   once, before `data-prep`; the FCA guides are `fca-methods`, `e2sfca-steps`

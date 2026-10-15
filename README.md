@@ -350,7 +350,7 @@ prediction/reporting.
 
 Report reproducible issues or discuss larger changes on the [project
 repository](https://github.com/Songyosr/spax). Package code uses the MIT
-license; see [LICENSE](LICENSE). The bundled Cornwall GP example data
+license; see [LICENSE](LICENSE.md). The bundled Cornwall GP example data
 are openly licensed third-party material (Open Government Licence v3.0
 and Creative Commons Attribution), which the MIT license does not cover.
 The installed notice file, `system.file("COPYRIGHTS", package = "spax")`

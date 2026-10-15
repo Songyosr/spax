@@ -20,8 +20,8 @@ articles:
       - model-choice
       - allocation-workflow
       - facility-bootstrap
-  - title: Reference
-    navbar: Reference
+  - title: Package conventions
+    navbar: Package conventions
     contents:
       - function-naming
 
