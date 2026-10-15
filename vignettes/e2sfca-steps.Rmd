@@ -39,8 +39,9 @@ L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 
 This guide rebuilds the E2SFCA surface of [Getting started](spax.html) one
 step at a time and checks each step against `spax_e2sfca()`, with the same
-inputs and the same 10-minute Gaussian decay. The calculation covers all of mainland Cornwall; the maps zoom in on
-the area around Truro so that individual cells stay visible.
+inputs and the same 10-minute Gaussian decay. The calculation covers all of
+mainland Cornwall; the maps zoom in on the area around Truro so that
+individual cells stay visible.
 
 ```{r inputs}
 pop <- read_spax_example("cornwall_pop.tif")

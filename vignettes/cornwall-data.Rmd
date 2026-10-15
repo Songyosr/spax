@@ -27,7 +27,7 @@ library(ggplot2)
 ```
 
 spax ships open data for general practice (GP) care in NHS Cornwall and Isles
-of Scilly, in south-west England. Every guide uses them, so this page
+of Scilly, in south-west England. The guides use them, so this page
 introduces each object once: what it holds, how the objects fit together and
 what they cannot tell you. Nothing needs downloading.
 
@@ -89,8 +89,8 @@ table(sub(":.*", "", areas$ruc21))
 ```
 
 Registered counts exceed the population estimates by about 4%, reflecting
-list inflation and the different reference dates. The map shows the small areas by broad rural-urban class, with the
-practices on top.
+list inflation and the different reference dates. The map shows the small
+areas by broad rural-urban class, with the practices on top.
 
 ```{r areas-map, fig.alt = "Map of the 337 small areas of Cornwall and the Isles of Scilly coloured by broad rural-urban class (urban, larger rural, smaller rural), with the 55 GP practices as black points."}
 # Small areas with a broad rural-urban class
@@ -139,10 +139,10 @@ c(
 
 A registration is a **stock**: who is registered with which practice at one
 date (July 2026). It is not a count of visits and says nothing about how often
-people use their practice. Almost everyone is registered somewhere, so a
-resident registered outside Cornwall and the Isles of Scilly is registered
-elsewhere, for example in Devon, not without a practice. The allocation guides
-fit a model to these registrations; the FCA guides do not use them.
+people use their practice. Residents counted in `registered_out` are
+registered with a practice outside Cornwall and the Isles of Scilly, for
+example in Devon; they are not people without a practice. The allocation
+guides fit a model to these registrations; the FCA guides do not use them.
 
 ## Travel times
 
@@ -161,8 +161,8 @@ summary(nearest)
 The times are least-cost paths through a 2019 global friction surface with
 cells of about 1 km. They are rounded to whole minutes with a floor of one
 minute, so at least half of the small areas have a nearest practice at 1
-minute. Traffic is not
-modelled, and in towns several practices can share one cell.
+minute. Traffic is not modelled, and in towns several practices can share one
+cell.
 
 ```{r nearest-map, fig.alt = "Map of the small areas of Cornwall and the Isles of Scilly coloured by travel minutes to the nearest GP practice, from 1 to 13 minutes; the longest times are inland in the east and at the western tip."}
 # Join each area's nearest-practice time to its polygon

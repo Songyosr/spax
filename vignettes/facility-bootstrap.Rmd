@@ -257,8 +257,8 @@ studies does not establish an application's observation law or guarantee exact
 The result works with the same tools as a fit. `as.data.frame()` returns the
 saved estimates and intervals, every attempted draw (`type = "draws"`) or
 every attempted start (`type = "starts"`), failures included; `summary()` and
-`plot()` read the saved values without resampling. Save the whole object as RDS to keep
-its declarations; CSV tables drop them. The [allocation
+`plot()` read the saved values without resampling. Save the whole object as
+RDS to keep its declarations; CSV tables drop them. The [allocation
 workflow](allocation-workflow.html) shows a full export and a reload in a
 fresh R session.
 

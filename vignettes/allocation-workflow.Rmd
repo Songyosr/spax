@@ -22,10 +22,10 @@ This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
 example data](cornwall-data.html).
 
 This guide runs the experimental allocation workflow from start to finish:
-prepare inputs, declare a model, fit it to observed registrations, inspect the saved fit, predict at new
-locations, compare a change in one practice's supply, and export the results
-and read them back in a fresh R session. Bootstrap intervals have their own
-guide, [Bootstrap intervals for a fitted allocation
+prepare inputs, declare a model, fit it to observed registrations, inspect the
+saved fit, predict at new locations, compare a change in one practice's supply,
+and export the results and read them back in a fresh R session. Bootstrap
+intervals have their own guide, [Bootstrap intervals for a fitted allocation
 model](facility-bootstrap.html), on generated data.
 
 The model is a corrected static conditional logit (CLM) with an explicit
