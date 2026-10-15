@@ -41,9 +41,15 @@ whereas a multilayer raster is normalized across layers at each cell. Select the
 operation appropriate to the declared axes; do not infer behavior from a name.
 
 ```{r public-interface-check}
-functions <- c("spax_2sfca", "spax_e2sfca", "spax_m2sfca", "compute_access",
+functions <- c(
+  # FCA accessibility
+  "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "compute_access",
+  # Experimental allocation workflow
   "prepare_allocation", "clm_allocation", "fit_allocation",
-  "evaluate_allocation", "predict_allocation", "bootstrap_allocation")
+  "evaluate_allocation", "predict_allocation", "bootstrap_allocation"
+)
+
+# Every name above is exported by the installed package
 stopifnot(all(functions %in% getNamespaceExports("spax")))
 data.frame(function_name = functions)
 ```

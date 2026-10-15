@@ -56,6 +56,7 @@ motorised minutes from each area's population-weighted centroid to each
 practice.
 
 ```{r shared-inputs}
+# Mainland small areas and practices, as plain tables
 areas <- cornwall_lsoa |>
   filter(!scilly) |>
   st_drop_geometry()
@@ -63,10 +64,17 @@ gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
 
+# Demand per area, supply per practice and the area x practice travel
+# matrix, all named by ID
 D <- setNames(areas$registered, areas$lsoa)
 S <- setNames(gp$gp_fte_extg, gp$practice)
 T <- cornwall_travel[areas$lsoa, gp$practice]
-c(areas = length(D), practices = length(S), missing_travel = sum(is.na(T)))
+
+c(
+  areas = length(D),
+  practices = length(S),
+  missing_travel = sum(is.na(T))
+)
 ```
 
 ### An FCA index
@@ -78,16 +86,33 @@ without geographic meaning; values are mapped back to the areas afterwards.
 The Gaussian scale of 10 minutes is a choice for this guide, not an estimate.
 
 ```{r fca}
-template <- rast(nrows = 1, ncols = length(D), xmin = 0, xmax = length(D),
-  ymin = 0, ymax = 1, crs = "EPSG:27700")
+# A one-row raster with one cell per area, in the order of D
+template <- rast(
+  nrows = 1,
+  ncols = length(D),
+  xmin = 0,
+  xmax = length(D),
+  ymin = 0,
+  ymax = 1,
+  crs = "EPSG:27700"
+)
 demand_raster <- setValues(template, unname(D))
+
+# One travel layer per practice, named by practice code
 travel_raster <- rast(template, nlyrs = ncol(T))
 values(travel_raster) <- T
 names(travel_raster) <- colnames(T)
 
-fca <- spax_e2sfca(demand_raster, gp, travel_raster,
+fca <- spax_e2sfca(
+  demand = demand_raster,
+  supply = gp,
+  distance = travel_raster,
   decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice", supply_cols = c("gp_fte_extg", "gp_fte"))
+  id_col = "practice",
+  supply_cols = c("gp_fte_extg", "gp_fte")   # two separate indices
+)
+
+# Back to one row per area, in GP FTE per 1,000
 fca_index <- 1000 * values(fca$accessibility, dataframe = TRUE)
 summary(fca_index)
 ```
@@ -112,23 +137,49 @@ registrations, a stock of who is registered where rather than a count of
 visits, fitted with a Poisson loss from three explicit starts.
 
 ```{r clm}
+# Observed registrations as an area x practice matrix (zero if none)
 observed <- matrix(0, nrow(T), ncol(T), dimnames = dimnames(T))
 keep <- cornwall_flows$lsoa %in% rownames(T) &
   cornwall_flows$practice %in% colnames(T)
 observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
   cornwall_flows$patients[keep]
 
-inputs <- prepare_allocation(D, S, T, metadata = list(
-  demand_units = "registered residents", demand_period = "July 2026",
-  supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
-  travel_units = "minutes"))
+# Check and align the inputs once; unit labels are recorded, not converted
+inputs <- prepare_allocation(
+  demand = D,
+  supply = S,
+  distance = T,
+  metadata = list(
+    demand_units = "registered residents",
+    demand_period = "July 2026",
+    supply_units = "GP FTE excluding GPs in training",
+    supply_period = "June 2026",
+    travel_units = "minutes"
+  )
+)
+
+# Gaussian travel decay with a fitted outside weight v0
 model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
-starts <- rbind(near = c(sigma = 3, v0 = 0.05), middle = c(sigma = 6, v0 = 0.01),
-  far = c(sigma = 12, v0 = 0.002))
-fit <- fit_allocation(model, observed, starts,
-  lower = c(sigma = 0.5, v0 = 1e-6), upper = c(sigma = 60, v0 = 10),
-  output = "flow", loss = "poisson", gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+
+# Three starting points, from a short to a long travel scale
+starts <- rbind(
+  near = c(sigma = 3, v0 = 0.05),
+  middle = c(sigma = 6, v0 = 0.01),
+  far = c(sigma = 12, v0 = 0.002)
+)
+
+# Fit the area x practice flows with a Poisson loss
+fit <- fit_allocation(
+  model = model,
+  observed = observed,
+  starts = starts,
+  lower = c(sigma = 0.5, v0 = 1e-6),
+  upper = c(sigma = 60, v0 = 10),
+  output = "flow",
+  loss = "poisson",
+  gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
+)
 stopifnot(identical(fit$status, "selected"))
 coef(fit)
 ```
@@ -148,17 +199,38 @@ Take the area with the largest total FCA weight, one with many practices
 within a short drive. The table lists its four nearest practices.
 
 ```{r one-area}
-prediction <- predict_allocation(fit, T, demand = D,
-  outputs = c("allocation", "outside_share"))
+# Choice probabilities and outside shares for every area
+prediction <- predict_allocation(
+  source = fit,
+  distance = T,
+  demand = D,
+  outputs = c("allocation", "outside_share")
+)
 P <- prediction$outputs$allocation
+
+# The area with the largest total FCA weight, and its four nearest practices
 W <- exp(-T^2 / (2 * 10^2))  # the FCA's Gaussian weights
 i <- which.max(rowSums(W))
 nearest <- order(T[i, ])[1:4]
-data.frame(practice = gp$name[nearest], minutes = T[i, nearest],
-  fca_weight = round(W[i, nearest], 2), clm_probability = round(P[i, nearest], 3),
-  observed_share = round(observed[i, nearest] / D[i], 3), row.names = NULL)
-round(c(fca_weights = sum(W[i, ]), clm_inside = sum(P[i, ]),
-  clm_outside = prediction$outputs$outside_share[[i]]), 4)
+
+data.frame(
+  practice = gp$name[nearest],
+  minutes = T[i, nearest],
+  fca_weight = round(W[i, nearest], 2),
+  clm_probability = round(P[i, nearest], 3),
+  observed_share = round(observed[i, nearest] / D[i], 3),
+  row.names = NULL
+)
+
+# Totals over all practices for this area
+round(
+  c(
+    fca_weights = sum(W[i, ]),
+    clm_inside = sum(P[i, ]),
+    clm_outside = prediction$outputs$outside_share[[i]]
+  ),
+  4
+)
 ```
 
 The FCA weights are separate distance discounts, one per practice. They do not
@@ -180,22 +252,35 @@ and, for example, the mean travel time to the practice an area's residents are
 modelled to register with.
 
 ```{r maps, fig.show = "hold", out.width = "49%", fig.width = 4.5, fig.height = 4.5}
+# Add the FCA index and the CLM's probability-weighted mean minutes
 areas <- areas |>
-  mutate(fca = fca_index$gp_fte_extg,
-    clm_minutes = rowSums(P * T) / rowSums(P))
+  mutate(
+    fca = fca_index$gp_fte_extg,
+    clm_minutes = rowSums(P * T) / rowSums(P)
+  )
+
+# Join to the small-area polygons for mapping
 mapped <- cornwall_lsoa |>
   select(lsoa) |>
   inner_join(areas, by = "lsoa")
 
 ggplot(mapped) +
   geom_sf(aes(fill = fca, colour = fca), linewidth = 0.1) +
-  scale_fill_viridis_c(name = "GP FTE\nper 1,000", aesthetics = c("fill", "colour")) +
+  scale_fill_viridis_c(
+    name = "GP FTE\nper 1,000",
+    aesthetics = c("fill", "colour")
+  ) +
   labs(title = "E2SFCA index (sigma = 10 min)") +
   theme_void()
+
 ggplot(mapped) +
   geom_sf(aes(fill = clm_minutes, colour = clm_minutes), linewidth = 0.1) +
-  scale_fill_viridis_c(name = "Minutes", option = "magma", direction = -1,
-    aesthetics = c("fill", "colour")) +
+  scale_fill_viridis_c(
+    name = "Minutes",
+    option = "magma",
+    direction = -1,
+    aesthetics = c("fill", "colour")
+  ) +
   labs(title = "CLM: mean minutes to modelled practice") +
   theme_void()
 ```
@@ -207,11 +292,19 @@ checked against the registrations; the FCA index has
 no corresponding observed quantity in these data.
 
 ```{r check}
+# Correlations of modelled with observed: area mean minutes, practice totals
 observed_minutes <- rowSums(observed * T) / rowSums(observed)
-c(mean_minutes = cor(areas$clm_minutes, observed_minutes),
-  practice_totals = cor(colSums(fitted(fit)), colSums(observed)))
-outside <- c(observed = 1 - sum(observed) / sum(D),
-  modelled = 1 - sum(fitted(fit)) / sum(D))
+c(
+  mean_minutes = cor(areas$clm_minutes, observed_minutes),
+  practice_totals = cor(colSums(fitted(fit)), colSums(observed))
+)
+
+# Share of residents registered outside mainland Cornwall, observed and
+# modelled
+outside <- c(
+  observed = 1 - sum(observed) / sum(D),
+  modelled = 1 - sum(fitted(fit)) / sum(D)
+)
 round(100 * outside, 2)
 ```
 
