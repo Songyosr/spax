@@ -3,6 +3,10 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* The README and the guides now use the bundled Cornwall GP data, with real
+  maps, instead of generated grids. Only the allocation bootstrap section
+  keeps a generated network, where the true parameters are known.
+
 * **Breaking:** the Thailand Health Region 12 example data have been removed
   from the package, because their redistribution terms could not be fully
   confirmed. All examples and tests now use the open Cornwall GP data.
@@ -103,16 +107,16 @@ yet; record the source commit when reproducing an analysis.
   `evaluate_allocation()`, `predict_allocation()` and `bootstrap_allocation()`.
   Preparation checks IDs, units declarations and support. Fitting retains
   explicit starts and diagnostics; prediction uses saved facility loads.
-* Allocation probabilities, modeled counts, contact and capacity attribution
-  have distinct meanings. Requested predictions distinguish unknown travel
+* Allocation probabilities, modeled counts and supply attribution have
+  distinct meanings. Requested predictions distinguish unknown travel
   from absent connections and expose validity and support flags.
 * The conditional facility-case bootstrap supports a restricted Gaussian
   model fitted to complete whole facility counts. Its intervals require the
   declared observation assumptions and a complete 399-attempt run; refusals,
   failed attempts and incomplete results remain available for inspection.
 * Saved-result methods provide parameter, bootstrap, regional and cell tables,
-  summaries and plots without rerunning fitting or resampling. The generated
-  allocation article demonstrates paired supply comparison, export and reload.
+  summaries and plots without rerunning fitting or resampling. The allocation
+  article demonstrates a supply scenario, export and reload.
 * Package help now explains compatibility with public FCA and older private
   allocation results. Older objects may require regeneration for current
   prediction or reporting; `huff_decay` results must not be relabeled as

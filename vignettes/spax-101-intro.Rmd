@@ -119,7 +119,8 @@ twosfca <- spax_2sfca(pop, gp, travel, threshold = 15,
 both <- c(per_1000, 1000 * twosfca$accessibility)
 names(both) <- c("E2SFCA, Gaussian 10 min", "2SFCA, 15 min")
 terra::plot(both, axes = FALSE, col = hcl.colors(50, "viridis"),
-  range = range(terra::values(both), na.rm = TRUE), mar = c(1, 1, 2, 5))
+  range = range(terra::values(both), na.rm = TRUE), mar = c(1, 1, 2, 6),
+  plg = list(title = "GP FTE\nper 1,000"))
 ```
 
 ```{r twosfca-values}

@@ -158,7 +158,8 @@ pair <- c(1000 * results[[2]]$accessibility,
   terra::resample(1000 * results[[4]]$accessibility, pop, method = "near"))
 names(pair) <- c("Native grid", "Aggregated 4 x 4")
 terra::plot(pair, axes = FALSE, col = hcl.colors(50, "viridis"),
-  range = range(terra::values(pair), na.rm = TRUE), mar = c(1, 1, 2, 5))
+  range = range(terra::values(pair), na.rm = TRUE), mar = c(1, 1, 2, 6),
+  plg = list(title = "GP FTE\nper 1,000"))
 ```
 
 Both maps show GP FTE per 1,000 residents on one colour scale. The coarse

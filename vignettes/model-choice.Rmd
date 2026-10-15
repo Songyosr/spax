@@ -234,9 +234,10 @@ Poisson fitting does not impose exact total matching.
 This guide is not an uncertainty demonstration. The facility-case bootstrap
 needs a fit to whole facility counts, so the flow fit above is outside its
 scope. Continue to the [full allocation workflow](allocation-workflow.html)
-for the generated 80-origin, 40-facility example with all 399 bootstrap
-attempts, at least 380 finite successful values per reported quantity, paired
-supply scenarios and fresh-process saved-result inspection. Observation
+for prediction, a supply scenario and fresh-process saved-result inspection on
+the Cornwall data, and for the bootstrap on a generated 80-origin, 40-facility
+network with all 399 attempts and at least 380 finite successful values per
+reported quantity. Observation
 declarations and original-fit eligibility remain required; a bootstrap is not
 available for every fit.
 

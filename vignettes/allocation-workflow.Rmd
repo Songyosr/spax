@@ -15,9 +15,9 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
 This guide runs the experimental allocation workflow from start to finish on
 the open Cornwall GP data that ship with spax: prepare inputs, declare a model,
 fit it to observed registrations, inspect the saved fit, predict at new
-locations, compare a change in one practice's supply, and save results that a
-fresh R session can read. A final section shows the facility bootstrap on
-generated data, where the true parameters are known.
+locations and compare a change in one practice's supply. A bootstrap section
+then uses generated data, where the true parameters are known, before the
+results are exported and read back in a fresh R session.
 
 The model is a corrected static conditional logit (CLM) with an explicit
 outside option. Each practice attracts residents in proportion to its supply,
@@ -400,10 +400,11 @@ c(status = boot$status, attempted = boot$attempted, successful = boot$successful
 ```
 
 ```{r paired-bootstrap-results}
-summary(boot)
-as.data.frame(boot)
-head(as.data.frame(boot, type = "draws"))
-head(as.data.frame(boot, type = "starts"))
+parameters <- c("sigma", "v0")
+estimates <- as.data.frame(boot)
+estimates[estimates$quantity %in% parameters, ]
+draws <- as.data.frame(boot, type = "draws")
+head(draws[c("attempt", "status", parameters)])
 ```
 
 The procedure makes 399 predetermined attempts. It resamples facility
@@ -414,12 +415,8 @@ attempts were made, at least 380 values are finite and the original fit is
 eligible; otherwise the result keeps its point estimates and reasons but
 withholds intervals.
 
-In the table, `regional_rho` is the modelled share of demand allocated to any
-facility rather than the outside option, and `delta_contacts` is the paired
-change in modelled facility totals under the supply scenario. `regional_A` is
-supply divided by demand on the fixed inputs and has no interval; supply at
-facilities without a finite travel edge to retained demand would be reported
-separately as unsupported.
+The tables above show the two model parameters; the saved result also holds
+regional and paired-scenario quantities, listed by `as.data.frame(boot)`.
 
 ```{r bootstrap-truth, fig.width = 7, fig.height = 3.5}
 oldpar <- par(mfrow = c(1, 2))

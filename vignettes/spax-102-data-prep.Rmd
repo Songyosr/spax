@@ -68,8 +68,8 @@ tryCatch(spax_e2sfca(pop, gp, mainland_layers,
 Travel is `NA` where a cell is unpopulated, where there is no road connection
 and for journeys over 180 minutes. In Cornwall the gaps come from the Isles of
 Scilly: their practice cannot be reached by road from the mainland, mainland
-practices cannot be reached from the islands, and some off-island Scilly cells
-reach no practice at all.
+practices cannot be reached from the islands, and some cells on the smaller
+islands reach no practice at all.
 
 ```{r travel-na}
 missing_cells <- terra::global(is.na(travel), "sum")[[1]]
