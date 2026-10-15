@@ -119,8 +119,9 @@ not a new stable release. Package and function help are installed with the
 package. Use \code{help(package = "spax")} to browse them. Installations
 with built articles also expose \code{browseVignettes("spax")} and
 \code{vignette("allocation-workflow", package = "spax")}. The allocation
-article uses generated data and covers fitting, paired supply comparison,
-conditional bootstrap, maps, export and fresh-session save/reload.
+article fits the model to the bundled Cornwall GP registrations and covers
+prediction, a supply scenario, maps, export and fresh-session save/reload;
+its conditional bootstrap section uses a generated network.
 }
 
 \seealso{
