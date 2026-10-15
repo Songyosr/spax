@@ -7,10 +7,10 @@ articles:
     navbar: ~
     contents:
       - model-choice
-      - spax-101-intro
-      - spax-102-data-prep
-      - spax-103-dissection
-      - spax-104-raster-tradeoff
+      - fca-methods
+      - data-prep
+      - e2sfca-steps
+      - grid-resolution
   - title: Package Conventions
     contents:
       - function-naming

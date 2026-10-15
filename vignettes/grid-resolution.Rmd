@@ -1,8 +1,8 @@
 ---
-title: "4. Resolution, support and computational cost"
+title: "Grid resolution, support and computational cost"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{4. Resolution, support and computational cost}
+  %\VignetteIndexEntry{Grid resolution, support and computational cost}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -28,7 +28,7 @@ A raster gives every origin explicit geometry and lines all inputs up cell by
 cell. Its cost grows with the number of cells times the number of facilities.
 More cells do not by themselves add information: the result can be no better
 than the demand and travel data behind it. This guide runs the E2SFCA of
-[Getting started](spax-101-intro.html) on mainland Cornwall at the native
+[Getting started](fca-methods.html) on mainland Cornwall at the native
 resolution of the bundled grids (about 1 km), at two coarser resolutions and
 at one finer resolution, and compares results, size and time. It uses the
 same inputs and the same 10-minute Gaussian decay.

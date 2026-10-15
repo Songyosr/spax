@@ -87,6 +87,6 @@ speed recommendation. New prepared allocation inputs validate IDs, geometry and
 support at their own boundary and do not use a universal `snap` convention.
 
 See [Choosing a model](model-choice.html) for a runnable comparison,
-[the FCA calculation](spax-103-dissection.html) for public building blocks, and
+[the FCA calculation](e2sfca-steps.html) for public building blocks, and
 [the complete allocation workflow](allocation-workflow.html) for fitting,
 prediction, intervals, scenarios and persistence.

@@ -358,9 +358,9 @@ demand and absent travel edges distinct. Legacy FCA reductions and experimental
 allocation preparation have different missing-data policies; sharing a file
 does not prove that their included support is the same.
 
-For details, read [data preparation](spax-102-data-prep.html),
-[the FCA calculation](spax-103-dissection.html),
-[resolution and cost](spax-104-raster-tradeoff.html), and
+For details, read [data preparation](data-prep.html),
+[the FCA calculation](e2sfca-steps.html),
+[resolution and cost](grid-resolution.html), and
 [saved-result inspection](function-naming.html).
 
 Data sources and licences: `system.file("COPYRIGHTS", package = "spax")`.

@@ -1,8 +1,8 @@
 ---
-title: "3. Understanding the FCA calculation"
+title: "The E2SFCA calculation step by step"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{3. Understanding the FCA calculation}
+  %\VignetteIndexEntry{The E2SFCA calculation step by step}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -34,7 +34,7 @@ L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 \]
 
 This guide rebuilds the E2SFCA surface of [Getting
-started](spax-101-intro.html) one step at a time and checks each step against
+started](fca-methods.html) one step at a time and checks each step against
 `spax_e2sfca()`. It uses the same inputs: WorldPop 2020 residents per cell,
 GP FTE excluding GPs in training, and travel minutes to each mainland Cornwall
 practice. The calculation covers all of mainland Cornwall; the maps zoom in on

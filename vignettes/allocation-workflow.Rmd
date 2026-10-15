@@ -29,7 +29,7 @@ outside option. Each practice attracts residents in proportion to its supply,
 discounted by travel time; the outside option competes with all practices. For
 choosing between this model and an FCA index, see [Choosing an FCA index or an
 allocation model](model-choice.html). The [preparation
-guide](spax-102-data-prep.html) explains counts, units, IDs and missing
+guide](data-prep.html) explains counts, units, IDs and missing
 travel, and [saved-result inspection](function-naming.html) describes the
 standard R methods used below. The interface is experimental.
 

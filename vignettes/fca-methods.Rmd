@@ -1,8 +1,8 @@
 ---
-title: "1. Getting started with an FCA accessibility surface"
+title: "Comparing FCA methods: E2SFCA, 2SFCA and M2SFCA"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{1. Getting started with an FCA accessibility surface}
+  %\VignetteIndexEntry{Comparing FCA methods: E2SFCA, 2SFCA and M2SFCA}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -75,7 +75,7 @@ The population grid and the workforce data come from different sources and
 dates, so the index below compares a 2026 workforce with a 2020 population
 estimate. The analysis covers mainland Cornwall: 54 practices and the grid
 cells that can reach them by road. [Preparing counts, facility IDs and
-travel](spax-102-data-prep.html) explains these steps in detail.
+travel](data-prep.html) explains these steps in detail.
 
 ## Calculate the E2SFCA surface
 
@@ -205,9 +205,9 @@ decay scale, that this guide does not estimate from data.
 
 ## Continue
 
-- [Prepare counts, IDs and travel](spax-102-data-prep.html): small-area counts
+- [Prepare counts, IDs and travel](data-prep.html): small-area counts
   to a demand grid, facility IDs and unknown travel times.
-- [Inspect the FCA calculation](spax-103-dissection.html) step by step.
-- [Choose resolution and output size](spax-104-raster-tradeoff.html).
+- [Inspect the FCA calculation](e2sfca-steps.html) step by step.
+- [Choose resolution and output size](grid-resolution.html).
 - [Fit a static allocation model](allocation-workflow.html) when expected use,
   an explicit outside option and supported uncertainty are required.

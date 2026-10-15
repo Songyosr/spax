@@ -1,8 +1,8 @@
 ---
-title: "2. Preparing counts, facility IDs and travel"
+title: "Preparing your own data: counts, facility IDs and travel"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{2. Preparing counts, facility IDs and travel}
+  %\VignetteIndexEntry{Preparing your own data: counts, facility IDs and travel}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -342,5 +342,5 @@ workflow](allocation-workflow.html) for what the prepared inputs feed into.
 
 ## Continue
 
-- [Inspect the FCA calculation](spax-103-dissection.html) step by step.
-- [Choose resolution and output size](spax-104-raster-tradeoff.html).
+- [Inspect the FCA calculation](e2sfca-steps.html) step by step.
+- [Choose resolution and output size](grid-resolution.html).
