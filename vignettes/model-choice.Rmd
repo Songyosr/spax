@@ -11,11 +11,15 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = FALSE,
   comment = "",
+  class.output = "spax-output",
   fig.width = 6,
   fig.height = 4,
   dpi = 100
 )
 ```
+
+This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html).
 
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
@@ -47,13 +51,10 @@ travel data.
 
 ## One Cornwall system, two calculations
 
-Both calculations below use the same bundled open data for mainland Cornwall:
-336 small areas (LSOAs) and 54 GP practices. The Isles of Scilly have no road
-link to the mainland and are dropped. Demand is the residents of each area
-registered with any GP practice in England (NHS England, July 2026), supply is
-GP full-time equivalents (FTE) excluding GPs in training, and travel is
-motorised minutes from each area's population-weighted centroid to each
-practice.
+Both calculations below use the same inputs for mainland Cornwall: 336 small
+areas (LSOAs) and 54 GP practices. Demand is the registered residents of each
+area, supply is GP full-time equivalents (FTE) excluding GPs in training, and
+travel is the small area × practice matrix of minutes.
 
 ```{r shared-inputs}
 # Mainland small areas and practices, as plain tables
@@ -344,11 +345,11 @@ This guide is not an uncertainty demonstration. The facility-case bootstrap
 needs a fit to whole facility counts, so the flow fit above is outside its
 scope. Continue to the [full allocation workflow](allocation-workflow.html)
 for prediction, a supply scenario and fresh-process saved-result inspection on
-the Cornwall data, and for the bootstrap on a generated 80-origin, 40-facility
-network with all 399 attempts and at least 380 finite successful values per
-reported quantity. Observation
-declarations and original-fit eligibility remain required; a bootstrap is not
-available for every fit.
+the Cornwall data, and to [Bootstrap intervals for a fitted allocation
+model](facility-bootstrap.html) for the bootstrap on a generated 80-origin,
+40-facility network with all 399 attempts and at least 380 finite successful
+values per reported quantity. Observation declarations and original-fit
+eligibility remain required; a bootstrap is not available for every fit.
 
 ## Carry these checks across workflows
 
@@ -358,9 +359,8 @@ demand and absent travel edges distinct. Legacy FCA reductions and experimental
 allocation preparation have different missing-data policies; sharing a file
 does not prove that their included support is the same.
 
-For details, read [data preparation](data-prep.html),
-[the FCA calculation](e2sfca-steps.html),
-[resolution and cost](grid-resolution.html), and
-[saved-result inspection](function-naming.html).
-
-Data sources and licences: `system.file("COPYRIGHTS", package = "spax")`.
+For details, read [Preparing your own data](data-prep.html), [The E2SFCA
+calculation step by step](e2sfca-steps.html), [Grid
+resolution](grid-resolution.html) and [saved-result
+inspection](function-naming.html). Data sources, dates and licences are
+listed in [The Cornwall GP example data](cornwall-data.html).

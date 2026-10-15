@@ -8,8 +8,15 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = FALSE, comment = "")
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "",
+  class.output = "spax-output"
+)
 ```
+
+The guides use the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html); this page needs no data.
 
 ```{r packages}
 library(spax)
@@ -86,7 +93,8 @@ code. It is an internal optimization switch, not a different model or a general
 speed recommendation. New prepared allocation inputs validate IDs, geometry and
 support at their own boundary and do not use a universal `snap` convention.
 
-See [Choosing a model](model-choice.html) for a runnable comparison,
-[the FCA calculation](e2sfca-steps.html) for public building blocks, and
-[the complete allocation workflow](allocation-workflow.html) for fitting,
-prediction, intervals, scenarios and persistence.
+See [Choosing an FCA index or an allocation model](model-choice.html) for a
+runnable comparison, [The E2SFCA calculation step by step](e2sfca-steps.html)
+for public building blocks, the [allocation workflow](allocation-workflow.html)
+for fitting, prediction, scenarios and persistence, and [Bootstrap intervals
+for a fitted allocation model](facility-bootstrap.html) for intervals.
