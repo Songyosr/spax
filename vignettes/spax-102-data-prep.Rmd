@@ -8,159 +8,221 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
-  fig.height = 4, dpi = 100)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+  fig.height = 4.5, dpi = 100)
 library(spax)
 ```
 
-Both FCA and allocation models need a declared demand population, a facility
-registry and travel between them. Common preparation principles do not make
-their missing-value policies or output meanings identical. This generated
-example runs entirely offline. It uses synthetic projected coordinates; no
-polygons, facility records or travel services are downloaded.
+Every FCA or allocation analysis needs three aligned inputs: demand counts at
+origins, supply at facilities, and travel between them. This guide prepares
+them from the open Cornwall GP data bundled with spax and shows three common
+problems: facility IDs that must match, unknown travel times, and demand that
+arrives as small-area totals rather than a grid. Everything runs offline.
 
-## Convert area totals to cell counts
+```{r data}
+pop <- read_spax_example("cornwall_pop.tif")       # WorldPop 2020 residents
+travel <- read_spax_example("cornwall_gp_travel.tif") # minutes, one layer per practice
+gp <- sf::st_drop_geometry(cornwall_gp)
+c(practices = nrow(gp), travel_layers = terra::nlyr(travel),
+  small_areas = nrow(cornwall_lsoa))
+```
 
-Suppose two areas contain 480 and 720 weekly request opportunities. The polygons
-align with the generated grid so that each cell belongs to exactly one area.
-We distribute each total in proportion to cell area, then check the totals.
-This is an allocation assumption, not observed within-area demand.
+## Match facilities by ID, not by order
 
-```{r area-counts}
-template <- terra::rast(nrows = 6, ncols = 8, xmin = 0, xmax = 8000,
-  ymin = 0, ymax = 6000, crs = "EPSG:3857")
-box <- function(left, right) sf::st_polygon(list(rbind(
-  c(left, 0), c(right, 0), c(right, 6000), c(left, 6000), c(left, 0))))
-zones <- sf::st_sf(zone_id = 1:2, requests = c(480, 720),
-  geometry = sf::st_sfc(box(0, 4000), box(4000, 8000), crs = 3857))
-zone_grid <- terra::rasterize(terra::vect(zones), template, field = "zone_id")
-zone_id <- terra::values(zone_grid, mat = FALSE)
-area_km2 <- terra::values(terra::cellSize(template, unit = "km"), mat = FALSE)
-counts <- numeric(terra::ncell(template))
-for (j in seq_len(nrow(zones))) {
-  cells <- which(zone_id == zones$zone_id[j])
-  counts[cells] <- zones$requests[j] * area_km2[cells] / sum(area_km2[cells])
+Each travel layer is named with the practice's NHS code, the same code as
+`cornwall_gp$practice`. Check that the two sets agree before any calculation.
+
+```{r ids}
+stopifnot(!anyDuplicated(gp$practice), setequal(names(travel), gp$practice))
+head(names(travel))
+```
+
+When supply is a data frame, `spax_e2sfca()` and `spax_2sfca()` match its rows
+to the travel layers through `id_col`, so the row order does not matter.
+
+```{r id-order}
+fit <- function(supply) {
+  spax_e2sfca(pop, supply, travel,
+    decay_params = list(method = "gaussian", sigma = 10),
+    id_col = "practice", supply_cols = "gp_fte_extg")$accessibility
 }
-demand <- terra::setValues(template, counts)
-names(demand) <- "weekly_requests"
-check <- data.frame(zone_id = zones$zone_id, original = zones$requests,
-  reconstructed = as.numeric(tapply(counts, zone_id, sum)))
-stopifnot(max(abs(check$original - check$reconstructed)) < 1e-10)
-check
-terra::plot(demand, main = "Generated request counts per cell", axes = FALSE)
+shuffled <- gp[rev(seq_len(nrow(gp))), ]
+all.equal(terra::values(fit(gp)), terra::values(fit(shuffled)))
 ```
 
-If a source raster is a density, multiply it by cell area in the matching area
-unit before passing it as demand. Summing densities does not conserve counts.
-Real administrative boundaries often cross cells: document fractional overlap,
-coastline masks and any renormalization instead of assuming a centroid-based
-rasterization preserves totals. A suitable projected CRS helps with local
-geometry; a CRS label alone does not guarantee equal physical cell areas.
+A named supply vector is also matched by name, but an unnamed vector or a
+matrix is used in layer order: then keeping the order right is your job. The
+number of supply rows must equal the number of travel layers. Dropping a
+facility from one input and not the other stops with an error:
 
-## Keep facility identity separate from order
-
-```{r facility-travel}
-facilities <- data.frame(id = c("f1", "f2", "f3"),
-  x = c(1000, 4500, 7000), y = c(1000, 5000, 2000),
-  weekly_slots = c(150, 250, 200))
-origin_ids <- paste0("origin", seq_len(terra::ncell(template)))
-xy <- terra::xyFromCell(template, seq_len(terra::ncell(template)))
-travel <- vapply(seq_len(nrow(facilities)), function(j) {
-  sqrt((xy[, 1] - facilities$x[j])^2 + (xy[, 2] - facilities$y[j])^2) / 500
-}, numeric(nrow(xy)))
-dimnames(travel) <- list(origin_ids, facilities$id)
-travel_raster <- terra::rast(template, nlyrs = ncol(travel))
-terra::values(travel_raster) <- travel
-names(travel_raster) <- colnames(travel)
-stopifnot(!anyDuplicated(facilities$id), !anyDuplicated(origin_ids),
-  terra::compareGeom(demand, travel_raster),
-  all(is.finite(counts)), all(counts >= 0),
-  all(is.finite(travel)), all(travel >= 0))
+```{r id-mismatch}
+mainland_layers <- travel[[gp$practice[!gp$scilly]]]
+tryCatch(spax_e2sfca(pop, gp, mainland_layers,
+  decay_params = list(method = "gaussian", sigma = 10),
+  id_col = "practice", supply_cols = "gp_fte_extg"),
+  error = function(e) conditionMessage(e))
 ```
 
-These travel values assume a constant 500 metres per minute along straight
-lines. This deterministic fixture is useful for learning and tests; it is not
-a substitute for road-network travel. The origin registry identifies rows;
-raster cell numbers identify positions within one particular template.
+## Decide what unknown travel means
 
-## Optional live routing, independent of the example
+Travel is `NA` where a cell is unpopulated, where there is no road connection
+and for journeys over 180 minutes. In Cornwall the gaps come from the Isles of
+Scilly: their practice cannot be reached by road from the mainland, mainland
+practices cannot be reached from the islands, and some off-island Scilly cells
+reach no practice at all.
 
-To obtain actual routing inputs, use a suitable routing service and record the
-network version, mode, direction and units. Origin-to-facility travel need not
-equal facility-to-origin travel on a directed road network. The following
-illustration is deliberately not executed during a build and is not used by
-any later code.
-
-```{r optional-live-routing, eval=FALSE}
-# Supply real facility coordinates and configure your routing service first.
-point_wgs84 <- sf::st_transform(real_facilities[1, ], 4326)
-live_isochrones <- osrm::osrmIsochrone(
-  loc = as.numeric(sf::st_coordinates(point_wgs84)),
-  breaks = c(5, 10, 15), res = 30)
+```{r travel-na}
+missing_cells <- terra::global(is.na(travel), "sum")[[1]]
+table(scilly_practice = gp$scilly, missing_cells)
+reach_scilly <- !is.na(terra::values(travel[["L82017"]], mat = FALSE))
+reach_mainland <- !is.na(terra::values(travel[[1]], mat = FALSE))
+residents <- terra::values(pop, mat = FALSE)
+round(c(reach_mainland = sum(residents[reach_mainland]),
+  reach_scilly_practice = sum(residents[reach_scilly]),
+  reach_none = sum(residents[!reach_mainland & !reach_scilly], na.rm = TRUE)))
 ```
 
-For a runnable illustration of the geometry-to-raster step, create nested
-straight-line catchments around the first synthetic facility. Assign each cell
-to the smallest containing catchment. These are illustrative distance rings,
-not OSRM output. Cells outside the largest ring remain unknown in this coarse
-travel representation.
+The FCA functions drop unknown weights from their sums (`gather_weighted()`
+defaults to `na.rm = TRUE`), so an `NA` travel time acts like "no access". Run
+on all 55 practices, the islands become a separate system with one practice
+and few residents, so their index is far above the mainland's. The residents
+with no route drop out of that practice's demand and get no index at all.
 
-```{r deterministic-rings}
-point <- sf::st_as_sf(facilities[1, ], coords = c("x", "y"), crs = 3857)
-breaks <- c(5, 10, 15)
-ring_minutes <- rep(NA_real_, terra::ncell(template))
-for (limit in rev(breaks)) {
-  buffer <- sf::st_buffer(point, dist = limit * 500)
-  inside <- terra::values(terra::rasterize(terra::vect(buffer), template,
-    field = 1, background = NA), mat = FALSE)
-  ring_minutes[!is.na(inside)] <- limit
-}
-illustrative_rings <- terra::setValues(template, ring_minutes)
-terra::plot(illustrative_rings, main = "Illustrative upper travel bands (minutes)", axes = FALSE)
+```{r scilly-effect}
+with_scilly <- 1000 * terra::values(fit(gp), mat = FALSE)
+round(c(mainland_median = median(with_scilly[reach_mainland]),
+  scilly_median = median(with_scilly[reach_scilly])), 2)
 ```
 
-Do not add nested polygon values together: that would count overlapping bands
-more than once. A real isochrone source may contain disjoint bands or nested
-polygons; inspect its definition before rasterization.
+The islands do have access, by boat and air, which the road-based travel times
+do not represent. Rather than read these numbers as access, the FCA guides
+model **mainland Cornwall only**: the 54 mainland practices and the cells with
+a travel time to every one of them.
 
-## Declare support and missingness
-
-The legacy FCA workflow accepts raster inputs and has its own reduction rules;
-for example, `gather_weighted()` defaults to `na.rm = TRUE`. An unknown value
-can therefore be omitted from a denominator. It is not automatically treated
-as an explicit model-level unknown-data diagnosis. Audit the analysis mask,
-excluded demand and travel availability before using that path.
-
-The experimental numeric allocation preparation has explicit policies and a
-support registry. Known zero demand, unknown demand and a known absent travel
-edge are different declarations. Here zero demand has no fitted load; an
-excluded unknown origin has no fitted load because of the stated policy.
-
-```{r checked-allocation-inputs}
-D <- setNames(counts, origin_ids)
-D[1] <- 0
-D[2] <- NA_real_
-S <- setNames(facilities$weekly_slots, facilities$id)
-units <- list(demand_units = "requests", demand_period = "week",
-  supply_units = "slots", supply_period = "week", travel_units = "minutes")
-prepared <- prepare_allocation(D, rev(S), travel[, c(3, 1, 2)],
-  missing_demand = "exclude", metadata = units)
-model <- clm_allocation(prepared, fit_v0 = TRUE)
-evaluated <- evaluate_allocation(model, c(sigma = 5, v0 = 50))
-requested <- predict_allocation(evaluated, travel, demand = D,
-  outputs = c("rho", "flow"))
-head(requested$validity)
-stopifnot(all(requested$outputs$flow[1, ] == 0),
-  all(is.na(requested$outputs$flow[2, ])))
+```{r mainland}
+gp <- gp[!gp$scilly, ]
+travel <- travel[[gp$practice]]
+pop_mainland <- terra::trim(terra::mask(pop, sum(travel)))
+travel <- terra::crop(travel, pop_mainland)
+stopifnot(terra::compareGeom(pop_mainland, travel),
+  identical(names(travel), gp$practice),
+  !anyNA(terra::values(travel)[!is.na(terra::values(pop_mainland)), ]))
+round(terra::global(pop_mainland, "sum", na.rm = TRUE)[[1]])
 ```
 
-With finite travel, both origins can have valid contact probabilities even
-though one flow is zero and the other is unavailable. Strict numeric preparation
-rejects unknown active travel by default. Positive infinity declares an absent
-edge; `NA` declares unknown travel and must not be silently relabeled as an
-absent edge. Raster preparation retains its documented legacy travel policy.
-Check the selected route's help before comparing raster and numeric inputs.
+`sum(travel)` is `NA` wherever any layer is `NA`, so the mask keeps exactly the
+cells with complete travel. The check confirms that no populated cell has
+unknown travel left.
 
-The unit declarations are recorded, not converted. Prediction travel and demand
-must use the saved units and reference period. See [Choosing a model](model-choice.html)
-and the [allocation workflow](allocation-workflow.html) for result meanings.
+## Turn small-area counts into a demand grid
+
+Demand often comes as totals for administrative areas. `cornwall_lsoa` holds
+ONS mid-2024 population estimates for the 337 small areas (LSOAs). To use them
+on the grid, each area's total must be spread over its cells. Spreading it
+uniformly would ignore where people live inside the area, so we use the
+WorldPop grid as a pattern: `transform_pmf()` turns it into shares that sum to
+1, and `transform_demand()` rescales those shares so that each area keeps its
+own total.
+
+```{r lsoa-too-small}
+areas <- terra::vect(sf::st_transform(cornwall_lsoa[!cornwall_lsoa$scilly, ],
+  terra::crs(pop)))
+pattern <- transform_pmf(pop)
+lsoa_grid <- withCallingHandlers(
+  transform_demand(areas, value_col = "pop", pmf = pattern, density = TRUE),
+  warning = function(w) {
+    message("Warning: ", conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+```
+
+The grid cells are about 1 km across, and many town LSOAs are smaller than
+that: an area whose polygon contains no cell centre cannot receive its count,
+and the function warns rather than silently losing people. The fix is to use
+larger areas or a finer grid. Here we merge LSOAs into their middle-layer areas
+(MSOAs): an LSOA name ends in a letter, and dropping it gives the MSOA name.
+
+```{r msoa}
+areas$msoa <- sub("[A-Z]$", "", areas$name)
+msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
+ons <- transform_demand(msoa, value_col = "sum_pop", pmf = pattern,
+  density = TRUE, full_output = TRUE)
+c(areas = nrow(msoa), ons_total = sum(msoa$sum_pop),
+  grid_total = round(terra::global(ons$surface, "sum", na.rm = TRUE)[[1]]))
+signif(max(abs(ons$totals$original - ons$totals$redistributed)), 2)
+```
+
+All 73 areas keep their totals: the largest error is a fraction of a person.
+The new grid has the ONS counts with the WorldPop pattern inside each area. The
+two sources differ in date and method, so the ratio between them varies by
+area. The map caps the colour scale at 0.5 and 1.5.
+
+```{r ratio-map}
+ratio <- terra::crop(ons$surface / pop, msoa)
+by_area <- terra::extract(ratio, msoa, fun = median, na.rm = TRUE)[, 2]
+round(summary(by_area), 2)
+terra::plot(terra::clamp(ratio, 0.5, 1.5), axes = FALSE, range = c(0.5, 1.5),
+  col = hcl.colors(50, "Blue-Red 3"),
+  main = "ONS mid-2024 / WorldPop 2020 residents per cell")
+terra::lines(msoa, lwd = 0.3, col = "grey40")
+```
+
+In most areas the ONS estimate is higher, and in one it is more than three
+times the WorldPop count. Decide which
+source matches your question and say which you used; do not mix them within
+one analysis. The other FCA guides use the WorldPop grid directly.
+
+Two more cautions. If a source raster is a density (people per square
+kilometre), multiply it by `terra::cellSize()` in the same area unit before use:
+summing densities does not conserve counts, and longitude-latitude cells are
+not all the same size. And `rasterize_demand()` does a different job: it
+reweights a prior pattern by an area **rate** and returns shares, not counts
+that respect area totals. For example, the share of residents aged 65 and over:
+
+```{r rate}
+msoa$share_65 <- msoa$sum_pop_65p / msoa$sum_pop
+older <- rasterize_demand(msoa, value_col = "share_65", prior = pattern)
+older_counts <- older * sum(msoa$sum_pop_65p)
+kept <- terra::extract(older_counts, msoa, fun = sum, na.rm = TRUE)[, 2] /
+  msoa$sum_pop_65p
+round(quantile(kept, c(0, 0.5, 1)), 2)
+```
+
+The shape is plausible (population times the local 65+ share), but area totals
+are not kept: some areas end up with well under or over their known count. For
+counts, use `transform_demand()`.
+
+## The same rules for allocation inputs
+
+The experimental allocation workflow takes a numeric origin-by-facility matrix,
+`cornwall_travel`, from small-area centroids to practices. Its preparation is
+strict: unknown travel on an active origin is an error unless you declare a
+policy.
+
+```{r allocation-na}
+demand <- setNames(cornwall_lsoa$registered, cornwall_lsoa$lsoa)
+supply <- setNames(cornwall_gp$gp_fte_extg, cornwall_gp$practice)
+tryCatch(prepare_allocation(demand, supply, cornwall_travel),
+  error = function(e) conditionMessage(e))
+```
+
+`missing_travel = "legacy_zero"` would omit unknown pairs, as the FCA functions
+do. Positive infinity declares a known absent link. Neither describes the
+islands' boat and air links, so we keep the mainland, matching IDs by name:
+
+```{r allocation-mainland}
+mainland_area <- !cornwall_lsoa$scilly
+inputs <- prepare_allocation(demand[mainland_area], supply[gp$practice],
+  cornwall_travel[mainland_area, gp$practice],
+  metadata = list(demand_units = "registered residents",
+    supply_units = "GP FTE excluding GPs in training", travel_units = "minutes"))
+class(inputs)
+```
+
+The unit declarations are recorded, not converted. See the [allocation
+workflow](allocation-workflow.html) for what the prepared inputs feed into.
+
+## Continue
+
+- [Inspect the FCA calculation](spax-103-dissection.html) step by step.
+- [Choose resolution and output size](spax-104-raster-tradeoff.html).
