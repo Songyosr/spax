@@ -10,7 +10,13 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
   fig.height = 4.5, dpi = 100)
+```
+
+```{r packages, message = FALSE, warning = FALSE}
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
 ```
 
 Every FCA or allocation analysis needs three aligned inputs: demand counts at
@@ -22,8 +28,8 @@ arrives as small-area totals rather than a grid. Everything runs offline.
 ```{r data}
 pop <- read_spax_example("cornwall_pop.tif")       # WorldPop 2020 residents
 travel <- read_spax_example("cornwall_gp_travel.tif") # minutes, one layer per practice
-gp <- sf::st_drop_geometry(cornwall_gp)
-c(practices = nrow(gp), travel_layers = terra::nlyr(travel),
+gp <- st_drop_geometry(cornwall_gp)
+c(practices = nrow(gp), travel_layers = nlyr(travel),
   small_areas = nrow(cornwall_lsoa))
 ```
 
@@ -46,8 +52,8 @@ fit <- function(supply) {
     decay_params = list(method = "gaussian", sigma = 10),
     id_col = "practice", supply_cols = "gp_fte_extg")$accessibility
 }
-shuffled <- gp[rev(seq_len(nrow(gp))), ]
-all.equal(terra::values(fit(gp)), terra::values(fit(shuffled)))
+shuffled <- arrange(gp, desc(practice))
+all.equal(values(fit(gp)), values(fit(shuffled)))
 ```
 
 A named supply vector is also matched by name, but an unnamed vector or a
@@ -72,11 +78,11 @@ practices cannot be reached from the islands, and some cells on the smaller
 islands reach no practice at all.
 
 ```{r travel-na}
-missing_cells <- terra::global(is.na(travel), "sum")[[1]]
+missing_cells <- global(is.na(travel), "sum")[[1]]
 table(scilly_practice = gp$scilly, missing_cells)
-road_scilly <- !is.na(terra::values(travel[["L82017"]], mat = FALSE))
-road_mainland <- !is.na(terra::values(travel[[1]], mat = FALSE))
-residents <- terra::values(pop, mat = FALSE)
+road_scilly <- !is.na(values(travel[["L82017"]], mat = FALSE))
+road_mainland <- !is.na(values(travel[[1]], mat = FALSE))
+residents <- values(pop, mat = FALSE)
 round(c(to_mainland = sum(residents[road_mainland]),
   to_scilly_practice = sum(residents[road_scilly]),
   no_road_link = sum(residents[!road_mainland & !road_scilly], na.rm = TRUE)))
@@ -89,7 +95,7 @@ and few residents, so their index is far above the mainland's. The residents
 with no route drop out of that practice's demand and get no index at all.
 
 ```{r scilly-effect}
-with_scilly <- 1000 * terra::values(fit(gp), mat = FALSE)
+with_scilly <- 1000 * values(fit(gp), mat = FALSE)
 round(c(mainland_median = median(with_scilly[road_mainland]),
   scilly_median = median(with_scilly[road_scilly])), 2)
 ```
@@ -100,14 +106,14 @@ model **mainland Cornwall only**: the 54 mainland practices and the cells with
 a travel time to every one of them.
 
 ```{r mainland}
-gp <- gp[!gp$scilly, ]
+gp <- filter(gp, !scilly)
 travel <- travel[[gp$practice]]
-pop_mainland <- terra::trim(terra::mask(pop, sum(travel)))
-travel <- terra::crop(travel, pop_mainland)
-stopifnot(terra::compareGeom(pop_mainland, travel),
+pop_mainland <- trim(mask(pop, sum(travel)))
+travel <- crop(travel, pop_mainland)
+stopifnot(compareGeom(pop_mainland, travel),
   identical(names(travel), gp$practice),
-  !anyNA(terra::values(travel)[!is.na(terra::values(pop_mainland)), ]))
-round(terra::global(pop_mainland, "sum", na.rm = TRUE)[[1]])
+  !anyNA(values(travel)[!is.na(values(pop_mainland)), ]))
+round(global(pop_mainland, "sum", na.rm = TRUE)[[1]])
 ```
 
 `sum(travel)` is `NA` wherever any layer is `NA`, so the mask keeps exactly the
@@ -125,8 +131,10 @@ WorldPop grid as a pattern: `transform_pmf()` turns it into shares that sum to
 own total.
 
 ```{r lsoa-too-small}
-areas <- terra::vect(sf::st_transform(cornwall_lsoa[!cornwall_lsoa$scilly, ],
-  terra::crs(pop)))
+areas <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_transform(crs(pop)) |>
+  vect()
 pattern <- transform_pmf(pop)
 lsoa_grid <- withCallingHandlers(
   transform_demand(areas, value_col = "pop", pmf = pattern, density = TRUE),
@@ -144,11 +152,11 @@ larger areas or a finer grid. Here we merge LSOAs into their middle-layer areas
 
 ```{r msoa}
 areas$msoa <- sub("[A-Z]$", "", areas$name)
-msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
+msoa <- aggregate(areas, by = "msoa", fun = "sum")
 ons <- transform_demand(msoa, value_col = "sum_pop", pmf = pattern,
   density = TRUE, full_output = TRUE)
 c(areas = nrow(msoa), ons_total = sum(msoa$sum_pop),
-  grid_total = round(terra::global(ons$surface, "sum", na.rm = TRUE)[[1]]))
+  grid_total = round(global(ons$surface, "sum", na.rm = TRUE)[[1]]))
 signif(max(abs(ons$totals$original - ons$totals$redistributed)), 2)
 ```
 
@@ -158,13 +166,13 @@ two sources differ in date and method, so the ratio between them varies by
 area. The map caps the colour scale at 0.5 and 1.5.
 
 ```{r ratio-map}
-ratio <- terra::crop(ons$surface / pop, msoa)
-by_area <- terra::extract(ratio, msoa, fun = median, na.rm = TRUE)[, 2]
+ratio <- crop(ons$surface / pop, msoa)
+by_area <- extract(ratio, msoa, fun = median, na.rm = TRUE)[, 2]
 round(summary(by_area), 2)
-terra::plot(terra::clamp(ratio, 0.5, 1.5), axes = FALSE, range = c(0.5, 1.5),
+plot(clamp(ratio, 0.5, 1.5), axes = FALSE, range = c(0.5, 1.5),
   col = hcl.colors(50, "Blue-Red 3"),
   main = "ONS mid-2024 / WorldPop 2020 residents per cell")
-terra::lines(msoa, lwd = 0.3, col = "grey40")
+lines(msoa, lwd = 0.3, col = "grey40")
 ```
 
 In most areas the ONS estimate is higher, and in one it is more than three
@@ -183,7 +191,7 @@ that respect area totals. For example, the share of residents aged 65 and over:
 msoa$share_65 <- msoa$sum_pop_65p / msoa$sum_pop
 older <- rasterize_demand(msoa, value_col = "share_65", prior = pattern)
 older_counts <- older * sum(msoa$sum_pop_65p)
-kept <- terra::extract(older_counts, msoa, fun = sum, na.rm = TRUE)[, 2] /
+kept <- extract(older_counts, msoa, fun = sum, na.rm = TRUE)[, 2] /
   msoa$sum_pop_65p
 round(quantile(kept, c(0, 0.5, 1)), 2)
 ```

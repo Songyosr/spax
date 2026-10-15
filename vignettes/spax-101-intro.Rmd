@@ -10,7 +10,13 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
   fig.height = 4.5, dpi = 100)
+```
+
+```{r packages, message = FALSE, warning = FALSE}
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
 ```
 
 Floating catchment area (FCA) methods combine demand, facility supply and travel
@@ -25,19 +31,19 @@ an outside option, see [Choosing a model](model-choice.html).
 ```{r inputs}
 pop <- read_spax_example("cornwall_pop.tif")
 travel <- read_spax_example("cornwall_gp_travel.tif")
-gp <- sf::st_drop_geometry(cornwall_gp)
 
 # Mainland only: the Isles of Scilly have no road link to the mainland.
-gp <- gp[!gp$scilly, ]
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
 travel <- travel[[gp$practice]]
 # Keep cells with a travel time to every mainland practice, then drop the
 # empty margin the islands leave behind.
-pop <- terra::trim(terra::mask(pop, sum(travel)))
-travel <- terra::crop(travel, pop)
-stopifnot(identical(names(travel), gp$practice),
-  terra::compareGeom(pop, travel))
-c(cells = sum(!is.na(terra::values(pop))), practices = nrow(gp),
-  residents = round(terra::global(pop, "sum", na.rm = TRUE)[[1]]),
+pop <- trim(mask(pop, sum(travel)))
+travel <- crop(travel, pop)
+stopifnot(identical(names(travel), gp$practice), compareGeom(pop, travel))
+c(cells = sum(!is.na(values(pop))), practices = nrow(gp),
+  residents = round(global(pop, "sum", na.rm = TRUE)[[1]]),
   gp_fte = round(sum(gp$gp_fte_extg), 1))
 ```
 
@@ -77,11 +83,13 @@ decay and normalization choices. Per resident values are small, so we map GP
 FTE per 1,000 residents.
 
 ```{r e2sfca-map}
-practices <- sf::st_transform(cornwall_gp[!cornwall_gp$scilly, ], 4326)
+practices <- cornwall_gp |>
+  filter(!scilly) |>
+  st_transform(4326)
 per_1000 <- 1000 * e2sfca$accessibility
-terra::plot(per_1000, axes = FALSE, col = hcl.colors(50, "viridis"),
+plot(per_1000, axes = FALSE, col = hcl.colors(50, "viridis"),
   main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)")
-terra::points(terra::vect(practices), pch = 3, cex = 0.5, col = "red")
+points(vect(practices), pch = 3, cex = 0.5, col = "red")
 ```
 
 Each cross is a practice. The index is highest in the west of the county,
@@ -91,8 +99,8 @@ and at the tips of the Land's End and Lizard peninsulas, where the nearest
 practices are further away and the decay removes much of their weight.
 
 ```{r e2sfca-values}
-a <- 1000 * terra::values(e2sfca$accessibility, mat = FALSE)
-p <- terra::values(pop, mat = FALSE)
+a <- 1000 * values(e2sfca$accessibility, mat = FALSE)
+p <- values(pop, mat = FALSE)
 round(quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE), 2)
 c(resident_weighted_mean = weighted.mean(a, p, na.rm = TRUE),
   total_fte_per_1000 = 1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE))
@@ -118,13 +126,13 @@ twosfca <- spax_2sfca(pop, gp, travel, threshold = 15,
   id_col = "practice", supply_cols = "gp_fte_extg")
 both <- c(per_1000, 1000 * twosfca$accessibility)
 names(both) <- c("E2SFCA, Gaussian 10 min", "2SFCA, 15 min")
-terra::plot(both, axes = FALSE, col = hcl.colors(50, "viridis"),
-  range = range(terra::values(both), na.rm = TRUE), mar = c(1, 1, 2, 6),
+plot(both, axes = FALSE, col = hcl.colors(50, "viridis"),
+  range = range(values(both), na.rm = TRUE), mar = c(1, 1, 2, 6),
   plg = list(title = "GP FTE\nper 1,000"))
 ```
 
 ```{r twosfca-values}
-b <- 1000 * terra::values(twosfca$accessibility, mat = FALSE)
+b <- 1000 * values(twosfca$accessibility, mat = FALSE)
 round(rbind(E2SFCA = quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE),
   `2SFCA` = quantile(b, c(0.05, 0.5, 0.95), na.rm = TRUE)), 2)
 c(residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),

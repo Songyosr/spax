@@ -10,7 +10,13 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
   fig.height = 4.5, dpi = 100)
+```
+
+```{r packages, message = FALSE, warning = FALSE}
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
 ```
 
 A raster gives every origin explicit geometry and lines all inputs up cell by
@@ -25,11 +31,12 @@ same inputs and the same 10-minute Gaussian decay.
 ```{r inputs}
 pop <- read_spax_example("cornwall_pop.tif")
 travel <- read_spax_example("cornwall_gp_travel.tif")
-gp <- sf::st_drop_geometry(cornwall_gp)
-gp <- gp[!gp$scilly, ]                 # mainland only, as in the other guides
+gp <- cornwall_gp |>
+  filter(!scilly) |>                   # mainland only, as in the other guides
+  st_drop_geometry()
 travel <- travel[[gp$practice]]
-pop <- terra::trim(terra::mask(pop, sum(travel)))
-travel <- terra::crop(travel, pop)
+pop <- trim(mask(pop, sum(travel)))
+travel <- crop(travel, pop)
 ```
 
 ## What a dense cell-by-facility array costs
@@ -39,7 +46,7 @@ hold another array of the same size. The numeric payload of one such array is
 cells times practices times 8 bytes:
 
 ```{r storage}
-cells <- c(grid = terra::ncell(pop), populated = sum(!is.na(terra::values(pop))))
+cells <- c(grid = ncell(pop), populated = sum(!is.na(values(pop))))
 data.frame(cells, practices = nrow(gp),
   MiB_per_array = round(cells * nrow(gp) * 8 / 1024^2, 1))
 ```
@@ -71,12 +78,10 @@ at_resolution <- function(factor) {
   if (factor == 1) return(list(demand = pop, travel = travel))
   if (factor < 1) {
     k <- round(1 / factor)
-    return(list(demand = terra::disagg(pop, k) / k^2,
-      travel = terra::disagg(travel, k)))
+    return(list(demand = disagg(pop, k) / k^2, travel = disagg(travel, k)))
   }
-  demand <- terra::aggregate(pop, factor, fun = "sum", na.rm = TRUE)
-  minutes <- terra::aggregate(travel * pop, factor, fun = "sum", na.rm = TRUE) /
-    demand
+  demand <- aggregate(pop, factor, fun = "sum", na.rm = TRUE)
+  minutes <- aggregate(travel * pop, factor, fun = "sum", na.rm = TRUE) / demand
   list(demand = demand, travel = minutes)
 }
 factors <- c(0.5, 1, 2, 4)
@@ -105,29 +110,27 @@ native cell gets the value of the cell that contains it. Then compare cell by
 cell, weighting by native residents.
 
 ```{r compare}
-native <- 1000 * terra::values(results[[2]]$accessibility, mat = FALSE)
-residents <- terra::values(pop, mat = FALSE)
+native <- 1000 * values(results[[2]]$accessibility, mat = FALSE)
+residents <- values(pop, mat = FALSE)
 summary_row <- function(k) {
-  a <- 1000 * terra::resample(results[[k]]$accessibility, pop,
-    method = "near")
-  a <- terra::values(a, mat = FALSE)
-  d <- terra::values(inputs[[k]]$demand, mat = FALSE)
-  area <- terra::values(terra::cellSize(inputs[[k]]$demand, unit = "km"),
-    mat = FALSE)
+  a <- 1000 * resample(results[[k]]$accessibility, pop, method = "near")
+  a <- values(a, mat = FALSE)
+  d <- values(inputs[[k]]$demand, mat = FALSE)
+  area <- values(cellSize(inputs[[k]]$demand, unit = "km"), mat = FALSE)
   data.frame(factor = factors[k],
     cell_km2 = round(mean(area[!is.na(d)]), 2),
     populated_cells = sum(!is.na(d)),
     residents = round(sum(d, na.rm = TRUE)),
     seconds = seconds[k],
     mean_per_1000 = round(weighted.mean(
-      1000 * terra::values(results[[k]]$accessibility, mat = FALSE), d,
+      1000 * values(results[[k]]$accessibility, mat = FALSE), d,
       na.rm = TRUE), 3),
     median_abs_change_pct = round(100 * median(abs(a / native - 1)[
       !is.na(residents)], na.rm = TRUE), 1),
     weighted_abs_change_pct = round(100 * weighted.mean(abs(a / native - 1),
       residents, na.rm = TRUE), 1))
 }
-comparison <- do.call(rbind, lapply(seq_along(factors), summary_row))
+comparison <- bind_rows(lapply(seq_along(factors), summary_row))
 stopifnot(max(abs(comparison$residents - comparison$residents[2])) <= 1)
 comparison
 ```
@@ -155,10 +158,10 @@ What changes:
 
 ```{r maps, fig.width = 8, fig.height = 3.6}
 pair <- c(1000 * results[[2]]$accessibility,
-  terra::resample(1000 * results[[4]]$accessibility, pop, method = "near"))
+  resample(1000 * results[[4]]$accessibility, pop, method = "near"))
 names(pair) <- c("Native grid", "Aggregated 4 x 4")
-terra::plot(pair, axes = FALSE, col = hcl.colors(50, "viridis"),
-  range = range(terra::values(pair), na.rm = TRUE), mar = c(1, 1, 2, 6),
+plot(pair, axes = FALSE, col = hcl.colors(50, "viridis"),
+  range = range(values(pair), na.rm = TRUE), mar = c(1, 1, 2, 6),
   plg = list(title = "GP FTE\nper 1,000"))
 ```
 

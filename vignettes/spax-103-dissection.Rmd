@@ -10,7 +10,13 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
   fig.height = 4.5, dpi = 100)
+```
+
+```{r packages, message = FALSE, warning = FALSE}
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
 ```
 
 An FCA calculation has two kernels: one decides how much demand each facility
@@ -32,20 +38,23 @@ the area around Truro so that individual cells stay visible.
 ```{r inputs}
 pop <- read_spax_example("cornwall_pop.tif")
 travel <- read_spax_example("cornwall_gp_travel.tif")
-gp <- sf::st_drop_geometry(cornwall_gp)
-gp <- gp[!gp$scilly, ]                 # mainland only, as in the other guides
+gp <- cornwall_gp |>
+  filter(!scilly) |>                   # mainland only, as in the other guides
+  st_drop_geometry()
 travel <- travel[[gp$practice]]
-pop <- terra::trim(terra::mask(pop, sum(travel)))
-travel <- terra::crop(travel, pop)
+pop <- trim(mask(pop, sum(travel)))
+travel <- crop(travel, pop)
 supply <- setNames(gp$gp_fte_extg, gp$practice)
 
-truro <- terra::ext(-5.30, -4.80, 50.12, 50.42)  # display window only
-practices <- terra::vect(sf::st_transform(cornwall_gp[!cornwall_gp$scilly, ],
-  terra::crs(pop)))
+truro <- ext(-5.30, -4.80, 50.12, 50.42)  # display window only
+practices <- cornwall_gp |>
+  filter(!scilly) |>
+  st_transform(crs(pop)) |>
+  vect()
 show <- function(x, title) {
-  terra::plot(terra::crop(x, truro), axes = FALSE, main = title,
+  plot(crop(x, truro), axes = FALSE, main = title,
     col = hcl.colors(50, "viridis"))
-  terra::points(terra::crop(practices, truro), pch = 3, col = "red")
+  points(crop(practices, truro), pch = 3, col = "red")
 }
 ```
 
@@ -76,7 +85,7 @@ practices are close, each of them counts the same resident.
 weights by their sum, and `"semi"` does so only where the sum exceeds 1.
 
 ```{r normalize}
-row_sum <- function(w) terra::values(sum(w), mat = FALSE)
+row_sum <- function(w) values(sum(w), mat = FALSE)
 round(rbind(
   identity = quantile(row_sum(weights), c(0.05, 0.5, 0.95), na.rm = TRUE),
   standard = quantile(row_sum(calc_normalize(weights, "standard")),
@@ -111,11 +120,11 @@ Index supply by the names of `load`, not by position.
 ```{r ratio}
 ratio <- supply[names(load)] / load
 near_truro <- c("L82001", "L82028", "L82015", "L82061", "L82045", "L82048")
-data.frame(practice = near_truro,
-  name = gp$name[match(near_truro, gp$practice)],
-  gp_fte = round(supply[near_truro], 1),
-  weighted_residents = round(load[near_truro]),
-  fte_per_1000 = round(1000 * ratio[near_truro], 2), row.names = NULL)
+data.frame(practice = near_truro) |>
+  left_join(select(gp, practice, name), by = "practice") |>
+  mutate(gp_fte = round(supply[practice], 1),
+    weighted_residents = round(load[practice]),
+    fte_per_1000 = round(1000 * ratio[practice], 2))
 ```
 
 The ratios look small because, with identity weights, each resident is
@@ -141,9 +150,9 @@ A cell's index is a sum of contributions from every practice. For the cell
 containing the central Truro practice, the largest contributions are:
 
 ```{r contributions}
-cell <- terra::cellFromXY(pop, terra::geom(practices[practices$practice ==
-  "L82001", ])[, c("x", "y"), drop = FALSE])
-w_cell <- unlist(terra::extract(weights, cell))
+cell <- cellFromXY(pop, geom(practices[practices$practice == "L82001", ])[,
+  c("x", "y"), drop = FALSE])
+w_cell <- unlist(extract(weights, cell))
 parts <- sort(1000 * w_cell * ratio[names(w_cell)], decreasing = TRUE)
 round(c(head(parts, 5), all_others = sum(parts[-(1:5)]),
   total = sum(parts)), 3)
@@ -161,13 +170,13 @@ e2sfca <- spax_e2sfca(pop, gp, travel,
   supply_cols = "gp_fte_extg")
 general <- compute_access(pop, supply, weights, weights)
 
-W <- terra::values(weights)
-D <- terra::values(pop, mat = FALSE)
+W <- values(weights)
+D <- values(pop, mat = FALSE)
 ok <- !is.na(D)
 manual <- rep(NA_real_, length(D))
 manual[ok] <- drop(W[ok, ] %*% (supply / colSums(W[ok, ] * D[ok])))
 for (answer in list(access, e2sfca$accessibility, general)) {
-  stopifnot(isTRUE(all.equal(terra::values(answer, mat = FALSE), manual,
+  stopifnot(isTRUE(all.equal(values(answer, mat = FALSE), manual,
     tolerance = 1e-10, check.attributes = FALSE)))
 }
 stopifnot(isTRUE(all.equal(drop(load), colSums(W[ok, ] * D[ok]),
@@ -184,12 +193,12 @@ but every practice, including those outside the window, would then gather only
 the demand inside it.
 
 ```{r crop-effect}
-cropped <- spax_e2sfca(terra::crop(pop, truro), gp, terra::crop(travel, truro),
+cropped <- spax_e2sfca(crop(pop, truro), gp, crop(travel, truro),
   decay_params = list(method = "gaussian", sigma = 10),
   demand_normalize = "identity", id_col = "practice",
   supply_cols = "gp_fte_extg")
-in_window <- terra::values(terra::crop(e2sfca$accessibility, truro), mat = FALSE)
-relative <- terra::values(cropped$accessibility, mat = FALSE) / in_window - 1
+in_window <- values(crop(e2sfca$accessibility, truro), mat = FALSE)
+relative <- values(cropped$accessibility, mat = FALSE) / in_window - 1
 round(quantile(100 * relative, c(0, 0.5, 1), na.rm = TRUE), 1)
 ```
 
@@ -216,9 +225,9 @@ m2sfca <- spax_m2sfca(pop, gp, travel,
   supply_cols = "gp_fte_extg")
 m2_manual <- rep(NA_real_, length(D))
 m2_manual[ok] <- drop(W[ok, ]^2 %*% (supply / colSums(W[ok, ] * D[ok])))
-stopifnot(isTRUE(all.equal(terra::values(m2sfca$accessibility, mat = FALSE),
+stopifnot(isTRUE(all.equal(values(m2sfca$accessibility, mat = FALSE),
   m2_manual, tolerance = 1e-10, check.attributes = FALSE)))
-per_1000 <- function(x) 1000 * terra::values(x$accessibility, mat = FALSE)
+per_1000 <- function(x) 1000 * values(x$accessibility, mat = FALSE)
 round(sapply(list(E2SFCA = e2sfca, M2SFCA = m2sfca, `2SFCA` = twosfca),
   function(x) c(quantile(per_1000(x), c(0.05, 0.5, 0.95), na.rm = TRUE),
     resident_weighted = weighted.mean(per_1000(x), D, na.rm = TRUE))), 2)
