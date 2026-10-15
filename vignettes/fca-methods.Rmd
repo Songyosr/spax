@@ -11,11 +11,15 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = FALSE,
   comment = "",
+  class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
   dpi = 100
 )
 ```
+
+This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html).
 
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
@@ -24,28 +28,35 @@ library(sf)
 library(dplyr)
 ```
 
-Floating catchment area (FCA) methods combine demand, facility supply and travel
-weights into an accessibility index. This guide computes an enhanced two-step
-FCA (E2SFCA) surface for general practice (GP) care in Cornwall, England, and
-compares it with the original 2SFCA. All inputs ship with spax: no download,
-routing server or private dataset is needed. For a fitted allocation model with
-an outside option, see [Choosing a model](model-choice.html).
+Floating catchment area (FCA) methods combine demand, facility supply and
+travel weights into an accessibility index. They differ in how they weight
+travel. This guide computes three of them on the same inputs and compares the
+results: the enhanced two-step FCA (E2SFCA) from [Getting started](spax.html),
+the original 2SFCA and the modified 2SFCA (M2SFCA). For a fitted allocation
+model with an outside option, see [Choosing an FCA index or an allocation
+model](model-choice.html).
 
-## The inputs and their units
+## The inputs
+
+The inputs are those of [Getting started](spax.html): the WorldPop 2020
+population grid (estimated residents per cell of about 1 km, a count rather
+than a density), GP FTE excluding GPs in training, and travel minutes to each
+mainland practice. The grid and the workforce come from different sources and
+dates (2020 and 2026).
 
 ```{r inputs}
 # Residents per grid cell, and travel minutes with one layer per practice
 pop <- read_spax_example("cornwall_pop.tif")
 travel <- read_spax_example("cornwall_gp_travel.tif")
 
-# Mainland only: the Isles of Scilly have no road link to the mainland.
+# Mainland only: the Isles of Scilly have no road link to the mainland
 gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
 travel <- travel[[gp$practice]]
 
 # Keep cells with a travel time to every mainland practice, then drop the
-# empty margin the islands leave behind.
+# empty margin the islands leave behind
 pop <- trim(mask(pop, sum(travel)))
 travel <- crop(travel, pop)
 
@@ -63,99 +74,27 @@ c(
 )
 ```
 
-- **Demand** is the WorldPop 2020 population grid: estimated residents per
-  cell of about 1 km (30 arc-seconds). It is a **count per cell**, not a
-  density per square kilometre.
-- **Supply** is `gp_fte_extg`: full-time equivalent GPs at each practice,
-  excluding GPs in training (NHS England, June 2026).
-- **Travel** is motorised travel time in whole minutes from each cell to each
-  practice's main site, one layer per practice. Layer names are practice codes.
+[Preparing your own data](data-prep.html) explains these steps in detail.
 
-The population grid and the workforce data come from different sources and
-dates, so the index below compares a 2026 workforce with a 2020 population
-estimate. The analysis covers mainland Cornwall: 54 practices and the grid
-cells that can reach them by road. [Preparing counts, facility IDs and
-travel](data-prep.html) explains these steps in detail.
+## Three ways to weight travel
 
-## Calculate the E2SFCA surface
+Each method gathers demand to practices with one set of weights, divides each
+practice's supply by the demand it gathered, and spreads those ratios back to
+cells with a second set of weights.
 
-E2SFCA weights travel with a decay function. We use a Gaussian kernel with a
-scale of 10 minutes: a practice 10 minutes away keeps `exp(-1/2)`, about 61%,
-of its weight, and one 20 minutes away about 14%. The scale is our choice for
-illustration, not a fitted value. `demand_normalize = "identity"` uses the
-weights unchanged when practices gather demand, as in the original E2SFCA.
+| Method | Weights when gathering demand | Weights when spreading ratios |
+|:--|:--|:--|
+| 2SFCA | 1 within 15 minutes, 0 beyond | The same |
+| E2SFCA | Gaussian decay, scale 10 minutes | The same |
+| M2SFCA | Gaussian decay, scale 10 minutes | The Gaussian weight squared |
 
-```{r e2sfca}
-e2sfca <- spax_e2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
-  id_col = "practice",  # matches supply rows to travel layers
-  supply_cols = "gp_fte_extg"
-)
-e2sfca
-```
+The 15-minute threshold and the 10-minute scale are choices for this guide,
+not estimates. With the Gaussian scale of 10 minutes, a practice 10 minutes
+away keeps about 61% of its weight and one 20 minutes away about 14%.
+`demand_normalize = "identity"` uses the weights unchanged when practices
+gather demand, as in the original E2SFCA.
 
-The result is a `spax` object. Its `accessibility` member is a `SpatRaster` of
-GP FTE per resident; `facilities` records the supply used and `parameters` the
-decay and normalization choices. Per resident values are small, so we map GP
-FTE per 1,000 residents.
-
-```{r e2sfca-map}
-# Practice locations in the grid's coordinates (longitude/latitude)
-practices <- cornwall_gp |>
-  filter(!scilly) |>
-  st_transform(4326)
-
-per_1000 <- 1000 * e2sfca$accessibility
-plot(
-  per_1000,
-  axes = FALSE,
-  col = hcl.colors(50, "viridis"),
-  main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)"
-)
-points(vect(practices), pch = 3, cex = 0.5, col = "red")
-```
-
-Each cross is a practice. The index is highest in the west of the county,
-from around Camborne and Redruth towards Truro and Falmouth, where several
-practices with many GP FTE lie within a short drive. It is lowest on Bodmin Moor
-and at the tips of the Land's End and Lizard peninsulas, where the nearest
-practices are further away and the decay removes much of their weight.
-
-```{r e2sfca-values}
-# Cell values as plain vectors: index per 1,000 residents, and residents
-a <- 1000 * values(e2sfca$accessibility, mat = FALSE)
-p <- values(pop, mat = FALSE)
-
-# Spread across grid cells
-round(quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE), 2)
-
-# The average resident's index, beside total supply per 1,000 residents
-c(
-  resident_weighted_mean = weighted.mean(a, p, na.rm = TRUE),
-  total_fte_per_1000 = 1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE)
-)
-```
-
-The quantiles describe grid cells, and most cells are rural. Weighting by
-residents answers a different question: the index the average resident sees.
-Here that average equals total GP FTE per 1,000 residents, because both steps
-use the same weights and every practice gathers some demand. The index
-redistributes the supply; it does not create or lose any.
-
-The index has supply-per-demand units. It is not a share of people who use a
-practice, a waiting time or an observed rate of care.
-
-## Compare with the original 2SFCA
-
-The original 2SFCA replaces the decay with a fixed catchment: a practice counts
-fully within 15 minutes and not at all beyond. Both maps below show GP FTE per
-1,000 residents on one colour scale.
-
-```{r twosfca, fig.width = 8, fig.height = 3.6}
+```{r methods}
 twosfca <- spax_2sfca(
   demand = pop,
   supply = gp,
@@ -165,49 +104,124 @@ twosfca <- spax_2sfca(
   supply_cols = "gp_fte_extg"
 )
 
-# Stack both surfaces and draw them on one shared colour scale
-both <- c(per_1000, 1000 * twosfca$accessibility)
-names(both) <- c("E2SFCA, Gaussian 10 min", "2SFCA, 15 min")
+e2sfca <- spax_e2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  demand_normalize = "identity",
+  id_col = "practice",  # matches supply rows to travel layers
+  supply_cols = "gp_fte_extg"
+)
+
+m2sfca <- spax_m2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  demand_normalize = "identity",
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+```
+
+Each result is a `spax` object whose `accessibility` member is a raster of GP
+FTE per resident. The maps show all three in GP FTE per 1,000 residents on one
+colour scale.
+
+```{r methods-map, fig.width = 9, fig.height = 3.4, fig.alt = "Three raster maps of mainland Cornwall on one colour scale in GP FTE per 1,000 residents: E2SFCA changes smoothly, 2SFCA has sharp steps at the 15-minute catchment edges, and M2SFCA is lower throughout."}
+# Stack the three surfaces and draw them on one shared colour scale
+all_three <- 1000 * c(
+  e2sfca$accessibility,
+  twosfca$accessibility,
+  m2sfca$accessibility
+)
+names(all_three) <- c(
+  "E2SFCA, Gaussian 10 min",
+  "2SFCA, 15 min",
+  "M2SFCA, Gaussian 10 min"
+)
 plot(
-  both,
+  all_three,
+  nc = 3,
   axes = FALSE,
   col = hcl.colors(50, "viridis"),
-  range = range(values(both), na.rm = TRUE),
-  mar = c(1, 1, 2, 6),
+  range = range(values(all_three), na.rm = TRUE),
+  mar = c(1, 1, 2, 5),
   plg = list(title = "GP FTE\nper 1,000")
 )
 ```
 
-```{r twosfca-values}
-b <- 1000 * values(twosfca$accessibility, mat = FALSE)
+## Compare the values
 
-# Cell quantiles of the two indices
+```{r compare}
+# Cell values as plain vectors, per 1,000 residents, and residents per cell
+per_1000 <- function(x) 1000 * values(x$accessibility, mat = FALSE)
+a <- per_1000(e2sfca)
+b <- per_1000(twosfca)
+m <- per_1000(m2sfca)
+p <- values(pop, mat = FALSE)
+
+# Cell quantiles and the index of the average resident
+describe <- function(x) {
+  c(
+    quantile(x, c(0.05, 0.5, 0.95), na.rm = TRUE),
+    resident_weighted = weighted.mean(x, p, na.rm = TRUE)
+  )
+}
 round(
   rbind(
-    E2SFCA = quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE),
-    `2SFCA` = quantile(b, c(0.05, 0.5, 0.95), na.rm = TRUE)
+    E2SFCA = describe(a),
+    `2SFCA` = describe(b),
+    M2SFCA = describe(m)
   ),
   2
 )
 
-# An index of zero means no practice within 15 minutes
+# Total supply per 1,000 residents, for comparison
+round(1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE), 2)
+
+# An index of zero in 2SFCA means no practice within 15 minutes
 c(
   residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),
-  correlation = round(cor(a, b, use = "complete.obs"), 2)
+  correlation_2sfca = round(cor(a, b, use = "complete.obs"), 2),
+  correlation_m2sfca = round(cor(a, m, use = "complete.obs"), 2)
 )
 ```
 
-The two surfaces broadly agree (correlation 0.79 across cells), but 2SFCA
-shows sharp steps at the 15-minute edges and a wider spread, and the few
-residents with no practice within 15 minutes get an index of zero. The decay
-version changes gradually instead. Both depend on choices, the threshold or the
-decay scale, that this guide does not estimate from data.
+```{r compare-values, include = FALSE}
+cor_2sfca <- round(cor(a, b, use = "complete.obs"), 2)
+cor_m2sfca <- round(cor(a, m, use = "complete.obs"), 2)
+beyond_15 <- format(round(sum(p[b == 0], na.rm = TRUE)), big.mark = ",")
+```
+
+The quantiles describe grid cells, and most cells are rural. Weighting by
+residents answers a different question: the index the average resident sees.
+For E2SFCA and 2SFCA that average equals total GP FTE per 1,000 residents,
+because each uses the same weights in both steps and every practice gathers
+some demand. These indices redistribute the supply; they do not create or lose
+any. M2SFCA does not keep that total: its squared weights are smaller than the
+weights used to gather demand, so part of the supply is not spread back to
+anyone, and it discounts most strongly the cells whose practices are far away.
+
+The three surfaces broadly agree on where access is higher: E2SFCA correlates
+at `r cor_2sfca` with 2SFCA and at `r cor_m2sfca` with M2SFCA across cells.
+2SFCA shows sharp steps at the 15-minute edges and a longer upper tail, and
+the `r beyond_15` residents with no practice within 15 minutes get an index of
+zero. The decay versions change gradually instead. All three depend on choices, the threshold
+or the decay scale, that this guide does not estimate from data. [The E2SFCA
+calculation step by step](e2sfca-steps.html) rebuilds these surfaces from
+their parts.
+
+The index has supply-per-demand units. It is not a share of people who use a
+practice, a waiting time or an observed rate of care.
 
 ## Continue
 
-- [Prepare counts, IDs and travel](data-prep.html): small-area counts
-  to a demand grid, facility IDs and unknown travel times.
-- [Inspect the FCA calculation](e2sfca-steps.html) step by step.
-- [Choose resolution and output size](grid-resolution.html).
-- [Fit a static allocation model](allocation-workflow.html) when expected use,
-  an explicit outside option and supported uncertainty are required.
+- [Preparing your own data](data-prep.html): small-area counts to a demand
+  grid, facility IDs and unknown travel times.
+- [The E2SFCA calculation step by step](e2sfca-steps.html).
+- [Grid resolution, support and computational cost](grid-resolution.html).
+- [Choosing an FCA index or an allocation model](model-choice.html) when
+  expected use, an explicit outside option and a fit to observations are
+  required.
