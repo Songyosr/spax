@@ -34,6 +34,7 @@ an outside option, see [Choosing a model](model-choice.html).
 ## The inputs and their units
 
 ```{r inputs}
+# Residents per grid cell, and travel minutes with one layer per practice
 pop <- read_spax_example("cornwall_pop.tif")
 travel <- read_spax_example("cornwall_gp_travel.tif")
 
@@ -42,14 +43,24 @@ gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
 travel <- travel[[gp$practice]]
+
 # Keep cells with a travel time to every mainland practice, then drop the
 # empty margin the islands leave behind.
 pop <- trim(mask(pop, sum(travel)))
 travel <- crop(travel, pop)
-stopifnot(identical(names(travel), gp$practice), compareGeom(pop, travel))
-c(cells = sum(!is.na(values(pop))), practices = nrow(gp),
+
+# Layers must line up with the practice table and the population grid
+stopifnot(
+  identical(names(travel), gp$practice),
+  compareGeom(pop, travel)
+)
+
+c(
+  cells = sum(!is.na(values(pop))),
+  practices = nrow(gp),
   residents = round(global(pop, "sum", na.rm = TRUE)[[1]]),
-  gp_fte = round(sum(gp$gp_fte_extg), 1))
+  gp_fte = round(sum(gp$gp_fte_extg), 1)
+)
 ```
 
 - **Demand** is the WorldPop 2020 population grid: estimated residents per
@@ -75,10 +86,15 @@ illustration, not a fitted value. `demand_normalize = "identity"` uses the
 weights unchanged when practices gather demand, as in the original E2SFCA.
 
 ```{r e2sfca}
-e2sfca <- spax_e2sfca(pop, gp, travel,
+e2sfca <- spax_e2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
   decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity", id_col = "practice",
-  supply_cols = "gp_fte_extg")
+  demand_normalize = "identity",
+  id_col = "practice",            # matches supply rows to travel layers
+  supply_cols = "gp_fte_extg"
+)
 e2sfca
 ```
 
@@ -88,12 +104,18 @@ decay and normalization choices. Per resident values are small, so we map GP
 FTE per 1,000 residents.
 
 ```{r e2sfca-map}
+# Practice locations in the grid's coordinates (longitude/latitude)
 practices <- cornwall_gp |>
   filter(!scilly) |>
   st_transform(4326)
+
 per_1000 <- 1000 * e2sfca$accessibility
-plot(per_1000, axes = FALSE, col = hcl.colors(50, "viridis"),
-  main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)")
+plot(
+  per_1000,
+  axes = FALSE,
+  col = hcl.colors(50, "viridis"),
+  main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)"
+)
 points(vect(practices), pch = 3, cex = 0.5, col = "red")
 ```
 
@@ -104,11 +126,18 @@ and at the tips of the Land's End and Lizard peninsulas, where the nearest
 practices are further away and the decay removes much of their weight.
 
 ```{r e2sfca-values}
+# Cell values as plain vectors: index per 1,000 residents, and residents
 a <- 1000 * values(e2sfca$accessibility, mat = FALSE)
 p <- values(pop, mat = FALSE)
+
+# Spread across grid cells
 round(quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE), 2)
-c(resident_weighted_mean = weighted.mean(a, p, na.rm = TRUE),
-  total_fte_per_1000 = 1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE))
+
+# The average resident's index, beside total supply per 1,000 residents
+c(
+  resident_weighted_mean = weighted.mean(a, p, na.rm = TRUE),
+  total_fte_per_1000 = 1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE)
+)
 ```
 
 The quantiles describe grid cells, and most cells are rural. Weighting by
@@ -127,21 +156,45 @@ fully within 15 minutes and not at all beyond. Both maps below show GP FTE per
 1,000 residents on one colour scale.
 
 ```{r twosfca, fig.width = 8, fig.height = 3.6}
-twosfca <- spax_2sfca(pop, gp, travel, threshold = 15,
-  id_col = "practice", supply_cols = "gp_fte_extg")
+twosfca <- spax_2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  threshold = 15,                 # minutes
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+
+# Stack both surfaces and draw them on one shared colour scale
 both <- c(per_1000, 1000 * twosfca$accessibility)
 names(both) <- c("E2SFCA, Gaussian 10 min", "2SFCA, 15 min")
-plot(both, axes = FALSE, col = hcl.colors(50, "viridis"),
-  range = range(values(both), na.rm = TRUE), mar = c(1, 1, 2, 6),
-  plg = list(title = "GP FTE\nper 1,000"))
+plot(
+  both,
+  axes = FALSE,
+  col = hcl.colors(50, "viridis"),
+  range = range(values(both), na.rm = TRUE),
+  mar = c(1, 1, 2, 6),
+  plg = list(title = "GP FTE\nper 1,000")
+)
 ```
 
 ```{r twosfca-values}
 b <- 1000 * values(twosfca$accessibility, mat = FALSE)
-round(rbind(E2SFCA = quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE),
-  `2SFCA` = quantile(b, c(0.05, 0.5, 0.95), na.rm = TRUE)), 2)
-c(residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),
-  correlation = round(cor(a, b, use = "complete.obs"), 2))
+
+# Cell quantiles of the two indices
+round(
+  rbind(
+    E2SFCA = quantile(a, c(0.05, 0.5, 0.95), na.rm = TRUE),
+    `2SFCA` = quantile(b, c(0.05, 0.5, 0.95), na.rm = TRUE)
+  ),
+  2
+)
+
+# An index of zero means no practice within 15 minutes
+c(
+  residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),
+  correlation = round(cor(a, b, use = "complete.obs"), 2)
+)
 ```
 
 The two surfaces broadly agree (correlation 0.79 across cells), but 2SFCA

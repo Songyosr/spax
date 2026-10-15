@@ -31,11 +31,17 @@ problems: facility IDs that must match, unknown travel times, and demand that
 arrives as small-area totals rather than a grid. Everything runs offline.
 
 ```{r data}
-pop <- read_spax_example("cornwall_pop.tif")       # WorldPop 2020 residents
-travel <- read_spax_example("cornwall_gp_travel.tif") # minutes, one layer per practice
+# WorldPop 2020 residents per cell
+pop <- read_spax_example("cornwall_pop.tif")
+# Travel minutes, one layer per practice
+travel <- read_spax_example("cornwall_gp_travel.tif")
 gp <- st_drop_geometry(cornwall_gp)
-c(practices = nrow(gp), travel_layers = nlyr(travel),
-  small_areas = nrow(cornwall_lsoa))
+
+c(
+  practices = nrow(gp),
+  travel_layers = nlyr(travel),
+  small_areas = nrow(cornwall_lsoa)
+)
 ```
 
 ## Match facilities by ID, not by order
@@ -44,7 +50,11 @@ Each travel layer is named with the practice's NHS code, the same code as
 `cornwall_gp$practice`. Check that the two sets agree before any calculation.
 
 ```{r ids}
-stopifnot(!anyDuplicated(gp$practice), setequal(names(travel), gp$practice))
+# Practice codes must be unique and match the travel layer names
+stopifnot(
+  !anyDuplicated(gp$practice),
+  setequal(names(travel), gp$practice)
+)
 head(names(travel))
 ```
 
@@ -52,11 +62,20 @@ When supply is a data frame, `spax_e2sfca()` and `spax_2sfca()` match its rows
 to the travel layers through `id_col`, so the row order does not matter.
 
 ```{r id-order}
+# The E2SFCA surface for a given supply table
 fit <- function(supply) {
-  spax_e2sfca(pop, supply, travel,
+  result <- spax_e2sfca(
+    demand = pop,
+    supply = supply,
+    distance = travel,
     decay_params = list(method = "gaussian", sigma = 10),
-    id_col = "practice", supply_cols = "gp_fte_extg")$accessibility
+    id_col = "practice",
+    supply_cols = "gp_fte_extg"
+  )
+  result$accessibility
 }
+
+# Reversing the row order gives the same surface
 shuffled <- arrange(gp, desc(practice))
 all.equal(values(fit(gp)), values(fit(shuffled)))
 ```
@@ -67,11 +86,20 @@ number of supply rows must equal the number of travel layers. Dropping a
 facility from one input and not the other stops with an error:
 
 ```{r id-mismatch}
+# 54 travel layers, but 55 rows of supply
 mainland_layers <- travel[[gp$practice[!gp$scilly]]]
-tryCatch(spax_e2sfca(pop, gp, mainland_layers,
-  decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice", supply_cols = "gp_fte_extg"),
-  error = function(e) conditionMessage(e))
+
+tryCatch(
+  spax_e2sfca(
+    demand = pop,
+    supply = gp,
+    distance = mainland_layers,
+    decay_params = list(method = "gaussian", sigma = 10),
+    id_col = "practice",
+    supply_cols = "gp_fte_extg"
+  ),
+  error = function(e) conditionMessage(e)
+)
 ```
 
 ## Decide what unknown travel means
@@ -83,14 +111,22 @@ practices cannot be reached from the islands, and some cells on the smaller
 islands reach no practice at all.
 
 ```{r travel-na}
+# Count the cells with unknown travel in each practice's layer
 missing_cells <- global(is.na(travel), "sum")[[1]]
 table(scilly_practice = gp$scilly, missing_cells)
+
+# Cells with a road route to the Scilly practice (L82017) or to the
+# mainland (here the first layer, a mainland practice)
 road_scilly <- !is.na(values(travel[["L82017"]], mat = FALSE))
 road_mainland <- !is.na(values(travel[[1]], mat = FALSE))
+
+# Residents in each group
 residents <- values(pop, mat = FALSE)
-round(c(to_mainland = sum(residents[road_mainland]),
+round(c(
+  to_mainland = sum(residents[road_mainland]),
   to_scilly_practice = sum(residents[road_scilly]),
-  no_road_link = sum(residents[!road_mainland & !road_scilly], na.rm = TRUE)))
+  no_road_link = sum(residents[!road_mainland & !road_scilly], na.rm = TRUE)
+))
 ```
 
 The FCA functions drop unknown weights from their sums (`gather_weighted()`
@@ -100,9 +136,15 @@ and few residents, so their index is far above the mainland's. The residents
 with no route drop out of that practice's demand and get no index at all.
 
 ```{r scilly-effect}
+# Index per 1,000 residents with all 55 practices
 with_scilly <- 1000 * values(fit(gp), mat = FALSE)
-round(c(mainland_median = median(with_scilly[road_mainland]),
-  scilly_median = median(with_scilly[road_scilly])), 2)
+round(
+  c(
+    mainland_median = median(with_scilly[road_mainland]),
+    scilly_median = median(with_scilly[road_scilly])
+  ),
+  2
+)
 ```
 
 The islands do have access, by boat and air, which the road-based travel times
@@ -111,13 +153,20 @@ model **mainland Cornwall only**: the 54 mainland practices and the cells with
 a travel time to every one of them.
 
 ```{r mainland}
+# Mainland practices and their travel layers
 gp <- filter(gp, !scilly)
 travel <- travel[[gp$practice]]
+
+# Keep cells with complete travel, then trim the empty margin
 pop_mainland <- trim(mask(pop, sum(travel)))
 travel <- crop(travel, pop_mainland)
-stopifnot(compareGeom(pop_mainland, travel),
+
+# Same grid, same practice order, and no populated cell with unknown travel
+stopifnot(
+  compareGeom(pop_mainland, travel),
   identical(names(travel), gp$practice),
-  !anyNA(values(travel)[!is.na(values(pop_mainland)), ]))
+  !anyNA(values(travel)[!is.na(values(pop_mainland)), ])
+)
 round(global(pop_mainland, "sum", na.rm = TRUE)[[1]])
 ```
 
@@ -136,17 +185,28 @@ WorldPop grid as a pattern: `transform_pmf()` turns it into shares that sum to
 own total.
 
 ```{r lsoa-too-small}
+# Mainland small areas as a terra vector in the grid's coordinates
 areas <- cornwall_lsoa |>
   filter(!scilly) |>
   st_transform(crs(pop)) |>
   vect()
+
+# The WorldPop grid as shares that sum to 1
 pattern <- transform_pmf(pop)
+
+# Spread each area's total over its cells; show any warning as a message
 lsoa_grid <- withCallingHandlers(
-  transform_demand(areas, value_col = "pop", pmf = pattern, density = TRUE),
+  transform_demand(
+    x = areas,
+    value_col = "pop",
+    pmf = pattern,
+    density = TRUE
+  ),
   warning = function(w) {
     message("Warning: ", conditionMessage(w))
     invokeRestart("muffleWarning")
-  })
+  }
+)
 ```
 
 The grid cells are about 1 km across, and many town LSOAs are smaller than
@@ -156,12 +216,26 @@ larger areas or a finer grid. Here we merge LSOAs into their middle-layer areas
 (MSOAs): an LSOA name ends in a letter, and dropping it gives the MSOA name.
 
 ```{r msoa}
+# Merge LSOAs into MSOAs, adding up their counts
 areas$msoa <- sub("[A-Z]$", "", areas$name)
 msoa <- aggregate(areas, by = "msoa", fun = "sum")
-ons <- transform_demand(msoa, value_col = "sum_pop", pmf = pattern,
-  density = TRUE, full_output = TRUE)
-c(areas = nrow(msoa), ons_total = sum(msoa$sum_pop),
-  grid_total = round(global(ons$surface, "sum", na.rm = TRUE)[[1]]))
+
+# Spread each MSOA total over its cells with the WorldPop pattern
+ons <- transform_demand(
+  x = msoa,
+  value_col = "sum_pop",
+  pmf = pattern,
+  density = TRUE,
+  full_output = TRUE              # also return the area totals
+)
+
+c(
+  areas = nrow(msoa),
+  ons_total = sum(msoa$sum_pop),
+  grid_total = round(global(ons$surface, "sum", na.rm = TRUE)[[1]])
+)
+
+# Largest difference between an area's total and its grid total
 signif(max(abs(ons$totals$original - ons$totals$redistributed)), 2)
 ```
 
@@ -171,12 +245,18 @@ two sources differ in date and method, so the ratio between them varies by
 area. The map caps the colour scale at 0.5 and 1.5.
 
 ```{r ratio-map}
+# ONS count over WorldPop count in each cell, and its median per area
 ratio <- crop(ons$surface / pop, msoa)
 by_area <- extract(ratio, msoa, fun = median, na.rm = TRUE)[, 2]
 round(summary(by_area), 2)
-plot(clamp(ratio, 0.5, 1.5), axes = FALSE, range = c(0.5, 1.5),
+
+plot(
+  clamp(ratio, 0.5, 1.5),
+  axes = FALSE,
+  range = c(0.5, 1.5),
   col = hcl.colors(50, "Blue-Red 3"),
-  main = "ONS mid-2024 / WorldPop 2020 residents per cell")
+  main = "ONS mid-2024 / WorldPop 2020 residents per cell"
+)
 lines(msoa, lwd = 0.3, col = "grey40")
 ```
 
@@ -193,9 +273,18 @@ reweights a prior pattern by an area **rate** and returns shares, not counts
 that respect area totals. For example, the share of residents aged 65 and over:
 
 ```{r rate}
+# Share of residents aged 65 and over in each MSOA
 msoa$share_65 <- msoa$sum_pop_65p / msoa$sum_pop
-older <- rasterize_demand(msoa, value_col = "share_65", prior = pattern)
+
+# Reweight the WorldPop pattern by that share; the result is shares
+older <- rasterize_demand(
+  x = msoa,
+  value_col = "share_65",
+  prior = pattern
+)
 older_counts <- older * sum(msoa$sum_pop_65p)
+
+# Each area's grid total as a fraction of its known count
 kept <- extract(older_counts, msoa, fun = sum, na.rm = TRUE)[, 2] /
   msoa$sum_pop_65p
 round(quantile(kept, c(0, 0.5, 1)), 2)
@@ -213,10 +302,18 @@ strict: unknown travel on an active origin is an error unless you declare a
 policy.
 
 ```{r allocation-na}
+# Named vectors: registered residents per area, GP FTE per practice
 demand <- setNames(cornwall_lsoa$registered, cornwall_lsoa$lsoa)
 supply <- setNames(cornwall_gp$gp_fte_extg, cornwall_gp$practice)
-tryCatch(prepare_allocation(demand, supply, cornwall_travel),
-  error = function(e) conditionMessage(e))
+
+tryCatch(
+  prepare_allocation(
+    demand = demand,
+    supply = supply,
+    distance = cornwall_travel
+  ),
+  error = function(e) conditionMessage(e)
+)
 ```
 
 `missing_travel = "legacy_zero"` would omit unknown pairs, as the FCA functions
@@ -225,10 +322,18 @@ islands' boat and air links, so we keep the mainland, matching IDs by name:
 
 ```{r allocation-mainland}
 mainland_area <- !cornwall_lsoa$scilly
-inputs <- prepare_allocation(demand[mainland_area], supply[gp$practice],
-  cornwall_travel[mainland_area, gp$practice],
-  metadata = list(demand_units = "registered residents",
-    supply_units = "GP FTE excluding GPs in training", travel_units = "minutes"))
+
+inputs <- prepare_allocation(
+  demand = demand[mainland_area],
+  supply = supply[gp$practice],
+  distance = cornwall_travel[mainland_area, gp$practice],
+  # Unit labels are recorded with the inputs, not converted
+  metadata = list(
+    demand_units = "registered residents",
+    supply_units = "GP FTE excluding GPs in training",
+    travel_units = "minutes"
+  )
+)
 class(inputs)
 ```
 
