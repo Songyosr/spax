@@ -90,8 +90,9 @@ The static CLM gives practice j an attraction S_j times its Gaussian decay
 weight, and divides by the sum of attractions plus an outside weight v0. Each
 area therefore has a probability for every practice plus an outside
 probability, and these sum to 1. Here the outside option stands for
-registration with a practice outside mainland Cornwall (in Devon or on the
-Isles of Scilly); it is not unmet need. The model uses one supply vector.
+registration with a practice outside mainland Cornwall (for example in Devon
+or on the Isles of Scilly); it is not unmet need. The model uses one supply
+vector.
 
 Fitting needs a declared target. Here it is the observed small area × practice
 registrations, a stock of who is registered where rather than a count of

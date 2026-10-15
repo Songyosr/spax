@@ -102,8 +102,8 @@ matrix, and fits where people choose to go. Here demand is the residents
 of each small area registered with any GP practice in England, supply is
 GP FTE, and the target is the observed small area × practice
 registrations. The model includes an outside option, which here stands
-for registration with a practice outside mainland Cornwall (in Devon or
-on the Isles of Scilly); it is not unmet need.
+for registration with a practice outside mainland Cornwall (for example
+in Devon or on the Isles of Scilly); it is not unmet need.
 
 ``` r
 areas <- sf::st_drop_geometry(cornwall_lsoa)
