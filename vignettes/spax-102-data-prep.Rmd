@@ -74,12 +74,12 @@ reach no practice at all.
 ```{r travel-na}
 missing_cells <- terra::global(is.na(travel), "sum")[[1]]
 table(scilly_practice = gp$scilly, missing_cells)
-reach_scilly <- !is.na(terra::values(travel[["L82017"]], mat = FALSE))
-reach_mainland <- !is.na(terra::values(travel[[1]], mat = FALSE))
+road_scilly <- !is.na(terra::values(travel[["L82017"]], mat = FALSE))
+road_mainland <- !is.na(terra::values(travel[[1]], mat = FALSE))
 residents <- terra::values(pop, mat = FALSE)
-round(c(reach_mainland = sum(residents[reach_mainland]),
-  reach_scilly_practice = sum(residents[reach_scilly]),
-  reach_none = sum(residents[!reach_mainland & !reach_scilly], na.rm = TRUE)))
+round(c(to_mainland = sum(residents[road_mainland]),
+  to_scilly_practice = sum(residents[road_scilly]),
+  no_road_link = sum(residents[!road_mainland & !road_scilly], na.rm = TRUE)))
 ```
 
 The FCA functions drop unknown weights from their sums (`gather_weighted()`
@@ -90,8 +90,8 @@ with no route drop out of that practice's demand and get no index at all.
 
 ```{r scilly-effect}
 with_scilly <- 1000 * terra::values(fit(gp), mat = FALSE)
-round(c(mainland_median = median(with_scilly[reach_mainland]),
-  scilly_median = median(with_scilly[reach_scilly])), 2)
+round(c(mainland_median = median(with_scilly[road_mainland]),
+  scilly_median = median(with_scilly[road_scilly])), 2)
 ```
 
 The islands do have access, by boat and air, which the road-based travel times

@@ -101,7 +101,7 @@ c(resident_weighted_mean = weighted.mean(a, p, na.rm = TRUE),
 The quantiles describe grid cells, and most cells are rural. Weighting by
 residents answers a different question: the index the average resident sees.
 Here that average equals total GP FTE per 1,000 residents, because both steps
-use the same weights and every practice has residents within reach. The index
+use the same weights and every practice gathers some demand. The index
 redistributes the supply; it does not create or lose any.
 
 The index has supply-per-demand units. It is not a share of people who use a
