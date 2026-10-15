@@ -28,8 +28,11 @@ guide](spax-102-data-prep.html) explains counts, units, IDs and missing
 travel, and [saved-result inspection](function-naming.html) describes the
 standard R methods used below. The interface is experimental.
 
-```{r packages}
+```{r packages, message = FALSE, warning = FALSE}
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
 library(ggplot2)
 ```
 
@@ -47,16 +50,18 @@ mainland practices are `NA`. This guide models mainland Cornwall only and drops
 the Scilly small area and practice throughout.
 
 ```{r inputs}
-areas <- sf::st_drop_geometry(cornwall_lsoa)
-gp <- sf::st_drop_geometry(cornwall_gp)
-mainland_area <- !areas$scilly
-mainland_gp <- !gp$scilly
-travel <- cornwall_travel[areas$lsoa[mainland_area], gp$practice[mainland_gp]]
+areas <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_drop_geometry()
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
+travel <- cornwall_travel[areas$lsoa, gp$practice]
 
 # Demand: residents registered with any practice in England.
-demand <- setNames(areas$registered[mainland_area], areas$lsoa[mainland_area])
+demand <- setNames(areas$registered, areas$lsoa)
 # Supply: GP FTE excluding GPs in training.
-supply <- setNames(gp$gp_fte_extg[mainland_gp], gp$practice[mainland_gp])
+supply <- setNames(gp$gp_fte_extg, gp$practice)
 
 # Observed flows: registered residents by small area (rows) and practice.
 observed <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
@@ -152,13 +157,15 @@ evaluated <- evaluate_allocation(model, coef(fit))
 baseline <- predict_allocation(evaluated, travel, demand = demand,
   outputs = c("outside_share", "flow"))
 table(baseline$validity$status)
-outside <- rbind(
+outside <- bind_rows(
   data.frame(lsoa = names(demand), share = 1 - rowSums(observed) / demand,
     source = "Observed"),
   data.frame(lsoa = names(demand), share = baseline$outputs$outside_share,
-    source = "Modelled"))
-outside$source <- factor(outside$source, c("Observed", "Modelled"))
-outside_map <- merge(cornwall_lsoa[mainland_area, "lsoa"], outside)
+    source = "Modelled")) |>
+  mutate(source = factor(source, c("Observed", "Modelled")))
+outside_map <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(outside, by = "lsoa")
 ggplot(outside_map) +
   geom_sf(aes(fill = 100 * share), colour = NA) +
   facet_wrap(~source) +
@@ -189,9 +196,8 @@ origins to raster cells turns one output into a map.
 
 ```{r grid-predict}
 pop <- read_spax_example("cornwall_pop.tif")
-grid_travel <- terra::values(read_spax_example("cornwall_gp_travel.tif"))
-populated <- which(is.finite(terra::values(pop)[, 1]) &
-  terra::values(pop)[, 1] > 0)
+grid_travel <- values(read_spax_example("cornwall_gp_travel.tif"))
+populated <- which(is.finite(values(pop)[, 1]) & values(pop)[, 1] > 0)
 grid_travel <- grid_travel[populated, colnames(travel)]
 rownames(grid_travel) <- paste0("cell", populated)
 grid <- predict_allocation(evaluated, grid_travel,
@@ -208,9 +214,9 @@ grid_spatial <- list(template = pop,
   cell_index = setNames(populated, rownames(grid_travel)))
 grid_outside <- predict_allocation(evaluated, grid_travel,
   outputs = "outside_share", spatial = grid_spatial, type = "raster")
-terra::plot(grid_outside, axes = FALSE, col = hcl.colors(50, "Mako", rev = TRUE),
+plot(grid_outside, axes = FALSE, col = hcl.colors(50, "Mako", rev = TRUE),
   main = "Modelled outside share (proportion), 1 km grid")
-grid_pop <- terra::values(pop)[populated, 1]
+grid_pop <- values(pop)[populated, 1]
 far_out <- grid$outputs$outside_share > 0.5
 c(cells = sum(far_out, na.rm = TRUE),
   population_percent = round(100 * sum(grid_pop[which(far_out)]) / sum(grid_pop), 2))
@@ -236,7 +242,9 @@ practice's modelled load together.
 
 ```{r scenario}
 closed <- "L82047"
-gp$name[gp$practice == closed]
+gp |>
+  filter(practice == closed) |>
+  pull(name)
 scenario_supply <- supply
 scenario_supply[closed] <- 0
 scenario_model <- clm_allocation(
@@ -246,12 +254,16 @@ scenario_model <- clm_allocation(
 scenario <- evaluate_allocation(scenario_model, coef(fit))
 changed <- predict_allocation(scenario, travel, demand = demand,
   outputs = c("outside_share", "flow"))
-practices$baseline <- colSums(baseline$outputs$flow)
-practices$scenario <- colSums(changed$outputs$flow)
-practices$change <- practices$scenario - practices$baseline
-practices$name <- gp$name[match(practices$practice, gp$practice)]
-head(practices[order(-abs(practices$change)),
-  c("name", "baseline", "scenario", "change")], 7)
+baseline_lists <- colSums(baseline$outputs$flow)
+scenario_lists <- colSums(changed$outputs$flow)
+practices <- practices |>
+  mutate(baseline = baseline_lists, scenario = scenario_lists,
+    change = scenario - baseline,
+    name = gp$name[match(practice, gp$practice)])
+practices |>
+  arrange(desc(abs(change))) |>
+  select(name, baseline, scenario, change) |>
+  head(7)
 c(outside_change = sum(demand * changed$outputs$outside_share) -
   sum(demand * baseline$outputs$outside_share))
 ```
@@ -265,16 +277,20 @@ where patients would go.
 ```{r scenario-map, fig.height = 5}
 moved <- data.frame(lsoa = names(demand),
   share = baseline$outputs$flow[, closed] / demand)
-moved_map <- merge(cornwall_lsoa[mainland_area, "lsoa"], moved)
-gained <- merge(cornwall_gp[mainland_gp, "practice"],
-  practices[practices$change > 10, c("practice", "change")])
-west <- sf::st_bbox(c(xmin = 130000, ymin = 18000, xmax = 185000,
-  ymax = 48000), crs = sf::st_crs(cornwall_lsoa))
+moved_map <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(moved, by = "lsoa")
+gained <- cornwall_gp |>
+  select(practice) |>
+  inner_join(practices |> filter(change > 10) |> select(practice, change),
+    by = "practice")
+west <- st_bbox(c(xmin = 130000, ymin = 18000, xmax = 185000, ymax = 48000),
+  crs = st_crs(cornwall_lsoa))
 ggplot() +
   geom_sf(data = moved_map, aes(fill = 100 * share), colour = "white",
     linewidth = 0.05) +
   geom_sf(data = gained, aes(size = change), shape = 21, fill = "orange") +
-  geom_sf(data = cornwall_gp[cornwall_gp$practice == closed, ], shape = 4,
+  geom_sf(data = filter(cornwall_gp, practice == closed), shape = 4,
     size = 3, stroke = 1.2) +
   scale_fill_viridis_c(option = "mako", direction = -1,
     name = "Residents at the\nclosed practice (%)") +
@@ -384,7 +400,7 @@ inputs and fit computed live here and that all 399 attempts were made.
 ```{r paired-bootstrap-load}
 boot_file <- "allocation-bootstrap.rds"
 if (rebuild_boot) {
-  attr(boot, "spax_version") <- as.character(utils::packageVersion("spax"))
+  attr(boot, "spax_version") <- as.character(packageVersion("spax"))
   saveRDS(boot, boot_file, compress = "xz")
 }
 boot <- readRDS(boot_file)
@@ -396,15 +412,17 @@ stopifnot(inherits(boot, "ae_allocation_bootstrap"),
   isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6)))
 c(status = boot$status, attempted = boot$attempted, successful = boot$successful,
   built_with_spax = attr(boot, "spax_version"),
-  running_spax = as.character(utils::packageVersion("spax")))
+  running_spax = as.character(packageVersion("spax")))
 ```
 
 ```{r paired-bootstrap-results}
 parameters <- c("sigma", "v0")
 estimates <- as.data.frame(boot)
-estimates[estimates$quantity %in% parameters, ]
+filter(estimates, quantity %in% parameters)
 draws <- as.data.frame(boot, type = "draws")
-head(draws[c("attempt", "status", parameters)])
+draws |>
+  select(attempt, status, all_of(parameters)) |>
+  head()
 ```
 
 The procedure makes 399 predetermined attempts. It resamples facility

@@ -10,7 +10,13 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
   fig.height = 4, dpi = 100)
+```
+
+```{r packages, message = FALSE, warning = FALSE}
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
 library(ggplot2)
 ```
 
@@ -45,10 +51,12 @@ motorised minutes from each area's population-weighted centroid to each
 practice.
 
 ```{r shared-inputs}
-areas <- sf::st_drop_geometry(cornwall_lsoa)
-gp <- sf::st_drop_geometry(cornwall_gp)
-areas <- areas[!areas$scilly, ]
-gp <- gp[!gp$scilly, ]
+areas <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_drop_geometry()
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
 
 D <- setNames(areas$registered, areas$lsoa)
 S <- setNames(gp$gp_fte_extg, gp$practice)
@@ -65,17 +73,17 @@ without geographic meaning; values are mapped back to the areas afterwards.
 The Gaussian scale of 10 minutes is a choice for this guide, not an estimate.
 
 ```{r fca}
-template <- terra::rast(nrows = 1, ncols = length(D), xmin = 0,
-  xmax = length(D), ymin = 0, ymax = 1, crs = "EPSG:27700")
-demand_raster <- terra::setValues(template, unname(D))
-travel_raster <- terra::rast(template, nlyrs = ncol(T))
-terra::values(travel_raster) <- T
+template <- rast(nrows = 1, ncols = length(D), xmin = 0, xmax = length(D),
+  ymin = 0, ymax = 1, crs = "EPSG:27700")
+demand_raster <- setValues(template, unname(D))
+travel_raster <- rast(template, nlyrs = ncol(T))
+values(travel_raster) <- T
 names(travel_raster) <- colnames(T)
 
 fca <- spax_e2sfca(demand_raster, gp, travel_raster,
   decay_params = list(method = "gaussian", sigma = 10),
   id_col = "practice", supply_cols = c("gp_fte_extg", "gp_fte"))
-fca_index <- 1000 * terra::values(fca$accessibility, dataframe = TRUE)
+fca_index <- 1000 * values(fca$accessibility, dataframe = TRUE)
 summary(fca_index)
 ```
 
@@ -167,9 +175,12 @@ and, for example, the mean travel time to the practice an area's residents are
 modelled to register with.
 
 ```{r maps, fig.show = "hold", out.width = "49%", fig.width = 4.5, fig.height = 4.5}
-areas$fca <- fca_index$gp_fte_extg
-areas$clm_minutes <- rowSums(P * T) / rowSums(P)
-mapped <- merge(cornwall_lsoa[, "lsoa"], areas)
+areas <- areas |>
+  mutate(fca = fca_index$gp_fte_extg,
+    clm_minutes = rowSums(P * T) / rowSums(P))
+mapped <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(areas, by = "lsoa")
 
 ggplot(mapped) +
   geom_sf(aes(fill = fca, colour = fca), linewidth = 0.1) +
