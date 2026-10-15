@@ -40,9 +40,12 @@ Package and function help are available from an installed package.
 Installations that include built articles also provide the guides:
 
 ``` r
+# Package overview, and notes on reusing saved results
 help(package = "spax")
 help("spax-package", package = "spax")
 help("allocation-compatibility", package = "spax")
+
+# The guides
 browseVignettes("spax")
 # When the installation includes built vignettes:
 vignette("model-choice", package = "spax")
@@ -74,21 +77,34 @@ library(sf)
 library(dplyr)
 library(ggplot2)
 
+# Mainland practices, as a plain table
 mainland_gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
 
+# Residents per grid cell, and travel minutes with one layer per practice;
+# crop both to the mainland (west edge at 6 degrees W)
 pop <- read_spax_example("cornwall_pop.tif")
 travel_grid <- read_spax_example("cornwall_gp_travel.tif")
 mainland <- ext(-6, xmax(pop), ymin(pop), ymax(pop))
 pop <- crop(pop, mainland)
 travel_grid <- crop(travel_grid[[mainland_gp$practice]], mainland)
 
-fca <- spax_e2sfca(pop, mainland_gp, travel_grid,
+fca <- spax_e2sfca(
+  demand = pop,
+  supply = mainland_gp,
+  distance = travel_grid,
   decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice", supply_cols = "gp_fte_extg")
-plot(1000 * fca$accessibility, axes = FALSE, col = hcl.colors(50, "viridis"),
-  main = "E2SFCA index, GP FTE per 1,000 residents")
+  id_col = "practice",            # matches supply rows to travel layers
+  supply_cols = "gp_fte_extg"
+)
+
+plot(
+  1000 * fca$accessibility,
+  axes = FALSE,
+  col = hcl.colors(50, "viridis"),
+  main = "E2SFCA index, GP FTE per 1,000 residents"
+)
 ```
 
 ![](man/figures/README-fca-1.png)<!-- -->
@@ -114,11 +130,19 @@ in Devon or on the Isles of Scilly); it is not unmet need.
 mainland_lsoa <- cornwall_lsoa |>
   filter(!scilly) |>
   st_drop_geometry()
+
+# Travel minutes (small areas x practices), demand and supply, named by ID
 travel <- cornwall_travel[mainland_lsoa$lsoa, mainland_gp$practice]
 demand <- setNames(mainland_lsoa$registered, mainland_lsoa$lsoa)
 supply <- setNames(mainland_gp$gp_fte_extg, mainland_gp$practice)
 
-observed <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+# Observed registrations as a small area x practice matrix (zero if none)
+observed <- matrix(
+  0,
+  nrow = nrow(travel),
+  ncol = ncol(travel),
+  dimnames = dimnames(travel)
+)
 keep <- cornwall_flows$lsoa %in% rownames(travel) &
   cornwall_flows$practice %in% colnames(travel)
 observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
@@ -126,31 +150,64 @@ observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
 ```
 
 ``` r
-inputs <- prepare_allocation(demand, supply, travel, metadata = list(
-  demand_units = "registered residents", demand_period = "July 2026",
-  supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
-  travel_units = "minutes"))
+# Check and align the inputs once; unit labels are recorded, not converted
+inputs <- prepare_allocation(
+  demand = demand,
+  supply = supply,
+  distance = travel,
+  metadata = list(
+    demand_units = "registered residents",
+    demand_period = "July 2026",
+    supply_units = "GP FTE excluding GPs in training",
+    supply_period = "June 2026",
+    travel_units = "minutes"
+  )
+)
+
+# Gaussian travel decay with a fitted outside weight v0
 model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
-starts <- rbind(near = c(sigma = 3, v0 = 0.05), middle = c(sigma = 6, v0 = 0.01),
-  far = c(sigma = 12, v0 = 0.002))
-fit <- fit_allocation(model, observed, starts,
-  lower = c(sigma = 0.5, v0 = 1e-6), upper = c(sigma = 60, v0 = 10),
-  output = "flow", loss = "poisson", gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+
+# Fit the flows from three explicit starts with a Poisson loss
+starts <- rbind(
+  near = c(sigma = 3, v0 = 0.05),
+  middle = c(sigma = 6, v0 = 0.01),
+  far = c(sigma = 12, v0 = 0.002)
+)
+fit <- fit_allocation(
+  model = model,
+  observed = observed,
+  starts = starts,
+  lower = c(sigma = 0.5, v0 = 1e-6),
+  upper = c(sigma = 60, v0 = 10),
+  output = "flow",
+  loss = "poisson",
+  gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
+)
 coef(fit)
-#>      sigma         v0 
-#> 4.35551721 0.01765791
 ```
 
+         sigma         v0 
+    4.35551721 0.01765791 
+
 ``` r
-outside <- c(observed = 1 - sum(observed) / sum(demand),
-  modelled = 1 - sum(fitted(fit)) / sum(demand))
+# Per cent registered outside mainland Cornwall: observed and modelled
+outside <- c(
+  observed = 1 - sum(observed) / sum(demand),
+  modelled = 1 - sum(fitted(fit)) / sum(demand)
+)
 round(100 * outside, 2)
-#> observed modelled 
-#>     0.91     0.45
-cor(colSums(fitted(fit)), colSums(observed))
-#> [1] 0.9319956
 ```
+
+    observed modelled 
+        0.91     0.45 
+
+``` r
+# Practice totals: modelled against observed
+cor(colSums(fitted(fit)), colSums(observed))
+```
+
+    [1] 0.9319956
 
 The fitted Gaussian scale is about 4.4 minutes: registration is very
 local. The printed shares are percentages of registered residents.
@@ -167,26 +224,47 @@ modelled probability can be set beside the observed share of each area’s
 registered residents:
 
 ``` r
-prediction <- predict_allocation(fit, travel, demand = demand,
-  outputs = "allocation")
+# Choice probabilities for every small area
+prediction <- predict_allocation(
+  source = fit,
+  distance = travel,
+  demand = demand,
+  outputs = "allocation"
+)
+
+# Observed share and modelled probability for one practice, in one table
 st_austell <- "Y04957"  # St Austell Health Group
 shares <- bind_rows(
-  data.frame(lsoa = rownames(travel), source = "Observed share",
-    value = observed[, st_austell] / demand),
-  data.frame(lsoa = rownames(travel), source = "Modelled probability",
-    value = prediction$outputs$allocation[, st_austell])) |>
+  data.frame(
+    lsoa = rownames(travel),
+    source = "Observed share",
+    value = observed[, st_austell] / demand
+  ),
+  data.frame(
+    lsoa = rownames(travel),
+    source = "Modelled probability",
+    value = prediction$outputs$allocation[, st_austell]
+  )
+) |>
   mutate(source = factor(source, unique(source)))
+
+# Join to the small-area polygons, and locate the practice
 mapped <- cornwall_lsoa |>
   select(lsoa) |>
   inner_join(shares, by = "lsoa")
 site <- filter(cornwall_gp, practice == st_austell)
 xy <- st_coordinates(site)
+
 ggplot(mapped) +
   geom_sf(aes(fill = value, colour = value), linewidth = 0.1) +
   geom_sf(data = site, shape = 21, fill = "white", size = 2) +
   facet_wrap(~source) +
-  scale_fill_viridis_c(name = "Share of\nregistered\nresidents",
-    limits = c(0, 1), aesthetics = c("fill", "colour")) +
+  scale_fill_viridis_c(
+    name = "Share of\nregistered\nresidents",
+    limits = c(0, 1),
+    aesthetics = c("fill", "colour")
+  ) +
+  # A 50 x 40 km window around the practice
   coord_sf(xlim = xy[1] + c(-25000, 25000), ylim = xy[2] + c(-20000, 20000)) +
   labs(title = "Registration with St Austell Health Group (white point)") +
   theme_void() +
