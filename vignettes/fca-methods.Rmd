@@ -210,8 +210,8 @@ at `r cor_2sfca` with 2SFCA and at `r cor_m2sfca` with M2SFCA across cells.
 the `r beyond_15` residents with no practice within 15 minutes get an index of
 zero. The decay versions change gradually instead. All three depend on choices, the threshold
 or the decay scale, that this guide does not estimate from data. [The E2SFCA
-calculation step by step](e2sfca-steps.html) rebuilds these surfaces from
-their parts.
+calculation step by step](e2sfca-steps.html) rebuilds the E2SFCA and M2SFCA
+surfaces from their parts.
 
 The index has supply-per-demand units. It is not a share of people who use a
 practice, a waiting time or an observed rate of care.
