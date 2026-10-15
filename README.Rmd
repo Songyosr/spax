@@ -106,7 +106,7 @@ fca <- spax_e2sfca(
   supply = mainland_gp,
   distance = travel_grid,
   decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice",            # matches supply rows to travel layers
+  id_col = "practice",  # matches supply rows to travel layers
   supply_cols = "gp_fte_extg"
 )
 

@@ -121,7 +121,7 @@ inputs <- prepare_allocation(
 model <- clm_allocation(
   inputs = inputs,
   family = "gaussian",
-  fit_v0 = TRUE                   # estimate the outside weight
+  fit_v0 = TRUE  # estimate the outside weight
 )
 ```
 
@@ -147,7 +147,7 @@ fit <- fit_allocation(
   starts = starts,
   lower = c(sigma = 0.5, v0 = 1e-6),
   upper = c(sigma = 60, v0 = 10),
-  output = "flow",                # fit the small area x practice matrix
+  output = "flow",  # fit the small area x practice matrix
   loss = "poisson",
   gradient = TRUE,
   control = list(maxit = 300, factr = 10, pgtol = 1e-8)
@@ -302,7 +302,7 @@ grid_outside <- predict_allocation(
   distance = grid_travel,
   outputs = "outside_share",
   spatial = grid_spatial,
-  type = "raster"                 # return a map instead of a table
+  type = "raster"  # return a map instead of a table
 )
 plot(
   grid_outside,
@@ -550,7 +550,7 @@ boot_fit <- fit_allocation(
   starts = boot_starts,
   lower = c(sigma = 2, v0 = 1),
   upper = c(sigma = 60, v0 = 500),
-  output = "utilization",         # facility totals
+  output = "utilization",  # facility totals
   loss = "poisson",
   gradient = TRUE,
   control = list(maxit = 300, factr = 10, pgtol = 1e-8)

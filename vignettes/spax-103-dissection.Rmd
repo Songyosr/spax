@@ -140,7 +140,7 @@ weight layers.
 load <- gather_weighted(
   values = pop,
   weights = weights,
-  simplify = TRUE                 # one named value per practice
+  simplify = TRUE  # one named value per practice
 )
 stopifnot(identical(names(load), gp$practice))
 ```

@@ -92,7 +92,7 @@ e2sfca <- spax_e2sfca(
   distance = travel,
   decay_params = list(method = "gaussian", sigma = 10),
   demand_normalize = "identity",
-  id_col = "practice",            # matches supply rows to travel layers
+  id_col = "practice",  # matches supply rows to travel layers
   supply_cols = "gp_fte_extg"
 )
 e2sfca
@@ -160,7 +160,7 @@ twosfca <- spax_2sfca(
   demand = pop,
   supply = gp,
   distance = travel,
-  threshold = 15,                 # minutes
+  threshold = 15,  # minutes
   id_col = "practice",
   supply_cols = "gp_fte_extg"
 )

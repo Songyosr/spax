@@ -109,7 +109,7 @@ fca <- spax_e2sfca(
   distance = travel_raster,
   decay_params = list(method = "gaussian", sigma = 10),
   id_col = "practice",
-  supply_cols = c("gp_fte_extg", "gp_fte")   # two separate indices
+  supply_cols = c("gp_fte_extg", "gp_fte")  # two separate indices
 )
 
 # Back to one row per area, in GP FTE per 1,000

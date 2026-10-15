@@ -226,7 +226,7 @@ ons <- transform_demand(
   value_col = "sum_pop",
   pmf = pattern,
   density = TRUE,
-  full_output = TRUE              # also return the area totals
+  full_output = TRUE  # also return the area totals
 )
 
 c(
