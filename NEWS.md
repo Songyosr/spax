@@ -1,4 +1,4 @@
-# spax (development version)
+# spax 0.2.0.9000
 
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
