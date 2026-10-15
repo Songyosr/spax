@@ -71,7 +71,7 @@ straight-line distance; the gaps are estuaries.
 ## Step 2 (optional): normalize the demand-side weights
 
 The weights of all practices at one cell need not sum to 1. Where many
-practices are close, a resident is counted in full by each of them.
+practices are close, each of them counts the same resident.
 `calc_normalize()` offers alternatives: `"standard"` divides each cell's
 weights by their sum, and `"semi"` does so only where the sum exceeds 1.
 
@@ -87,10 +87,10 @@ round(rbind(
 
 In mainland Cornwall the weights at the median cell sum to about 4, and even
 the 5th percentile is above 1, so `"standard"` and `"semi"` give almost the
-same result here and both differ from `"identity"`. It changes the demand each practice gathers and so the
-index: normalization is a model choice, not a correction. In `spax_e2sfca()`
-the `demand_normalize` argument applies it to the demand side only. We keep
-`"identity"`, so $G = H = W$.
+same result here and both differ from `"identity"`. The choice changes the
+demand each practice gathers and so the index: normalization is a model
+choice, not a correction. In `spax_e2sfca()` the `demand_normalize` argument
+applies it to the demand side only. We keep `"identity"`, so $G = H = W$.
 
 ## Step 3: gather demand to practices
 

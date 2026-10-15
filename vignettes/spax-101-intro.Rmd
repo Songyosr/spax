@@ -132,8 +132,9 @@ c(residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),
 
 The two surfaces broadly agree (correlation 0.79 across cells), but 2SFCA
 shows sharp steps at the 15-minute edges and a wider spread, and the few
-residents with no practice within 15 minutes get an index of zero. The decay version changes gradually instead. Both depend on choices,
-the threshold or the decay scale, that this guide does not estimate from data.
+residents with no practice within 15 minutes get an index of zero. The decay
+version changes gradually instead. Both depend on choices, the threshold or the
+decay scale, that this guide does not estimate from data.
 
 ## Continue
 
