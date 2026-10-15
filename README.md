@@ -69,20 +69,25 @@ facility, with layer names matching facility IDs.
 
 ``` r
 library(spax)
+library(terra)
+library(sf)
+library(dplyr)
+library(ggplot2)
 
-gp <- sf::st_drop_geometry(cornwall_gp)
-mainland_gp <- gp[!gp$scilly, ]
+mainland_gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
 
 pop <- read_spax_example("cornwall_pop.tif")
 travel_grid <- read_spax_example("cornwall_gp_travel.tif")
-mainland <- terra::ext(-6, terra::xmax(pop), terra::ymin(pop), terra::ymax(pop))
-pop <- terra::crop(pop, mainland)
-travel_grid <- terra::crop(travel_grid[[mainland_gp$practice]], mainland)
+mainland <- ext(-6, xmax(pop), ymin(pop), ymax(pop))
+pop <- crop(pop, mainland)
+travel_grid <- crop(travel_grid[[mainland_gp$practice]], mainland)
 
 fca <- spax_e2sfca(pop, mainland_gp, travel_grid,
   decay_params = list(method = "gaussian", sigma = 10),
   id_col = "practice", supply_cols = "gp_fte_extg")
-terra::plot(1000 * fca$accessibility, axes = FALSE, col = hcl.colors(50, "viridis"),
+plot(1000 * fca$accessibility, axes = FALSE, col = hcl.colors(50, "viridis"),
   main = "E2SFCA index, GP FTE per 1,000 residents")
 ```
 
@@ -106,8 +111,9 @@ for registration with a practice outside mainland Cornwall (for example
 in Devon or on the Isles of Scilly); it is not unmet need.
 
 ``` r
-areas <- sf::st_drop_geometry(cornwall_lsoa)
-mainland_lsoa <- areas[!areas$scilly, ]
+mainland_lsoa <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_drop_geometry()
 travel <- cornwall_travel[mainland_lsoa$lsoa, mainland_gp$practice]
 demand <- setNames(mainland_lsoa$registered, mainland_lsoa$lsoa)
 supply <- setNames(mainland_gp$gp_fte_extg, mainland_gp$practice)
@@ -161,19 +167,20 @@ modelled probability can be set beside the observed share of each area’s
 registered residents:
 
 ``` r
-library(ggplot2)
 prediction <- predict_allocation(fit, travel, demand = demand,
   outputs = "allocation")
-practice <- "Y04957"  # St Austell Health Group
-shares <- rbind(
+st_austell <- "Y04957"  # St Austell Health Group
+shares <- bind_rows(
   data.frame(lsoa = rownames(travel), source = "Observed share",
-    value = observed[, practice] / demand),
+    value = observed[, st_austell] / demand),
   data.frame(lsoa = rownames(travel), source = "Modelled probability",
-    value = prediction$outputs$allocation[, practice]))
-shares$source <- factor(shares$source, unique(shares$source))
-mapped <- merge(cornwall_lsoa[, "lsoa"], shares)
-site <- cornwall_gp[cornwall_gp$practice == practice, ]
-xy <- sf::st_coordinates(site)
+    value = prediction$outputs$allocation[, st_austell])) |>
+  mutate(source = factor(source, unique(source)))
+mapped <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(shares, by = "lsoa")
+site <- filter(cornwall_gp, practice == st_austell)
+xy <- st_coordinates(site)
 ggplot(mapped) +
   geom_sf(aes(fill = value, colour = value), linewidth = 0.1) +
   geom_sf(data = site, shape = 21, fill = "white", size = 2) +
