@@ -3,6 +3,12 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `calc_travel_time()` computes continuous least-cost travel
+  times from facilities to every cell of an analysis grid over a friction
+  surface (such as the Malaria Atlas Project motorized friction surface), with
+  optional barriers and a maximum time. The result is the origin-by-facility
+  matrix `prepare_allocation()` accepts, with the matching cell index, or one
+  raster layer per facility.
 * New experimental `compare_allocations()` summarizes several fitted
   allocations side by side (contact, capacity per contact, spread of contact,
   agreement with observed counts and loss) and, with zones, lists the zones

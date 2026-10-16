@@ -34,6 +34,7 @@ The caller changes system supply/demand by preparing a new model explicitly.
 \seealso{
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{calc_travel_time}()},
 \code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
 \code{\link{compare_allocations}()},

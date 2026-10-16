@@ -67,6 +67,7 @@ again with travel beyond the limit set to \code{Inf}, refit, and check each fit.
 \seealso{
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{calc_travel_time}()},
 \code{\link{clm_allocation}()},
 \code{\link{compare_allocations}()},
 \code{\link{evaluate_allocation}()},
