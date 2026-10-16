@@ -65,6 +65,7 @@ or validation of an application's observation law.
 }
 \seealso{
 Other experimental allocation workflow: 
+\code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},

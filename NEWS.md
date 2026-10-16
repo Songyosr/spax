@@ -3,6 +3,13 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `check_allocation()` compares a fitted allocation with an
+  allocation without distance decay (within the prepared travel support) and
+  one that shares counts by capacity alone, on the same loss, and reports the
+  one-way trip lengths each implies. When capacity closely tracks the observed
+  facility counts, the counts alone may not identify distance decay; the check
+  says so instead of leaving it to be discovered. It reports only and never
+  changes the fit.
 * `summary.spax()` coverage now counts only cells with a value, so cells
   outside the study area (such as sea) no longer lower it, and reports the
   share of those cells with accessibility above zero. It previously divided

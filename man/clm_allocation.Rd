@@ -43,6 +43,7 @@ Declare corrected static CLM over checked allocation inputs.
 \seealso{
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{check_allocation}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{predict_allocation}()},

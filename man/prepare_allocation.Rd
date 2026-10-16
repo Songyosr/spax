@@ -73,6 +73,7 @@ point delegates to the existing compact preparation boundary.
 \seealso{
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
