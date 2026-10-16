@@ -3,6 +3,14 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `compare_allocations()` summarizes several fitted
+  allocations side by side (contact, capacity per contact, spread of contact,
+  agreement with observed counts and loss) and, with zones, lists the zones
+  whose reporting class changes. Loss differences are reported only when the
+  observed targets, loss, demand, supply and travel times are identical; travel
+  times are verified when the models are supplied. Saved coverage also gains
+  `as.data.frame(type = "zones", zones = ...)`, which aggregates cells to zones
+  with demand and contacting-demand weights.
 * New experimental `check_allocation()` compares a fitted allocation with an
   allocation without distance decay (within the prepared travel support) and
   one that shares counts by capacity alone, on the same loss, and reports the

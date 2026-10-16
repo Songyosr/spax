@@ -69,6 +69,7 @@ Other experimental allocation workflow:
 \code{\link{bootstrap_allocation}()},
 \code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
+\code{\link{compare_allocations}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{prepare_allocation}()}
