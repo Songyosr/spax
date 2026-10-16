@@ -177,6 +177,10 @@ print.ae_allocation_check <- function(x, digits = 4, ...) {
         ".\nThe fitted decay therefore depends on the travel support (for example a",
         " catchment limit),\nnot on the counts. Compare the implied trip lengths",
         " before relying on it.\n", sep = "")
+  } else if (is.na(tab$loss[tab$comparator == "capacity_only"])) {
+    cat("\nThe fitted allocation reproduces the observations better than the allocation",
+        "\nwithout distance decay. The capacity-only comparator applies to facility",
+        " totals only.\n", sep = "")
   } else {
     cat("\nThe fitted allocation reproduces the counts better than both comparators.\n")
   }

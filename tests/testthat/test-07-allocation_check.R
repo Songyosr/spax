@@ -67,6 +67,17 @@ test_that("absent edges are excluded from trips and reported", {
   expect_equal(tab$trips_absent_edge[3], (30 * 20 / 50) / sum(demand), tolerance = 1e-8)
 })
 
+test_that("flow targets have no capacity-only comparator", {
+  f <- alloc_small_case()
+  fit <- fit_allocation(f$model, f$flow[, names(f$supply)], f$starts, f$lower, f$upper,
+                        output = "flow", loss = "poisson", control = list(maxit = 100))
+  out <- check_allocation(f$model, fit)
+  tab <- as.data.frame(out)
+  expect_true(all(is.na(tab[tab$comparator == "capacity_only", c("loss", "trip_median")])))
+  expect_false(out$flags[["capacity_only_fits_at_least_as_well"]])
+  expect_output(print(out), "facility totals only")
+})
+
 test_that("invalid calls fail clearly", {
   f <- alloc_small_case()
   fit <- alloc_small_fit()
