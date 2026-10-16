@@ -198,6 +198,28 @@ uses only supply and travel. Practices with more registered patients per GP FTE
 than their neighbours therefore have larger observed than modelled lists and
 sit below the dashed line.
 
+## What the observations identify
+
+A good fit does not show that the travel kernel is right. `check_allocation()`
+never changes the fit; it compares the fitted model, on the same loss, with the
+same model without distance decay (each small area chooses among the practices it
+can reach in proportion to GP FTE), and reports the one-way trips each
+implies.
+
+```{r check}
+# The fit against an allocation without distance decay
+check_allocation(model, fit)
+```
+
+Here the target is the small area × practice matrix, which records where each
+practice's patients live, so dropping distance decay worsens the fit by a wide
+margin, and the fitted model's trips are short (a median of a few minutes).
+When only practice totals are observed, the check also fits an allocation that
+shares the totals by capacity alone. If that, or the no-decay allocation, fits
+at least as well as the model, the totals do not identify distance decay: the
+fitted value then depends on which travel times were treated as reachable, not
+on the counts.
+
 The outside share is the other observable output. Each small area's modelled
 outside share can be compared with the share of its residents registered
 outside mainland Cornwall.

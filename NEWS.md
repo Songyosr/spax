@@ -3,6 +3,42 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `calc_demand()` computes demand from population groups
+  (for example age bands) and group-specific rates, times a common scale. With
+  a total-population grid, each cell's group composition is applied to its
+  total, which reconciles gridded group and total products that do not sum
+  exactly.
+* New experimental `calc_travel_time()` computes continuous least-cost travel
+  times from facilities to every cell of an analysis grid over a friction
+  surface (such as the Malaria Atlas Project motorized friction surface), with
+  optional barriers, a maximum time and bilinear or averaging transfer of the
+  friction surface to the grid. The result is the origin-by-facility
+  matrix `prepare_allocation()` accepts, with the matching cell index, or one
+  raster layer per facility.
+* New experimental `compare_allocations()` summarizes several fitted
+  allocations side by side (contact, capacity per contact, spread of contact,
+  agreement with observed counts and loss) and, with zones, lists the zones
+  whose reporting class changes. Loss differences are reported only when the
+  observed targets, loss, demand, supply and travel times are identical; travel
+  times are verified when the models are supplied. Saved coverage also gains
+  `as.data.frame(type = "zones", zones = ...)`, which aggregates cells to zones
+  with demand and contacting-demand weights.
+* New experimental `check_allocation()` compares a fitted allocation with an
+  allocation without distance decay (within the prepared travel support) and
+  one that shares counts by capacity alone, on the same loss, and reports the
+  one-way trip lengths each implies. When capacity closely tracks the observed
+  facility counts, the counts alone may not identify distance decay; the check
+  says so instead of leaving it to be discovered. A fitted attractiveness
+  exponent is re-optimized in both comparators. It reports only and never
+  changes the fit.
+* `summary.spax()` coverage now counts only cells with a value, so cells
+  outside the study area (such as sea) no longer lower it, and reports the
+  share of those cells with accessibility above zero. It previously divided
+  the number of cells with a value by every cell in the raster.
+* Printed corrected CLM fits now show `model: clm` instead of the internal
+  family name `huff`.
+* The `calc_decay()`, `sample_pmf()` and `rasterize_demand()` examples now
+  run; the last uses the Cornwall small areas.
 * The README and the guides now use the bundled Cornwall GP data, with real
   maps, instead of generated grids. Only the facility bootstrap guide keeps a
   generated network, where the true parameters are known.

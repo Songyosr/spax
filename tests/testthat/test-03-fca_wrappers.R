@@ -165,7 +165,10 @@ test_that("spax objects print, summarise and plot their accessibility", {
                  mean = mean(v, na.rm = TRUE), sd = sd(v, na.rm = TRUE)))
   expect_equal(nurses$quantiles,
                stats::quantile(v, c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE))
-  expect_equal(nurses$coverage$proportion, 8 / 9)
+  # Coverage counts cells with a value; covered means accessibility above zero.
+  expect_equal(nurses$coverage$cells_total, sum(!is.na(v)))
+  expect_equal(nurses$coverage$cells_covered, sum(v > 0, na.rm = TRUE))
+  expect_equal(nurses$coverage$proportion, sum(v > 0, na.rm = TRUE) / sum(!is.na(v)))
   expect_equal(s$facilities$count, 2)
   expect_equal(s$facilities$supply$doctors$total, 25)
   expect_output(expect_invisible(print(s)), "E2SFCA(.|\n)*doctors(.|\n)*nurses")

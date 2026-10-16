@@ -48,6 +48,8 @@ reference:
       - evaluate_allocation
       - predict_allocation
       - bootstrap_allocation
+      - check_allocation
+      - compare_allocations
       - allocation-fit-methods
       - allocation-result-tables
       - allocation-bootstrap-methods
@@ -60,6 +62,8 @@ reference:
       - calc_decay
       - calc_choice
       - calc_normalize
+      - calc_travel_time
+      - calc_demand
 
   - title: "Data Processing Functions"
     desc: "Functions for processing spatial data"

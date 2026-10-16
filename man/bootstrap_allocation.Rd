@@ -65,7 +65,11 @@ or validation of an application's observation law.
 }
 \seealso{
 Other experimental allocation workflow: 
+\code{\link{calc_demand}()},
+\code{\link{calc_travel_time}()},
+\code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
+\code{\link{compare_allocations}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{predict_allocation}()},
