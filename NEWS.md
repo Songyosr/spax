@@ -11,7 +11,8 @@ yet; record the source commit when reproducing an analysis.
 * New experimental `calc_travel_time()` computes continuous least-cost travel
   times from facilities to every cell of an analysis grid over a friction
   surface (such as the Malaria Atlas Project motorized friction surface), with
-  optional barriers and a maximum time. The result is the origin-by-facility
+  optional barriers, a maximum time and bilinear or averaging transfer of the
+  friction surface to the grid. The result is the origin-by-facility
   matrix `prepare_allocation()` accepts, with the matching cell index, or one
   raster layer per facility.
 * New experimental `compare_allocations()` summarizes several fitted
@@ -27,7 +28,8 @@ yet; record the source commit when reproducing an analysis.
   one that shares counts by capacity alone, on the same loss, and reports the
   one-way trip lengths each implies. When capacity closely tracks the observed
   facility counts, the counts alone may not identify distance decay; the check
-  says so instead of leaving it to be discovered. It reports only and never
+  says so instead of leaving it to be discovered. A fitted attractiveness
+  exponent is re-optimized in both comparators. It reports only and never
   changes the fit.
 * `summary.spax()` coverage now counts only cells with a value, so cells
   outside the study area (such as sea) no longer lower it, and reports the

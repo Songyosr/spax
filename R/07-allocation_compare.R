@@ -8,8 +8,9 @@
 #'
 #' Loss differences from the reference are reported only when the comparison is
 #' like for like: the same observed targets, loss function and arguments,
-#' demand, supply and prepared travel times. Travel times are checked only when
-#' `models` are supplied; otherwise loss differences are left missing. Contact
+#' demand, supply, origin and facility IDs and prepared travel times. Travel
+#' times are checked only when `models` are supplied, and each model must
+#' reproduce its own fit; otherwise loss differences are left missing. Contact
 #' and capacity values remain comparable across specifications, but they are
 #' conditional on each specification's inputs.
 #'
@@ -65,6 +66,10 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
     stop("coverage_args must contain unique named coverage controls")
   }
   best <- lapply(fits, .selected_allocation_fit)
+  if (!is.null(models)) {
+    # Each model must reproduce its own fit before its travel times are trusted.
+    for (nm in names(fits)) .allocation_fit_context(models[[nm]], best[[nm]])
+  }
   coverage <- lapply(best, function(b) do.call(.ae_coverage, c(list(fit = b), coverage_args)))
 
   masked_values <- function(b, what) {
@@ -74,7 +79,14 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
   ref <- best[[reference]]
   same <- function(nm) {
     b <- best[[nm]]
-    c(observed = identical(masked_values(b, "observed"), masked_values(ref, "observed")),
+    c(observed = identical(masked_values(b, "observed"), masked_values(ref, "observed")) &&
+        identical(b$target_mask, ref$target_mask) &&
+        # canonical IDs and axes only; the caller's input order may differ
+        identical(b$target_alignment[c("output", "axes", "ids")],
+                  ref$target_alignment[c("output", "axes", "ids")]),
+      ids = identical(as.character(b$coverage_meta$facility_ids),
+                      as.character(ref$coverage_meta$facility_ids)) &&
+        identical(coverage[[nm]]$cells$origin_id, coverage[[reference]]$cells$origin_id),
       loss = identical(b$loss_fn, ref$loss_fn) && identical(b$loss_args, ref$loss_args) &&
         identical(b$output, ref$output),
       demand = identical(as.numeric(b$coverage_meta$demand), as.numeric(ref$coverage_meta$demand)),
@@ -87,7 +99,7 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
     reg <- coverage[[nm]]$regional
     cells <- coverage[[nm]]$cells
     s <- same(nm)
-    comparable <- all(s[c("observed", "loss", "demand", "supply")]) && isTRUE(s[["travel"]])
+    comparable <- all(s[c("observed", "ids", "loss", "demand", "supply")]) && isTRUE(s[["travel"]])
     pred <- masked_values(b, "predicted")
     obs <- masked_values(b, "observed")
     data.frame(

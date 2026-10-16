@@ -12,17 +12,20 @@ calc_travel_time(
   mask = NULL,
   buffer = 50000,
   max_time = Inf,
+  method = c("bilinear", "average"),
   type = c("matrix", "raster")
 )
 }
 \arguments{
-\item{friction}{A one-layer \code{SpatRaster} of travel time per unit of map
-distance (for example minutes per metre). Missing cells are barriers.}
+\item{friction}{A one-layer \code{SpatRaster} of positive travel time per unit
+of map distance (for example minutes per metre). Missing cells are
+barriers; zero or negative values are refused.}
 
 \item{facilities}{An \code{sf} or \code{SpatVector} of facility points.}
 
-\item{template}{A one-layer \code{SpatRaster} in a projected coordinate reference
-system with map units of metres. Its non-missing cells are the origins.}
+\item{template}{A one-layer \code{SpatRaster} with square cells in a projected
+coordinate reference system with map units of metres. Its non-missing cells
+are the origins.}
 
 \item{ids}{Name of the facility ID column. The IDs must be unique and
 nonmissing; they name the columns (or layers) of the result.}
@@ -36,6 +39,11 @@ the template (default 50 km).}
 \item{max_time}{Travel times above this value become unreachable: \code{Inf} in
 the matrix (an absent edge for \code{\link[=prepare_allocation]{prepare_allocation()}}) and \code{NA} in the
 raster.}
+
+\item{method}{How friction is transferred to the template lattice:
+\code{"bilinear"} (default) when the template is about as fine as the friction
+surface, or \code{"average"} when it is coarser, so that fast cells such as
+roads are averaged rather than sampled.}
 
 \item{type}{\code{"matrix"} (default) for an origin-by-facility matrix whose row
 names are template cell numbers, or \code{"raster"} for one layer per facility.}

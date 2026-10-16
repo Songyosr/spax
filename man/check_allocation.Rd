@@ -33,12 +33,13 @@ which the share of expected trips longer than each value is reported.}
 An \code{ae_allocation_check} with a \code{comparators} table (loss, loss
 difference from the fit, parameters, need-weighted contact and implied
 trips), the exact comparator \code{parameters}, the selected fit's parameter
-\code{boundary} flags, and logical \code{flags}. Use \code{print()} or \code{as.data.frame()}.
+\code{boundary} flags, \code{search_at_edge}, and logical \code{flags}. Use \code{print()} or
+\code{as.data.frame()}.
 }
 \description{
 Compares a fitted allocation with two simpler allocations on the same loss
 and observed targets, and summarizes the travel times the allocations imply.
-The check reports; it never refits, refuses or changes the fit.
+The check reports only: it never changes or replaces the fit.
 }
 \details{
 Facility counts constrain where predicted loads fall but not where users
@@ -58,10 +59,16 @@ travel entirely, with one fitted scale factor. Available for facility
 \code{utilization} targets only.
 }
 
+When the model fits the attractiveness exponent \code{beta}, it is re-optimized in
+both comparators. Comparator searches start from the fit's own scale and widen
+while the optimum lies at the search edge; \code{flags} records any search that
+still ends at an edge.
+
 Implied trips are one-way travel times weighted by expected flows, using the
 prepared travel times. Flows on absent edges (possible only for
-\code{capacity_only}) are excluded from the travel-time quantiles and reported as
-a share. To see how the fit depends on a catchment limit, prepare the inputs
+\code{capacity_only}) have no travel time: the quantiles and the shares of trips
+longer than each break are among flows on reachable edges, and the absent
+share is reported separately. To see how the fit depends on a catchment limit, prepare the inputs
 again with travel beyond the limit set to \code{Inf}, refit, and check each fit.
 }
 \seealso{

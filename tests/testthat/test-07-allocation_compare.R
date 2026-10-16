@@ -84,4 +84,9 @@ test_that("invalid calls fail clearly", {
                "coverage_args")
   expect_error(compare_allocations(list(a = k$gauss, b = alloc_failed_search(f))),
                "no eligible allocation fit")
+  wrong <- clm_allocation(prepare_allocation(f$demand, f$supply * 2, f$travel,
+                                             missing_demand = "exclude"), fit_v0 = TRUE)
+  expect_error(compare_allocations(list(a = k$gauss, b = k$expo),
+                                   models = list(a = wrong, b = k$expo_model)),
+               "does not belong")
 })

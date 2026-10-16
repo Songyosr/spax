@@ -40,7 +40,7 @@ and result types remain supported.
 | Weighted distribution to origins | `spread_weighted()`, `spread_access()` | Raster result |
 | Checked allocation preparation and declaration | `prepare_allocation()`, `clm_allocation()` | Prepared inputs and experimental model |
 | Fit, evaluate, predict and bootstrap | `fit_allocation()`, `evaluate_allocation()`, `predict_allocation()`, `bootstrap_allocation()` | Model-specific saved results |
-| Check and compare fitted allocations | `check_allocation()`, `compare_allocations()` | Comparison tables; nothing is refitted |
+| Check and compare fitted allocations | `check_allocation()`, `compare_allocations()` | Comparison tables; the fits are not changed |
 | Travel times and demand inputs | `calc_travel_time()`, `calc_demand()` | Travel matrix or raster; demand raster or vector |
 
 These function families share concepts such as supply, demand and facility IDs.

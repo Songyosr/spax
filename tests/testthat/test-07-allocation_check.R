@@ -78,6 +78,55 @@ test_that("flow targets have no capacity-only comparator", {
   expect_output(print(out), "facility totals only")
 })
 
+test_that("a model without a fitted outside mass can be checked", {
+  f <- alloc_small_case()
+  model <- clm_allocation(f$inputs)
+  fit <- fit_allocation(model, f$observed, rbind(a = c(sigma = 3)), c(sigma = 0.5), c(sigma = 20),
+                        loss = "poisson", control = list(maxit = 100))
+  out <- check_allocation(model, fit)
+  expect_identical(names(out$boundary), "sigma")
+  expect_false(out$flags[["decay_parameter_at_bound"]])
+  expect_false(out$flags[["comparator_search_at_edge"]])
+})
+
+test_that("comparator searches follow the scale of the outside mass", {
+  f <- alloc_small_case()
+  demand <- f$demand * 1e5
+  supply <- f$supply * 1e3
+  inputs <- prepare_allocation(demand, supply, f$travel, missing_demand = "exclude")
+  model <- clm_allocation(inputs, fit_v0 = TRUE)
+  Y <- f$observed * 1e5
+  fit <- fit_allocation(model, Y, rbind(a = c(sigma = 3, v0 = 1e10)),
+                        c(sigma = 0.5, v0 = 1e6), c(sigma = 20, v0 = 1e14),
+                        loss = "poisson", control = list(maxit = 200))
+  out <- check_allocation(model, fit)
+  # Brute-force optimum of the flat allocation over a wide outside-mass grid.
+  travel <- f$travel[f$active, , drop = FALSE]
+  v0s <- exp(seq(log(1e4), log(1e16), length.out = 400))
+  brute <- min(vapply(v0s, function(v) {
+    o <- clm_oracle(travel, demand[f$active], supply, sigma = 1e8, v0 = v)
+    poisson_nll(o$utilization, Y)
+  }, numeric(1)))
+  expect_lte(as.data.frame(out)$loss[2], brute + 1e-6 * abs(brute))
+  expect_false(out$flags[["comparator_search_at_edge"]])
+})
+
+test_that("a fitted attractiveness exponent is re-optimized in both comparators", {
+  f <- alloc_small_case()
+  model <- clm_allocation(f$inputs, fit_v0 = TRUE, fit_beta = TRUE)
+  fit <- fit_allocation(model, f$supply^1.5 * 0.05, rbind(a = c(sigma = 3, v0 = 10, beta = 1)),
+                        c(sigma = 0.5, v0 = 0.1, beta = 0.2), c(sigma = 20, v0 = 400, beta = 4),
+                        loss = "poisson", control = list(maxit = 200))
+  out <- check_allocation(model, fit)
+  tab <- as.data.frame(out)
+  expect_match(tab$parameters[3], "beta=")
+  # Capacity only with a free exponent reproduces counts proportional to supply^1.5.
+  expect_equal(out$parameters$capacity_only[["beta"]], 1.5, tolerance = 1e-3)
+  fixed <- f$supply^coef(fit)[["beta"]]
+  fixed_loss <- poisson_nll(fixed * sum(f$supply^1.5 * 0.05) / sum(fixed), f$supply^1.5 * 0.05)
+  expect_lte(tab$loss[3], fixed_loss + 1e-9)
+})
+
 test_that("invalid calls fail clearly", {
   f <- alloc_small_case()
   fit <- alloc_small_fit()

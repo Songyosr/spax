@@ -19,17 +19,23 @@
 #' neighboring cells in eight directions, travel over uniform friction exceeds
 #' the straight-line time by up to about 8%.
 #'
-#' @param friction A one-layer `SpatRaster` of travel time per unit of map
-#'   distance (for example minutes per metre). Missing cells are barriers.
+#' @param friction A one-layer `SpatRaster` of positive travel time per unit
+#'   of map distance (for example minutes per metre). Missing cells are
+#'   barriers; zero or negative values are refused.
 #' @param facilities An `sf` or `SpatVector` of facility points.
-#' @param template A one-layer `SpatRaster` in a projected coordinate reference
-#'   system with map units of metres. Its non-missing cells are the origins.
+#' @param template A one-layer `SpatRaster` with square cells in a projected
+#'   coordinate reference system with map units of metres. Its non-missing cells
+#'   are the origins.
 #' @param ids Name of the facility ID column. The IDs must be unique and
 #'   nonmissing; they name the columns (or layers) of the result.
 #' @param mask Optional polygons (`sf` or `SpatVector`); friction outside them
 #'   is a barrier.
 #' @param buffer Distance in map units by which the working grid extends beyond
 #'   the template (default 50 km).
+#' @param method How friction is transferred to the template lattice:
+#'   `"bilinear"` (default) when the template is about as fine as the friction
+#'   surface, or `"average"` when it is coarser, so that fast cells such as
+#'   roads are averaged rather than sampled.
 #' @param max_time Travel times above this value become unreachable: `Inf` in
 #'   the matrix (an absent edge for [prepare_allocation()]) and `NA` in the
 #'   raster.
@@ -59,8 +65,10 @@
 #' @md
 calc_travel_time <- function(friction, facilities, template, ids,
                              mask = NULL, buffer = 50000, max_time = Inf,
+                             method = c("bilinear", "average"),
                              type = c("matrix", "raster")) {
   type <- match.arg(type)
+  method <- match.arg(method)
   if (!inherits(friction, "SpatRaster") || terra::nlyr(friction) != 1L) {
     stop("friction must be a one-layer SpatRaster")
   }
@@ -69,6 +77,10 @@ calc_travel_time <- function(friction, facilities, template, ids,
   }
   if (terra::is.lonlat(template)) {
     stop("template must use a projected coordinate reference system in metres")
+  }
+  res <- terra::res(template)
+  if (abs(res[1] - res[2]) > 1e-6 * max(res)) {
+    stop("template cells must be square")
   }
   if (inherits(facilities, "sf")) facilities <- terra::vect(facilities)
   if (!inherits(facilities, "SpatVector") || terra::geomtype(facilities) != "points") {
@@ -88,7 +100,10 @@ calc_travel_time <- function(friction, facilities, template, ids,
 
   steps <- ceiling(buffer / min(terra::res(template)))
   work <- terra::extend(terra::rast(template), steps)
-  fr <- terra::project(friction, work, method = "bilinear")
+  fr <- terra::project(friction, work, method = method)
+  if (any(terra::values(fr, mat = FALSE) <= 0, na.rm = TRUE)) {
+    stop("friction must be positive; use NA for barriers")
+  }
   if (!is.null(mask)) {
     if (inherits(mask, "sf")) mask <- terra::vect(mask)
     if (!inherits(mask, "SpatVector") || terra::geomtype(mask) != "polygons") {

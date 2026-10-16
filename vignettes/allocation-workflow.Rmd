@@ -201,8 +201,8 @@ sit below the dashed line.
 ## What the observations identify
 
 A good fit does not show that the travel kernel is right. `check_allocation()`
-refits nothing; it compares the fitted model, on the same loss, with the same
-model without distance decay (each small area chooses among the practices it
+never changes the fit; it compares the fitted model, on the same loss, with the
+same model without distance decay (each small area chooses among the practices it
 can reach in proportion to GP FTE), and reports the one-way trips each
 implies.
 

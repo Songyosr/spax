@@ -78,4 +78,11 @@ test_that("invalid inputs fail clearly", {
                                 buffer = 0), "outside the working grid")
   expect_error(calc_travel_time(c(fr, fr), fac, g, ids = "id"), "one-layer")
   expect_error(calc_travel_time(fr, fac, g, ids = "id", max_time = 0), "max_time")
+  zero <- fr
+  zero[1] <- 0
+  expect_error(calc_travel_time(zero, fac, g, ids = "id", buffer = 0), "positive")
+  oblong <- terra::rast(nrows = 10, ncols = 10, xmin = 0, xmax = 2000, ymin = 0, ymax = 1000,
+                        crs = "EPSG:27700")
+  terra::values(oblong) <- 1
+  expect_error(calc_travel_time(terra::init(oblong, 0.01), fac, oblong, ids = "id"), "square")
 })

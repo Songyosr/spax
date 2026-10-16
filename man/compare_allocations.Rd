@@ -66,8 +66,9 @@ refitted.
 \details{
 Loss differences from the reference are reported only when the comparison is
 like for like: the same observed targets, loss function and arguments,
-demand, supply and prepared travel times. Travel times are checked only when
-\code{models} are supplied; otherwise loss differences are left missing. Contact
+demand, supply, origin and facility IDs and prepared travel times. Travel
+times are checked only when \code{models} are supplied, and each model must
+reproduce its own fit; otherwise loss differences are left missing. Contact
 and capacity values remain comparable across specifications, but they are
 conditional on each specification's inputs.
 

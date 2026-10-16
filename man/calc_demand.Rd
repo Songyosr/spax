@@ -14,7 +14,9 @@ calc_demand(
 }
 \arguments{
 \item{groups}{A multilayer \code{SpatRaster} with one named layer per group, or
-a numeric matrix with one named column per group and one row per origin.}
+a numeric matrix with one named column per group and one row per origin.
+A missing group value counts as zero; a cell whose groups are all missing
+has missing demand (unless \code{total} supplies it).}
 
 \item{rates}{A named numeric vector of nonnegative rates, one per group. Every
 group must have a rate (use 0 for groups without demand) and every rate a

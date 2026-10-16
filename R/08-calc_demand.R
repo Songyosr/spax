@@ -14,6 +14,8 @@
 #'
 #' @param groups A multilayer `SpatRaster` with one named layer per group, or
 #'   a numeric matrix with one named column per group and one row per origin.
+#'   A missing group value counts as zero; a cell whose groups are all missing
+#'   has missing demand (unless `total` supplies it).
 #' @param rates A named numeric vector of nonnegative rates, one per group. Every
 #'   group must have a rate (use 0 for groups without demand) and every rate a
 #'   group.
@@ -105,10 +107,15 @@ calc_demand <- function(groups, rates, scale = 1, total = NULL,
     if (n_fallback && fallback == "error") {
       stop(n_fallback, " cells have a total but no group population")
     }
+    if (n_fallback && !is.finite(implied)) {
+      stop("no group population anywhere, so there is no overall rate to fall back on")
+    }
     rate[need_fallback] <- implied
     rate[!is.na(tot) & tot == 0] <- 0
     out <- tot * rate * scale
   }
+  out <- as.numeric(out)
+  if (!is_raster) names(out) <- rownames(groups)
   if (is_raster) {
     r <- terra::rast(groups, nlyrs = 1)
     terra::values(r) <- out

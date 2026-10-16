@@ -42,6 +42,12 @@ test_that("matrix input works like a raster", {
   m <- terra::values(demand_groups(), mat = TRUE)
   d <- calc_demand(m, demand_rates, total = c(40, 12, 30, NA))
   expect_type(d, "double")
+  rownames(m) <- paste0("o", 1:4)
+  expect_identical(names(calc_demand(m, demand_rates)), rownames(m))
+  expect_identical(names(calc_demand(m, demand_rates, total = c(40, 12, 30, NA))), rownames(m))
+  empty <- m
+  empty[] <- 0
+  expect_error(calc_demand(empty, demand_rates, total = c(1, 1, 1, 1)), "no overall rate")
   expect_equal(d[1], 40 * (20 * 0.002 + 5 * 0.005) / 35)
 })
 
