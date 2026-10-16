@@ -86,6 +86,7 @@ summary(travel[, 1])
 \seealso{
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{calc_demand}()},
 \code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
 \code{\link{compare_allocations}()},

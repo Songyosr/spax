@@ -3,6 +3,11 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `calc_demand()` computes demand from population groups
+  (for example age bands) and group-specific rates, times a common scale. With
+  a total-population grid, each cell's group composition is applied to its
+  total, which reconciles gridded group and total products that do not sum
+  exactly.
 * New experimental `calc_travel_time()` computes continuous least-cost travel
   times from facilities to every cell of an analysis grid over a friction
   surface (such as the Malaria Atlas Project motorized friction surface), with
