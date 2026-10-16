@@ -38,21 +38,21 @@ of transform_pmf, transform_likelihood, and update_pmf into a single
 workflow.
 }
 \examples{
-\dontrun{
-# Basic usage with uniform prior
-result1 <- rasterize_demand(
-  case_spatial,
-  value_col = "cases",
-  template = pop
-)
+library(terra)
 
-# With population-based prior
+# Registered patients by Cornwall small area, on the population grid
+pop <- read_spax_example("cornwall_pop.tif")
+areas <- project(vect(cornwall_lsoa), pop)
+
+# Uniform prior over the populated grid
+result1 <- rasterize_demand(areas, value_col = "registered", template = pop)
+
+# Population-based prior, returned as a density surface
 prior <- transform_pmf(pop)
 result2 <- rasterize_demand(
-  case_spatial,
-  value_col = "cases",
+  areas,
+  value_col = "registered",
   prior = prior,
   density = TRUE
 )
-}
 }

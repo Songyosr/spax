@@ -18,13 +18,19 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
+# Display label for a fitted model: corrected CLM fits are built by the internal
+# huff family with allocation form "clm"; show the allocation users declared.
+.ae_model_label <- function(x) {
+  if (identical(x$model, "huff") && identical(x$allocation_form, "clm")) "clm" else x$model
+}
+
 #' Print an AE problem calibration fit
 #' @method print ae_problem_nfxp_fit
 #' @keywords internal
 #' @export
 print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   cat("<ae_problem_nfxp_fit>\n")
-  cat("model: ", x$model, "\n", sep = "")
+  cat("model: ", .ae_model_label(x), "\n", sep = "")
   cat("family: ", x$family, "\n", sep = "")
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")
@@ -98,7 +104,7 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
 #' @export
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   cat("<summary.ae_problem_nfxp_fit>\n")
-  cat("model: ", x$model, "\n", sep = "")
+  cat("model: ", .ae_model_label(x), "\n", sep = "")
   cat("family: ", x$family, "\n", sep = "")
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")

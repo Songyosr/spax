@@ -65,29 +65,24 @@ surface using a vectorized approach. The function supports both deterministic sa
 with fixed sample sizes and probabilistic sampling based on population parameters.
 }
 \examples{
-\dontrun{
-# Create sample population density
+# Population density on a small grid
 r <- terra::rast(nrows = 10, ncols = 10)
+set.seed(1)
 terra::values(r) <- runif(100) * 100
 
-# Example 1: Independent sampling (default)
+# Independent samples of 50 cases, five iterations
 samples1 <- sample_pmf(r, n = 50, iterations = 5)
 
-# Example 2: Evolving samples
-samples2 <- sample_pmf(r,
-  n = 50,
-  iterations = 5,
-  evolve_prop = 0.3 # 30\% new samples each iteration
-)
+# Evolving samples: 30\% of cases are redrawn at each iteration
+samples2 <- sample_pmf(r, n = 50, iterations = 5, evolve_prop = 0.3)
 
-# Example 3: Disease case simulation with evolution
+# Poisson counts with an expected prevalence of 0.1\%
 samples3 <- sample_pmf(r,
-  size = 10000, # population size
-  prob = 0.001, # disease prevalence
+  size = 10000,
+  prob = 0.001,
   method = "poisson",
-  iterations = 100,
+  iterations = 10,
   evolve_prop = 0.2
 )
-}
 
 }

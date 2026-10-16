@@ -3,6 +3,14 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* `summary.spax()` coverage now counts only cells with a value, so cells
+  outside the study area (such as sea) no longer lower it, and reports the
+  share of those cells with accessibility above zero. It previously divided
+  the number of cells with a value by every cell in the raster.
+* Printed corrected CLM fits now show `model: clm` instead of the internal
+  family name `huff`.
+* The `calc_decay()`, `sample_pmf()` and `rasterize_demand()` examples now
+  run; the last uses the Cornwall small areas.
 * The README and the guides now use the bundled Cornwall GP data, with real
   maps, instead of generated grids. Only the facility bootstrap guide keeps a
   generated network, where the true parameters are known.

@@ -34,66 +34,32 @@
 #' The defaults are historical values, not recommendations: set \code{sigma}
 #' for the units and scale of your travel times.
 #' @examples
-#' \dontrun{
 #' library(terra)
-#' library(spax)
 #'
-#' # Create a simple distance raster (10x10 grid)
+#' # Distances on a small 10 x 10 grid
 #' r <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
-#' values(r) <- 1:100 # Distance values
+#' values(r) <- 1:100
 #'
-#' # 1. Basic usage with different methods ----
-#' # Gaussian decay
-#' w1 <- calc_decay(r, method = "gaussian", sigma = 30)
+#' # Built-in decay functions
+#' w <- c(
+#'   calc_decay(r, method = "gaussian", sigma = 30),
+#'   calc_decay(r, method = "exponential", sigma = 0.1),
+#'   calc_decay(r, method = "power", sigma = 2),
+#'   calc_decay(r, method = "binary", sigma = 50)
+#' )
+#' names(w) <- c("gaussian", "exponential", "power", "binary")
+#' plot(w)
 #'
-#' # Exponential decay
-#' w2 <- calc_decay(r, method = "exponential", sigma = 0.1)
-#'
-#' # Power decay
-#' w3 <- calc_decay(r, method = "power", sigma = 2)
-#'
-#' # Binary threshold
-#' w4 <- calc_decay(r, method = "binary", sigma = 50)
-#'
-#' # Plot to compare
-#' plot(c(w1, w2, w3, w4))
-#'
-#' # 2. Custom decay function ----
-#' # Create a custom decay function that combines gaussian and power
-#' custom_decay <- function(distance, sigma = 30, power = 2, ...) {
-#'   gaussian <- exp(-(distance^2) / (2 * sigma^2))
-#'   power_decay <- distance^(-power)
-#'   return(gaussian * power_decay)
+#' # A custom decay function receives the distances and its own arguments
+#' gaussian_power <- function(distance, sigma = 30, power = 2, ...) {
+#'   exp(-(distance^2) / (2 * sigma^2)) * distance^(-power)
 #' }
+#' w_custom <- calc_decay(r, method = gaussian_power, sigma = 30, power = 1.5)
 #'
-#' w5 <- calc_decay(r, method = custom_decay, sigma = 30, power = 1.5)
-#'
-#' # 3. Working with multiple facilities ----
-#' # Create distance rasters for 3 facilities
-#' distances <- rast(replicate(3, r)) # Stack of 3 identical rasters
+#' # One layer per facility gives one layer of weights per facility
+#' distances <- rast(replicate(3, r))
 #' names(distances) <- c("facility1", "facility2", "facility3")
-#'
-#' # Calculate decay weights for all facilities
 #' weights <- calc_decay(distances, method = "gaussian", sigma = 30)
-#'
-#' # 4. Performance optimization ----
-#' # Use snap=TRUE when calling repeatedly in performance-critical code
-#' weights_fast <- calc_decay(distances, method = "gaussian", sigma = 30, snap = TRUE)
-#'
-#' # 5. Compare decay parameters ----
-#' # Create a sequence of sigma values
-#' sigmas <- c(10, 20, 30, 40, 50)
-#'
-#' # Calculate and plot weights for each sigma
-#' weights_list <- lapply(sigmas, function(s) {
-#'   calc_decay(r, method = "gaussian", sigma = s)
-#' })
-#'
-#' # Convert to SpatRaster stack and plot
-#' weight_stack <- rast(weights_list)
-#' names(weight_stack) <- paste0("sigma_", sigmas)
-#' plot(weight_stack)
-#' }
 #' @export
 calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...) {
   # Handle custom function first

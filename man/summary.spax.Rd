@@ -14,7 +14,10 @@
 \item{...}{Currently ignored, for extensibility}
 }
 \value{
-A summary.spax object
+A summary.spax object. For each accessibility layer, \code{coverage}
+  counts the cells with a value (\code{cells_total}; cells outside the study area,
+  such as sea, are missing and excluded) and the cells whose accessibility is
+  above zero (\code{cells_covered}), with their \code{proportion}.
 }
 \description{
 Provides detailed statistical summaries of accessibility analysis results,
