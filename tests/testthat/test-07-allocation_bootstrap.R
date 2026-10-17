@@ -324,8 +324,10 @@ test_that("unsupported observations, altered systems and invalid fits cannot ent
   invalid_scenario <- clm_allocation(prepare_allocation(demand, f$supply, f$distance),
                                      fit_v0 = TRUE)
   expect_error(run(fit, scenario = invalid_scenario), "supply only")
+  # Every built-in kernel passes the model gate; the saved Gaussian fit simply
+  # does not belong to an exponential model.
   exp_model <- clm_allocation(f$inputs, family = "exponential", fit_v0 = TRUE)
-  expect_error(run(fit, model = exp_model), "Gaussian")
+  expect_error(run(fit, model = exp_model), "conflict")
 })
 
 test_that("the public operation always delegates exactly 399 attempted fits", {
@@ -556,4 +558,522 @@ test_that("the bootstrap engine runs end to end and withholds intervals when inc
   expect_equal(nrow(boot$starts), 2L * nrow(f$starts))
   expect_true(all(boot$draws$score_norm[boot$draws$success] <= 1e-3))
   expect_true(all(is.na(boot$intervals$lower) & is.na(boot$intervals$upper)))
+})
+
+# Other kernels, a declared kernel and a fitted supply elasticity ---------------
+# The bootstrap takes its parameter names from the model, so it also runs for the
+# exponential and power kernels, a declared smooth kernel and a fitted beta. The
+# designs share the geometry and demand of alloc_generated_case(); counts are the
+# rounded exact CLM utilization at `truth` from clm_oracle(). Runs are short (3 of
+# the 399 attempts): they exercise the real engine and its bookkeeping, not the
+# interval rule or coverage, and every value is recomputed from the oracle.
+
+# A model, counts and an oracle. `kernel` is a declaration (otherwise `family`
+# names a built-in kernel) and `oracle_kernel` its hand-written counterpart, a
+# function of (distance, sigma). `scenario_supply` adds a paired scenario model.
+.boot_case <- function(family, truth, starts, lower, upper, kernel = NULL,
+                       oracle_kernel = NULL, kappa = 1, beta = 1, fit_beta = FALSE,
+                       supply = NULL, scenario_supply = NULL) {
+  f <- alloc_generated_case()
+  base_supply <- if (is.null(supply)) f$supply else supply
+  declare <- function(s) {
+    inputs <- prepare_allocation(f$demand, s, f$distance, metadata = f$inputs$input_metadata)
+    clm_allocation(inputs, family = if (is.null(kernel)) family else kernel,
+                   kappa = kappa, beta = beta, fit_v0 = TRUE, fit_beta = fit_beta)
+  }
+  oracle <- function(theta, supply = base_supply) {
+    clm_oracle(f$distance, f$demand, supply, theta[["sigma"]], theta[["v0"]],
+      family = family, beta = if (fit_beta) theta[["beta"]] else beta, kappa = kappa,
+      kernel = oracle_kernel)
+  }
+  list(model = declare(base_supply),
+       scenario = if (!is.null(scenario_supply)) declare(scenario_supply),
+       oracle = oracle, demand = f$demand, supply = base_supply,
+       scenario_supply = scenario_supply, y = colSums(round(oracle(truth)$flow)),
+       starts = starts, lower = lower, upper = upper,
+       parameters = c("sigma", "v0", if (fit_beta) "beta"))
+}
+
+# Gaussian decay with a fitted supply elasticity; `lower_beta` and `supply` let a
+# test make beta unidentified or pin it on its bound.
+.boot_beta_case <- function(supply = NULL, lower_beta = .2, near_beta = 1.1) {
+  .boot_case("gaussian", c(sigma = 8, v0 = 25, beta = 1.3),
+    starts = rbind(near = c(sigma = 7, v0 = 20, beta = near_beta),
+                   far = c(sigma = 12, v0 = 50, beta = 2)),
+    lower = c(sigma = 2, v0 = 1, beta = lower_beta),
+    upper = c(sigma = 40, v0 = 200, beta = 4), fit_beta = TRUE, supply = supply)
+}
+
+# A plateau kernel (full weight within 5 minutes, Gaussian beyond) with a paired
+# scenario that raises the supply of one facility. The declaration is made by the
+# caller, inside its test block.
+.boot_plateau_case <- function(kernel) {
+  f <- alloc_generated_case()
+  scenario_supply <- f$supply
+  scenario_supply[2] <- scenario_supply[2] * 1.2
+  .boot_case("gaussian", c(sigma = 8, v0 = 25),
+    starts = rbind(near = c(sigma = 7, v0 = 20), far = c(sigma = 12, v0 = 50)),
+    lower = c(sigma = 2, v0 = 1), upper = c(sigma = 40, v0 = 200), kernel = kernel,
+    oracle_kernel = function(distance, sigma) {
+      ifelse(distance <= 5, 1, exp(-(distance - 5)^2 / (2 * sigma^2)))
+    },
+    scenario_supply = scenario_supply)
+}
+
+.boot_run <- function(case, fit, seed, attempts = 3L) {
+  .run_allocation_bootstrap(case$model, fit, alloc_bootstrap_observation(), case$scenario,
+    seed = seed, attempts = attempts)
+}
+
+# Column rules: the parameters take the place `sigma` and `v0` had, right after
+# `success` in the draws and after the two gaps in the start table.
+.draw_columns <- function(parameters, scenario = FALSE) {
+  c("attempt", "seed", "status", "success", parameters, "boundary", "best_start", "loss",
+    "score_norm", "regional_rho", if (scenario) "delta_contacts", "regional_A")
+}
+.start_columns <- function(parameters) {
+  c("start", "loss", "eligible", "optim_convergence", "solver_converged", "residual",
+    "seconds", "boundary", "status", "optim_message", "solver_message",
+    "log_parameter_gap", "loss_gap", parameters, "score_norm", "rank", "warnings",
+    "errors", "attempt")
+}
+
+# Checks of a short run against the bootstrap's own rules, applied by hand.
+.expect_short_run <- function(case, fit, run, seed) {
+  p <- case$parameters
+  scenario <- !is.null(case$scenario)
+  expect_s3_class(run, "ae_allocation_bootstrap")
+  # 3 of 399 attempts: incomplete, so no interval can be reported.
+  expect_identical(run$status, "incomplete")
+  expect_identical(run$reasons, "fewer than 399 completed attempts")
+  expect_identical(c(run$planned, run$attempted), c(399L, 3L))
+  # The original fit is eligible only when its rank equals the number of fitted
+  # parameters (two, or three with a fitted beta).
+  expect_identical(run$original$status, "eligible")
+  expect_equal(run$original$rank, length(p))
+  expect_identical(names(run$original$theta), p)
+  expect_equal(run$original$theta, stats::coef(fit))
+
+  expect_identical(names(run$draws), .draw_columns(p, scenario))
+  expect_identical(run$draws$attempt, 1:3)
+  expect_identical(run$draws$seed, seed + 1:3)
+  ok <- run$draws$success
+  expect_gt(sum(ok), 0)
+  expect_equal(run$successful, sum(ok))
+  expect_true(all(run$draws$status[ok] == "selected"))
+  expect_true(all(is.na(run$draws[!ok, c(p, "loss")])))
+
+  est <- run$intervals
+  expect_identical(est$quantity, c(p, "regional_rho", if (scenario) "delta_contacts",
+                                   "regional_A"))
+  regular <- est$quantity != "regional_A"
+  expect_true(all(est$status[regular] == "incomplete_bootstrap"))
+  expect_true(all(is.na(est$lower[regular]) & is.na(est$upper[regular])))
+  expect_identical(est$status[!regular], "fixed_input_identity")
+  expect_true(all(est$attempted == 3L & est$planned == 399L & est$successful == sum(ok)))
+  # Point estimates: the saved fit's parameters and regional values from the oracle.
+  theta <- stats::coef(fit)
+  mu <- case$oracle(theta)$utilization
+  at <- function(q) est$estimate[est$quantity == q]
+  expect_equal(est$estimate[match(p, est$quantity)], unname(theta[p]))
+  expect_equal(at("regional_rho"), sum(mu) / sum(case$demand), tolerance = 1e-10)
+  expect_equal(at("regional_A"), sum(case$supply) / sum(case$demand), tolerance = 1e-12)
+  if (scenario) {
+    changed <- sum(case$oracle(theta, case$scenario_supply)$utilization)
+    expect_equal(at("delta_contacts"), changed - sum(mu), tolerance = 1e-9)
+  }
+
+  expect_identical(names(run$starts), .start_columns(p))
+  expect_identical(run$starts$attempt, rep(1:3, each = nrow(case$starts)))
+  expect_identical(run$starts$start, rep(rownames(case$starts), 3))
+
+  bounds <- fit$bounds
+  for (i in which(ok)) {
+    draw <- run$draws[i, ]
+    theta_i <- unlist(draw[p])
+    w <- run$multiplicities[i, ]
+    mu_i <- case$oracle(theta_i)$utilization
+    positive <- w > 0 & mu_i > 0
+    # The weighted Poisson objective, regional values and scenario change.
+    expect_equal(draw$loss, sum(w[positive] * (mu_i[positive] -
+      case$y[positive] * log(mu_i[positive]))), tolerance = 1e-8)
+    expect_equal(draw$regional_rho, sum(mu_i) / sum(case$demand), tolerance = 1e-10)
+    expect_equal(draw$regional_A, sum(case$supply) / sum(case$demand), tolerance = 1e-12)
+    if (scenario) {
+      changed <- sum(case$oracle(theta_i, case$scenario_supply)$utilization)
+      expect_equal(draw$delta_contacts, changed - sum(mu_i), tolerance = 1e-9)
+    }
+    # Boundary rule on the log scale: within 1e-6 plus 0.1% of the log search span
+    # of a bound, for every fitted parameter.
+    eta <- log(theta_i); lo <- log(bounds$lower[p]); hi <- log(bounds$upper[p])
+    expect_identical(draw$boundary, any(pmin(eta - lo, hi - eta) <= 1e-6 + 1e-3 * (hi - lo)))
+    expect_true(all(theta_i >= bounds$lower[p] & theta_i <= bounds$upper[p]))
+    expect_lte(draw$score_norm, 1e-3)
+  }
+  invisible(run)
+}
+
+test_that("an exponential kernel with fixed non-unit kappa and beta runs a short bootstrap", {
+  case <- .boot_case("exponential", c(sigma = .15, v0 = 20),
+    starts = rbind(near = c(sigma = .12, v0 = 15), far = c(sigma = .3, v0 = 40)),
+    lower = c(sigma = .02, v0 = 1), upper = c(sigma = 2, v0 = 200), kappa = 1.5, beta = .8)
+  fit <- alloc_memo("bootstrap_fit_exponential", alloc_count_fit(case))
+  run <- alloc_memo("bootstrap_run_exponential", .boot_run(case, fit, 601L))
+  expect_identical(case$model$metadata$spec$family, "exponential")
+  .expect_short_run(case, fit, run, 601L)
+})
+
+test_that("a power kernel runs a short bootstrap", {
+  case <- .boot_case("power", c(sigma = 1.8, v0 = 10),
+    starts = rbind(near = c(sigma = 1.5, v0 = 8), far = c(sigma = 2.6, v0 = 20)),
+    lower = c(sigma = .3, v0 = .5), upper = c(sigma = 6, v0 = 100))
+  fit <- alloc_memo("bootstrap_fit_power", alloc_count_fit(case))
+  run <- alloc_memo("bootstrap_run_power", .boot_run(case, fit, 602L))
+  expect_identical(case$model$metadata$spec$family, "power")
+  .expect_short_run(case, fit, run, 602L)
+})
+
+test_that("a declared smooth kernel runs a short bootstrap with a paired scenario", {
+  # Declared with braces, so the function carries source references; the stored
+  # declaration is plain data and does not depend on how it was written.
+  plateau <- decay_kernel(
+    function(distance, sigma, plateau = 5) {
+      ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+    },
+    name = "plateau", parameter = "scale", args = list(plateau = 5)
+  )
+  case <- .boot_plateau_case(plateau)
+  fit <- alloc_memo("bootstrap_fit_plateau", alloc_count_fit(case))
+  run <- alloc_memo("bootstrap_run_plateau", .boot_run(case, fit, 603L))
+  expect_identical(case$model$metadata$spec$kernel, plateau)
+  expect_identical(case$scenario$metadata$spec, case$model$metadata$spec)
+  .expect_short_run(case, fit, run, 603L)
+})
+
+test_that("a fitted supply elasticity adds a third parameter after v0", {
+  case <- .boot_beta_case()
+  fit <- alloc_memo("bootstrap_fit_beta", alloc_count_fit(case))
+  run <- alloc_memo("bootstrap_run_beta", .boot_run(case, fit, 604L))
+  expect_identical(case$model$theta$names, c("sigma", "v0", "beta"))
+  .expect_short_run(case, fit, run, 604L)
+  # Three parameters need rank three; the saved-result methods are generic.
+  expect_equal(run$original$rank, 3)
+  expect_identical(as.data.frame(run)$quantity,
+                   c("sigma", "v0", "beta", "regional_rho", "regional_A"))
+  expect_identical(summary(run)$estimates, run$intervals)
+  expect_output(print(run), "beta")
+  expect_true(all(is.finite(as.data.frame(run, type = "draws")$beta[run$draws$success])))
+})
+
+# Singular values of the weighted log-parameter Jacobian of the oracle means, with
+# unit multiplicities and central differences: the identification rule by hand.
+.hand_singular_values <- function(case, theta) {
+  mu <- case$oracle(theta)$utilization
+  h <- 1e-5
+  jacobian <- vapply(seq_along(theta), function(k) {
+    up <- down <- theta
+    up[k] <- up[k] * exp(h)
+    down[k] <- down[k] * exp(-h)
+    (case$oracle(up)$utilization - case$oracle(down)$utilization) / (2 * h)
+  }, numeric(length(mu)))
+  svd(jacobian / sqrt(mu), nu = 0, nv = 0)$d
+}
+
+test_that("the rank rule compares the rank with the number of fitted parameters", {
+  f <- alloc_generated_case()
+  unit <- stats::setNames(rep(1, length(f$supply)), names(f$supply))
+  two <- .boot_case("gaussian", c(sigma = 8, v0 = 25),
+    starts = f$starts, lower = f$lower, upper = f$upper)
+  three <- .boot_beta_case()
+  # With equal supply everywhere, beta moves attractiveness exactly as v0 does:
+  # only two of the three directions are identified.
+  flat <- .boot_beta_case(supply = stats::setNames(rep(6, length(f$supply)), names(f$supply)))
+  flat_fit <- alloc_memo("bootstrap_fit_equal_supply", alloc_count_fit(flat))
+  models <- list(
+    two = list(case = two, fit = alloc_generated_fit(), rank = 2L),
+    three = list(case = three, fit = alloc_memo("bootstrap_fit_beta", alloc_count_fit(three)),
+                 rank = 3L),
+    flat = list(case = flat, fit = flat_fit, rank = 2L))
+  for (name in names(models)) {
+    m <- models[[name]]
+    theta <- stats::coef(m$fit)
+    sv <- .hand_singular_values(m$case, theta)
+    expect_equal(sum(sv > 1e-4 * max(sv)), m$rank, info = name)
+    d <- .allocation_bootstrap_diagnostic(m$case$model, theta, m$case$y, unit,
+      m$fit$bounds$lower, m$fit$bounds$upper)
+    expect_equal(d$rank, m$rank, info = name)
+    if (name == "flat") {
+      expect_lt(min(sv) / max(sv), 1e-6)
+      expect_lt(d$singular_ratio, 1e-6)
+    } else {
+      # The ratio of the smallest to the largest singular value, over every
+      # parameter (it used to be reported only for two).
+      expect_equal(d$singular_ratio, min(sv) / max(sv), tolerance = 1e-6, info = name)
+      expect_gt(d$singular_ratio, 1e-2)
+    }
+  }
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    stop("unexpected bootstrap refit")
+  })
+  result <- bootstrap_allocation(flat$model, flat_fit, alloc_bootstrap_observation(), seed = 44L)
+  expect_identical(result$status, "refused")
+  expect_identical(result$original$status, "original_unidentified")
+  expect_equal(result$original$rank, 2)
+  expect_equal(result$attempted, 0)
+  expect_identical(result$intervals$quantity, c("sigma", "v0", "beta", "regional_rho", "regional_A"))
+  regular <- result$intervals$quantity != "regional_A"
+  expect_true(all(result$intervals$status[regular] == "original_unidentified"))
+  expect_true(all(is.na(result$intervals$lower) & is.na(result$intervals$upper)))
+  # The empty draw table still has one column per fitted parameter.
+  expect_identical(names(result$draws), .draw_columns(c("sigma", "v0", "beta")))
+  expect_equal(nrow(result$draws), 0)
+})
+
+test_that("an original fit with beta on its search bound refuses intervals", {
+  case <- .boot_beta_case(lower_beta = 1.5, near_beta = 1.6)
+  fit <- alloc_memo("bootstrap_fit_beta_pinned", alloc_count_fit(case))
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    stop("unexpected bootstrap refit")
+  })
+  theta <- stats::coef(fit)
+  expect_equal(theta[["beta"]], 1.5)
+  # Boundary rule on the log scale: within 1e-6 plus 0.1% of the log search span.
+  eta <- log(theta); lo <- log(fit$bounds$lower); hi <- log(fit$bounds$upper)
+  near_bound <- pmin(eta - lo, hi - eta) <= 1e-6 + 1e-3 * (hi - lo)
+  expect_identical(near_bound, c(sigma = FALSE, v0 = FALSE, beta = TRUE))
+  result <- bootstrap_allocation(case$model, fit, alloc_bootstrap_observation(), seed = 44L)
+  expect_identical(result$status, "refused")
+  expect_identical(result$original$status, "original_mean_boundary")
+  expect_true(result$original$boundary)
+  expect_equal(result$attempted, 0)
+  regular <- result$intervals$quantity != "regional_A"
+  expect_true(all(result$intervals$status[regular] == "original_mean_boundary"))
+})
+
+test_that("failed fits and attempts keep one missing value per fitted parameter", {
+  case <- .boot_beta_case()
+  p <- case$parameters
+  fit <- alloc_memo("bootstrap_fit_beta", alloc_count_fit(case))
+  observation <- alloc_bootstrap_observation()
+  na_theta <- c(sigma = NA_real_, v0 = NA_real_, beta = NA_real_)
+
+  # The original fit failed: a refused result with a named missing estimate.
+  failed_fit <- fit_allocation(case$model, case$y, case$starts, case$lower, case$upper,
+    loss = function(predicted, observed) stop("injected loss failure"))
+  refused <- bootstrap_allocation(case$model, failed_fit, observation, seed = 44L)
+  expect_identical(refused$status, "refused")
+  expect_identical(refused$original$status, "original_fit_failed")
+  expect_identical(refused$original$theta, na_theta)
+  expect_identical(refused$intervals$quantity, c(p, "regional_rho", "regional_A"))
+  expect_true(all(is.na(refused$intervals$estimate[refused$intervals$quantity != "regional_A"])))
+  expect_identical(names(refused$draws), .draw_columns(p))
+  # The point placeholder carries the model's parameter names, with or without a
+  # paired scenario (the model itself serves as a scenario that changes nothing).
+  for (scenario in list(NULL, case$model)) {
+    context <- .allocation_bootstrap_prepare(case$model, failed_fit, observation, scenario)
+    expect_identical(names(context$point), c(p, "regional_rho",
+      if (!is.null(scenario)) "delta_contacts", "regional_A"))
+    expect_true(all(is.na(context$point[names(context$point) != "regional_A"])))
+  }
+
+  # A weighted refit with no eligible start: its theta names every parameter.
+  start_ids <- rownames(case$starts)
+  search <- list(
+    table = data.frame(start = start_ids, loss = NA_real_, eligible = FALSE,
+      status = "not_converged", boundary = FALSE, stringsAsFactors = FALSE),
+    theta = matrix(NA_real_, 2L, 3L, dimnames = list(start_ids, p)),
+    warnings = list(character(), character()), errors = list(NULL, "no convergence"))
+  unit <- stats::setNames(rep(1, length(case$supply)), names(case$supply))
+  none <- testthat::with_mocked_bindings(
+    .allocation_case_fit(case$model, case$y, case$starts, case$lower, case$upper, unit),
+    .fit_problem_multistart = function(...) search)
+  expect_false(none$success)
+  expect_identical(none$status, "fit_failed")
+  expect_identical(none$theta, na_theta)
+  expect_identical(names(none$table), c("start", "loss", "eligible", "status", "boundary",
+    p, "score_norm", "rank", "warnings", "errors"))
+  run <- testthat::with_mocked_bindings(.boot_run(case, fit, 606L, attempts = 2L),
+    .allocation_case_fit = function(...) none)
+  expect_identical(run$draws$status, rep("fit_failed", 2))
+  expect_identical(names(run$draws), .draw_columns(p))
+  expect_true(all(is.na(run$draws[, p])) && all(!run$draws$success))
+  expect_true(all(is.na(run$starts[, p])))
+  expect_equal(c(run$attempted, run$successful), c(2, 0))
+
+  # A fit that raises an error becomes a completed failed attempt.
+  errored <- testthat::with_mocked_bindings(.boot_run(case, fit, 607L, attempts = 2L),
+    .allocation_case_fit = function(...) stop("injected fit error"))
+  expect_true(all(startsWith(errored$draws$status, "fit_error: injected fit error")))
+  expect_identical(names(errored$draws), .draw_columns(p))
+  expect_true(all(is.na(errored$draws[, p])) && all(!errored$draws$success))
+  expect_identical(names(errored$starts), c("start", "loss", "eligible", "optim_convergence",
+    "solver_converged", "residual", "seconds", "boundary", "status", "optim_message",
+    "solver_message", "loss_gap", "log_parameter_gap", "sigma", "v0", "beta", "score_norm",
+    "rank", "warnings", "errors", "attempt"))
+  expect_true(all(is.na(errored$starts[, p])))
+  expect_true(all(errored$starts$errors == "injected fit error"))
+})
+
+test_that("the gate admits built-in and smooth declared kernels with a fitted outside mass", {
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  observation <- alloc_bootstrap_observation()
+  smooth <- decay_kernel(function(distance, sigma) {
+    exp(-distance / sigma)
+  }, name = "scale-exponential", parameter = "scale")
+  rough <- decay_kernel(function(distance, sigma) {
+    ifelse(distance <= sigma, 1, 0)
+  }, name = "cutoff", parameter = "radius", smooth = FALSE)
+  declare <- function(...) clm_allocation(f$inputs, ...)
+  admitted <- list(
+    gaussian = declare(fit_v0 = TRUE),
+    exponential = declare(family = "exponential", fit_v0 = TRUE),
+    power = declare(family = "power", fit_v0 = TRUE),
+    builtin_declaration = declare(family = decay_kernel("gaussian"), fit_v0 = TRUE),
+    smooth_declaration = declare(family = smooth, fit_v0 = TRUE),
+    fitted_beta = declare(fit_v0 = TRUE, fit_beta = TRUE),
+    positive_kappa_beta = declare(kappa = 2, beta = .7, fit_v0 = TRUE),
+    fitted_beta_with_kappa = declare(kappa = 2, fit_v0 = TRUE, fit_beta = TRUE))
+  for (name in names(admitted)) {
+    expect_no_error(.allocation_bootstrap_model(admitted[[name]]))
+  }
+  # The provider is rebuilt from the specification, declared kernel included.
+  tampered <- admitted$smooth_declaration
+  tampered$bind <- function(theta) stop("replaced provider")
+  rebuilt <- .allocation_bootstrap_model(tampered)
+  theta <- c(sigma = 6, v0 = 12)
+  expected <- clm_oracle(f$distance, f$demand, f$supply, 6, 12,
+                         kernel = function(distance, sigma) exp(-distance / sigma))
+  expect_equal(as.numeric(.solve_problem(rebuilt, theta, keep_history = FALSE, warn = FALSE,
+    diagnostics = FALSE, requested_outputs = "utilization")$outputs$utilization),
+    expected$utilization, tolerance = 1e-10)
+
+  # Each refusal names its reason, before any refit; the public function agrees.
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    stop("unexpected bootstrap refit")
+  })
+  refused <- list(
+    "smooth in sigma" = declare(family = rough, fit_v0 = TRUE),
+    "fitted outside mass" = declare(v0 = 25),
+    "fit_v0 = TRUE" = declare(family = "exponential", v0 = 25, fit_beta = TRUE))
+  for (reason in names(refused)) {
+    expect_error(.run_allocation_bootstrap(refused[[reason]], fit, observation, seed = 1L,
+      attempts = 1L), reason, fixed = TRUE)
+    expect_error(bootstrap_allocation(refused[[reason]], fit, observation, seed = 1L),
+                 reason, fixed = TRUE)
+  }
+  # A model whose parameters do not match its specification, or whose family is
+  # neither built in nor declared, is not admitted either.
+  mutated <- admitted$gaussian
+  mutated$theta$names <- c("sigma", "beta")
+  expect_error(.allocation_bootstrap_model(mutated), "match its specification")
+  internal <- admitted$gaussian
+  internal$metadata$spec$family <- "none"
+  expect_error(.allocation_bootstrap_model(internal), "smooth in sigma")
+})
+
+test_that("an interrupted run with a declared kernel resumes after the model and fit are saved and read", {
+  # Declared with braces, as in the short run above.
+  plateau <- decay_kernel(
+    function(distance, sigma, plateau = 5) {
+      ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+    },
+    name = "plateau", parameter = "scale", args = list(plateau = 5)
+  )
+  case <- .boot_plateau_case(plateau)
+  fit <- alloc_memo("bootstrap_fit_plateau", alloc_count_fit(case))
+  uninterrupted <- alloc_memo("bootstrap_run_plateau", .boot_run(case, fit, 603L))
+  observation <- alloc_bootstrap_observation()
+  path <- withr::local_tempfile(fileext = ".rds")
+  # The planned number of attempts belongs to the checkpoint contract, so a run
+  # is interrupted (as an operator would) rather than shortened: attempts 1 and 2
+  # complete, and the third is interrupted before it finishes.
+  real_fit <- .allocation_case_fit
+  calls <- 0L
+  first <- testthat::with_mocked_bindings(
+    .run_allocation_bootstrap(case$model, fit, observation, case$scenario, seed = 603L,
+      checkpoint = path, attempts = 3L),
+    .allocation_case_fit = function(...) {
+      calls <<- calls + 1L
+      if (calls == 3L) stop(structure(list(message = "test interruption", call = NULL),
+        class = c("interrupt", "condition")))
+      real_fit(...)
+    })
+  expect_identical(first$status, "incomplete")
+  expect_identical(first$attempted, 2L)
+  expect_equal(length(readRDS(path)$records), 2)
+  # The checkpoint keeps the declaration as plain data.
+  expect_identical(readRDS(path)$contract$spec$kernel, plateau)
+
+  # The model, the paired scenario and the fit go through the disk.
+  bundle <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(list(model = case$model, scenario = case$scenario, fit = fit), bundle)
+  reloaded <- readRDS(bundle)
+  expect_identical(reloaded$model$metadata$spec, case$model$metadata$spec)
+  # Where package functions keep source references (devtools, testthat), a package
+  # function read back from disk is not identical() to the package's own copy even
+  # though its code is the same; an installed package has no source references.
+  # Restore the one saved field that holds such a function, the Poisson loss, so
+  # this run checks the declared kernel and not that artifact.
+  reloaded$fit$best$loss_fn <- .poisson_loss
+  resumed <- .run_allocation_bootstrap(reloaded$model, reloaded$fit, observation,
+    reloaded$scenario, seed = 603L, checkpoint = path, attempts = 3L)
+  expect_identical(resumed$attempted, 3L)
+  expect_equal(length(readRDS(path)$records), 3)
+  # Equal to an uninterrupted run; the first two attempts come from the checkpoint.
+  for (field in setdiff(names(uninterrupted), "starts")) {
+    expect_identical(resumed[[field]], uninterrupted[[field]], info = field)
+  }
+  untimed <- function(x) x$starts[setdiff(names(x$starts), "seconds")]
+  expect_identical(untimed(resumed), untimed(uninterrupted))
+  expect_identical(resumed$draws[1:2, ], first$draws)
+
+  # Another declaration under the same name is a different contract.
+  wide <- decay_kernel(
+    function(distance, sigma, plateau = 5) {
+      ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+    },
+    name = "plateau", parameter = "scale", args = list(plateau = 6)
+  )
+  other <- .boot_plateau_case(wide)
+  other_fit <- alloc_memo("bootstrap_fit_plateau_wide", alloc_count_fit(other))
+  expect_error(.run_allocation_bootstrap(other$model, other_fit, observation, other$scenario,
+    seed = 603L, checkpoint = path, attempts = 3L), "checkpoint does not match")
+})
+
+test_that("a (sigma, v0) model keeps the names and order of its tables", {
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  observation <- alloc_bootstrap_observation()
+  supply <- f$supply
+  supply[2] <- supply[2] * 1.2
+  scenario <- clm_allocation(prepare_allocation(f$demand, supply, f$distance,
+    metadata = f$inputs$input_metadata), fit_v0 = TRUE)
+  run <- .run_allocation_bootstrap(f$model, fit, observation, scenario, seed = 11L, attempts = 2L)
+  # The column vectors the bootstrap produced before parameters came from the model.
+  expect_identical(names(run$draws), c("attempt", "seed", "status", "success", "sigma", "v0",
+    "boundary", "best_start", "loss", "score_norm", "regional_rho", "delta_contacts",
+    "regional_A"))
+  expect_identical(names(run$starts), c("start", "loss", "eligible", "optim_convergence",
+    "solver_converged", "residual", "seconds", "boundary", "status", "optim_message",
+    "solver_message", "log_parameter_gap", "loss_gap", "sigma", "v0", "score_norm", "rank",
+    "warnings", "errors", "attempt"))
+  expect_identical(names(run$original$theta), c("sigma", "v0"))
+  expect_identical(run$intervals$quantity,
+                   c("sigma", "v0", "regional_rho", "delta_contacts", "regional_A"))
+
+  refused <- bootstrap_allocation(f$model, alloc_failed_search(f, f$y), observation, seed = 44L)
+  expect_identical(refused$original$theta, c(sigma = NA_real_, v0 = NA_real_))
+  expect_identical(names(refused$draws), c("attempt", "seed", "status", "success", "sigma",
+    "v0", "boundary", "best_start", "loss", "score_norm", "regional_rho", "regional_A"))
+  expect_equal(nrow(refused$draws), 0)
+
+  errored <- testthat::with_mocked_bindings(
+    .run_allocation_bootstrap(f$model, fit, observation, seed = 12L, attempts = 1L),
+    .allocation_case_fit = function(...) stop("injected fit error"))
+  expect_identical(names(errored$draws), names(refused$draws))
+  expect_identical(errored$draws$sigma, NA_real_)
+  expect_identical(errored$draws$v0, NA_real_)
+  expect_identical(names(errored$starts), c("start", "loss", "eligible", "optim_convergence",
+    "solver_converged", "residual", "seconds", "boundary", "status", "optim_message",
+    "solver_message", "loss_gap", "log_parameter_gap", "sigma", "v0", "score_norm", "rank",
+    "warnings", "errors", "attempt"))
 })

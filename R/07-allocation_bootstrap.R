@@ -53,10 +53,20 @@
 .allocation_bootstrap_model <- function(model) {
   .check_allocation_model(model)
   spec <- model$metadata$spec
-  if (!identical(spec$family, "gaussian") || !isTRUE(spec$fit_v0) ||
-      isTRUE(spec$fit_beta) || !identical(model$theta$names, c("sigma", "v0")) ||
-      spec$kappa != 1 || spec$beta != 1) {
-    stop("bootstrap requires Gaussian static CLM with fitted sigma/v0 and kappa = beta = 1")
+  # Any built-in kernel or a declared kernel that is smooth in sigma; v0 must be
+  # fitted, beta may be fixed or fitted, and any fixed kappa/beta is allowed (the
+  # model declaration already requires both to be positive).
+  if (!isTRUE(spec$fit_v0)) {
+    stop("bootstrap requires a fitted outside mass (fit_v0 = TRUE)")
+  }
+  kernel <- spec[["kernel", exact = TRUE]]
+  smooth_kernel <- if (is.null(kernel)) spec$family %in% .decay_builtin_families else
+    isTRUE(kernel$smooth)
+  if (!smooth_kernel) {
+    stop("bootstrap requires a decay kernel that is smooth in sigma")
+  }
+  if (!identical(model$theta$names, .huff_theta_contract(TRUE, spec$fit_beta)$names)) {
+    stop("bootstrap requires the model parameters to match its specification")
   }
   s <- model$substrate
   .chck_class(s, "ae_prepared_inputs", "model inputs")
@@ -132,7 +142,7 @@
   singular <- if (nrow(JW)) svd(JW, nu = 0, nv = 0)$d else numeric()
   largest <- if (length(singular)) max(singular) else 0
   result$rank <- if (largest > 0) sum(singular > largest * 1e-4) else 0L
-  result$singular_ratio <- if (length(singular) == 2L && largest > 0)
+  result$singular_ratio <- if (length(singular) == length(theta) && largest > 0)
     min(singular) / largest else 0
   gradient <- as.numeric(crossprod(J[positive, , drop = FALSE],
     w[positive] * (1 - y[positive] / mu[positive])))
@@ -146,8 +156,14 @@
   result
 }
 
+# A parameter vector of missing values, named by the model's parameters.
+.allocation_bootstrap_na_theta <- function(parameters) {
+  stats::setNames(rep(NA_real_, length(parameters)), parameters)
+}
+
 .allocation_case_fit <- function(model, observed, starts, lower, upper, weights, eps = 1e-9) {
   ids <- model$substrate$facility_ids
+  parameters <- model$theta$names
   observed <- .allocation_bootstrap_align(observed, ids, "observed")
   weights <- .allocation_bootstrap_align(weights, ids, "weights")
   search <- .fit_problem_multistart(model, observed, starts, lower, upper,
@@ -155,7 +171,7 @@
     loss_grad = .allocation_case_gradient, loss_args = list(weights = as.numeric(weights), eps = eps),
     gradient = TRUE, control = .allocation_bootstrap_settings()$control)
   table <- search$table
-  table$sigma <- search$theta[, "sigma"]; table$v0 <- search$theta[, "v0"]
+  for (parameter in parameters) table[[parameter]] <- search$theta[, parameter]
   table$score_norm <- NA_real_; table$rank <- NA_integer_
   table$warnings <- vapply(search$warnings, paste, character(1), collapse = " | ")
   table$errors <- vapply(search$errors, function(x) if (is.null(x)) "" else x, character(1))
@@ -175,8 +191,9 @@
   }
   eligible <- which(table$eligible)
   if (!length(eligible)) return(list(success = FALSE, status = "fit_failed",
-    theta = c(sigma = NA_real_, v0 = NA_real_), loss = NA_real_, best_start = NA_character_,
-    boundary = NA, score_norm = NA_real_, rank = NA_integer_, table = table))
+    theta = .allocation_bootstrap_na_theta(parameters), loss = NA_real_,
+    best_start = NA_character_, boundary = NA, score_norm = NA_real_,
+    rank = NA_integer_, table = table))
   best <- eligible[which.min(table$loss[eligible])]
   list(success = TRUE, status = "selected", theta = search$theta[best, ],
     loss = table$loss[best], best_start = table$start[best], boundary = table$boundary[best],
@@ -189,7 +206,8 @@
   if (!isTRUE(base$converged)) stop("baseline evaluation did not converge")
   contacts <- sum(base$outputs$utilization)
   need <- sum(model$substrate$D_active)
-  values <- c(sigma = unname(theta["sigma"]), v0 = unname(theta["v0"]),
+  parameters <- model$theta$names
+  values <- c(stats::setNames(unname(theta[parameters]), parameters),
     regional_rho = contacts / need)
   if (!is.null(scenario)) {
     changed <- .solve_problem(scenario, theta, keep_history = FALSE, warn = FALSE,
@@ -237,12 +255,14 @@
   }
   settings <- .allocation_bootstrap_settings()
   ids <- model$substrate$facility_ids
-  point <- stats::setNames(rep(NA_real_, 3L + !is.null(scenario)),
-    c("sigma", "v0", "regional_rho", if (!is.null(scenario)) "delta_contacts"))
+  parameters <- model$theta$names
+  point <- stats::setNames(rep(NA_real_, length(parameters) + 1L + !is.null(scenario)),
+    c(parameters, "regional_rho", if (!is.null(scenario)) "delta_contacts"))
   supported <- colSums(is.finite(model$substrate$distance_active)) > 0
   point <- c(point, regional_A = sum(model$substrate$S[supported, , drop = FALSE]) /
     sum(model$substrate$D_active))
-  original <- list(status = "original_fit_failed", theta = c(sigma = NA_real_, v0 = NA_real_),
+  original <- list(status = "original_fit_failed",
+    theta = .allocation_bootstrap_na_theta(parameters),
     score_norm = NA_real_, rank = NA_integer_, boundary = NA)
   if (is.null(fit$best)) return(list(model = model, scenario = scenario, observation = observation,
     original = original, point = point, observed = NULL, eps = 1e-9, settings = settings))
@@ -294,7 +314,7 @@
     original$status <- if (d$status == "incompatible_zero_mean" ||
       d$status == "nonregular_mean_or_loss_floor") d$status else
       if (!identical(d$status, "eligible")) "original_score_failed" else
-      if (d$rank < 2L) "original_unidentified" else
+      if (d$rank < length(theta)) "original_unidentified" else
       if (d$boundary) "original_mean_boundary" else "eligible"
   }
   list(model = model, scenario = scenario, observation = observation,
@@ -302,11 +322,14 @@
     starts = fit$starts, lower = lower, upper = upper)
 }
 
-.allocation_bootstrap_empty_draws <- function(quantities) {
-  x <- data.frame(attempt = integer(), seed = integer(), status = character(), success = logical(),
-    sigma = numeric(), v0 = numeric(), boundary = logical(), best_start = character(),
-    loss = numeric(), score_norm = numeric(), stringsAsFactors = FALSE)
-  for (q in setdiff(quantities, c("sigma", "v0"))) x[[q]] <- numeric()
+# `parameters` are the model's parameter names; their columns follow `success`.
+.allocation_bootstrap_empty_draws <- function(quantities, parameters) {
+  x <- do.call(data.frame, c(
+    list(attempt = integer(), seed = integer(), status = character(), success = logical()),
+    stats::setNames(rep(list(numeric()), length(parameters)), parameters),
+    list(boundary = logical(), best_start = character(), loss = numeric(),
+         score_norm = numeric(), stringsAsFactors = FALSE)))
+  for (q in setdiff(quantities, parameters)) x[[q]] <- numeric()
   x
 }
 
@@ -325,16 +348,19 @@
   unname(tools::md5sum(path))
 }
 
-.allocation_bootstrap_failed_table <- function(starts, message) {
-  data.frame(start = rownames(starts), loss = NA_real_, eligible = FALSE,
-    optim_convergence = NA_integer_, solver_converged = FALSE, residual = NA_real_,
-    seconds = NA_real_, boundary = NA, status = "error", optim_message = NA_character_,
-    solver_message = NA_character_, loss_gap = NA_real_, log_parameter_gap = NA_real_,
-    sigma = NA_real_, v0 = NA_real_, score_norm = NA_real_, rank = NA_integer_,
-    warnings = "", errors = message, stringsAsFactors = FALSE)
+.allocation_bootstrap_failed_table <- function(starts, message, parameters) {
+  do.call(data.frame, c(
+    list(start = rownames(starts), loss = NA_real_, eligible = FALSE,
+      optim_convergence = NA_integer_, solver_converged = FALSE, residual = NA_real_,
+      seconds = NA_real_, boundary = NA, status = "error", optim_message = NA_character_,
+      solver_message = NA_character_, loss_gap = NA_real_, log_parameter_gap = NA_real_),
+    as.list(.allocation_bootstrap_na_theta(parameters)),
+    list(score_norm = NA_real_, rank = NA_integer_, warnings = "", errors = message,
+      stringsAsFactors = FALSE)))
 }
 
 .allocation_bootstrap_record <- function(context, fit, weights, attempt, seed) {
+  parameters <- context$model$theta$names
   values <- stats::setNames(rep(NA_real_, length(context$point)), names(context$point))
   status <- fit$status; success <- isTRUE(fit$success)
   if (success) {
@@ -344,18 +370,19 @@
       success <- FALSE; status <- paste0("evaluation_failed: ", conditionMessage(q))
     } else values <- q
   }
-  draw <- data.frame(attempt = attempt, seed = seed, status = status, success = success,
-    sigma = unname(fit$theta["sigma"]), v0 = unname(fit$theta["v0"]),
-    boundary = fit$boundary, best_start = fit$best_start, loss = fit$loss,
-    score_norm = fit$score_norm, stringsAsFactors = FALSE)
-  for (q in setdiff(names(values), c("sigma", "v0"))) draw[[q]] <- unname(values[q])
+  draw <- do.call(data.frame, c(
+    list(attempt = attempt, seed = seed, status = status, success = success),
+    as.list(stats::setNames(unname(fit$theta[parameters]), parameters)),
+    list(boundary = fit$boundary, best_start = fit$best_start, loss = fit$loss,
+      score_norm = fit$score_norm, stringsAsFactors = FALSE)))
+  for (q in setdiff(names(values), parameters)) draw[[q]] <- unname(values[q])
   table <- fit$table; table$attempt <- rep(attempt, nrow(table))
   list(draw = draw, starts = table, multiplicities = weights)
 }
 
 .allocation_bootstrap_result <- function(context, records, seed, attempts, reason = NULL) {
   draws <- if (length(records)) do.call(rbind, lapply(records, `[[`, "draw")) else
-    .allocation_bootstrap_empty_draws(names(context$point))
+    .allocation_bootstrap_empty_draws(names(context$point), context$model$theta$names)
   starts <- if (length(records)) do.call(rbind, lapply(records, `[[`, "starts")) else data.frame()
   multiplicities <- if (length(records)) do.call(rbind, lapply(records, `[[`, "multiplicities")) else
     matrix(integer(), nrow = 0L, ncol = length(context$model$substrate$facility_ids),
@@ -457,9 +484,11 @@
         reason <- "interrupted before attempt completed"; break
       }
       if (inherits(outcome, "error")) outcome <- list(success = FALSE,
-        status = paste0("fit_error: ", conditionMessage(outcome)), theta = c(sigma = NA_real_, v0 = NA_real_),
+        status = paste0("fit_error: ", conditionMessage(outcome)),
+        theta = .allocation_bootstrap_na_theta(context$model$theta$names),
         loss = NA_real_, best_start = NA_character_, boundary = NA, score_norm = NA_real_,
-        table = .allocation_bootstrap_failed_table(context$starts, conditionMessage(outcome)))
+        table = .allocation_bootstrap_failed_table(context$starts, conditionMessage(outcome),
+          context$model$theta$names))
       record <- .allocation_bootstrap_record(context, outcome, weights, as.integer(b), seed + b)
       records[[b]] <- record
       if (!is.null(checkpoint)) {
@@ -478,29 +507,48 @@
   .allocation_bootstrap_result(context, records, seed, attempts, reason)
 }
 
-#' Conditional facility-case bootstrap for a fitted Gaussian allocation
+#' Conditional facility-case bootstrap for a fitted allocation
 #'
 #' This experimental operation runs separately from fitting. It resamples facility
 #' observation multiplicities, retaining every physical facility and its supply
 #' in the allocation network. Need, travel, capacity and included-network inputs
 #' remain fixed. Facility independence is a caller-declared working assumption.
 #'
+#' The model is a static CLM with a fitted outside mass (`fit_v0 = TRUE`) and a
+#' decay kernel that is smooth in sigma: the Gaussian, exponential or power
+#' kernel, or a kernel declared with [decay_kernel()] (not with
+#' `smooth = FALSE`). The supply elasticity beta may be fixed or fitted. Every
+#' fitted parameter gets its own interval.
+#'
 #' Exactly 399 attempts use the original explicit starts and positive bounds,
 #' with fixed numerical controls. Failed attempts are retained without replacement.
 #' Successful inner boundary estimates remain in the distribution. Original mean
-#' boundaries, local rank deficiency or insufficient fit precision refuse intervals;
+#' boundaries, local rank deficiency (fewer identified directions than fitted
+#' parameters) or insufficient fit precision refuse intervals;
 #' percentile intervals require a complete run of 399 attempts and at least
 #' 380 finite successful values per quantity. Incomplete results retain their
 #' point estimates and diagnostics but withhold intervals.
-#' Coverage validation in generated 80-origin/40-facility designs under tested
-#' fixed-input laws is not a universal guarantee of exact 95 percent coverage
-#' or validation of an application's observation law.
+#' Coverage was evaluated for Gaussian decay with fitted sigma and v0, in
+#' generated 80-origin/40-facility designs under tested fixed-input laws; other
+#' kernels and a fitted beta use the same procedure without a separate coverage
+#' study. Coverage validation is not a universal guarantee of exact 95 percent
+#' coverage or validation of an application's observation law.
 #'
-#' @param model A checked Gaussian static CLM with fitted sigma and v0,
-#'   kappa=beta=1, and known travel on its retained demand support.
+#' A facility with positive supply, a known finite travel time on retained
+#' demand support and a modeled mean of exactly zero is treated as nonregular,
+#' so the original fit is refused and no intervals are available. This happens
+#' when the kernel is exactly zero at every finite travel time of such a
+#' facility, as a cutoff or bisquare kernel can be beyond its range, and also
+#' when Gaussian weights underflow to zero.
+#'
+#' @param model A checked static CLM from [clm_allocation()] with a fitted
+#'   outside mass (`fit_v0 = TRUE`), a decay kernel that is smooth in sigma (built
+#'   in, or declared with [decay_kernel()] and `smooth = TRUE`), and known travel
+#'   on its retained demand support. The supply elasticity beta may be fixed or
+#'   fitted; `kappa` and a fixed `beta` may be any positive values.
 #' @param fit A matching multistart fit of complete whole facility counts using
 #'   the unweighted built-in Poisson objective. Fractional or partial observations,
-#'   flow targets, other kernels and custom objectives are outside this method.
+#'   flow targets and custom objectives are outside this method.
 #' @param observation Named list declaring nonblank `event`, `period` (including
 #'   an explicit unresolved reference date), and `sampling="independent_facilities"`.
 #'   Non-overlapping registration alone does not establish independence.
@@ -513,7 +561,8 @@
 #'   Completed failures are never retried; incomplete runs retain actual counts.
 #' @return An `ae_allocation_bootstrap` with compact draws, multiplicities, all
 #'   start diagnostics, assumptions, failure reasons and conditional percentile
-#'   intervals for sigma, v0, regional contact and optional paired change in modeled
+#'   intervals for each fitted parameter (sigma, v0 and, when fitted, beta),
+#'   regional contact and optional paired change in modeled
 #'   contacts. Regional attributed capacity per need is a fixed-input identity
 #'   without an interval: it includes supply with at least one known finite edge
 #'   on retained demand support. Unsupported positive supply is disclosed in

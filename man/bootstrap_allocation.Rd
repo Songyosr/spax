@@ -2,7 +2,7 @@
 % Please edit documentation in R/07-allocation_bootstrap.R
 \name{bootstrap_allocation}
 \alias{bootstrap_allocation}
-\title{Conditional facility-case bootstrap for a fitted Gaussian allocation}
+\title{Conditional facility-case bootstrap for a fitted allocation}
 \usage{
 bootstrap_allocation(
   model,
@@ -14,12 +14,15 @@ bootstrap_allocation(
 )
 }
 \arguments{
-\item{model}{A checked Gaussian static CLM with fitted sigma and v0,
-kappa=beta=1, and known travel on its retained demand support.}
+\item{model}{A checked static CLM from \code{\link[=clm_allocation]{clm_allocation()}} with a fitted
+outside mass (\code{fit_v0 = TRUE}), a decay kernel that is smooth in sigma (built
+in, or declared with \code{\link[=decay_kernel]{decay_kernel()}} and \code{smooth = TRUE}), and known travel
+on its retained demand support. The supply elasticity beta may be fixed or
+fitted; \code{kappa} and a fixed \code{beta} may be any positive values.}
 
 \item{fit}{A matching multistart fit of complete whole facility counts using
 the unweighted built-in Poisson objective. Fractional or partial observations,
-flow targets, other kernels and custom objectives are outside this method.}
+flow targets and custom objectives are outside this method.}
 
 \item{observation}{Named list declaring nonblank \code{event}, \code{period} (including
 an explicit unresolved reference date), and \code{sampling="independent_facilities"}.
@@ -38,7 +41,8 @@ Completed failures are never retried; incomplete runs retain actual counts.}
 \value{
 An \code{ae_allocation_bootstrap} with compact draws, multiplicities, all
 start diagnostics, assumptions, failure reasons and conditional percentile
-intervals for sigma, v0, regional contact and optional paired change in modeled
+intervals for each fitted parameter (sigma, v0 and, when fitted, beta),
+regional contact and optional paired change in modeled
 contacts. Regional attributed capacity per need is a fixed-input identity
 without an interval: it includes supply with at least one known finite edge
 on retained demand support. Unsupported positive supply is disclosed in
@@ -52,16 +56,32 @@ in the allocation network. Need, travel, capacity and included-network inputs
 remain fixed. Facility independence is a caller-declared working assumption.
 }
 \details{
+The model is a static CLM with a fitted outside mass (\code{fit_v0 = TRUE}) and a
+decay kernel that is smooth in sigma: the Gaussian, exponential or power
+kernel, or a kernel declared with \code{\link[=decay_kernel]{decay_kernel()}} (not with
+\code{smooth = FALSE}). The supply elasticity beta may be fixed or fitted. Every
+fitted parameter gets its own interval.
+
 Exactly 399 attempts use the original explicit starts and positive bounds,
 with fixed numerical controls. Failed attempts are retained without replacement.
 Successful inner boundary estimates remain in the distribution. Original mean
-boundaries, local rank deficiency or insufficient fit precision refuse intervals;
+boundaries, local rank deficiency (fewer identified directions than fitted
+parameters) or insufficient fit precision refuse intervals;
 percentile intervals require a complete run of 399 attempts and at least
 380 finite successful values per quantity. Incomplete results retain their
 point estimates and diagnostics but withhold intervals.
-Coverage validation in generated 80-origin/40-facility designs under tested
-fixed-input laws is not a universal guarantee of exact 95 percent coverage
-or validation of an application's observation law.
+Coverage was evaluated for Gaussian decay with fitted sigma and v0, in
+generated 80-origin/40-facility designs under tested fixed-input laws; other
+kernels and a fitted beta use the same procedure without a separate coverage
+study. Coverage validation is not a universal guarantee of exact 95 percent
+coverage or validation of an application's observation law.
+
+A facility with positive supply, a known finite travel time on retained
+demand support and a modeled mean of exactly zero is treated as nonregular,
+so the original fit is refused and no intervals are available. This happens
+when the kernel is exactly zero at every finite travel time of such a
+facility, as a cutoff or bisquare kernel can be beyond its range, and also
+when Gaussian weights underflow to zero.
 }
 \seealso{
 Other experimental allocation workflow: 
