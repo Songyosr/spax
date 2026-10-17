@@ -185,6 +185,82 @@
   )
 }
 
+# The facility table of an FCA result: the facility IDs and their supply
+# measures, in the order of `supply`. A data frame gives its `id_col` and
+# `supply_cols`; a matrix gives its row names (or facility_1, ...); a vector
+# gives its names.
+.fca_facility_table <- function(supply, id_col, supply_cols) {
+  if (is.data.frame(supply)) {
+    data.frame(
+      id = supply[[id_col]],
+      supply[supply_cols]
+    )
+  } else if (is.matrix(supply)) {
+    data.frame(
+      id = rownames(supply) %||% paste0("facility_", seq_len(nrow(supply))),
+      as.data.frame(supply)
+    )
+  } else {
+    data.frame(
+      id = names(supply) %||% paste0("facility_", seq_along(supply)),
+      supply = supply
+    )
+  }
+}
+
+# Decay weights for one decay_params list, computed as in spax_e2sfca().
+.fca_decay_weights <- function(distance, params, snap) {
+  do.call(calc_decay, c(list(distance = distance), params, list(snap = snap)))
+}
+
+# selection_params has the form of decay_params: a list with a decay method.
+.chck_selection_params <- function(selection_params) {
+  .chck_class(selection_params, "list", "selection_params")
+  if (is.null(selection_params$method)) {
+    stop("selection_params must include 'method'")
+  }
+  invisible(TRUE)
+}
+
+# The attractiveness of Huff-2SFCA, one value per facility in the order of the
+# distance layers, named by facility ID. NULL takes the supply measure, which
+# must then be a single one. A supplied named vector is matched to the layer
+# names and an unnamed one follows the layer order. Matching always applies;
+# `snap` skips only the checks of type, length and value.
+.fca_attractiveness <- function(attractiveness, supply, distance,
+                                id_col, supply_cols, snap) {
+  ids <- names(distance)
+  if (is.null(attractiveness)) {
+    values <- .help_process_supply(
+      supply, id_col, supply_cols, weight_ids = ids
+    )$values
+    if (ncol(values) != 1L) {
+      stop("give attractiveness when supply has several measures")
+    }
+    values <- values[, 1]
+    label <- "the supply measure used as attractiveness"
+  } else {
+    if (!snap) {
+      .chck_numeric_vector(attractiveness, "attractiveness", finite = FALSE)
+      .chck_lengths_match(length(attractiveness), nlyr(distance),
+                          "attractiveness", "distance layers")
+    }
+    values <- attractiveness
+    if (!is.null(names(values))) {
+      if (anyDuplicated(names(values)) || !setequal(names(values), ids)) {
+        stop("names of attractiveness must be the distance layer names, ",
+             "one for each facility")
+      }
+      values <- values[match(ids, names(values))]
+    }
+    label <- "attractiveness"
+  }
+  if (!snap && (!all(is.finite(values)) || any(values < 0))) {
+    stop(label, " must contain only finite, nonnegative values")
+  }
+  setNames(as.numeric(values), ids)
+}
+
 #' Calculate spatial accessibility using weighted surfaces
 #'
 #' @description
@@ -381,22 +457,7 @@ spax_e2sfca <- function(demand, supply, distance,
   result <- .fca_result_raster(result)
 
   # Process facility information
-  if (is.data.frame(supply)) {
-    facilities <- data.frame(
-      id = supply[[id_col]],
-      supply[supply_cols]
-    )
-  } else if (is.matrix(supply)) {
-    facilities <- data.frame(
-      id = rownames(supply) %||% paste0("facility_", seq_len(nrow(supply))),
-      as.data.frame(supply)
-    )
-  } else {
-    facilities <- data.frame(
-      id = names(supply) %||% paste0("facility_", seq_along(supply)),
-      supply = supply
-    )
-  }
+  facilities <- .fca_facility_table(supply, id_col, supply_cols)
 
   # Create spax object
   .create_spax(
@@ -474,22 +535,7 @@ spax_m2sfca <- function(demand, supply, distance,
   result <- .fca_result_raster(result)
 
   # Process facility information
-  if (is.data.frame(supply)) {
-    facilities <- data.frame(
-      id = supply[[id_col]],
-      supply[supply_cols]
-    )
-  } else if (is.matrix(supply)) {
-    facilities <- data.frame(
-      id = rownames(supply) %||% paste0("facility_", seq_len(nrow(supply))),
-      as.data.frame(supply)
-    )
-  } else {
-    facilities <- data.frame(
-      id = names(supply) %||% paste0("facility_", seq_along(supply)),
-      supply = supply
-    )
-  }
+  facilities <- .fca_facility_table(supply, id_col, supply_cols)
 
   # Create spax object
   .create_spax(
@@ -632,4 +678,381 @@ spax_2sfca <- function(demand, supply, distance, threshold,
   # Update type while preserving other components
   result$type <- "2SFCA"
   return(result)
+}
+
+#' Calculate Three-Step Floating Catchment Area (3SFCA) accessibility scores
+#'
+#' @description
+#' This experimental function implements the three-step floating catchment area
+#' (3SFCA) method of Wan, Zou and Sternberg (2012). A selection step precedes
+#' the two steps of \code{\link{spax_e2sfca}}: it divides the demand at each
+#' origin among the facilities with selection weights that sum to 1 at the
+#' origin. A facility then gathers only its share of the demand at each origin,
+#' and its supply-to-demand ratio is spread back to the origins with the same
+#' shares.
+#'
+#' @inheritParams spax_e2sfca
+#' @param decay_params List of parameters for the decay weights used in both
+#'        steps:
+#'        \itemize{
+#'          \item method: "gaussian", "exponential", "power" or "binary", a
+#'            custom decay function, or a kernel declared with
+#'            \code{\link{decay_kernel}}
+#'          \item sigma: decay parameter controlling the rate of distance decay
+#'          \item Additional parameters passed to custom decay functions
+#'        }
+#' @param selection_params List of parameters, in the form of
+#'        \code{decay_params}, for the decay weights that the selection weights
+#'        are built from. The default is \code{decay_params}, so one decay both
+#'        weights distance and selects facilities; give a different list to
+#'        select with another decay.
+#' @return A spax object (see \code{\link{spax_e2sfca}}) whose \code{type} is
+#'         "3SFCA". Its \code{parameters} are the named list
+#'         \code{decay_params}, \code{selection_params}.
+#'
+#' @details
+#' Write \eqn{D_i} for the demand at origin \eqn{i}, \eqn{S_j} for the supply of
+#' facility \eqn{j}, \eqn{W_{ij}}{W_ij} for the decay weights from
+#' \code{decay_params} and \eqn{T_{ij}}{T_ij} for the decay weights from
+#' \code{selection_params}. The two are the same weights when
+#' \code{selection_params} is identical to \code{decay_params}.
+#' \itemize{
+#'   \item Selection weights:
+#'     \eqn{G_{ij} = T_{ij} / \sum_k T_{ik}}{G_ij = T_ij / sum_k T_ik}.
+#'   \item Ratio of facility \eqn{j}:
+#'     \eqn{R_j = S_j / \sum_i D_i W_{ij} G_{ij}}{R_j = S_j / sum_i D_i W_ij
+#'     G_ij}.
+#'   \item Accessibility of origin \eqn{i}:
+#'     \eqn{A_i = \sum_j R_j W_{ij} G_{ij}}{A_i = sum_j R_j W_ij G_ij}.
+#' }
+#'
+#' Both steps use the kernel \eqn{K_{ij} = W_{ij} G_{ij}}{K_ij = W_ij G_ij}.
+#' The result equals \code{compute_access(demand, supply, demand_weights = K,
+#' access_weights = K)} with \code{K = W * calc_choice(T)}. There is no
+#' \code{demand_normalize} argument: the selection weights already divide the
+#' demand of each origin among the facilities.
+#'
+#' The selection weights are normalized over every facility with a positive
+#' weight at the origin, however far away it is. To restrict the selection to a
+#' catchment, set the travel times beyond the limit to \code{NA} or \code{Inf}
+#' before calling the function, or use a decay method that is zero beyond it,
+#' for example \code{method = "binary"} in \code{selection_params}.
+#'
+#' Because both steps use the same kernel, the scores conserve supply: the sum
+#' of \eqn{D_i A_i} over the origins with demand and a score equals the total
+#' supply of the facilities that gather demand
+#' (\eqn{\sum_i D_i K_{ij} > 0}{sum_i D_i K_ij > 0}). A facility that gathers no
+#' demand has a ratio of zero. Several supply measures give independent
+#' accessibility layers.
+#'
+#' @references
+#' Wan, N., Zou, B., & Sternberg, T. (2012). A three-step floating catchment
+#' area method for analyzing spatial access to health services.
+#' \emph{International Journal of Geographical Information Science},
+#' \emph{26}(6), 1073-1089. \doi{10.1080/13658816.2011.624987}
+#'
+#' @examples
+#' # Load example data
+#' library(terra)
+#' library(sf)
+#'
+#' # Cornwall population grid and travel time to each GP practice
+#' pop_rast <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#'
+#' # Drop geometry for supply data
+#' gp <- cornwall_gp |> st_drop_geometry()
+#'
+#' # 3SFCA with Gaussian decay; the same decay gives the selection weights
+#' result <- spax_3sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(
+#'     method = "gaussian",
+#'     sigma = 10 # 10-minute characteristic travel time
+#'   ),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' plot(result$accessibility, main = "GP Accessibility (3SFCA)")
+#'
+#' # Select among the practices within 15 minutes only
+#' result_15 <- spax_3sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   selection_params = list(method = "binary", sigma = 15),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#'
+#' # Plot both for comparison
+#' plot(c(result$accessibility, result_15$accessibility),
+#'   main = c("Selection by decay", "Selection within 15 minutes")
+#' )
+#'
+#' @seealso
+#' \code{\link{spax_huff2sfca}} for selection weights that also depend on
+#' facility attractiveness, \code{\link{spax_e2sfca}},
+#' \code{\link{spax_m2sfca}}, \code{\link{compute_access}},
+#' \code{\link{calc_decay}}, \code{\link{calc_choice}} and
+#' \code{\link{decay_kernel}}.
+#' \code{vignette("fca-methods", package = "spax")} compares the FCA methods on
+#' the Cornwall data.
+#'
+#' @export
+spax_3sfca <- function(demand, supply, distance,
+                       decay_params = list(method = "gaussian", sigma = 30),
+                       selection_params = decay_params,
+                       id_col = NULL, supply_cols = NULL,
+                       indicator_names = NULL,
+                       snap = FALSE) {
+  # Validation (3SFCA takes the inputs of E2SFCA, without normalization)
+  if (!snap) {
+    .chck_e2sfca(
+      demand, supply, distance, decay_params,
+      "identity", id_col, supply_cols
+    )
+    .chck_selection_params(selection_params)
+  }
+
+  # Decay weights W, and the weights T the selection weights are built from
+  weights <- .fca_decay_weights(distance, decay_params, snap)
+  selection <- if (identical(selection_params, decay_params)) {
+    weights
+  } else {
+    .fca_decay_weights(distance, selection_params, snap)
+  }
+
+  # Selection weights G: the weights T of each origin divided by their sum.
+  # Both steps use the kernel K = W * G.
+  kernel <- weights * calc_choice(selection, snap = snap)
+
+  result <- compute_fca(
+    demand = demand,
+    supply = supply,
+    demand_kernel = kernel,
+    access_kernel = kernel,
+    demand_normalize = "identity",
+    id_col = id_col,
+    supply_cols = supply_cols,
+    indicator_names = indicator_names,
+    snap = snap
+  )
+  result <- .fca_result_raster(result)
+
+  # Process facility information
+  facilities <- .fca_facility_table(supply, id_col, supply_cols)
+
+  # Create spax object
+  .create_spax(
+    accessibility = result,
+    type = "3SFCA",
+    parameters = list(
+      decay_params = decay_params,
+      selection_params = selection_params
+    ),
+    facilities = facilities,
+    call = match.call(),
+    snap = snap
+  )
+}
+
+#' Calculate Huff-model Two-Step Floating Catchment Area (Huff-2SFCA) scores
+#'
+#' @description
+#' This experimental function implements a floating catchment area method in
+#' which the selection weights of \code{\link{spax_3sfca}} are replaced by a
+#' Huff selection probability, following Luo (2014). The probability that an
+#' origin selects a facility uses the attractiveness of the facilities and a
+#' distance decay, so a more attractive facility gathers a larger share of the
+#' demand at each origin.
+#'
+#' @inheritParams spax_3sfca
+#' @param attractiveness Numeric vector of facility attractiveness with one
+#'        finite, nonnegative value per facility. A named vector is matched to
+#'        the layer names of \code{distance}; an unnamed vector follows the
+#'        order of the layers. The default, \code{NULL}, uses the supply
+#'        measure, which requires \code{supply} to have exactly one measure;
+#'        give \code{attractiveness} when it has several.
+#' @param alpha Nonnegative number: the exponent of attractiveness in the
+#'        selection probability. With \code{alpha = 0} attractiveness has no
+#'        effect and the result equals \code{\link{spax_3sfca}}.
+#' @return A spax object (see \code{\link{spax_e2sfca}}) whose \code{type} is
+#'         "Huff-2SFCA". Its \code{parameters} are the named list
+#'         \code{decay_params}, \code{selection_params},
+#'         \code{attractiveness} (the numeric vector in the order of the
+#'         distance layers, named by facility ID) and \code{alpha}.
+#'
+#' @details
+#' Write \eqn{D_i} for the demand at origin \eqn{i}, \eqn{S_j} for the supply of
+#' facility \eqn{j}, \eqn{a_j} for its attractiveness, \eqn{W_{ij}}{W_ij} for
+#' the decay weights from \code{decay_params} and \eqn{T_{ij}}{T_ij} for the
+#' decay weights from \code{selection_params}. The two are the same weights when
+#' \code{selection_params} is identical to \code{decay_params}.
+#' \itemize{
+#'   \item Selection probabilities:
+#'     \eqn{G_{ij} = a_j^\alpha T_{ij} / \sum_k a_k^\alpha T_{ik}}{G_ij =
+#'     a_j^alpha T_ij / sum_k a_k^alpha T_ik}.
+#'   \item Ratio of facility \eqn{j}:
+#'     \eqn{R_j = S_j / \sum_i D_i W_{ij} G_{ij}}{R_j = S_j / sum_i D_i W_ij
+#'     G_ij}.
+#'   \item Accessibility of origin \eqn{i}:
+#'     \eqn{A_i = \sum_j R_j W_{ij} G_{ij}}{A_i = sum_j R_j W_ij G_ij}.
+#' }
+#'
+#' The structure is that of \code{\link{spax_3sfca}}, to which the method
+#' reduces when \code{alpha = 0} (a facility with zero attractiveness then
+#' counts as 1, since \eqn{0^0 = 1}{0^0 = 1}). Both steps use the kernel
+#' \eqn{K_{ij} = W_{ij} G_{ij}}{K_ij = W_ij G_ij}, and the result equals
+#' \code{compute_access(demand, supply, demand_weights = K, access_weights = K)}
+#' with \code{K = W * calc_choice(T, attractiveness, alpha)}. A facility with
+#' zero attractiveness is never selected when \code{alpha} is positive. There is
+#' no \code{demand_normalize} argument: the selection probabilities already
+#' divide the demand of each origin among the facilities.
+#'
+#' The probabilities are normalized over every facility with a positive weight
+#' at the origin, however far away it is. To restrict the selection to a
+#' catchment, set the travel times beyond the limit to \code{NA} or \code{Inf}
+#' before calling the function, or use a decay method that is zero beyond it,
+#' for example \code{method = "binary"} in \code{selection_params}.
+#'
+#' Because both steps use the same kernel, the scores conserve supply: the sum
+#' of \eqn{D_i A_i} over the origins with demand and a score equals the total
+#' supply of the facilities that gather demand
+#' (\eqn{\sum_i D_i K_{ij} > 0}{sum_i D_i K_ij > 0}). A facility that gathers no
+#' demand has a ratio of zero. Several supply measures give independent
+#' accessibility layers that share one attractiveness.
+#'
+#' @references
+#' Luo, J. (2014). Integrating the Huff model and floating catchment area
+#' methods to analyze spatial access to healthcare services.
+#' \emph{Transactions in GIS}, \emph{18}(3), 436-448.
+#' \doi{10.1111/tgis.12096}
+#'
+#' Wan, N., Zou, B., & Sternberg, T. (2012). A three-step floating catchment
+#' area method for analyzing spatial access to health services.
+#' \emph{International Journal of Geographical Information Science},
+#' \emph{26}(6), 1073-1089. \doi{10.1080/13658816.2011.624987}
+#'
+#' @examples
+#' # Load example data
+#' library(terra)
+#' library(sf)
+#'
+#' # Cornwall population grid and travel time to each GP practice
+#' pop_rast <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#'
+#' # Drop geometry for supply data
+#' gp <- cornwall_gp |> st_drop_geometry()
+#'
+#' # Attractiveness defaults to the supply measure (GP FTE excluding trainees)
+#' result <- spax_huff2sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' plot(result$accessibility, main = "GP Accessibility (Huff-2SFCA)")
+#'
+#' # Another attractiveness, named by practice, with a stronger effect
+#' result_gp <- spax_huff2sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   attractiveness = setNames(gp$gp_fte, gp$practice), # all GPs
+#'   alpha = 2,
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#'
+#' # Plot both for comparison
+#' plot(c(result$accessibility, result_gp$accessibility),
+#'   main = c("Attractiveness = supply", "All GPs, alpha = 2")
+#' )
+#'
+#' @seealso
+#' \code{\link{spax_3sfca}} for selection weights that do not depend on
+#' attractiveness, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+#' \code{\link{compute_access}}, \code{\link{calc_decay}},
+#' \code{\link{calc_choice}} and \code{\link{decay_kernel}}.
+#' \code{vignette("fca-methods", package = "spax")} compares the FCA methods on
+#' the Cornwall data.
+#'
+#' @export
+spax_huff2sfca <- function(demand, supply, distance,
+                           decay_params = list(method = "gaussian", sigma = 30),
+                           selection_params = decay_params,
+                           attractiveness = NULL, alpha = 1,
+                           id_col = NULL, supply_cols = NULL,
+                           indicator_names = NULL,
+                           snap = FALSE) {
+  # Validation (Huff-2SFCA takes the inputs of E2SFCA, without normalization)
+  if (!snap) {
+    .chck_e2sfca(
+      demand, supply, distance, decay_params,
+      "identity", id_col, supply_cols
+    )
+    .chck_selection_params(selection_params)
+    .chck_nonnegative_scalar(alpha, "alpha")
+  }
+
+  # Attractiveness in the order of the distance layers, named by facility ID
+  attractiveness <- .fca_attractiveness(
+    attractiveness, supply, distance, id_col, supply_cols, snap
+  )
+
+  # Decay weights W, and the weights T the selection probabilities come from
+  weights <- .fca_decay_weights(distance, decay_params, snap)
+  selection <- if (identical(selection_params, decay_params)) {
+    weights
+  } else {
+    .fca_decay_weights(distance, selection_params, snap)
+  }
+
+  # Selection probabilities G: a^alpha * T of each origin divided by their sum.
+  # Both steps use the kernel K = W * G.
+  kernel <- weights * calc_choice(
+    selection,
+    attractiveness = unname(attractiveness),
+    alpha = alpha,
+    snap = snap
+  )
+
+  result <- compute_fca(
+    demand = demand,
+    supply = supply,
+    demand_kernel = kernel,
+    access_kernel = kernel,
+    demand_normalize = "identity",
+    id_col = id_col,
+    supply_cols = supply_cols,
+    indicator_names = indicator_names,
+    snap = snap
+  )
+  result <- .fca_result_raster(result)
+
+  # Process facility information
+  facilities <- .fca_facility_table(supply, id_col, supply_cols)
+
+  # Create spax object
+  .create_spax(
+    accessibility = result,
+    type = "Huff-2SFCA",
+    parameters = list(
+      decay_params = decay_params,
+      selection_params = selection_params,
+      attractiveness = attractiveness,
+      alpha = alpha
+    ),
+    facilities = facilities,
+    call = match.call(),
+    snap = snap
+  )
 }

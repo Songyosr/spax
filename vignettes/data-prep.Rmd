@@ -346,7 +346,7 @@ workflow](allocation-workflow.html) for what the prepared inputs feed into.
 
 ## Continue
 
-- [Comparing FCA methods](fca-methods.html): E2SFCA, 2SFCA and M2SFCA on
-  these inputs.
+- [Comparing FCA methods](fca-methods.html): E2SFCA, 2SFCA, M2SFCA, 3SFCA and
+  Huff-2SFCA on these inputs.
 - [The E2SFCA calculation step by step](e2sfca-steps.html).
 - [Grid resolution, support and computational cost](grid-resolution.html).

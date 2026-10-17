@@ -141,9 +141,9 @@ the share of people who use a practice, a waiting time or a rate of care.
   every bundled object, and [Preparing your own data](data-prep.html) shows how
   to line up counts, facility IDs and travel times for your own study area.
 - **FCA indices.** [Comparing FCA methods](fca-methods.html) sets E2SFCA beside
-  2SFCA and M2SFCA, [The E2SFCA calculation step by step](e2sfca-steps.html)
-  rebuilds this surface by hand, and [Grid resolution](grid-resolution.html)
-  weighs resolution against cost.
+  2SFCA, M2SFCA, 3SFCA and Huff-2SFCA, [The E2SFCA calculation step by
+  step](e2sfca-steps.html) rebuilds this surface by hand, and [Grid
+  resolution](grid-resolution.html) weighs resolution against cost.
 - **Allocation model.** To model where residents register rather than score
   supply, start with [Choosing an FCA index or an allocation
   model](model-choice.html), then continue to the [allocation
