@@ -3,6 +3,26 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `decay_kernel()` declares a distance decay kernel as plain
+  data: a built-in kernel by name, or your own function of `distance` and
+  `sigma`, kept as exact source text together with a name, a label for what
+  `sigma` means, bounds on `sigma` and fixed extra arguments. The function is
+  run on a grid of distances when it is declared, and one that returns
+  weights that are not finite, nonnegative and non-increasing is refused. A
+  declaration can replace the method string in `calc_decay()` and in the
+  `decay_params` of the FCA functions (`spax_e2sfca()`, `spax_m2sfca()`,
+  `spax_3sfca()` and `spax_huff2sfca()`); a built-in declaration behaves
+  exactly like its string.
+* `clm_allocation()` accepts a declared kernel as `family`. Fitting, evaluation,
+  requested-location prediction, `check_allocation()` and `compare_allocations()`
+  work with it, and so does `bootstrap_allocation()` when the kernel is smooth
+  in `sigma`. A kernel declared with `smooth = FALSE` (a cutoff or a step, for
+  example) can be evaluated and used for prediction but not fitted. Results that
+  use a declared kernel save its code in a new version of the prediction
+  snapshot (`spax_clm_prediction_v2`), so using a saved fit runs that code and
+  saved fits should be read only from sources you trust. Snapshots of the
+  built-in kernels are unchanged. Printed and summarized fits now label `sigma`
+  by its meaning for the kernel, for example `gaussian (sigma = travel scale)`.
 * New experimental `spax_3sfca()` computes the three-step floating catchment
   area index. Each origin first divides its demand among the facilities with
   selection weights, a facility's share of the origin's decay weights, and both
@@ -43,12 +63,26 @@ yet; record the source commit when reproducing an analysis.
   says so instead of leaving it to be discovered. A fitted attractiveness
   exponent is re-optimized in both comparators. It reports only and never
   changes the fit.
+* The no-decay comparator of `check_allocation()` is exact: it is the same
+  model with a constant kernel (weight 1 on every finite travel time), whatever
+  kernel the model uses, instead of a built-in kernel at an extreme parameter
+  value. Its reported parameters no longer include `sigma`, which that
+  allocation does not use: `parameters$no_decay` holds the re-optimized
+  parameters other than `sigma`, and the table reads `no decay`, followed by the
+  re-optimized `v0` (and `beta`) when the model fits them. Reported losses
+  move by about 1e-8 relative for travel times in minutes.
 * `summary.spax()` coverage now counts only cells with a value, so cells
   outside the study area (such as sea) no longer lower it, and reports the
   share of those cells with accessibility above zero. It previously divided
   the number of cells with a value by every cell in the raster.
 * Printed corrected CLM fits now show `model: clm` instead of the internal
   family name `huff`.
+* A fit saved with `saveRDS()` and read back is no longer rejected by
+  `bootstrap_allocation()` or reported as not like for like by
+  `compare_allocations()` when the package keeps source references (in a
+  development load, or with `R_KEEP_PKG_SOURCE=yes`). The saved copy of the
+  package's Poisson loss function then differed from the original only in those
+  references, which the comparison now ignores.
 * The `calc_decay()`, `sample_pmf()` and `rasterize_demand()` examples now
   run; the last uses the Cornwall small areas.
 * The README and the guides now use the bundled Cornwall GP data, with real
@@ -117,6 +151,11 @@ yet; record the source commit when reproducing an analysis.
     instead of a base R error.
   * `spax_2sfca()` validates `threshold` with a message that names it; `NA`
     and `NULL`, which gave all-NaN results or the binary default, are refused.
+  * `print()` of an FCA result whose `decay_params$method` is a function no
+    longer fails in `cat()`; it prints `custom function`, and a declared kernel
+    prints its name.
+  * `print()` of an FCA result whose `decay_params$sigma` is a raster (a variable
+    catchment) no longer fails in `sprintf()`; it prints `variable (raster)`.
 * `calc_normalize()` and `calc_choice()` now refuse negative weights (outside
   `snap` mode); they previously divided by the remaining sum and returned
   negative "probabilities". A custom `calc_normalize()` method still receives
@@ -165,10 +204,14 @@ yet; record the source commit when reproducing an analysis.
 * Allocation probabilities, modeled counts and supply attribution have
   distinct meanings. Requested predictions distinguish unknown travel
   from absent connections and expose validity and support flags.
-* The conditional facility-case bootstrap supports a restricted Gaussian
-  model fitted to complete whole facility counts. Its intervals require the
-  declared observation assumptions and a complete 399-attempt run; refusals,
-  failed attempts and incomplete results remain available for inspection.
+* The conditional facility-case bootstrap supports a static CLM with a fitted
+  outside mass, fitted to complete whole facility counts. The decay kernel can
+  be built in or declared, if it is smooth in `sigma`, and `beta` can be fixed or
+  fitted. Its intervals require the declared observation assumptions and a
+  complete 399-attempt run; refusals, failed attempts and incomplete results
+  remain available for inspection. Coverage was evaluated for Gaussian decay
+  with fitted `sigma` and `v0`; other kernels and a fitted `beta` use the same
+  procedure without a separate coverage study.
 * Saved-result methods provide parameter, bootstrap, regional and cell tables,
   summaries and plots without rerunning fitting or resampling. The allocation
   article demonstrates a supply scenario, export and reload.

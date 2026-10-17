@@ -37,7 +37,7 @@ be rewritten as allocation fits.
 
 | Question | Starting point | What the output means |
 |:--|:--|:--|
-| How is weighted supply distributed relative to weighted demand? | `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()` | A model-specific supply-per-demand accessibility index |
+| How is weighted supply distributed relative to weighted demand? | `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`, `spax_huff2sfca()` | A model-specific supply-per-demand accessibility index |
 | How are request opportunities allocated among facilities and an outside option? | `prepare_allocation()` then `clm_allocation()` | Choice probabilities and expected loads under a declared model |
 | Which parameters fit observed utilization or flows? | `fit_allocation()` with an explicit loss and starts | A calibrated mean model plus optimization diagnostics |
 | What changes under a supply scenario at the same parameters? | Reprepare and `evaluate_allocation()` | A model-based contrast, not an estimated causal effect |

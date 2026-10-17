@@ -272,7 +272,7 @@
       is.numeric(selected$loss_args$eps) && length(selected$loss_args$eps) == 1L &&
       is.finite(selected$loss_args$eps) && selected$loss_args$eps > 0))
   if (!identical(selected$output, "utilization") ||
-      !identical(selected$loss_fn, .poisson_loss) || !arguments_ok) {
+      !.same_function(selected$loss_fn, .poisson_loss) || !arguments_ok) {
     stop("bootstrap requires an unweighted Poisson facility-utilization fit")
   }
   target <- .bind_problem_target(model, selected$observed, "utilization")

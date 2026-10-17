@@ -1001,7 +1001,7 @@
            "` use different `loss_args`")
     }
     if (is.function(f$loss_fn) && is.function(ref$loss_fn) &&
-        !identical(f$loss_fn, ref$loss_fn)) {
+        !.same_function(f$loss_fn, ref$loss_fn)) {
       stop("fits `", ref_label, "` and `", label,
            "` use different loss functions")
     }

@@ -111,7 +111,7 @@
       !identical(.fit_observation_identity(selected), target$identity[c("axes", "ids")]) ||
       !identical(as.numeric(selected$observed), as.numeric(target$observed)) ||
       !identical(dim(selected$observed), dim(target$observed)) ||
-      !identical(selected$loss_fn, .poisson_loss) ||
+      !.same_function(selected$loss_fn, .poisson_loss) ||
       !loss_arguments_ok) {
     stop("inference requires the same canonical counts and unweighted Poisson fit")
   }

@@ -1009,12 +1009,7 @@ test_that("an interrupted run with a declared kernel resumes after the model and
   saveRDS(list(model = case$model, scenario = case$scenario, fit = fit), bundle)
   reloaded <- readRDS(bundle)
   expect_identical(reloaded$model$metadata$spec, case$model$metadata$spec)
-  # Where package functions keep source references (devtools, testthat), a package
-  # function read back from disk is not identical() to the package's own copy even
-  # though its code is the same; an installed package has no source references.
-  # Restore the one saved field that holds such a function, the Poisson loss, so
-  # this run checks the declared kernel and not that artifact.
-  reloaded$fit$best$loss_fn <- .poisson_loss
+  # The fit is used as read back, with the Poisson loss function it saved.
   resumed <- .run_allocation_bootstrap(reloaded$model, reloaded$fit, observation,
     reloaded$scenario, seed = 603L, checkpoint = path, attempts = 3L)
   expect_identical(resumed$attempted, 3L)

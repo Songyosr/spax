@@ -293,7 +293,7 @@ and dates. Data sources and licences are listed in
 | Function | Purpose |
 |:---|:---|
 | `prepare_allocation()` | Align IDs, validate inputs, record units and support, and prepare compact numeric inputs. |
-| `clm_allocation()` | Declare corrected static CLM with Gaussian, exponential or power travel decay. |
+| `clm_allocation()` | Declare corrected static CLM with Gaussian, exponential or power travel decay, or a kernel declared with `decay_kernel()`. |
 | `fit_allocation()` | Fit a selected output from explicit starts and retain diagnostics. |
 | `evaluate_allocation()` | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | `predict_allocation()` | Predict requested origins against saved facility loads; maps are explicit. |

@@ -143,6 +143,19 @@ test_that("comparability guards reject fits that differ in what they target", {
   expect_error(.compare_problem_fits(list(base, base)), "unique labels")
 })
 
+test_that("a fit read back from disk is not told apart by its loss function", {
+  base <- ae_recovery_fit(ae_toy_problem())
+  path <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(base, path)
+  reloaded <- readRDS(path)
+  tab <- .compare_problem_fits(list(a = base, b = reloaded))
+  expect_equal(tab$loss[1], tab$loss[2])
+  # A different loss function is still refused.
+  other <- reloaded
+  other$loss_fn <- function(predicted, observed) 0
+  expect_error(.compare_problem_fits(list(a = base, b = other)), "different loss functions")
+})
+
 test_that("ladders validate problems and per-problem start lists", {
   problems <- .compare_ladder()
   y <- c(1, 2)

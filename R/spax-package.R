@@ -10,18 +10,22 @@
 #' @section Choose a workflow:
 #' \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}} and
 #' \code{\link{spax_m2sfca}} remain supported public FCA entry points;
-#' \code{\link{compute_access}} is also retained. These take raster demand and
-#' facility travel layers. Multiple supply columns produce independent
-#' accessibility indicators, not interacting resource constraints.
+#' \code{\link{compute_access}} is also retained. The experimental
+#' \code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add selection
+#' weights that divide each origin's demand among the facilities. These take
+#' raster demand and facility travel layers. Multiple supply columns produce
+#' independent accessibility indicators, not interacting resource constraints.
 #'
 #' The six experimental allocation operations are
 #' \code{\link{prepare_allocation}}, \code{\link{clm_allocation}},
 #' \code{\link{fit_allocation}}, \code{\link{evaluate_allocation}},
 #' \code{\link{predict_allocation}} and \code{\link{bootstrap_allocation}}.
 #' They describe one static CLM system with one supply vector and an outside
-#' option. The first five support Gaussian, exponential and power decay;
-#' bootstrap has the narrower scope below. Broader feedback-model declarations
-#' and general-purpose inference are not part of this experimental interface.
+#' option. The first five support Gaussian, exponential and power decay and
+#' kernels declared with \code{\link{decay_kernel}} (fitting needs a kernel that
+#' is smooth in \code{sigma}); bootstrap has the narrower scope below. Broader
+#' feedback-model declarations and general-purpose inference are not part of
+#' this experimental interface.
 #'
 #' @section Inputs, observations and support:
 #' Preserve facility and origin IDs on numeric inputs. Named axes align

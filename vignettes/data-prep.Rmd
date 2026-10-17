@@ -62,8 +62,9 @@ stopifnot(
 head(names(travel))
 ```
 
-When supply is a data frame, `spax_e2sfca()` and `spax_2sfca()` match its rows
-to the travel layers through `id_col`, so the row order does not matter.
+When supply is a data frame, `spax_e2sfca()`, `spax_2sfca()`, `spax_3sfca()` and
+`spax_huff2sfca()` match its rows to the travel layers through `id_col`, so the
+row order does not matter.
 
 ```{r id-order}
 # The E2SFCA surface for a given supply table
