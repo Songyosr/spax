@@ -45,7 +45,7 @@
 #'   re-optimized parameters other than `sigma`, an empty vector when the model
 #'   fits only `sigma`), the selected fit's parameter `boundary` flags,
 #'   `search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson fit:
-#'   its floor `eps` and the number of positive observed counts modelled below
+#'   its floor `eps` and the number of cells with positive observed counts modelled below
 #'   it, which cap the loss; `NULL` otherwise). Use `print()` or `as.data.frame()`.
 #' @family experimental allocation workflow
 #' @export

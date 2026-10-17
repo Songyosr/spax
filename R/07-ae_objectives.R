@@ -77,7 +77,7 @@
   if ("eps" %in% names(best$loss_args)) best$loss_args$eps else 1e-9
 }
 
-# Positive observed counts that a selected Poisson fit models below its floor
+# Cells with positive observed counts that a selected Poisson fit models below its floor
 # (zero included): the loss is capped there, so the fit is not the Poisson
 # maximum likelihood estimate. NULL for any other loss.
 .poisson_floor <- function(best) {

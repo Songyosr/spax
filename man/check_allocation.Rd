@@ -36,7 +36,7 @@ trips), the exact comparator \code{parameters} (those of \code{no_decay} are the
 re-optimized parameters other than \code{sigma}, an empty vector when the model
 fits only \code{sigma}), the selected fit's parameter \code{boundary} flags,
 \code{search_at_edge}, logical \code{flags}, and \code{poisson_floor} (for a Poisson fit:
-its floor \code{eps} and the number of positive observed counts modelled below
+its floor \code{eps} and the number of cells with positive observed counts modelled below
 it, which cap the loss; \code{NULL} otherwise). Use \code{print()} or \code{as.data.frame()}.
 }
 \description{
