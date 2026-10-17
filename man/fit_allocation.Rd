@@ -73,7 +73,7 @@ result; a selected fit is not a claim of identification or global optimality.
 A model whose decay kernel was declared with \code{smooth = FALSE} (see
 \code{\link[=decay_kernel]{decay_kernel()}}) is refused, because fitting needs a kernel that is smooth in
 sigma. Evaluate such a kernel at fixed parameters with \code{\link[=evaluate_allocation]{evaluate_allocation()}},
-for example over a grid of sigma values.
+for example over a grid of sigma and v0.
 }
 \seealso{
 \link{allocation-fit-methods} for methods on saved fits.

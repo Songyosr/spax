@@ -33,7 +33,9 @@ kernel, for example \code{"scale"}. It labels printed output. Required for a
 function.}
 
 \item{lower, upper}{Inclusive bounds on \code{sigma}, with
-\verb{0 <= lower < upper <= Inf}.}
+\verb{0 <= lower < upper <= Inf}. Wherever the kernel is used, \code{sigma} must also
+be positive, so a \code{lower} of 0 allows any positive \code{sigma} but not 0
+itself.}
 
 \item{zero_distance}{\code{FALSE} declares the kernel undefined at distance zero,
 as the power kernel is: the check at declaration then leaves zero out of
@@ -45,7 +47,9 @@ or thresholds). It can be evaluated, predicted and used in FCA: a model built
 with \code{\link[=clm_allocation]{clm_allocation()}} can be evaluated at fixed parameters with
 \code{\link[=evaluate_allocation]{evaluate_allocation()}} and used for requested-location prediction with
 \code{\link[=predict_allocation]{predict_allocation()}}, but \code{\link[=fit_allocation]{fit_allocation()}} refuses it, because model
-fitting and bootstrapping need a kernel that is smooth in \code{sigma}.}
+fitting and bootstrapping need a kernel that is smooth in \code{sigma}. Evaluate
+such a kernel at fixed parameters instead, for example over a grid of
+\code{sigma} and \code{v0}.}
 
 \item{args}{A named list of fixed extra arguments for \code{fun}. Its names must
 be arguments of \code{fun} other than \code{distance} and \code{sigma}; its values must be
@@ -58,18 +62,20 @@ numeric, logical or character vectors without attributes.}
 \value{
 A \code{spax_decay_kernel}: a list of plain data with the fields \code{name},
 \code{builtin}, \code{parameter}, \code{lower}, \code{upper}, \code{zero_distance}, \code{smooth}, \code{args}
-and \code{code} (the function's exact source text, \code{NA} for a built-in kernel).
+and \code{code} (the exact text of the function's code, with comments and layout
+not kept; \code{NA} for a built-in kernel).
 }
 \description{
 Declares the decay weights \eqn{w(d; \sigma)}{w(d; sigma)} that
 \code{\link[=calc_decay]{calc_decay()}} and the FCA functions apply to a travel time or distance
 \eqn{d}. A declaration is plain data: it names a built-in kernel, or it
-records your own function as exact source text together with what its
-parameter \code{sigma} means, the bounds \code{sigma} may take and any fixed extra
-arguments. Nothing but data is stored, so a declaration can be compared,
-saved and reloaded in a fresh session. This experimental function lets one
-declaration be used wherever a decay \code{method} is accepted. A declaration can
-also be passed as \code{family} to \code{\link[=clm_allocation]{clm_allocation()}}.
+records your own function as the exact text of its code (comments and layout
+are not kept), together with what its parameter \code{sigma} means, the bounds
+\code{sigma} may take and any fixed extra arguments. Nothing but data is stored, so
+a declaration can be compared, saved and reloaded in a fresh session. This
+experimental function lets one declaration be used wherever a decay \code{method}
+is accepted. A declaration can also be passed as \code{family} to
+\code{\link[=clm_allocation]{clm_allocation()}}.
 }
 \details{
 \strong{Built-in kernels.} \code{decay_kernel("gaussian")}, \code{decay_kernel("exponential")}
@@ -79,19 +85,24 @@ method strings. Their \code{sigma} is a travel scale, a rate and an exponent; th
 power kernel is undefined at distance zero.
 
 \strong{Your own function.} \code{fun} must be a closure whose first two arguments are
-\code{distance} and \code{sigma}, and it must return one weight per distance. Every
+\code{distance} and \code{sigma}, and it must return one weight per distance. It must be
+elementwise: each distance gets its own weight, independent of the other
+distances, because it may receive a vector or a matrix of distances. Every
 other argument needs a default value, an entry in \code{args}, or is \code{...}. The
 function is stored as text and rebuilt in the base environment whenever it
 is used, so it may use only its arguments, base R, \code{pkg::fn} calls (for
 example \code{stats::pnorm}) and \code{args}. It cannot refer to objects in your
-workspace. Comments and layout are not kept.
+workspace.
 
 \strong{Checks at declaration.} The function is run on a grid of distances (0.1
 to 1000, and 0 unless \code{zero_distance = FALSE}) at a few values of \code{sigma}
-inside the bounds. Every call must return a numeric vector with one value
-per distance that is finite, nonnegative and non-increasing in distance, and
-the values must be identical whether the function is run from its stored
-text or as given. A function that fails a check is refused with the reason.
+inside the bounds, including a positive \code{lower} and a finite \code{upper} bound
+themselves. Every call must return a numeric vector with one value per
+distance that is finite, nonnegative and non-increasing in distance, and the
+values must be identical whether the function is run from its stored text or
+as given. A function whose weight for a distance depends on the other
+distances is refused as well. A function that fails a check is refused with
+the reason.
 
 \strong{Saving.} The stored code is parsed, and turned into a function without
 running it, whenever the kernel is used; running the kernel runs that code.
@@ -100,7 +111,9 @@ evaluations and predictions that use a declared kernel carry its code, and
 \code{saveRDS()} saves it with them. Using such a result again, for example to
 predict from it after \code{readRDS()}, runs that code, so read saved results only
 from sources you trust, as for any file that holds functions such as a loss
-function.
+function. To rebuild a model for a saved fit, take the declaration from the
+fit (\code{fit$best$prediction_snapshot$spec$kernel}) rather than declaring the
+function again, because the stored text can differ between R versions.
 }
 \examples{
 # A built-in declaration behaves like its method string

@@ -79,6 +79,9 @@
   if (v2 && (x$theta[["sigma"]] < spec$kernel$lower || x$theta[["sigma"]] > spec$kernel$upper)) {
     stop("invalid CLM snapshot theta: sigma is outside the bounds of its decay kernel")
   }
+  if (v2 && x$theta[["sigma"]] <= 0) {
+    stop("invalid CLM snapshot theta: ", spec$kernel$name, " decay requires positive sigma")
+  }
   ids <- .allocation_ids(x$facility_ids, "snapshot facility IDs")
   if (!identical(ids, x$facility_ids)) stop("snapshot facility IDs must be strings")
   for (key in c("supply", "utilization")) {
@@ -110,7 +113,7 @@
 
 .clm_prediction_source <- function(source) {
   if (!inherits(source, "ae_equilibrium") && !inherits(source, "ae_problem_nfxp_fit")) {
-    stop("source must be a solved or fitted built-in corrected CLM")
+    stop("source must be a solved or fitted corrected static CLM")
   }
   snapshot <- source[["prediction_snapshot", exact = TRUE]]
   if (is.null(snapshot)) stop("source has no prediction snapshot; regenerate the solved or fitted CLM")
@@ -283,6 +286,9 @@
     if (sigma < declared$lower || sigma > declared$upper) {
       stop(declared$name, " decay requires sigma from ", format(declared$lower), " to ",
            format(declared$upper))
+    }
+    if (sigma <= 0) {
+      stop(declared$name, " decay requires positive sigma")
     }
     if (!legacy && !declared$zero_distance && minimum_distance == 0) {
       stop(declared$name, " decay requires strictly positive finite travel distances")

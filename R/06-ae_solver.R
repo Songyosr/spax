@@ -106,10 +106,28 @@ spectral_radius <- function(jac) {
 }
 
 #' Finite-difference Jacobian of a vector-valued function
+#'
+#' Column `j` is a central difference with step `eps * max(abs(x[j]), 1)`. With
+#' finite `lower` or `upper`, no evaluation point leaves the bounds: where one
+#' side of a central step would, the difference is one-sided with the same step
+#' (forward, or backward when only the lower side fits). When neither side
+#' fits, the larger feasible one-sided step is used, `max(upper - x, x - lower)`,
+#' and a coordinate with no room at all gives a zero column. Inside the bounds
+#' the result is exactly the unbounded one. The `"forward"` method steps up when
+#' that stays inside the bounds and down otherwise.
+#' @param fn A function of a numeric vector returning a numeric vector.
+#' @param x The point at which to differentiate, a numeric vector.
+#' @param ... Further arguments passed to `fn`.
+#' @param eps Relative step size.
+#' @param method `"central"` or `"forward"` differences.
+#' @param check Whether to check that `fn` returns numeric vectors.
+#' @param lower,upper Inclusive bounds of the evaluation points, recycled to the
+#'   length of `x`.
 #' @keywords internal
+#' @md
 fd_jacobian <- function(fn, x, ..., eps = 1e-6,
                         method = c("central", "forward"),
-                        check = TRUE) {
+                        check = TRUE, lower = -Inf, upper = Inf) {
   if (!is.function(fn)) {
     stop("`fn` must be a function")
   }
@@ -118,28 +136,65 @@ fd_jacobian <- function(fn, x, ..., eps = 1e-6,
   x <- .coerce_numeric_vector(x)
   eps <- as.numeric(eps)
   method <- match.arg(method)
+  n_in <- length(x)
+  lower <- .fd_bound(lower, "lower", n_in)
+  upper <- .fd_bound(upper, "upper", n_in)
+  if (any(lower > upper)) {
+    stop("`lower` must not exceed `upper`")
+  }
 
   f0 <- .solver_function_value(fn(x, ...), "fn(x)", check = check)
   n_out <- length(f0)
-  n_in <- length(x)
   out <- matrix(NA_real_, nrow = n_out, ncol = n_in)
   colnames(out) <- names(x)
 
+  # The function at x moved by `delta` in coordinate j, kept inside the bounds.
+  at <- function(j, delta, label) {
+    step <- rep(0, n_in)
+    step[j] <- delta
+    point <- x + step
+    point[j] <- min(max(point[j], lower[j]), upper[j])
+    .solver_function_value(fn(point, ...), label, check = check)
+  }
+
   for (j in seq_len(n_in)) {
     h <- eps * max(abs(x[j]), 1)
-    step <- rep(0, n_in)
-    step[j] <- h
-    if (method == "central") {
-      fp <- .solver_function_value(fn(x + step, ...), "fn(x + h)", check = check)
-      fm <- .solver_function_value(fn(x - step, ...), "fn(x - h)", check = check)
+    up <- x[j] + h <= upper[j]
+    down <- x[j] - h >= lower[j]
+    if (method == "central" && up && down) {
+      fp <- at(j, h, "fn(x + h)")
+      fm <- at(j, -h, "fn(x - h)")
       out[, j] <- (fp - fm) / (2 * h)
+    } else if (up) {
+      out[, j] <- (at(j, h, "fn(x + h)") - f0) / h
+    } else if (down) {
+      out[, j] <- (f0 - at(j, -h, "fn(x - h)")) / h
     } else {
-      fp <- .solver_function_value(fn(x + step, ...), "fn(x + h)", check = check)
-      out[, j] <- (fp - f0) / h
+      # Neither side of the step fits: use the larger room that is left.
+      room_up <- max(upper[j] - x[j], 0)
+      room_down <- max(x[j] - lower[j], 0)
+      if (room_up >= room_down && room_up > 0) {
+        out[, j] <- (at(j, room_up, "fn(x + h)") - f0) / room_up
+      } else if (room_down > 0) {
+        out[, j] <- (f0 - at(j, -room_down, "fn(x - h)")) / room_down
+      } else {
+        out[, j] <- 0
+      }
     }
   }
 
   out
+}
+
+# A bound argument of fd_jacobian(): numeric without missing values, of length one
+# or the length of x, recycled to the length of x.
+.fd_bound <- function(bound, name, n) {
+  if (!is.numeric(bound) || anyNA(bound) || !length(bound) ||
+      !length(bound) %in% unique(c(1L, n))) {
+    stop("`", name, "` must be numeric without missing values, ",
+         "of length one or the length of `x`")
+  }
+  rep_len(as.numeric(bound), n)
 }
 
 #' Finite-difference state Jacobian dT/dx

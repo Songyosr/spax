@@ -382,6 +382,63 @@ test_that("declared sigma bounds become the parameter bounds", {
                "scaled-exp decay requires sigma from 0.5 to 20")
 })
 
+test_that("a declared kernel needs a positive sigma even when its lower bound is zero", {
+  f <- alloc_small_case()
+  free <- decay_kernel(function(distance, sigma) exp(-distance / sigma), name = "free-exp",
+                       parameter = "scale")
+  expect_identical(free$lower, 0)
+  message <- "free-exp decay requires positive sigma"
+  # Zero is inside the inclusive bounds, but sigma must also be positive; the
+  # check holds with and without the finite entries located once.
+  expect_error(.allocation_kernel(f$inputs, "free-exp", 0, kernel = free), message)
+  expect_error(.allocation_kernel(f$inputs, "free-exp", 0, kernel = free,
+                                  plan = .decay_kernel_plan(f$inputs$distance_active)), message)
+  model <- clm_allocation(f$inputs, family = free, fit_v0 = TRUE)
+  expect_error(evaluate_allocation(model, c(sigma = 0, v0 = 5)), message)
+  expect_error(.bind_theta(model, c(sigma = 0, v0 = 5)), message)
+  expect_no_error(evaluate_allocation(model, c(sigma = 1e-3, v0 = 5)))
+  # The bounds keep their own message, and the built-in kernels are unchanged.
+  bounded <- decay_kernel(function(distance, sigma) exp(-distance / sigma), name = "bounded-exp",
+                          parameter = "scale", lower = 0.5, upper = 20)
+  expect_error(.allocation_kernel(f$inputs, "bounded-exp", 0, kernel = bounded),
+               "bounded-exp decay requires sigma from 0.5 to 20")
+  expect_error(.bind_theta(clm_allocation(f$inputs), c(sigma = 0)), "positive sigma")
+})
+
+test_that("sensitivities at a declared bound are one-sided and match the central ones", {
+  f <- alloc_generated_case()
+  copy <- decay_kernel(function(distance, sigma) exp(-(distance^2) / (2 * sigma^2)),
+                       name = "gcopy", parameter = "travel scale", lower = 10, upper = 40)
+  declared <- clm_allocation(f$inputs, family = copy, fit_v0 = TRUE)
+  expect_identical(declared$theta$lower, c(10, 0))
+  # sigma on the declared lower bound, and within one finite-difference step
+  # (about 1e-5) of it: a central step would leave the bounds.
+  for (sigma in c(10, 10 + 2e-6, 10 + 5e-6, 10 + 1e-3)) {
+    theta <- c(sigma = sigma, v0 = 25)
+    P <- clm_oracle(f$distance, f$demand, f$supply, sigma, 25)$probability
+    denominator <- rowSums(sweep(exp(-f$distance^2 / (2 * sigma^2)), 2, f$supply, "*")) + 25
+    dlogK <- f$distance^2 / sigma^3
+    expected <- cbind(as.vector(crossprod(P * (dlogK - rowSums(P * dlogK)), f$demand)),
+                      as.vector(crossprod(-P / denominator, f$demand)))
+    state <- declared$state$init
+    got <- .problem_output_sensitivity(declared, theta, state)
+    expect_equal(unname(got), unname(expected), tolerance = 1e-5, info = sigma)
+    # The built-in model takes central steps and agrees.
+    expect_equal(got, .problem_output_sensitivity(f$model, theta, state), tolerance = 1e-5,
+                 info = sigma)
+    # The map's own parameter derivative (zero for the static CLM) and the output
+    # derivative for a state-independent output are computed without error too.
+    expect_no_error(.problem_output_jac_param(declared, theta, state, "utilization"))
+    expect_no_error(.problem_output_sensitivity(declared, theta, state, output = "flow"))
+  }
+  # Inside the bounds nothing changes: the central steps of the unbounded rule.
+  theta <- c(sigma = 12, v0 = 25)
+  state <- declared$state$init
+  fn <- function(th) .problem_output_from_step(.bind_theta(declared, th), state, "utilization")
+  expect_identical(.problem_output_jac_param(declared, theta, state, "utilization"),
+                   fd_jacobian(fn, theta, check = FALSE))
+})
+
 test_that("a kernel declared smooth = FALSE evaluates but cannot be fitted", {
   f <- alloc_small_case()
   # The fitting engine is replaced: a model that passes the check reaches it.
@@ -391,7 +448,7 @@ test_that("a kernel declared smooth = FALSE evaluates but cannot be fitted", {
   model <- clm_allocation(f$inputs, family = cutoff, fit_v0 = TRUE)
   expect_false(model$metadata$spec$kernel$smooth)
   message <- paste("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed",
-                   "parameters or profile sigma over a grid")
+                   "parameters, for example over a grid of sigma and v0")
   expect_error(fit_allocation(model, f$observed, f$starts, f$lower, f$upper),
                message, fixed = TRUE)
   expect_error(fit_allocation(model, f$observed, f$starts, f$lower, f$upper,
@@ -483,6 +540,40 @@ test_that("a declared kernel gives the same weights when its finite travel is lo
     d <- inputs$distance_active
     expect_equal(unname(planned), unname(ifelse(is.finite(d), exp(-d / 2) / (1 + d), 0)))
   }
+  # With every travel entry finite there is nothing to select: the plan keeps no
+  # index and no copy of the values, the kernel runs on the matrix itself, and the
+  # weights (with their dimensions and names) are the unplanned ones.
+  plan <- .decay_kernel_plan(f$inputs$distance_active)
+  expect_identical(plan, list(all_finite = TRUE, any_zero = FALSE))
+  planned <- .allocation_kernel(f$inputs, "damped", 2, kernel = damped, fun = fun, plan = plan)
+  expect_identical(planned, .allocation_kernel(f$inputs, "damped", 2, kernel = damped, fun = fun))
+  d <- f$inputs$distance_active
+  expect_identical(dimnames(planned), dimnames(d))
+  expect_type(planned, "double")
+  expect_equal(unname(planned), unname(exp(-d / 2) / (1 + d)))
+  # a kernel returning integers or plain vectors still gives a double matrix
+  stepwise <- decay_kernel(function(distance, sigma) 1L * (distance <= 3) + 0L,
+                           name = "stepwise", parameter = "scale", smooth = FALSE)
+  weights <- .allocation_kernel(f$inputs, "stepwise", 2, kernel = stepwise,
+                                plan = .decay_kernel_plan(d))
+  expect_identical(weights, 0 + (d <= 3))
+  expect_identical(weights, .allocation_kernel(f$inputs, "stepwise", 2, kernel = stepwise))
+  # With a gap the plan keeps the index of the finite entries only, in the order of
+  # the matrix, and whether one of them is zero.
+  gap <- .decay_kernel_plan(strict$distance_active)
+  expect_identical(names(gap), c("all_finite", "index", "any_zero"))
+  expect_false(gap$all_finite)
+  expect_identical(gap$index, which(is.finite(strict$distance_active)))
+  expect_false(gap$any_zero)
+  zero <- strict
+  zero$distance_active[1, 1] <- 0
+  expect_true(.decay_kernel_plan(zero$distance_active)$any_zero)
+  expect_true(.decay_kernel_plan(f$inputs$distance_active * 0)$any_zero)
+  # no finite entry at all, and no entry at all
+  none <- matrix(c(Inf, NA, Inf, Inf), 2, dimnames = list(c("a", "b"), c("x", "y")))
+  expect_identical(.decay_kernel_plan(none), list(all_finite = FALSE, index = integer(0),
+                                                  any_zero = FALSE))
+  expect_identical(.decay_kernel_plan(matrix(numeric(0), 0, 3))$index, integer(0))
   # The planned path keeps the domain checks.
   hyper <- decay_kernel(function(distance, sigma) 1 / (distance * sigma),
                         name = "hyper", parameter = "scale", zero_distance = FALSE)

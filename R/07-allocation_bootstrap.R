@@ -309,13 +309,20 @@
   original$theta <- theta
   point <- .allocation_bootstrap_quantities(model, theta, scenario)
   if (isTRUE(selected$convergence == 0L) && isTRUE(selected$equilibrium$converged)) {
-    d <- .allocation_bootstrap_diagnostic(model, theta, observed, rep(1, length(ids)), lower, upper, eps)
-    original$score_norm <- d$kkt_score; original$rank <- d$rank; original$boundary <- d$boundary
-    original$status <- if (d$status == "incompatible_zero_mean" ||
-      d$status == "nonregular_mean_or_loss_floor") d$status else
-      if (!identical(d$status, "eligible")) "original_score_failed" else
-      if (d$rank < length(theta)) "original_unidentified" else
-      if (d$boundary) "original_mean_boundary" else "eligible"
+    d <- tryCatch(.allocation_bootstrap_diagnostic(model, theta, observed, rep(1, length(ids)),
+      lower, upper, eps), error = function(e) e)
+    if (inherits(d, "error")) {
+      # A score that cannot be computed is a refusal of the original fit, as a
+      # score that fails its tolerance is, not an error of the whole run.
+      original$status <- "original_score_failed"
+    } else {
+      original$score_norm <- d$kkt_score; original$rank <- d$rank; original$boundary <- d$boundary
+      original$status <- if (d$status == "incompatible_zero_mean" ||
+        d$status == "nonregular_mean_or_loss_floor") d$status else
+        if (!identical(d$status, "eligible")) "original_score_failed" else
+        if (d$rank < length(theta)) "original_unidentified" else
+        if (d$boundary) "original_mean_boundary" else "eligible"
+    }
   }
   list(model = model, scenario = scenario, observation = observation,
     original = original, point = point, observed = observed, eps = eps, settings = settings,
@@ -402,7 +409,7 @@
   s <- context$model$substrate
   supported <- colSums(is.finite(s$distance_active)) > 0
   unsupported <- !supported & as.numeric(s$S) > 0
-  structure(list(status = status, reasons = reasons, original = context$original,
+  result <- structure(list(status = status, reasons = reasons, original = context$original,
     intervals = intervals, draws = draws, starts = starts, multiplicities = multiplicities,
     settings = context$settings, observation = context$observation, seed = seed,
     planned = 399L, attempted = nrow(draws), successful = sum(draws$success),
@@ -413,6 +420,24 @@
       unsupported_supply = stats::setNames(as.numeric(s$S)[unsupported], s$facility_ids[unsupported]),
       total_supply = sum(s$S), attributed_supply = sum(s$S[supported, , drop = FALSE]))),
     class = "ae_allocation_bootstrap")
+  # Appended last, and only for a model whose coverage was not studied; `settings`
+  # belongs to the checkpoint contract and stays as it is.
+  note <- .allocation_bootstrap_coverage_note(context$model)
+  if (!is.null(note)) result$coverage_note <- note
+  result
+}
+
+# The coverage study (SPAX-048/049) used built-in Gaussian decay with fitted sigma
+# and v0 and kappa = beta = 1. Any other model uses the same procedure, and its
+# results say so; a result for the studied model carries no note.
+.allocation_bootstrap_coverage_note <- function(model) {
+  spec <- model$metadata$spec
+  studied <- is.null(spec[["kernel", exact = TRUE]]) && identical(spec$family, "gaussian") &&
+    identical(model$theta$names, c("sigma", "v0")) &&
+    isTRUE(spec$kappa == 1) && isTRUE(spec$beta == 1)
+  if (studied) return(NULL)
+  paste("Coverage of these intervals was evaluated for Gaussian decay with fitted sigma and v0;",
+        "this model uses the same procedure without a separate coverage study.")
 }
 
 .run_allocation_bootstrap <- function(model, fit, observation, scenario = NULL, seed,
@@ -524,7 +549,8 @@
 #' with fixed numerical controls. Failed attempts are retained without replacement.
 #' Successful inner boundary estimates remain in the distribution. Original mean
 #' boundaries, local rank deficiency (fewer identified directions than fitted
-#' parameters) or insufficient fit precision refuse intervals;
+#' parameters) or insufficient fit precision, including a score that cannot be
+#' computed, refuse intervals;
 #' percentile intervals require a complete run of 399 attempts and at least
 #' 380 finite successful values per quantity. Incomplete results retain their
 #' point estimates and diagnostics but withhold intervals.
@@ -567,6 +593,10 @@
 #'   without an interval: it includes supply with at least one known finite edge
 #'   on retained demand support. Unsupported positive supply is disclosed in
 #'   `capacity_support`; total supplied capacity can exceed attributed capacity.
+#'   For any model other than built-in Gaussian decay with fitted sigma and v0 and
+#'   `kappa` and `beta` equal to 1, the result also has a `coverage_note` saying
+#'   that coverage was evaluated for that case and not studied separately for the
+#'   model; it is printed with the result.
 #'   Scientific refusals are inspectable results; invalid inputs error.
 #' @family experimental allocation workflow
 #' @export

@@ -5,14 +5,14 @@ yet; record the source commit when reproducing an analysis.
 
 * New experimental `decay_kernel()` declares a distance decay kernel as plain
   data: a built-in kernel by name, or your own function of `distance` and
-  `sigma`, kept as exact source text together with a name, a label for what
-  `sigma` means, bounds on `sigma` and fixed extra arguments. The function is
-  run on a grid of distances when it is declared, and one that returns
-  weights that are not finite, nonnegative and non-increasing is refused. A
-  declaration can replace the method string in `calc_decay()` and in the
-  `decay_params` of the FCA functions (`spax_e2sfca()`, `spax_m2sfca()`,
-  `spax_3sfca()` and `spax_huff2sfca()`); a built-in declaration behaves
-  exactly like its string.
+  `sigma`, kept as the exact text of its code (comments and layout are not kept)
+  together with a name, a label for what `sigma` means, bounds on `sigma` and
+  fixed extra arguments. The function is run on a grid of distances when it is
+  declared, and one that returns weights that are not finite, nonnegative and
+  non-increasing is refused. A declaration can replace the method string in
+  `calc_decay()` and in the `decay_params` of the FCA functions
+  (`spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()` and `spax_huff2sfca()`); a
+  built-in declaration behaves exactly like its string.
 * `clm_allocation()` accepts a declared kernel as `family`. Fitting, evaluation,
   requested-location prediction, `check_allocation()` and `compare_allocations()`
   work with it, and so does `bootstrap_allocation()` when the kernel is smooth
@@ -23,6 +23,39 @@ yet; record the source commit when reproducing an analysis.
   saved fits should be read only from sources you trust. Snapshots of the
   built-in kernels are unchanged. Printed and summarized fits now label `sigma`
   by its meaning for the kernel, for example `gaussian (sigma = travel scale)`.
+* A declared kernel is held to more checks. The function must be elementwise
+  (the weight of a distance may not depend on the other distances or on their
+  order), because it receives a vector or a matrix of distances. `sigma` must be
+  positive, as well as inside the declared bounds, in `calc_decay()`,
+  fitting and evaluation, requested-location prediction and when a saved
+  snapshot is read ("<name> decay requires positive sigma"). The check at
+  declaration also runs the function at a positive `lower` bound and at a finite
+  `upper` bound of `sigma`, and `calc_decay()` refuses a negative or non-finite
+  weight at a finite distance, which the grid of the declaration cannot rule
+  out. A `SpatRaster` is read into memory when a declared kernel is applied to it.
+* The finite-difference derivatives that fitting and `bootstrap_allocation()`
+  use no longer step outside the bounds of a model's parameters. Next to a
+  bound, for example the `lower` bound of a declared kernel, they use a
+  one-sided difference. The central step used to leave the bounds there: a fit
+  then fell back from its analytic gradient without a message, and
+  `bootstrap_allocation()` could stop with an error about `theta` being outside
+  its bounds or lose draws that lie on a bound. Results for the built-in kernels
+  do not change, except that a parameter closer to zero than one step (about
+  `1e-6`) no longer errors. If the score diagnostic of the original fit cannot
+  be computed, `bootstrap_allocation()` now refuses intervals with the status
+  `original_score_failed` instead of stopping.
+* Fitting keeps trial parameter values inside the bounds of the model's
+  parameters and the estimate inside the search bounds, also where
+  `exp(log(bound))` rounds just outside a bound (for example 7.6). A fit on its
+  search bound is then refused by `bootstrap_allocation()` as a boundary
+  estimate instead of failing with "invalid saved fit bounds", and a declared
+  kernel can be fitted on a declared bound. Other estimates do not change.
+* `bootstrap_allocation()` adds a `coverage_note` to its result, and prints it,
+  for every model other than built-in Gaussian decay with fitted `sigma` and
+  `v0` and `kappa` and `beta` equal to 1, the case the coverage study covered:
+  other kernels, a fitted `beta` and other values of `kappa` and `beta` use the
+  same procedure without a separate coverage study. Results for the studied case
+  are unchanged and have no note.
 * New experimental `spax_3sfca()` computes the three-step floating catchment
   area index. Each origin first divides its demand among the facilities with
   selection weights, a facility's share of the origin's decay weights, and both
@@ -70,7 +103,7 @@ yet; record the source commit when reproducing an analysis.
   allocation does not use: `parameters$no_decay` holds the re-optimized
   parameters other than `sigma`, and the table reads `no decay`, followed by the
   re-optimized `v0` (and `beta`) when the model fits them. Reported losses
-  move by about 1e-8 relative for travel times in minutes.
+  move by at most about 1e-8 relative for travel times in minutes.
 * `summary.spax()` coverage now counts only cells with a value, so cells
   outside the study area (such as sea) no longer lower it, and reports the
   share of those cells with accessibility above zero. It previously divided

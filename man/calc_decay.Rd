@@ -16,7 +16,8 @@ or a kernel declared with \code{\link{decay_kernel}}}
 \item{sigma}{Parameter controlling the rate of decay. A single number, or a
 SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
 spatially varying catchment (variable-catchment FCA / V2SFCA). A
-declared custom kernel needs a single number within its bounds.}
+declared custom kernel needs a single positive number within its
+bounds.}
 
 \item{snap}{Logical; if TRUE, skip input validation}
 
@@ -53,13 +54,15 @@ for the units and scale of your travel times.
 
 A kernel declared with \code{\link{decay_kernel}} can be given as
 \code{method}. A built-in declaration behaves exactly like its name. A
-declared custom kernel needs \code{sigma}, a single number within the bounds
-of the declaration, and takes its fixed arguments from the declaration, so
+declared custom kernel needs \code{sigma}, a single positive number within the
+bounds of the declaration, and takes its fixed arguments from the declaration, so
 \code{...} must be empty; a SpatRaster \code{sigma} is refused. It is
 evaluated on the finite distances only: a missing distance has the weight
 \code{NA} and an infinite distance (an absent edge) the weight 0, as with
-the built-in kernels. A vector or matrix keeps its shape, and a SpatRaster
-keeps its geometry, layer names and missing cells.
+the built-in kernels. A negative or non-finite weight at a finite distance is
+an error. A vector or matrix keeps its shape, and a SpatRaster keeps its
+geometry, layer names and missing cells; it is read into memory for a
+declared kernel.
 }
 \examples{
 library(terra)

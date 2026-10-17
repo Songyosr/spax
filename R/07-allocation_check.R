@@ -210,8 +210,10 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
 
 # Reproduce a selected fit from its model: the fit's own loss on its own masked,
 # ID-aligned targets. Errors when the model did not produce the fit. A fit with
-# a prediction snapshot must also carry this model's specification, which tells
-# apart two declared kernels that share a name.
+# a prediction snapshot must also carry this model's decay kernel declaration
+# (none for a built-in kernel), which tells apart two declared kernels that share
+# a name. Other constants of the specification are not compared: the loss check
+# below catches those that change the fit.
 .allocation_fit_context <- function(model, best) {
   spec <- model$metadata$spec
   if (!identical(best$family, spec$family) || !identical(best$allocation_form, spec$allocation) ||
@@ -220,7 +222,8 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
       !isTRUE(all.equal(as.numeric(best$coverage_meta$demand), as.numeric(model$substrate$D_active))) ||
       !isTRUE(all.equal(as.numeric(best$coverage_meta$supply), as.numeric(model$substrate$S))) ||
       (!is.null(best$prediction_snapshot) &&
-         !identical(best$prediction_snapshot$spec, .clm_prediction_spec(model$metadata$spec)))) {
+         !identical(best$prediction_snapshot$spec[["kernel", exact = TRUE]],
+                    spec[["kernel", exact = TRUE]]))) {
     stop("fit does not belong to this model")
   }
   output <- best$output

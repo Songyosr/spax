@@ -68,8 +68,9 @@ prepare_allocation <- function(demand, supply, distance,
 #'   `decay_kernel("gaussian")`, is the same as its string. For a declaration of
 #'   your own function, sigma has the meaning the declaration gives it, the
 #'   declaration's `lower` and `upper` bounds apply to sigma (starts, bounds and
-#'   parameters outside them are refused), and `zero_distance = FALSE` refuses a
-#'   finite zero travel time in the prepared inputs.
+#'   parameters outside them are refused, and sigma must be positive), and
+#'   `zero_distance = FALSE` refuses a finite zero travel time in the prepared
+#'   inputs.
 #' @param kappa Positive supply scale used in attractiveness, not in reported
 #'   raw supply or capacity attribution.
 #' @param beta Positive supply elasticity in `(kappa * supply)^beta`.
@@ -78,7 +79,7 @@ prepare_allocation <- function(demand, supply, distance,
 #'   returns zero mass; that row is not a normalized choice distribution.
 #' @param fit_v0,fit_beta `TRUE` or `FALSE`: whether to promote these constants
 #'   to fitted parameters.
-#' @return The existing private `ae_problem` for built-in corrected static CLM.
+#' @return The existing private `ae_problem` for corrected static CLM.
 #'   Parameter order is sigma, then v0 and beta when their flags are true.
 #' @family experimental allocation workflow
 #' @export
@@ -97,7 +98,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
   .chck_class(model, "ae_problem", "model")
   if (!identical(model$model, "huff") ||
       !identical(model$metadata$spec$allocation, "clm")) {
-    stop("the allocation workflow requires a built-in corrected static CLM")
+    stop("the allocation workflow requires a corrected static CLM")
   }
   invisible(model)
 }
@@ -113,7 +114,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' A model whose decay kernel was declared with `smooth = FALSE` (see
 #' [decay_kernel()]) is refused, because fitting needs a kernel that is smooth in
 #' sigma. Evaluate such a kernel at fixed parameters with [evaluate_allocation()],
-#' for example over a grid of sigma values.
+#' for example over a grid of sigma and v0.
 #' @param model A corrected CLM declared over checked prepared inputs. A kernel
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
@@ -157,7 +158,7 @@ fit_allocation <- function(model, observed, starts, lower, upper,
   kernel <- model$metadata$spec[["kernel", exact = TRUE]]
   if (!is.null(kernel) && isFALSE(kernel$smooth)) {
     stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
-         "parameters or profile sigma over a grid")
+         "parameters, for example over a grid of sigma and v0")
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
       output %in% c("utilization", "flow") && is.numeric(observed) &&

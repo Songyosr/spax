@@ -475,7 +475,7 @@
   # the bind closure that runs inside the optimizer.
   kernel <- spec[["kernel", exact = TRUE]]
   kernel_fun <- if (!is.null(kernel)) .decay_kernel_function(kernel)
-  # Its finite travel entries do not change with the parameters: locate them once.
+  # Which travel entries are finite does not change with the parameters: record it once.
   kernel_plan <- if (!is.null(kernel)) .decay_kernel_plan(substrate$distance_active)
   # Corrected CLM models declare a prediction snapshot for the built-in kernels
   # and for a declared kernel (kept in the snapshot specification as plain data);
@@ -750,7 +750,10 @@
   reused_solves <- 0L
   evaluate <- function(log_theta, keep_history = FALSE, warn = FALSE,
                        diagnostics = FALSE, update_warm = TRUE, solved = NULL) {
-    theta <- stats::setNames(exp(log_theta), expected)
+    # exp(log(x)) can round just outside x: keep trial values inside the
+    # parameter contract, so a finite declared bound can be reached.
+    theta <- stats::setNames(pmin(pmax(exp(log_theta), problem$theta$lower),
+                                  problem$theta$upper), expected)
     x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
     fit <- if (!is.null(solved)) solved else .solve_problem(
       problem,
@@ -869,7 +872,9 @@
   )
   elapsed <- proc.time()[["elapsed"]] - started
 
-  theta_hat <- stats::setNames(exp(opt$par), expected)
+  # The estimate stays inside the search bounds (and so inside the contract),
+  # also when exp(log(bound)) rounds outside them.
+  theta_hat <- stats::setNames(pmin(pmax(exp(opt$par), lower), upper), expected)
   .warn_search_boundary(opt$par, lower, upper, expected)
   paired <- NULL
   final <- .solve_problem(
@@ -1211,7 +1216,31 @@
   fn <- function(theta_value) {
     .bind_theta(problem, theta_value)$map(x)
   }
-  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
+  bounds <- .problem_theta_bounds(problem, theta)
+  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE,
+              lower = bounds$lower, upper = bounds$upper)
+}
+
+# The inclusive bounds of the theta contract in the order of the names of
+# `theta` (positional when it has none), so that a finite-difference step never
+# leaves them. Unbounded when the contract has none or cannot be aligned.
+.problem_theta_bounds <- function(problem, theta) {
+  contract <- problem$theta
+  n <- length(contract$names)
+  bound <- function(value, default) {
+    if (is.null(value)) rep(default, n) else rep_len(as.numeric(value), n)
+  }
+  lower <- bound(contract$lower, -Inf)
+  upper <- bound(contract$upper, Inf)
+  at <- if (!is.null(names(theta)) && !anyNA(match(names(theta), contract$names))) {
+    match(names(theta), contract$names)
+  } else {
+    seq_along(theta)
+  }
+  if (!length(theta) || length(at) != length(theta) || anyNA(at) || any(at > n)) {
+    return(list(lower = -Inf, upper = Inf))
+  }
+  list(lower = lower[at], upper = upper[at])
 }
 
 .problem_output_jac_state <- function(step, x, output, fd_eps = 1e-6,
@@ -1251,7 +1280,9 @@
     step <- .bind_theta(problem, theta_value)
     .problem_output_from_step(step, x, output, required = TRUE)
   }
-  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
+  bounds <- .problem_theta_bounds(problem, theta)
+  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE,
+              lower = bounds$lower, upper = bounds$upper)
 }
 
 .problem_output_sensitivity <- function(problem, theta, x,

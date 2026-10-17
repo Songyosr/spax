@@ -24,8 +24,9 @@ strictly positive finite travel distances. A built-in declaration, such as
 \code{decay_kernel("gaussian")}, is the same as its string. For a declaration of
 your own function, sigma has the meaning the declaration gives it, the
 declaration's \code{lower} and \code{upper} bounds apply to sigma (starts, bounds and
-parameters outside them are refused), and \code{zero_distance = FALSE} refuses a
-finite zero travel time in the prepared inputs.}
+parameters outside them are refused, and sigma must be positive), and
+\code{zero_distance = FALSE} refuses a finite zero travel time in the prepared
+inputs.}
 
 \item{kappa}{Positive supply scale used in attractiveness, not in reported
 raw supply or capacity attribution.}
@@ -40,7 +41,7 @@ returns zero mass; that row is not a normalized choice distribution.}
 to fitted parameters.}
 }
 \value{
-The existing private \code{ae_problem} for built-in corrected static CLM.
+The existing private \code{ae_problem} for corrected static CLM.
 Parameter order is sigma, then v0 and beta when their flags are true.
 }
 \description{

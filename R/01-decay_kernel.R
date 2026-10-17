@@ -10,12 +10,13 @@
 #' Declares the decay weights \eqn{w(d; \sigma)}{w(d; sigma)} that
 #' [calc_decay()] and the FCA functions apply to a travel time or distance
 #' \eqn{d}. A declaration is plain data: it names a built-in kernel, or it
-#' records your own function as exact source text together with what its
-#' parameter `sigma` means, the bounds `sigma` may take and any fixed extra
-#' arguments. Nothing but data is stored, so a declaration can be compared,
-#' saved and reloaded in a fresh session. This experimental function lets one
-#' declaration be used wherever a decay `method` is accepted. A declaration can
-#' also be passed as `family` to [clm_allocation()].
+#' records your own function as the exact text of its code (comments and layout
+#' are not kept), together with what its parameter `sigma` means, the bounds
+#' `sigma` may take and any fixed extra arguments. Nothing but data is stored, so
+#' a declaration can be compared, saved and reloaded in a fresh session. This
+#' experimental function lets one declaration be used wherever a decay `method`
+#' is accepted. A declaration can also be passed as `family` to
+#' [clm_allocation()].
 #'
 #' **Built-in kernels.** `decay_kernel("gaussian")`, `decay_kernel("exponential")`
 #' and `decay_kernel("power")` declare the kernels of the same names in
@@ -24,19 +25,24 @@
 #' power kernel is undefined at distance zero.
 #'
 #' **Your own function.** `fun` must be a closure whose first two arguments are
-#' `distance` and `sigma`, and it must return one weight per distance. Every
+#' `distance` and `sigma`, and it must return one weight per distance. It must be
+#' elementwise: each distance gets its own weight, independent of the other
+#' distances, because it may receive a vector or a matrix of distances. Every
 #' other argument needs a default value, an entry in `args`, or is `...`. The
 #' function is stored as text and rebuilt in the base environment whenever it
 #' is used, so it may use only its arguments, base R, `pkg::fn` calls (for
 #' example `stats::pnorm`) and `args`. It cannot refer to objects in your
-#' workspace. Comments and layout are not kept.
+#' workspace.
 #'
 #' **Checks at declaration.** The function is run on a grid of distances (0.1
 #' to 1000, and 0 unless `zero_distance = FALSE`) at a few values of `sigma`
-#' inside the bounds. Every call must return a numeric vector with one value
-#' per distance that is finite, nonnegative and non-increasing in distance, and
-#' the values must be identical whether the function is run from its stored
-#' text or as given. A function that fails a check is refused with the reason.
+#' inside the bounds, including a positive `lower` and a finite `upper` bound
+#' themselves. Every call must return a numeric vector with one value per
+#' distance that is finite, nonnegative and non-increasing in distance, and the
+#' values must be identical whether the function is run from its stored text or
+#' as given. A function whose weight for a distance depends on the other
+#' distances is refused as well. A function that fails a check is refused with
+#' the reason.
 #'
 #' **Saving.** The stored code is parsed, and turned into a function without
 #' running it, whenever the kernel is used; running the kernel runs that code.
@@ -45,7 +51,9 @@
 #' `saveRDS()` saves it with them. Using such a result again, for example to
 #' predict from it after `readRDS()`, runs that code, so read saved results only
 #' from sources you trust, as for any file that holds functions such as a loss
-#' function.
+#' function. To rebuild a model for a saved fit, take the declaration from the
+#' fit (`fit$best$prediction_snapshot$spec$kernel`) rather than declaring the
+#' function again, because the stored text can differ between R versions.
 #'
 #' @param fun A built-in kernel name (`"gaussian"`, `"exponential"` or
 #'   `"power"`), or a closure `function(distance, sigma, ...)` that returns the
@@ -58,7 +66,9 @@
 #'   kernel, for example `"scale"`. It labels printed output. Required for a
 #'   function.
 #' @param lower,upper Inclusive bounds on `sigma`, with
-#'   `0 <= lower < upper <= Inf`.
+#'   `0 <= lower < upper <= Inf`. Wherever the kernel is used, `sigma` must also
+#'   be positive, so a `lower` of 0 allows any positive `sigma` but not 0
+#'   itself.
 #' @param zero_distance `FALSE` declares the kernel undefined at distance zero,
 #'   as the power kernel is: the check at declaration then leaves zero out of
 #'   its grid, and a model from [clm_allocation()] refuses prepared inputs that
@@ -68,13 +78,16 @@
 #'   with [clm_allocation()] can be evaluated at fixed parameters with
 #'   [evaluate_allocation()] and used for requested-location prediction with
 #'   [predict_allocation()], but [fit_allocation()] refuses it, because model
-#'   fitting and bootstrapping need a kernel that is smooth in `sigma`.
+#'   fitting and bootstrapping need a kernel that is smooth in `sigma`. Evaluate
+#'   such a kernel at fixed parameters instead, for example over a grid of
+#'   `sigma` and `v0`.
 #' @param args A named list of fixed extra arguments for `fun`. Its names must
 #'   be arguments of `fun` other than `distance` and `sigma`; its values must be
 #'   numeric, logical or character vectors without attributes.
 #' @return A `spax_decay_kernel`: a list of plain data with the fields `name`,
 #'   `builtin`, `parameter`, `lower`, `upper`, `zero_distance`, `smooth`, `args`
-#'   and `code` (the function's exact source text, `NA` for a built-in kernel).
+#'   and `code` (the exact text of the function's code, with comments and layout
+#'   not kept; `NA` for a built-in kernel).
 #' @examples
 #' # A built-in declaration behaves like its method string
 #' decay_kernel("gaussian")
@@ -357,28 +370,40 @@ print.spax_decay_kernel <- function(x, ...) {
 
 # The sigma values of the declaration check: three values spread (on the log
 # scale) over the part of [lower, upper] within [0.01, 100], or one value when
-# that part is empty. exp(log(x)) can differ from x in the last bits, so the
-# values are clamped to the (inclusive) bounds.
+# that part is empty, and in addition the bounds themselves when they are positive
+# (lower) or finite (upper), sorted and without repeats. exp(log(x)) can differ
+# from x in the last bits, so the ends of the log-spaced values are set to the
+# range exactly (and thereby merge with the bounds) and every value is clamped to
+# the (inclusive) bounds.
 .decay_probe_sigma <- function(lower, upper) {
   lo <- max(lower, 1e-2)
   hi <- min(upper, 1e2)
-  if (lo >= hi) {
-    return(if (is.finite(upper)) (lower + upper) / 2 else 2 * lower)
+  values <- if (lo >= hi) {
+    if (is.finite(upper)) (lower + upper) / 2 else 2 * lower
+  } else {
+    grid <- exp(seq(log(lo), log(hi), length.out = 3))
+    grid[c(1L, 3L)] <- c(lo, hi)
+    pmin(pmax(grid, lower), upper)
   }
-  pmin(pmax(exp(seq(log(lo), log(hi), length.out = 3)), lower), upper)
+  sort(unique(c(values, if (lower > 0) lower, if (is.finite(upper)) upper)))
 }
 
 # Run the rebuilt function and the given one on the test grid; stop unless both
-# return the same finite, nonnegative, non-increasing weights.
+# return the same finite, nonnegative, non-increasing weights. At the middle sigma
+# the kernel must also be elementwise: the weight of a distance may not depend on
+# the other distances or on their order, because the workflow gives the kernel a
+# whole matrix, or the finite entries of one, in a single call.
 .probe_decay_kernel <- function(kernel, fun, rebuilt) {
   distance <- c(if (kernel$zero_distance) 0, 0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
-  evaluate <- function(f, sigma) {
-    tryCatch(do.call(f, c(list(distance, sigma), kernel$args)), error = function(e) {
+  evaluate <- function(f, sigma, d = distance) {
+    tryCatch(do.call(f, c(list(d, sigma), kernel$args)), error = function(e) {
       stop("the kernel failed on a test grid; it may use only its arguments, base R, ",
            "`pkg::fn` calls and `args`: ", conditionMessage(e), call. = FALSE)
     })
   }
-  for (sigma in .decay_probe_sigma(kernel$lower, kernel$upper)) {
+  sigmas <- .decay_probe_sigma(kernel$lower, kernel$upper)
+  middle <- sigmas[ceiling(length(sigmas) / 2)]
+  for (sigma in sigmas) {
     at <- function(i) {
       sprintf("at distance %s with sigma = %s", format(distance[i]), format(sigma, digits = 4))
     }
@@ -402,6 +427,18 @@ print.spax_decay_kernel <- function(x, ...) {
     if (!identical(w, evaluate(fun, sigma))) {
       stop("the kernel gives different values when rebuilt from its stored code; it may use ",
            "only its arguments, base R, `pkg::fn` calls and `args`")
+    }
+    if (identical(sigma, middle)) {
+      # The weights must not change when the order does, or when the first or the
+      # last distance is left out. Dropping both ends matters: a kernel normalized
+      # by a sum has negligible weight at the far end for a small sigma, and one
+      # normalized by the smallest distance does not notice the far end at all.
+      n <- length(distance)
+      if (!identical(evaluate(rebuilt, sigma, rev(distance)), rev(w)) ||
+          !identical(evaluate(rebuilt, sigma, distance[-n]), w[-n]) ||
+          !identical(evaluate(rebuilt, sigma, distance[-1L]), w[-1L])) {
+        stop("the kernel must give each distance its own weight, independent of the other distances")
+      }
     }
   }
   invisible(TRUE)

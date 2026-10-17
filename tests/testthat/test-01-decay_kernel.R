@@ -440,21 +440,114 @@ test_that("the declaration check uses the documented distances and sigma values"
   expect_s3_class(declare(fails_outside, lower = 5, upper = 10), "spax_decay_kernel")
 
   # An interval with nothing between 0.01 and 100 is probed at its midpoint; an
-  # unbounded one above 100 at twice its lower bound.
-  only_155 <- function(distance, sigma) {
-    exp(-distance / sigma) * (if (abs(sigma - 155) < 1e-9) 1 else NaN)
+  # unbounded one above 100 at twice its lower bound. Each kernel below is invalid
+  # at one value of sigma only.
+  fails_at_155 <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (abs(sigma - 155) < 1e-9) NaN else 1)
   }
-  expect_s3_class(declare(only_155, lower = 150, upper = 160), "spax_decay_kernel")
-  expect_error(declare(only_155, lower = 150, upper = 200), "finite")
-  only_400 <- function(distance, sigma) {
-    exp(-distance / sigma) * (if (abs(sigma - 400) < 1e-9) 1 else NaN)
+  expect_error(declare(fails_at_155, lower = 150, upper = 160), "finite")
+  expect_s3_class(declare(fails_at_155, lower = 150, upper = 200), "spax_decay_kernel")
+  fails_at_400 <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (abs(sigma - 400) < 1e-9) NaN else 1)
   }
-  expect_s3_class(declare(only_400, lower = 200), "spax_decay_kernel")
-  expect_error(declare(only_400, lower = 300), "finite")
-  only_tiny <- function(distance, sigma) {
-    exp(-distance / sigma) * (if (abs(sigma - 0.0025) < 1e-12) 1 else NaN)
+  expect_error(declare(fails_at_400, lower = 200), "finite")
+  expect_s3_class(declare(fails_at_400, lower = 300), "spax_decay_kernel")
+  fails_at_tiny <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (abs(sigma - 0.0025) < 1e-12) NaN else 1)
   }
-  expect_s3_class(declare(only_tiny, lower = 0, upper = 0.005), "spax_decay_kernel")
+  expect_error(declare(fails_at_tiny, lower = 0, upper = 0.005), "finite")
+})
+
+test_that("the declaration check also runs the kernel at a positive lower and a finite upper bound", {
+  declare <- function(fun, ...) decay_kernel(fun, name = "k", parameter = "scale", ...)
+  # The bounds themselves are probed, also where the grid of 0.01 to 100 would
+  # not reach them, and at exactly their value.
+  fails_below_0005 <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (sigma < 0.005) NaN else 1)
+  }
+  expect_error(declare(fails_below_0005, lower = 0.001, upper = 5), "finite")
+  expect_s3_class(declare(fails_below_0005, lower = 0.01, upper = 5), "spax_decay_kernel")
+  # A lower bound of zero is not a value of sigma and is not probed.
+  expect_s3_class(declare(fails_below_0005, lower = 0, upper = 5), "spax_decay_kernel")
+  fails_above_200 <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (sigma > 200) NaN else 1)
+  }
+  expect_error(declare(fails_above_200, lower = 1, upper = 500), "finite")
+  expect_s3_class(declare(fails_above_200, lower = 1, upper = 150), "spax_decay_kernel")
+  expect_s3_class(declare(fails_above_200, lower = 1), "spax_decay_kernel")
+  fails_at_upper <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (sigma == 7) NaN else 1)
+  }
+  expect_error(declare(fails_at_upper, lower = 2, upper = 7), "finite")
+  expect_s3_class(declare(fails_at_upper, lower = 2, upper = 8), "spax_decay_kernel")
+  fails_at_lower <- function(distance, sigma) {
+    exp(-distance / sigma) * (if (sigma == 2.5) NaN else 1)
+  }
+  expect_error(declare(fails_at_lower, lower = 2.5, upper = 8), "finite")
+  expect_s3_class(declare(fails_at_lower, lower = 2.6, upper = 8), "spax_decay_kernel")
+
+  # The values: log-spaced over the part of the interval within 0.01 to 100, the
+  # bounds when positive or finite, sorted and without repeats.
+  expect_equal(.decay_probe_sigma(0, Inf), c(0.01, 1, 100))
+  expect_equal(.decay_probe_sigma(10, 40), c(10, 20, 40))
+  expect_identical(.decay_probe_sigma(10, 40)[c(1, 3)], c(10, 40))
+  expect_equal(.decay_probe_sigma(0.001, 5), c(0.001, 0.01, sqrt(0.01 * 5), 5))
+  expect_equal(.decay_probe_sigma(1, 500), c(1, 10, 100, 500))
+  expect_equal(.decay_probe_sigma(150, 160), c(150, 155, 160))
+  expect_equal(.decay_probe_sigma(200, Inf), c(200, 400))
+  expect_equal(.decay_probe_sigma(0, 0.005), c(0.0025, 0.005))
+  for (bounds in list(c(0, Inf), c(0.5, 20), c(5, 10), c(0, 3), c(7, Inf), c(0.001, 1e6))) {
+    values <- .decay_probe_sigma(bounds[1], bounds[2])
+    expect_identical(values, sort(unique(values)), info = format(bounds))
+    expect_true(all(values >= bounds[1] & values <= bounds[2]), info = format(bounds))
+  }
+})
+
+test_that("the kernel must give each distance its own weight", {
+  declare <- function(fun, ...) decay_kernel(fun, name = "k", parameter = "scale", ...)
+  message <- "the kernel must give each distance its own weight, independent of the other distances"
+
+  # A weight that depends on the other distances passes the value checks (finite,
+  # nonnegative, non-increasing) but is refused: normalizing by a sum or the
+  # largest distance changes when a distance is dropped, a running sum changes
+  # when the order does.
+  expect_error(declare(function(distance, sigma) exp(-distance / sigma) / sum(exp(-distance / sigma))),
+               message)
+  expect_error(declare(function(distance, sigma) exp(-distance / max(distance))), message)
+  expect_error(declare(function(distance, sigma) 1 / cumsum(1 + distance / sigma)), message)
+  expect_error(declare(function(distance, sigma) exp(-distance / sigma) / length(distance)),
+               message)
+  expect_error(declare(function(distance, sigma) {
+    ifelse(distance <= stats::median(distance), 1, 0.5)
+  }), message)
+  # Normalizing by the smallest distance only changes when the first is left out,
+  # a sum when the first is (the far weights vanish at the middle sigma of 1).
+  expect_error(declare(function(distance, sigma) exp(-(distance - min(distance)) / sigma)), message)
+
+  # Elementwise kernels, however they are written, are accepted: arithmetic,
+  # ifelse(), a scalar `if` inside vapply(), pmax(), integer steps, a kernel that
+  # returns a plain vector from a matrix.
+  elementwise <- list(
+    function(distance, sigma) exp(-distance / sigma),
+    function(distance, sigma) ifelse(distance <= 5, 1, exp(-(distance - 5) / sigma)),
+    function(distance, sigma) vapply(distance, function(d) if (d <= 3) 1 else exp(-(d - 3) / sigma),
+                                     numeric(1)),
+    function(distance, sigma) pmax(1 - distance / (100 * sigma), 0),
+    function(distance, sigma) 1L * (distance <= 10),
+    function(distance, sigma) as.vector(1 / (1 + (distance / sigma)^2))
+  )
+  for (k in seq_along(elementwise)) {
+    expect_s3_class(declare(elementwise[[k]]), "spax_decay_kernel")
+  }
+  # The kernel may also receive a matrix: the weights keep its shape.
+  m <- matrix(c(1, 2, 3, 4, 5, 6), 2, dimnames = list(c("a", "b"), NULL))
+  expect_equal(calc_decay(m, declare(elementwise[[2]]), sigma = 2),
+               ifelse(m <= 5, 1, exp(-(m - 5) / 2)))
+  # The check follows the arguments given through `args`.
+  expect_error(declare(function(distance, sigma, scale = 1) exp(-distance / (sigma * max(distance))) * scale,
+                       args = list(scale = 2)), message)
+  expect_s3_class(declare(function(distance, sigma, scale = 1) exp(-distance / sigma) * scale,
+                          args = list(scale = 2)), "spax_decay_kernel")
 })
 
 test_that("the kernel function must be storable exactly", {
@@ -660,8 +753,11 @@ test_that("calc_decay() checks sigma, extra arguments and distance for a declare
   }
   expect_equal(calc_decay(d, bounded, sigma = 1), exp(-d / 1))
   expect_equal(calc_decay(d, bounded, sigma = 10L), exp(-d / 10))
-  # a lower bound of zero admits sigma = 0 (the kernel then decides the weights)
-  expect_no_error(calc_decay(d, k, sigma = 0))
+  # a lower bound of zero is inclusive but sigma must also be positive
+  expect_error(calc_decay(d, k, sigma = 0), "simple decay requires positive sigma")
+  expect_error(calc_decay(d, k, sigma = 0, snap = TRUE), "simple decay requires positive sigma")
+  expect_error(calc_decay(d, k, sigma = -1), "sigma must be a single number from 0 to Inf")
+  expect_equal(calc_decay(d, k, sigma = 1e-3), exp(-d / 1e-3))
 
   expect_error(calc_decay("a", k, sigma = 1), "distance must be one of")
   expect_error(calc_decay(matrix("a", 2, 2), k, sigma = 1), "distance must be one of")
@@ -681,6 +777,41 @@ test_that("calc_decay() checks sigma, extra arguments and distance for a declare
                "one numeric value for each distance")
   as_text <- with_code(k, "function(distance, sigma) 'a'")
   expect_error(calc_decay(1, as_text, sigma = 4), "one numeric value for each distance")
+})
+
+test_that("calc_decay() refuses a negative or non-finite weight at a finite distance", {
+  # The declaration is tested on distances up to 1000, so these kernels are
+  # accepted and fail where they are used.
+  declare <- function(fun) decay_kernel(fun, name = "far", parameter = "scale")
+  negative <- declare(function(distance, sigma) 1 - distance / 2000)
+  not_a_number <- declare(function(distance, sigma) {
+    ifelse(distance > 1000, NaN, exp(-distance / sigma))
+  })
+  infinite <- declare(function(distance, sigma) {
+    ifelse(distance == 0.05, Inf, exp(-distance / sigma))
+  })
+  message <- function(distance, sigma) {
+    paste0("the kernel returned a negative or non-finite weight at distance ", distance,
+           " with sigma = ", sigma)
+  }
+  d <- c(a = 10, b = 3000, c = 1500)
+  expect_error(calc_decay(d, negative, sigma = 4), message(3000, 4), fixed = TRUE)
+  expect_error(calc_decay(c(10, 2500, 3000), not_a_number, sigma = 2.5), message(2500, 2.5),
+               fixed = TRUE)
+  expect_error(calc_decay(c(0.05, 1), infinite, sigma = 4), message(0.05, 4), fixed = TRUE)
+  # a matrix, a raster and snap mode are refused the same way
+  expect_error(calc_decay(matrix(c(1, 2, 3, 3000), 2), negative, sigma = 4), message(3000, 4),
+               fixed = TRUE)
+  r <- toy_rast(c(1, 2500, NA, 5), nrows = 2, ncols = 2)
+  expect_error(calc_decay(r, negative, sigma = 4), message(2500, 4), fixed = TRUE)
+  expect_error(calc_decay(d, negative, sigma = 4, snap = TRUE), message(3000, 4), fixed = TRUE)
+  # inside its range the same kernel gives its weights, and a missing distance
+  # (NA) or an absent edge (Inf) is not checked: it keeps NA, or has weight 0
+  ok <- c(1, NA, 1500, Inf)
+  expect_equal(calc_decay(ok, negative, sigma = 4), c(1 - 1 / 2000, NA, 0.25, 0))
+  expect_equal(unname(terra::values(calc_decay(toy_rast(c(1, NA, 1500, 5), nrows = 2, ncols = 2),
+                                               negative, sigma = 4))[, 1]),
+               c(1 - 1 / 2000, NA, 0.25, 1 - 5 / 2000))
 })
 
 test_that("a declared kernel works through spax_e2sfca() and spax_m2sfca()", {

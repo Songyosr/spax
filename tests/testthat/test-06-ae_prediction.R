@@ -758,6 +758,33 @@ test_that("prediction applies the domain rules of the declared kernel", {
   }
 })
 
+test_that("prediction and saved snapshots need a positive sigma for a declared kernel", {
+  case <- alloc_prediction_case()
+  # Lower bound zero: sigma = 0 is inside the bounds but is not a valid scale.
+  free <- decay_kernel(function(distance, sigma) exp(-distance / sigma), name = "free-exp",
+                       parameter = "scale")
+  model <- clm_allocation(case$model$substrate, family = free, kappa = .65, beta = 1.3, v0 = 4)
+  solved <- evaluate_allocation(model, c(sigma = 2))
+  small <- evaluate_allocation(model, c(sigma = 0.05))
+  request <- case$distance[1:2, ]
+  expect_no_error(predict_allocation(solved, request))
+  expect_no_error(predict_allocation(small, request))
+  # Reading a saved snapshot with sigma = 0 is refused before anything is run.
+  bad <- solved
+  bad$prediction_snapshot$theta[["sigma"]] <- 0
+  expect_error(predict_allocation(bad, request),
+               "invalid CLM snapshot theta: free-exp decay requires positive sigma", fixed = TRUE)
+  # A negative sigma is refused as an invalid theta.
+  negative <- solved$prediction_snapshot
+  negative$theta[["sigma"]] <- -1
+  expect_error(.validate_clm_prediction_snapshot(negative), "invalid CLM snapshot theta")
+  # The prediction engine checks sigma itself, for a source that skipped validation.
+  testthat::local_mocked_bindings(.clm_prediction_source = function(source) source)
+  expect_error(.predict_clm(bad$prediction_snapshot, request),
+               "free-exp decay requires positive sigma")
+  expect_no_error(.predict_clm(small$prediction_snapshot, request))
+})
+
 test_that("a fit of a declared kernel prints and summarizes the meaning of sigma", {
   fit <- plateau_sources()$fitted$fit
   label <- "plateau (sigma = scale)"

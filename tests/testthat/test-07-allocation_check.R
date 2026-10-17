@@ -306,11 +306,10 @@ test_that("a fit is checked only against the model that produced it", {
                                      models = list(a = others[[label]], b = f$model)),
                  "does not belong", info = label)
   }
-  # Another kernel name, a built-in model, or other model constants are refused as well.
+  # Another kernel name, or a built-in model against a declared kernel, is refused
+  # as well.
   expect_error(check_allocation(f$model, k$fit), "does not belong")
   expect_error(check_allocation(k$model, reference), "does not belong")
-  constants <- clm_allocation(f$inputs, family = "gaussian", v0 = 3, fit_v0 = TRUE)
-  expect_error(check_allocation(constants, reference), "does not belong")
   # A fit without a prediction snapshot (an older saved fit) is matched on its
   # other fields, as before.
   bare <- reference
@@ -320,6 +319,32 @@ test_that("a fit is checked only against the model that produced it", {
   bare$best$prediction_snapshot <- NULL
   expect_no_error(check_allocation(k$model, bare))
   expect_error(check_allocation(others$other_values, bare), "does not belong")
+})
+
+test_that("a built-in fit is matched on its kernel only, as before declared kernels existed", {
+  f <- alloc_small_case()
+  reference <- alloc_small_fit()
+  k <- alloc_memo("copy_kernel_fit", copy_kernel_fit())
+  # v0 is fitted, so the constant v0 = 3 of this declaration is never used: the fit
+  # is reproduced exactly and checked, and gives the same report.
+  unused <- clm_allocation(f$inputs, family = "gaussian", v0 = 3, fit_v0 = TRUE)
+  expect_false(identical(unused$metadata$spec, f$model$metadata$spec))
+  out <- check_allocation(unused, reference)
+  expect_identical(as.data.frame(out), as.data.frame(check_allocation(f$model, reference)))
+  expect_no_error(compare_allocations(list(a = reference, b = k$fit),
+                                      models = list(a = unused, b = k$model)))
+  # A built-in declaration is the same model as its string.
+  expect_no_error(check_allocation(
+    clm_allocation(f$inputs, family = decay_kernel("gaussian"), fit_v0 = TRUE), reference))
+  # Constants that do change the fit are caught by reproducing its loss instead.
+  for (changed in list(clm_allocation(f$inputs, kappa = 2, fit_v0 = TRUE),
+                       clm_allocation(f$inputs, beta = 2, fit_v0 = TRUE))) {
+    expect_error(check_allocation(changed, reference), "does not belong to this model")
+    expect_error(check_allocation(changed, reference), "loss cannot be reproduced")
+  }
+  # Another built-in kernel is still another model.
+  expect_error(check_allocation(clm_allocation(f$inputs, family = "exponential", fit_v0 = TRUE),
+                                reference), "does not belong")
 })
 
 test_that("the internal no-decay model is a copy that drops the kernel and ignores sigma", {

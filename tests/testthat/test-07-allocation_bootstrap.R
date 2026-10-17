@@ -560,6 +560,11 @@ test_that("the bootstrap engine runs end to end and withholds intervals when inc
   expect_true(all(is.na(boot$intervals$lower) & is.na(boot$intervals$upper)))
 })
 
+# The note of results for models outside the coverage study (see the last section).
+.coverage_note <- paste("Coverage of these intervals was evaluated for Gaussian decay with fitted",
+                        "sigma and v0; this model uses the same procedure without a separate",
+                        "coverage study.")
+
 # Other kernels, a declared kernel and a fitted supply elasticity ---------------
 # The bootstrap takes its parameter names from the model, so it also runs for the
 # exponential and power kernels, a declared smooth kernel and a fitted beta. The
@@ -654,6 +659,9 @@ test_that("the bootstrap engine runs end to end and withholds intervals when inc
   expect_identical(names(run$original$theta), p)
   expect_equal(run$original$theta, stats::coef(fit))
 
+  # Every one of these models lies outside the coverage study.
+  expect_identical(run$coverage_note, .coverage_note)
+  expect_identical(tail(names(run), 1L), "coverage_note")
   expect_identical(names(run$draws), .draw_columns(p, scenario))
   expect_identical(run$draws$attempt, 1:3)
   expect_identical(run$draws$seed, seed + 1:3)
@@ -1043,6 +1051,8 @@ test_that("a (sigma, v0) model keeps the names and order of its tables", {
   scenario <- clm_allocation(prepare_allocation(f$demand, supply, f$distance,
     metadata = f$inputs$input_metadata), fit_v0 = TRUE)
   run <- .run_allocation_bootstrap(f$model, fit, observation, scenario, seed = 11L, attempts = 2L)
+  # The studied model gets no coverage note: its result has no new field.
+  expect_false("coverage_note" %in% names(run))
   # The column vectors the bootstrap produced before parameters came from the model.
   expect_identical(names(run$draws), c("attempt", "seed", "status", "success", "sigma", "v0",
     "boundary", "best_start", "loss", "score_norm", "regional_rho", "delta_contacts",
@@ -1071,4 +1081,232 @@ test_that("a (sigma, v0) model keeps the names and order of its tables", {
     "solver_converged", "residual", "seconds", "boundary", "status", "optim_message",
     "solver_message", "loss_gap", "log_parameter_gap", "sigma", "v0", "score_norm", "rank",
     "warnings", "errors", "attempt"))
+})
+
+# Declared bounds: finite differences and the original diagnostic ----------------
+# A declared kernel bounds sigma from below. Where the optimum sits on that bound,
+# the finite-difference step of the sensitivities used to leave the bounds: the
+# analytic gradient of the fit was abandoned without a message, and the
+# bootstrap stopped (original fit) or lost its draws on the bound (replicates).
+# The built-in Gaussian, with the same search bounds, is the reference.
+
+.gaussian_copy <- function(lower, upper = 40) {
+  decay_kernel(function(distance, sigma) exp(-(distance^2) / (2 * sigma^2)),
+               name = "gcopy", parameter = "travel scale", lower = lower, upper = upper)
+}
+
+# Calls of the fallback to a numerical gradient made by `code`.
+.count_gradient_fallbacks <- function(code) {
+  count <- 0L
+  real <- .nfxp_fd_log_gradient
+  value <- testthat::with_mocked_bindings(code, .nfxp_fd_log_gradient = function(...) {
+    count <<- count + 1L
+    real(...)
+  })
+  list(value = value, count = count)
+}
+
+test_that("a declared kernel whose optimum is on its bound fits like the built-in Gaussian", {
+  f <- alloc_generated_case()
+  # Truth is sigma = 8, so with a lower bound of 10 the Poisson optimum is the bound.
+  # The declaration has the bounds of the search.
+  starts <- rbind(a = c(sigma = 12, v0 = 20), b = c(sigma = 20, v0 = 50))
+  lower <- c(sigma = 10, v0 = 1)
+  declared <- clm_allocation(f$inputs, family = .gaussian_copy(10, 40), fit_v0 = TRUE)
+  fit_with <- function(model) {
+    .count_gradient_fallbacks(fit_allocation(model, f$y, starts, lower, f$upper,
+      loss = "poisson", gradient = TRUE, control = list(maxit = 300, factr = 10, pgtol = 1e-8)))
+  }
+  builtin <- fit_with(f$model)
+  copy <- fit_with(declared)
+  expect_equal(coef(copy$value)[["sigma"]], 10, tolerance = 1e-6)
+  expect_equal(coef(copy$value), coef(builtin$value), tolerance = 1e-6)
+  expect_equal(copy$value$best$loss, builtin$value$best$loss, tolerance = 1e-6)
+  expect_identical(copy$value$status, builtin$value$status)
+  # The analytic gradient is used throughout, with one-sided steps at the bound:
+  # it never falls back to numerical differences of the objective.
+  expect_identical(c(builtin$count, copy$count), c(0L, 0L))
+  expect_true(copy$value$best$gradient)
+  # The bootstrap gives the declared model the refusal of the built-in model: the
+  # original optimum is on the bound. It used to stop with an error.
+  observation <- alloc_bootstrap_observation()
+  testthat::local_mocked_bindings(.allocation_case_fit = function(...) {
+    stop("unexpected bootstrap refit")
+  })
+  refused <- bootstrap_allocation(f$model, builtin$value, observation, seed = 44L)
+  result <- bootstrap_allocation(declared, copy$value, observation, seed = 44L)
+  expect_identical(refused$original$status, "original_mean_boundary")
+  expect_identical(result$original$status, refused$original$status)
+  expect_identical(result$status, "refused")
+  expect_true(result$original$boundary)
+  expect_equal(result$attempted, 0)
+  expect_equal(result$original$theta, refused$original$theta, tolerance = 1e-6)
+  regular <- result$intervals$quantity != "regional_A"
+  expect_true(all(result$intervals$status[regular] == "original_mean_boundary"))
+})
+
+test_that("replicates on a declared bound are kept, as for the built-in Gaussian", {
+  f <- alloc_generated_case()
+  # Generated with sigma = 10.2 (v0 = 25), whose Poisson estimate is 10.16: close
+  # enough to the lower bound of 10 that replicates often fall on it. The search
+  # and the declaration share the bound. (A bound that exp(log()) cannot reach
+  # exactly, such as 7.6, is tested in the next block.)
+  y <- colSums(round(clm_oracle(f$distance, f$demand, f$supply, 10.2, 25)$flow))
+  starts <- rbind(a = c(sigma = 11.2, v0 = 20), b = c(sigma = 14.2, v0 = 50))
+  lower <- c(sigma = 10, v0 = 1)
+  run <- function(model) {
+    fit <- fit_allocation(model, y, starts, lower, f$upper, loss = "poisson", gradient = TRUE,
+      control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+    .run_allocation_bootstrap(model, fit, alloc_bootstrap_observation(), seed = 5L,
+                              attempts = 12L)
+  }
+  builtin <- run(f$model)
+  declared <- run(clm_allocation(f$inputs, family = .gaussian_copy(10, 40), fit_v0 = TRUE))
+  for (result in list(builtin, declared)) {
+    expect_identical(result$original$status, "eligible")
+    expect_equal(c(result$attempted, result$successful), c(12, 12))
+    expect_identical(result$draws$status, rep("selected", 12))
+  }
+  on_bound <- function(result) which(result$draws$sigma <= 10 * (1 + 1e-6))
+  # Draws on the bound are inner boundary fits that stay in the distribution.
+  expect_gt(length(on_bound(builtin)), 0)
+  expect_identical(on_bound(declared), on_bound(builtin))
+  expect_identical(declared$draws$boundary, builtin$draws$boundary)
+  expect_true(all(declared$draws$boundary[on_bound(declared)]))
+  expect_equal(declared$draws$sigma, builtin$draws$sigma, tolerance = 1e-5)
+  expect_equal(declared$draws$v0, builtin$draws$v0, tolerance = 1e-5)
+  expect_equal(summary(declared)$diagnostics$inner_boundary_attempts,
+               summary(builtin)$diagnostics$inner_boundary_attempts)
+})
+
+test_that("a declared bound that exp(log()) cannot reach exactly still holds boundary draws", {
+  f <- alloc_generated_case()
+  expect_lt(exp(log(7.6)), 7.6)  # the case this block is about
+  y <- colSums(round(clm_oracle(f$distance, f$demand, f$supply, 8, 25)$flow))
+  starts <- rbind(a = c(sigma = 9, v0 = 20), b = c(sigma = 12, v0 = 50))
+  lower <- c(sigma = 7.6, v0 = 1)
+  upper <- c(sigma = 40, v0 = 200)
+  run <- function(model) {
+    fit <- fit_allocation(model, y, starts, lower, upper, loss = "poisson", gradient = TRUE,
+      control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+    .run_allocation_bootstrap(model, fit, alloc_bootstrap_observation(), seed = 5L,
+                              attempts = 10L)
+  }
+  builtin <- run(f$model)
+  declared <- run(clm_allocation(f$inputs, family = .gaussian_copy(7.6, 40), fit_v0 = TRUE))
+  # Trial values and estimates stay inside the declared bound, so replicates on it
+  # are selected and kept, as for the built-in Gaussian.
+  expect_identical(declared$draws$status, builtin$draws$status)
+  expect_equal(declared$successful, builtin$successful)
+  on_bound <- function(result) which(result$draws$sigma <= 7.6 * (1 + 1e-6))
+  expect_gt(length(on_bound(builtin)), 0)
+  expect_identical(on_bound(declared), on_bound(builtin))
+  expect_true(all(declared$draws$sigma >= 7.6))
+})
+
+test_that("a built-in fit on a search bound that exp(log()) misses is refused as a boundary", {
+  f <- alloc_generated_case()
+  y <- colSums(round(clm_oracle(f$distance, f$demand, f$supply, 8, 25)$flow))
+  lower <- c(sigma = 10.000002, v0 = 1)
+  expect_lt(exp(log(lower[["sigma"]])), lower[["sigma"]])
+  fit <- fit_allocation(f$model, y, rbind(a = c(sigma = 12, v0 = 20), b = c(sigma = 15, v0 = 50)),
+    lower, c(sigma = 40, v0 = 200), loss = "poisson", gradient = TRUE,
+    control = list(maxit = 300, factr = 10, pgtol = 1e-8))
+  # The estimate is on the bound, not a unit in the last place below it.
+  expect_identical(coef(fit)[["sigma"]], lower[["sigma"]])
+  result <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(), seed = 5L,
+                                      attempts = 1L)
+  expect_identical(result$original$status, "original_mean_boundary")
+})
+
+test_that("an original fit whose score cannot be computed is refused, not an error", {
+  f <- alloc_generated_case(); fit <- alloc_generated_fit()
+  testthat::local_mocked_bindings(
+    .allocation_bootstrap_diagnostic = function(...) stop("injected diagnostic failure"),
+    .allocation_case_fit = function(...) stop("unexpected bootstrap refit"))
+  result <- .run_allocation_bootstrap(f$model, fit, alloc_bootstrap_observation(), seed = 1L,
+                                      attempts = 1L)
+  expect_identical(result$status, "refused")
+  expect_identical(result$original$status, "original_score_failed")
+  expect_identical(result$reasons, "original_score_failed")
+  expect_equal(result$attempted, 0)
+  # The other fields of the original fit are as for a fit that was not scored.
+  expect_equal(result$original$theta, stats::coef(fit))
+  expect_true(is.na(result$original$score_norm) && is.na(result$original$rank) &&
+                is.na(result$original$boundary))
+  regular <- result$intervals$quantity != "regional_A"
+  expect_true(all(result$intervals$status[regular] == "original_score_failed"))
+  expect_true(all(is.na(result$intervals$lower) & is.na(result$intervals$upper)))
+  expect_identical(result$intervals$status[!regular], "fixed_input_identity")
+  # The public function agrees, and the refusal prints and summarizes.
+  public <- bootstrap_allocation(f$model, fit, alloc_bootstrap_observation(), seed = 1L)
+  expect_identical(public$original$status, "original_score_failed")
+  expect_output(print(public), "original_score_failed|original fit score failed")
+})
+
+# Coverage note -------------------------------------------------------------------
+# The coverage study covers built-in Gaussian decay with fitted sigma and v0 and
+# kappa = beta = 1. Results for any other model say that they use the same
+# procedure without a separate study; results for the studied model are unchanged.
+
+# A refused result of a model, from a search in which every start fails.
+.refused_bootstrap <- function(case) {
+  failed <- alloc_failed_search(case, observed = case$y)
+  bootstrap_allocation(case$model, failed, alloc_bootstrap_observation(), seed = 44L)
+}
+
+.gaussian_case <- function(...) {
+  f <- alloc_generated_case()
+  .boot_case("gaussian", c(sigma = 8, v0 = 25), starts = f$starts, lower = f$lower,
+             upper = f$upper, ...)
+}
+
+# Printed text with wrapped lines joined.
+.printed <- function(x) gsub("\\s+", " ", paste(utils::capture.output(print(x)), collapse = " "))
+
+test_that("a model outside the coverage study gets a coverage note, last in the result", {
+  copy <- .gaussian_copy(0)
+  cases <- list(
+    "another kernel" = .boot_case("exponential", c(sigma = .15, v0 = 20),
+      starts = rbind(near = c(sigma = .12, v0 = 15), far = c(sigma = .3, v0 = 40)),
+      lower = c(sigma = .02, v0 = 1), upper = c(sigma = 2, v0 = 200)),
+    "a declared kernel" = .gaussian_case(kernel = copy,
+      oracle_kernel = function(distance, sigma) exp(-(distance^2) / (2 * sigma^2))),
+    "a fitted supply elasticity" = .boot_beta_case(),
+    "a fixed kappa" = .gaussian_case(kappa = 1.5),
+    "a fixed beta" = .gaussian_case(beta = .8))
+  for (label in names(cases)) {
+    result <- .refused_bootstrap(cases[[label]])
+    expect_identical(result$status, "refused", info = label)
+    expect_identical(result$coverage_note, .coverage_note, info = label)
+    expect_identical(tail(names(result), 1L), "coverage_note", info = label)
+    expect_identical(summary(result)$coverage_note, .coverage_note, info = label)
+    expect_match(.printed(result), .coverage_note, fixed = TRUE, info = label)
+    expect_match(.printed(summary(result)), .coverage_note, fixed = TRUE, info = label)
+    # The settings are the checkpoint contract and carry no note.
+    expect_identical(result$settings, .allocation_bootstrap_settings(), info = label)
+  }
+})
+
+test_that("results for the studied model are unchanged and carry no note", {
+  fields <- c("status", "reasons", "original", "intervals", "draws", "starts", "multiplicities",
+              "settings", "observation", "seed", "planned", "attempted", "successful",
+              "input_metadata", "facility_ids", "capacity_support")
+  # Built-in Gaussian decay, fitted sigma and v0, kappa = beta = 1, also declared
+  # as a built-in kernel (the declaration is the string).
+  for (case in list(.gaussian_case(), .gaussian_case(kernel = decay_kernel("gaussian")))) {
+    result <- .refused_bootstrap(case)
+    expect_identical(names(result), fields)
+    expect_false("coverage_note" %in% names(summary(result)))
+    expect_false(grepl("Coverage of these intervals", .printed(result), fixed = TRUE))
+    expect_false(grepl("Coverage of these intervals", .printed(summary(result)), fixed = TRUE))
+  }
+  # A completed run of the shared design (with mocked refits) has the same fields.
+  run <- alloc_bootstrap_run()
+  expect_identical(names(run), fields)
+  expect_null(run$coverage_note)
+  expect_identical(.allocation_bootstrap_coverage_note(alloc_generated_case()$model), NULL)
+  expect_identical(.allocation_bootstrap_coverage_note(
+    clm_allocation(alloc_generated_case()$inputs, family = "exponential", fit_v0 = TRUE)),
+    .coverage_note)
 })

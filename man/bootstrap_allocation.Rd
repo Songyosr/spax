@@ -47,6 +47,10 @@ contacts. Regional attributed capacity per need is a fixed-input identity
 without an interval: it includes supply with at least one known finite edge
 on retained demand support. Unsupported positive supply is disclosed in
 \code{capacity_support}; total supplied capacity can exceed attributed capacity.
+For any model other than built-in Gaussian decay with fitted sigma and v0 and
+\code{kappa} and \code{beta} equal to 1, the result also has a \code{coverage_note} saying
+that coverage was evaluated for that case and not studied separately for the
+model; it is printed with the result.
 Scientific refusals are inspectable results; invalid inputs error.
 }
 \description{
@@ -66,7 +70,8 @@ Exactly 399 attempts use the original explicit starts and positive bounds,
 with fixed numerical controls. Failed attempts are retained without replacement.
 Successful inner boundary estimates remain in the distribution. Original mean
 boundaries, local rank deficiency (fewer identified directions than fitted
-parameters) or insufficient fit precision refuse intervals;
+parameters) or insufficient fit precision, including a score that cannot be
+computed, refuse intervals;
 percentile intervals require a complete run of 399 attempts and at least
 380 finite successful values per quantity. Incomplete results retain their
 point estimates and diagnostics but withhold intervals.
