@@ -1,3 +1,9 @@
+# spax (development version)
+
+* Version 0.3.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23438612.
+  doi:10.5281/zenodo.23438611 refers to all versions. `citation("spax")` gives
+  the reference.
+
 # spax 0.3.0
 
 First release that includes the experimental allocation workflow. Experimental

@@ -3,6 +3,11 @@
 
 # spax: spatial accessibility and allocation modeling
 
+<!-- badges: start -->
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23438611.svg)](https://doi.org/10.5281/zenodo.23438611)
+<!-- badges: end -->
+
 `spax` supports two user workflows: public floating catchment area (FCA)
 methods for accessibility surfaces, and an experimental static
 conditional-logit model (CLM) workflow for fitting allocation to
@@ -35,6 +40,9 @@ versions. For reproducible work, record the package version and retain
 the input IDs, units, observation declaration and saved results.
 Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
+
+Version 0.3.0 is archived on Zenodo as doi:10.5281/zenodo.23438612; cite
+it with `citation("spax")`.
 
 Package and function help are available from an installed package.
 Installations that include built articles also provide the guides, which
