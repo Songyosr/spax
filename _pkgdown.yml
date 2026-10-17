@@ -60,6 +60,7 @@ reference:
     desc: "Functions for handling distance relationships"
     contents:
       - calc_decay
+      - decay_kernel
       - calc_choice
       - calc_normalize
       - calc_travel_time

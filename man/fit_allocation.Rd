@@ -76,6 +76,7 @@ Other experimental allocation workflow:
 \code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
 \code{\link{compare_allocations}()},
+\code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}

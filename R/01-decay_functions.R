@@ -7,13 +7,16 @@
 #'
 #' @param distance Numeric vector, matrix, or SpatRaster of distances
 #' @param method Character string specifying the decay function or a custom function:
-#'        "gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...)
+#'        "gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...);
+#'        or a kernel declared with \code{\link{decay_kernel}}
 #' @param sigma Parameter controlling the rate of decay. A single number, or a
 #'        SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
-#'        spatially varying catchment (variable-catchment FCA / V2SFCA).
+#'        spatially varying catchment (variable-catchment FCA / V2SFCA). A
+#'        declared custom kernel needs a single number within its bounds.
 #' @param snap Logical; if TRUE, skip input validation
 #' @param ... Additional parameters for custom decay functions, or the offset
-#'        \code{c} of the "inverse" kernel
+#'        \code{c} of the "inverse" kernel. A declared custom kernel takes none:
+#'        its fixed arguments belong to the declaration.
 #' @return Object of the same class as input containing decay weights
 #' @details
 #' Built-in kernels for a distance \eqn{d}, and the \code{sigma} used when
@@ -33,6 +36,16 @@
 #' }
 #' The defaults are historical values, not recommendations: set \code{sigma}
 #' for the units and scale of your travel times.
+#'
+#' A kernel declared with \code{\link{decay_kernel}} can be given as
+#' \code{method}. A built-in declaration behaves exactly like its name. A
+#' declared custom kernel needs \code{sigma}, a single number within the bounds
+#' of the declaration, and takes its fixed arguments from the declaration, so
+#' \code{...} must be empty; a SpatRaster \code{sigma} is refused. It is
+#' evaluated on the finite distances only: a missing distance has the weight
+#' \code{NA} and an infinite distance (an absent edge) the weight 0, as with
+#' the built-in kernels. A vector or matrix keeps its shape, and a SpatRaster
+#' keeps its geometry, layer names and missing cells.
 #' @examples
 #' library(terra)
 #'
@@ -56,12 +69,31 @@
 #' }
 #' w_custom <- calc_decay(r, method = gaussian_power, sigma = 30, power = 1.5)
 #'
+#' # A declared kernel records its meaning, bounds and fixed arguments
+#' plateau <- decay_kernel(
+#'   function(distance, sigma, plateau = 5) {
+#'     ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+#'   },
+#'   name = "plateau", parameter = "scale", args = list(plateau = 5)
+#' )
+#' w_plateau <- calc_decay(r, method = plateau, sigma = 10)
+#'
 #' # One layer per facility gives one layer of weights per facility
 #' distances <- rast(replicate(3, r))
 #' names(distances) <- c("facility1", "facility2", "facility3")
 #' weights <- calc_decay(distances, method = "gaussian", sigma = 30)
 #' @export
 calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...) {
+  # A declared kernel (see decay_kernel()) comes first: a built-in declaration is
+  # its method string, a custom one is evaluated on the finite distances only.
+  if (inherits(method, "spax_decay_kernel")) {
+    .validate_decay_kernel(method)
+    if (!isTRUE(method$builtin)) {
+      return(.calc_decay_declared(distance, method, sigma, snap, ...))
+    }
+    method <- method$name
+  }
+
   # Handle custom function first
   if (is.function(method)) {
     # Get function arguments
@@ -108,6 +140,39 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
     "binary" = .help_decay_binary(distance, sigma, ...),
     stop("Invalid method specified")
   )
+}
+
+# The weights of a custom declared kernel for a numeric vector, matrix or
+# SpatRaster. Only the finite distances are evaluated; an infinite distance gets
+# 0 and a missing one NA.
+.calc_decay_declared <- function(distance, kernel, sigma, snap, ...) {
+  if (...length() > 0L) {
+    stop("pass fixed arguments through decay_kernel(args = )")
+  }
+  if (inherits(sigma, "SpatRaster")) {
+    stop("a variable catchment needs a built-in method or a plain function")
+  }
+  if (is.null(sigma)) {
+    stop("sigma is required for a declared kernel")
+  }
+  if (!is.numeric(sigma) || length(sigma) != 1L || !is.finite(sigma) ||
+      sigma < kernel$lower || sigma > kernel$upper) {
+    stop("sigma must be a single number from ", format(kernel$lower), " to ",
+         format(kernel$upper))
+  }
+  if (!snap && !inherits(distance, "SpatRaster") &&
+      (!is.numeric(distance) || is.object(distance))) {
+    stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
+  }
+  sigma <- as.numeric(sigma)
+  fun <- .decay_kernel_function(kernel)
+  if (inherits(distance, "SpatRaster")) {
+    weights <- .eval_decay_kernel(kernel, terra::values(distance, mat = TRUE), sigma, fun)
+    out <- terra::rast(distance)
+    terra::values(out) <- weights
+    return(out)
+  }
+  .eval_decay_kernel(kernel, distance, sigma, fun)
 }
 
 #' Validate inputs for decay calculation

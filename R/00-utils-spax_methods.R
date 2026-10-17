@@ -38,9 +38,12 @@ print.spax <- function(x, ...) {
   # Core parameters
   cat("\nParameters:\n")
   if (!is.null(x$parameters$decay_params)) {
-    cat("- Decay function:", x$parameters$decay_params$method)
-    if (!is.null(x$parameters$decay_params$sigma)) {
-      cat(sprintf(" (sigma = %g)", x$parameters$decay_params$sigma))
+    cat("- Decay function:", .decay_kernel_label(x$parameters$decay_params$method))
+    sigma <- x$parameters$decay_params$sigma
+    if (inherits(sigma, "SpatRaster")) {
+      cat(" (sigma = variable (raster))")
+    } else if (!is.null(sigma)) {
+      cat(sprintf(" (sigma = %g)", sigma))
     }
     cat("\n")
   }

@@ -84,6 +84,7 @@ Other experimental allocation workflow:
 \code{\link{calc_travel_time}()},
 \code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
+\code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{predict_allocation}()},
