@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/Songyosr/spax/blob/v0.3.0/inst/CITATION)
+[`inst/CITATION`](https://github.com/Songyosr/spax/blob/main/inst/CITATION)
 
 Rajborirug S (2026). *spax: Spatial Accessibility and Allocation
 Modeling*. R package version 0.3.0, <https://github.com/Songyosr/spax>.
