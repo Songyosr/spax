@@ -137,6 +137,9 @@ test_that("Poisson flow gradients match the floored loss when cells fall below e
   expect_equal(.poisson_gradient(mu, y, sensitivity),
                as.vector(fd_jacobian(loss_at, theta)), tolerance = 1e-6)
 
+  # Sanity check, not a regression check: with only three cells on the floor
+  # the old gradient also fitted this case; the Cornwall guide fit is the case
+  # where it split the starts (DEC-029).
   starts <- rbind(a = c(sigma = 1, v0 = 1), b = c(sigma = 3, v0 = 5))
   fits <- lapply(c(analytic = TRUE, numerical = FALSE), function(gradient) {
     fit_allocation(model, observed, starts,

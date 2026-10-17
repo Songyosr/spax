@@ -112,16 +112,18 @@
   out
 }
 
-# Static CLM with a free attractiveness per facility (Gaussian kernel), fitted
-# by Poisson maximum likelihood on flows with analytic gradients. The first
-# facility's attractiveness is fixed at its supply; v0 sets the scale.
-.clm_free_attractiveness_fit <- function(inputs, observed, sigma, v0) {
+# Poisson loss and analytic gradient of the static CLM with a free
+# attractiveness per facility (Gaussian kernel) on flows. Parameters are the
+# log attractiveness of facilities 2..J (the first is fixed at its supply),
+# log sigma and log v0. Flows below the floor of .poisson_loss add a constant,
+# so they add nothing to the gradient (DEC-029).
+.clm_free_attractiveness_objective <- function(inputs, observed, eps = 1e-9) {
   D <- inputs$D_active
   S <- as.numeric(inputs$S)
   t2 <- inputs$distance_active^2
   Y <- observed
   J <- length(S)
-  value <- function(p) {
+  function(p) {
     la <- c(log(S[1]), p[seq_len(J - 1)])
     sig <- exp(p[J])
     v <- exp(p[J + 1])
@@ -130,15 +132,24 @@
     den <- rowSums(O) + v
     P <- O / den
     mu_raw <- D * P
-    mu <- pmax(mu_raw, 1e-9) # same floor as .poisson_loss
+    mu <- pmax(mu_raw, eps)
     r <- mu - Y
-    r[mu_raw < 1e-9] <- 0 # the floored loss is flat there (DEC-029)
+    r[mu_raw < eps] <- 0
     Rs <- rowSums(r)
     g_la <- colSums(r) - colSums(P * Rs)
     g_ls <- sum(r * t2 / sig^2) - sum(Rs * rowSums(P * t2 / sig^2))
     g_lv <- -sum(Rs * v / den)
     list(loss = sum(mu - Y * log(mu)), grad = c(g_la[-1], g_ls, g_lv))
   }
+}
+
+# Static CLM with a free attractiveness per facility (Gaussian kernel), fitted
+# by Poisson maximum likelihood on flows with analytic gradients. The first
+# facility's attractiveness is fixed at its supply; v0 sets the scale.
+.clm_free_attractiveness_fit <- function(inputs, observed, sigma, v0) {
+  S <- as.numeric(inputs$S)
+  J <- length(S)
+  value <- .clm_free_attractiveness_objective(inputs, observed)
   p0 <- c(log(S[-1]), log(sigma), log(v0))
   opt <- stats::optim(p0, function(p) value(p)$loss, function(p) value(p)$grad,
                       method = "BFGS", control = list(maxit = 5000, reltol = 1e-14))

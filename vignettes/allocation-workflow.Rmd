@@ -160,9 +160,9 @@ as.data.frame(fit)
 ```
 
 The summary keeps every start, its convergence, boundaries and messages. All
-three starts converge away from the bounds and stop very close to each other,
-but the disagreement flag uses deliberately strict default tolerances, so read
-the gaps in the per-start table rather than the flag alone. Agreement among the
+three starts converge away from the bounds and stop very close to each other.
+The disagreement flag uses deliberately strict default tolerances, so read the
+gaps in the per-start table rather than the flag alone. Agreement among the
 supplied starts is a numerical check; it does not prove a global optimum or
 that the parameters are identified. A σ of about 4.4 minutes means
 registration is very local: a practice 9 minutes away keeps only about 12% of

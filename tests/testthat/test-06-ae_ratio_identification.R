@@ -99,3 +99,31 @@ test_that("ratio identification validates its inputs", {
     lower = c(sigma = 0.5, v = 1e-4), upper = c(sigma = 60, v0 = 50)),
     "named sigma and v0")
 })
+
+test_that("free-attractiveness gradient matches finite differences with flows below the floor", {
+  # Four facilities spread along 60 minutes: at short travel scales many
+  # origin-facility flows with positive counts fall below the 1e-9 floor.
+  x <- seq(0, 60, length.out = 12)
+  site <- c(f1 = 2, f2 = 20, f3 = 40, f4 = 58)
+  travel <- abs(outer(x, site, "-")) + 1
+  dimnames(travel) <- list(paste0("o", seq_along(x)), names(site))
+  demand <- setNames(rep(500, length(x)), rownames(travel))
+  supply <- c(f1 = 3, f2 = 5, f3 = 4, f4 = 6)
+  inputs <- prepare_allocation(demand, supply, travel)
+  observed <- matrix(1 + (seq_len(length(travel)) %% 7), nrow(travel),
+                     dimnames = dimnames(travel))
+  value <- .clm_free_attractiveness_objective(inputs, observed)
+  for (sigma in c(3, 4, 6)) {
+    p <- c(log(supply[-1]) + c(0.2, -0.1, 0.3), log(sigma), log(0.5))
+    attraction <- exp(c(log(supply[[1]]), p[1:3]))
+    score <- sweep(exp(-travel^2 / (2 * sigma^2)), 2, attraction, `*`)
+    flow <- demand * score / (rowSums(score) + 0.5)
+    expect_true(any(flow < 1e-9))
+    expect_true(all(abs(flow / 1e-9 - 1) > 1e-3))  # no step crosses the floor
+    fd <- vapply(seq_along(p), function(k) {
+      h <- replace(numeric(length(p)), k, 1e-6)
+      (value(p + h)$loss - value(p - h)$loss) / 2e-6
+    }, numeric(1))
+    expect_equal(unname(value(p)$grad), fd, tolerance = 1e-6)
+  }
+})
