@@ -17,9 +17,15 @@ clm_allocation(
 \arguments{
 \item{inputs}{An \code{ae_prepared_inputs} object from checked preparation.}
 
-\item{family}{Travel kernel: Gaussian, exponential or power. Gaussian sigma
-is a travel scale, exponential sigma a rate, and power sigma an exponent.
-Power requires strictly positive finite travel distances.}
+\item{family}{Travel kernel: \code{"gaussian"}, \code{"exponential"}, \code{"power"}, or a
+declaration from \code{\link[=decay_kernel]{decay_kernel()}}. Gaussian sigma is a travel scale,
+exponential sigma a rate, and power sigma an exponent. Power requires
+strictly positive finite travel distances. A built-in declaration, such as
+\code{decay_kernel("gaussian")}, is the same as its string. For a declaration of
+your own function, sigma has the meaning the declaration gives it, the
+declaration's \code{lower} and \code{upper} bounds apply to sigma (starts, bounds and
+parameters outside them are refused), and \code{zero_distance = FALSE} refuses a
+finite zero travel time in the prepared inputs.}
 
 \item{kappa}{Positive supply scale used in attractiveness, not in reported
 raw supply or capacity attribution.}

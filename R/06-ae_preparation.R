@@ -210,7 +210,31 @@
   .interaction_substrate(demand, supply, distance, id_col = id_col, supply_cols = supply_cols)
 }
 
-.allocation_kernel <- function(substrate, family, sigma) {
+# Decay weights for the allocation workflow. `family` is a built-in kernel name,
+# the internal no-decay family "none", or the name of the declared `kernel` (a
+# custom `spax_decay_kernel`, with `fun` its rebuilt function when the caller
+# already has it). Built-ins are evaluated as before; "none" is 1 on every
+# finite distance; a custom kernel is evaluated on the finite distances only.
+# Non-finite distances keep a non-finite value for the caller's zeroing (an
+# infinite distance is already 0 for a custom kernel).
+.decay_weights <- function(family, kernel, distance, sigma, fun = NULL) {
+  if (!is.null(kernel)) {
+    return(.eval_decay_kernel(kernel, distance, sigma, fun))
+  }
+  if (identical(family, "none")) {
+    weights <- distance
+    storage.mode(weights) <- "double"
+    weights[is.finite(distance)] <- 1
+    return(weights)
+  }
+  calc_decay(distance, method = family, sigma = sigma, snap = TRUE)
+}
+
+# Domain checks and weights of the decay kernel on the active travel matrix. A
+# declared custom `kernel` also requires `sigma` inside its bounds and, when
+# declared undefined at distance zero, refuses finite zero travel on strict
+# inputs, as for the power kernel.
+.allocation_kernel <- function(substrate, family, sigma, kernel = NULL, fun = NULL) {
   distance <- substrate$distance_active
   strict <- identical(substrate$input_policy$kernel_domain, "strict")
   if (strict && family == "power" && any(distance == 0, na.rm = TRUE)) {
@@ -219,7 +243,16 @@
   if (strict && family == "gaussian" && sigma <= 0) {
     stop("gaussian decay requires positive sigma")
   }
-  K <- calc_decay(distance, method = family, sigma = sigma, snap = TRUE)
+  if (!is.null(kernel)) {
+    if (sigma < kernel$lower || sigma > kernel$upper) {
+      stop(kernel$name, " decay requires sigma from ", format(kernel$lower), " to ",
+           format(kernel$upper))
+    }
+    if (strict && !kernel$zero_distance && any(distance == 0, na.rm = TRUE)) {
+      stop(kernel$name, " decay requires strictly positive finite travel distances")
+    }
+  }
+  K <- .decay_weights(family, kernel, distance, sigma, fun)
   if (!strict) {
     K[!is.finite(K)] <- 0
   } else {

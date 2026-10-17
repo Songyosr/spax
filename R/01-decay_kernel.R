@@ -14,7 +14,8 @@
 #' parameter `sigma` means, the bounds `sigma` may take and any fixed extra
 #' arguments. Nothing but data is stored, so a declaration can be compared,
 #' saved and reloaded in a fresh session. This experimental function lets one
-#' declaration be used wherever a decay `method` is accepted.
+#' declaration be used wherever a decay `method` is accepted. A declaration can
+#' also be passed as `family` to [clm_allocation()].
 #'
 #' **Built-in kernels.** `decay_kernel("gaussian")`, `decay_kernel("exponential")`
 #' and `decay_kernel("power")` declare the kernels of the same names in
@@ -55,10 +56,13 @@
 #'   `0 <= lower < upper <= Inf`.
 #' @param zero_distance `FALSE` declares the kernel undefined at distance zero,
 #'   as the power kernel is: the check at declaration then leaves zero out of
-#'   its grid.
+#'   its grid, and a model from [clm_allocation()] refuses prepared inputs that
+#'   contain a finite zero travel time when it is evaluated or fitted.
 #' @param smooth `FALSE` declares a kernel that is not smooth in `sigma` (steps
-#'   or thresholds). It can be evaluated and used in FCA but not fitted, because
-#'   model fitting and bootstrapping need a kernel that is smooth in `sigma`.
+#'   or thresholds). It can be evaluated and used in FCA, and a model built with
+#'   [clm_allocation()] can be evaluated at fixed parameters with
+#'   [evaluate_allocation()], but [fit_allocation()] refuses it, because model
+#'   fitting and bootstrapping need a kernel that is smooth in `sigma`.
 #' @param args A named list of fixed extra arguments for `fun`. Its names must
 #'   be arguments of `fun` other than `distance` and `sigma`; its values must be
 #'   numeric, logical or character vectors without attributes.

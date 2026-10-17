@@ -61,9 +61,15 @@ prepare_allocation <- function(demand, supply, distance,
 #' Declare corrected static CLM over checked allocation inputs.
 #'
 #' @param inputs An `ae_prepared_inputs` object from checked preparation.
-#' @param family Travel kernel: Gaussian, exponential or power. Gaussian sigma
-#'   is a travel scale, exponential sigma a rate, and power sigma an exponent.
-#'   Power requires strictly positive finite travel distances.
+#' @param family Travel kernel: `"gaussian"`, `"exponential"`, `"power"`, or a
+#'   declaration from [decay_kernel()]. Gaussian sigma is a travel scale,
+#'   exponential sigma a rate, and power sigma an exponent. Power requires
+#'   strictly positive finite travel distances. A built-in declaration, such as
+#'   `decay_kernel("gaussian")`, is the same as its string. For a declaration of
+#'   your own function, sigma has the meaning the declaration gives it, the
+#'   declaration's `lower` and `upper` bounds apply to sigma (starts, bounds and
+#'   parameters outside them are refused), and `zero_distance = FALSE` refuses a
+#'   finite zero travel time in the prepared inputs.
 #' @param kappa Positive supply scale used in attractiveness, not in reported
 #'   raw supply or capacity attribution.
 #' @param beta Positive supply elasticity in `(kappa * supply)^beta`.
@@ -81,8 +87,10 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
                             kappa = 1, beta = 1, v0 = 0,
                             fit_v0 = FALSE, fit_beta = FALSE) {
   .chck_class(inputs, "ae_prepared_inputs", "inputs")
-  .huff_problem(inputs, family = match.arg(family), kappa = kappa, beta = beta,
-                 v0 = v0, fit_v0 = fit_v0, fit_beta = fit_beta, allocation = "clm")
+  decay <- .resolve_decay_family(family)
+  .huff_problem(inputs, family = decay$family, kappa = kappa, beta = beta,
+                 v0 = v0, fit_v0 = fit_v0, fit_beta = fit_beta, allocation = "clm",
+                 kernel = decay$kernel)
 }
 
 .check_allocation_model <- function(model) {
@@ -101,7 +109,13 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' Observation-indexed loss arguments must be in canonical order. Starts,
 #' boundaries, failed runs and disagreement retain the existing multistart
 #' result; a selected fit is not a claim of identification or global optimality.
-#' @param model A corrected CLM declared over checked prepared inputs.
+#'
+#' A model whose decay kernel was declared with `smooth = FALSE` (see
+#' [decay_kernel()]) is refused, because fitting needs a kernel that is smooth in
+#' sigma. Evaluate such a kernel at fixed parameters with [evaluate_allocation()],
+#' for example over a grid of sigma values.
+#' @param model A corrected CLM declared over checked prepared inputs. A kernel
+#'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
 #'   use NA for unobserved entries. The count-valued `utilization` and `flow`
@@ -111,6 +125,8 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #'   row, with exactly the named model parameter columns. No random starts are
 #'   added. Each start must lie inside the supplied positive bounds.
 #' @param lower,upper Complete named positive parameter bounds with lower < upper.
+#'   For a declared kernel, the starts and bounds of sigma must lie within the
+#'   bounds of the declaration.
 #' @param output Exact model output to calibrate; default facility utilization.
 #'   `flow` is expected origin-facility counts, while `allocation` is an inside
 #'   probability operator. Requesting counts does not select a likelihood.
@@ -138,6 +154,11 @@ fit_allocation <- function(model, observed, starts, lower, upper,
                             loss_args = list(), loss_grad = NULL,
                             gradient = FALSE, ...) {
   .check_allocation_model(model)
+  kernel <- model$metadata$spec[["kernel", exact = TRUE]]
+  if (!is.null(kernel) && isFALSE(kernel$smooth)) {
+    stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
+         "parameters or profile sigma over a grid")
+  }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
       output %in% c("utilization", "flow") && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {

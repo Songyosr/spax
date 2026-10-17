@@ -157,11 +157,17 @@
 #' The default `clm` allocation is the conditional logit (DEC-013).
 #' Appended order is `sigma`, then
 #' `v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
-#' caller.
+#' caller. A declared decay kernel replaces the bounds of `sigma` with its own.
+#' @param fit_v0,fit_beta Whether `v0` and `beta` are fitted parameters.
+#' @param sigma_lower,sigma_upper Inclusive bounds of `sigma`; the declaration's
+#'   `lower` and `upper` for a declared decay kernel.
 #' @keywords internal
 #' @md
-.huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE) {
+.huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE,
+                                 sigma_lower = 0, sigma_upper = Inf) {
   contract <- .decay_theta_contract()
+  contract$lower <- sigma_lower
+  contract$upper <- sigma_upper
   append_param <- function(contract, name) {
     list(
       names = c(contract$names, name),
@@ -187,13 +193,18 @@
 #' otherwise they (and `kappa`) are constants. `allocation = "clm"` is the
 #' conditional-logit share (DEC-013); `"huff_decay"` preserves the historical
 #' extra decay factor used for one-pass HAAE comparisons.
+#' @param kernel `NULL` for a built-in `family`, or a custom `spax_decay_kernel`
+#'   declaration (see [decay_kernel()]). The declaration then names the family,
+#'   its bounds become the bounds of `sigma`, and the spec carries it as
+#'   `spec$kernel`; built-in specs have no `kernel` element.
 #' @keywords internal
 #' @md
 .huff_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, beta = 1, v0 = 0,
                        fit_v0 = FALSE, fit_beta = FALSE,
-                       allocation = c("clm", "huff_decay")) {
-  family <- match.arg(family)
+                       allocation = c("clm", "huff_decay"),
+                       kernel = NULL) {
+  if (is.null(kernel)) family <- match.arg(family) else family <- kernel$name
   allocation <- match.arg(allocation)
   .chck_positive_scalar(kappa, "kappa")
   .chck_positive_scalar(beta, "beta")
@@ -202,7 +213,7 @@
       !is.logical(fit_beta) || length(fit_beta) != 1L || is.na(fit_beta)) {
     stop("`fit_v0` and `fit_beta` must be TRUE or FALSE")
   }
-  list(
+  spec <- list(
     model = "huff",
     family = family,
     deterministic = TRUE,
@@ -224,8 +235,16 @@
     v0 = as.numeric(v0),
     fit_v0 = isTRUE(fit_v0),
     fit_beta = isTRUE(fit_beta),
-    theta = .huff_theta_contract(fit_v0, fit_beta)
+    theta = .huff_theta_contract(
+      fit_v0, fit_beta,
+      sigma_lower = if (is.null(kernel)) 0 else kernel$lower,
+      sigma_upper = if (is.null(kernel)) Inf else kernel$upper
+    )
   )
+  # Appended only for a declared kernel: a NULL element inside list() would
+  # change the built-in specs.
+  if (!is.null(kernel)) spec$kernel <- kernel
+  spec
 }
 
 #' Create an AE inner problem object
@@ -341,6 +360,8 @@
 #' the shared NFXP runner unchanged.
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
+#' @param kernel `NULL` for a built-in `family`, or a custom `spax_decay_kernel`
+#'   declaration passed on to `.huff_spec()`.
 #' @keywords internal
 #' @md
 .huff_problem <- function(demand, supply = NULL, distance = NULL,
@@ -348,7 +369,8 @@
                           kappa = 1, beta = 1, v0 = 0,
                           fit_v0 = FALSE, fit_beta = FALSE,
                           id_col = NULL, supply_cols = NULL,
-                          allocation = c("clm", "huff_decay")) {
+                          allocation = c("clm", "huff_decay"),
+                          kernel = NULL) {
   substrate <- .resolve_allocation(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
@@ -357,7 +379,7 @@
   }
   spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0,
                      fit_v0 = fit_v0, fit_beta = fit_beta,
-                     allocation = match.arg(allocation))
+                     allocation = match.arg(allocation), kernel = kernel)
   compiled <- .compile_ae_map(spec, substrate)
   a_init <- .allocation_supply(substrate, kappa, beta)
   .new_problem(
@@ -449,9 +471,18 @@
   n <- length(S)
   n_theta <- length(spec$theta$names)
   zero_state <- matrix(0, n, n)
+  # A declared kernel is rebuilt from its stored code once per model, outside
+  # the bind closure that runs inside the optimizer.
+  kernel <- spec[["kernel", exact = TRUE]]
+  kernel_fun <- if (!is.null(kernel)) .decay_kernel_function(kernel)
+  # Prediction snapshots exist for the built-in kernels only; the internal
+  # no-decay family never has one (custom kernels follow in SPAX-052 T3).
+  has_snapshot <- spec$allocation == "clm" && is.null(kernel) &&
+    !identical(spec$family, "none")
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
-    K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]])
+    K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
+                            kernel = kernel, fun = kernel_fun)
     v0 <- if (isTRUE(spec$fit_v0)) theta[["v0"]] else spec$v0
     beta <- if (isTRUE(spec$fit_beta)) theta[["beta"]] else spec$beta
     a <- .allocation_supply(substrate, spec$kappa, beta)
@@ -476,7 +507,7 @@
         out
       } else NULL,
       state_independent_outputs = if (spec$allocation == "clm") "flow" else NULL,
-      clm_prediction = if (spec$allocation == "clm") list(
+      clm_prediction = if (has_snapshot) list(
         spec = .clm_prediction_spec(spec), theta = theta
       ) else NULL,
       jac_state = function(x) {

@@ -37,11 +37,14 @@ function.}
 
 \item{zero_distance}{\code{FALSE} declares the kernel undefined at distance zero,
 as the power kernel is: the check at declaration then leaves zero out of
-its grid.}
+its grid, and a model from \code{\link[=clm_allocation]{clm_allocation()}} refuses prepared inputs that
+contain a finite zero travel time when it is evaluated or fitted.}
 
 \item{smooth}{\code{FALSE} declares a kernel that is not smooth in \code{sigma} (steps
-or thresholds). It can be evaluated and used in FCA but not fitted, because
-model fitting and bootstrapping need a kernel that is smooth in \code{sigma}.}
+or thresholds). It can be evaluated and used in FCA, and a model built with
+\code{\link[=clm_allocation]{clm_allocation()}} can be evaluated at fixed parameters with
+\code{\link[=evaluate_allocation]{evaluate_allocation()}}, but \code{\link[=fit_allocation]{fit_allocation()}} refuses it, because model
+fitting and bootstrapping need a kernel that is smooth in \code{sigma}.}
 
 \item{args}{A named list of fixed extra arguments for \code{fun}. Its names must
 be arguments of \code{fun} other than \code{distance} and \code{sigma}; its values must be
@@ -64,7 +67,8 @@ records your own function as exact source text together with what its
 parameter \code{sigma} means, the bounds \code{sigma} may take and any fixed extra
 arguments. Nothing but data is stored, so a declaration can be compared,
 saved and reloaded in a fresh session. This experimental function lets one
-declaration be used wherever a decay \code{method} is accepted.
+declaration be used wherever a decay \code{method} is accepted. A declaration can
+also be passed as \code{family} to \code{\link[=clm_allocation]{clm_allocation()}}.
 }
 \details{
 \strong{Built-in kernels.} \code{decay_kernel("gaussian")}, \code{decay_kernel("exponential")}
