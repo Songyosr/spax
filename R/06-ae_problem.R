@@ -475,6 +475,8 @@
   # the bind closure that runs inside the optimizer.
   kernel <- spec[["kernel", exact = TRUE]]
   kernel_fun <- if (!is.null(kernel)) .decay_kernel_function(kernel)
+  # Its finite travel entries do not change with the parameters: locate them once.
+  kernel_plan <- if (!is.null(kernel)) .decay_kernel_plan(substrate$distance_active)
   # Corrected CLM models declare a prediction snapshot for the built-in kernels
   # and for a declared kernel (kept in the snapshot specification as plain data);
   # the internal no-decay family never has one.
@@ -482,7 +484,7 @@
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
-                            kernel = kernel, fun = kernel_fun)
+                            kernel = kernel, fun = kernel_fun, plan = kernel_plan)
     v0 <- if (isTRUE(spec$fit_v0)) theta[["v0"]] else spec$v0
     beta <- if (isTRUE(spec$fit_beta)) theta[["beta"]] else spec$beta
     a <- .allocation_supply(substrate, spec$kappa, beta)

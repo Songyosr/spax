@@ -463,6 +463,44 @@ test_that("zero_distance = FALSE refuses a prepared finite zero travel time", {
   expect_error(.allocation_kernel(with_zero, "hyperbolic", 2, kernel = hyperbolic), message)
 })
 
+test_that("a declared kernel gives the same weights when its finite travel is located once", {
+  f <- alloc_small_case()
+  damped <- decay_kernel(function(distance, sigma) {
+    exp(-distance / sigma) / (1 + distance)
+  }, name = "damped", parameter = "scale")
+  fun <- .decay_kernel_function(damped)
+  # Checked inputs with an absent edge, and legacy inputs with an unknown edge too.
+  strict <- f$inputs
+  strict$distance_active[1, 2] <- Inf
+  legacy <- strict
+  legacy$distance_active[2, 3] <- NA
+  legacy$input_policy$kernel_domain <- "legacy_zero"
+  for (inputs in list(strict, legacy)) {
+    plan <- .decay_kernel_plan(inputs$distance_active)
+    planned <- .allocation_kernel(inputs, "damped", 2, kernel = damped, fun = fun, plan = plan)
+    unplanned <- .allocation_kernel(inputs, "damped", 2, kernel = damped, fun = fun)
+    expect_identical(planned, unplanned)
+    d <- inputs$distance_active
+    expect_equal(unname(planned), unname(ifelse(is.finite(d), exp(-d / 2) / (1 + d), 0)))
+  }
+  # The planned path keeps the domain checks.
+  hyper <- decay_kernel(function(distance, sigma) 1 / (distance * sigma),
+                        name = "hyper", parameter = "scale", zero_distance = FALSE)
+  with_zero <- f$inputs
+  with_zero$distance_active[1, 1] <- 0
+  expect_error(.allocation_kernel(with_zero, "hyper", 2, kernel = hyper,
+                                  plan = .decay_kernel_plan(with_zero$distance_active)),
+               "hyper decay requires strictly positive finite travel distances")
+  # Weights that turn negative beyond the declaration's test grid are refused.
+  linear <- decay_kernel(function(distance, sigma) 1 - distance / 2000,
+                         name = "linear", parameter = "unused")
+  far <- f$inputs
+  far$distance_active[1, 1] <- 3000
+  expect_error(.allocation_kernel(far, "linear", 1, kernel = linear,
+                                  plan = .decay_kernel_plan(far$distance_active)),
+               "decay kernel is invalid on finite travel distances")
+})
+
 test_that("the no-decay family weights finite distances by one and has no prediction snapshot", {
   distance <- matrix(c(0, 1.5, Inf, NA, 4, 10), 2, 3,
                      dimnames = list(c("a", "b"), c("x", "y", "z")))

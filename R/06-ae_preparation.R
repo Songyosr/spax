@@ -230,11 +230,24 @@
   calc_decay(distance, method = family, sigma = sigma, snap = TRUE)
 }
 
+# The finite entries of a prepared travel matrix, which do not change with the
+# parameters. A model with a declared kernel locates them once, so that the
+# kernel runs on them only, without scanning the whole matrix at every parameter
+# value.
+.decay_kernel_plan <- function(distance) {
+  index <- which(is.finite(distance))
+  values <- distance[index]
+  list(index = index, values = values, any_zero = any(values == 0))
+}
+
 # Domain checks and weights of the decay kernel on the active travel matrix. A
 # declared custom `kernel` also requires `sigma` inside its bounds and, when
 # declared undefined at distance zero, refuses finite zero travel on strict
-# inputs, as for the power kernel.
-.allocation_kernel <- function(substrate, family, sigma, kernel = NULL, fun = NULL) {
+# inputs, as for the power kernel. With a `plan` from .decay_kernel_plan(), a
+# declared kernel is evaluated on the finite entries only; the weights are the
+# same as without it.
+.allocation_kernel <- function(substrate, family, sigma, kernel = NULL, fun = NULL,
+                               plan = NULL) {
   distance <- substrate$distance_active
   strict <- identical(substrate$input_policy$kernel_domain, "strict")
   if (strict && family == "power" && any(distance == 0, na.rm = TRUE)) {
@@ -247,6 +260,9 @@
     if (sigma < kernel$lower || sigma > kernel$upper) {
       stop(kernel$name, " decay requires sigma from ", format(kernel$lower), " to ",
            format(kernel$upper))
+    }
+    if (!is.null(plan)) {
+      return(.allocation_kernel_planned(kernel, fun, plan, distance, sigma, strict))
     }
     if (strict && !kernel$zero_distance && any(distance == 0, na.rm = TRUE)) {
       stop(kernel$name, " decay requires strictly positive finite travel distances")
@@ -262,6 +278,31 @@
     }
     # Only explicitly absent/unknown edges are zeroed on checked numeric input.
     K[!finite] <- 0
+  }
+  K
+}
+
+# A declared kernel on the finite travel entries of `plan`. Absent and unknown
+# edges get 0, as on the unplanned path.
+.allocation_kernel_planned <- function(kernel, fun, plan, distance, sigma, strict) {
+  if (strict && !kernel$zero_distance && plan$any_zero) {
+    stop(kernel$name, " decay requires strictly positive finite travel distances")
+  }
+  K <- matrix(0, nrow(distance), ncol(distance), dimnames = dimnames(distance))
+  if (length(plan$index)) {
+    if (is.null(fun)) fun <- .decay_kernel_function(kernel)
+    w <- do.call(fun, c(list(plan$values, sigma), kernel$args))
+    if (!is.numeric(w) || length(w) != length(plan$index)) {
+      stop("the kernel must return one numeric value for each distance")
+    }
+    if (strict) {
+      if (any(!is.finite(w) | w < 0)) {
+        stop("decay kernel is invalid on finite travel distances")
+      }
+    } else {
+      w[!is.finite(w)] <- 0
+    }
+    K[plan$index] <- w
   }
   K
 }
