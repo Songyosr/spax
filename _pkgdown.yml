@@ -37,6 +37,8 @@ reference:
       - spax_2sfca
       - spax_e2sfca
       - spax_m2sfca
+      - spax_3sfca
+      - spax_huff2sfca
       - compute_access
 
   - title: "Experimental Allocation Workflow"
@@ -48,6 +50,8 @@ reference:
       - evaluate_allocation
       - predict_allocation
       - bootstrap_allocation
+      - check_allocation
+      - compare_allocations
       - allocation-fit-methods
       - allocation-result-tables
       - allocation-bootstrap-methods
@@ -58,8 +62,11 @@ reference:
     desc: "Functions for handling distance relationships"
     contents:
       - calc_decay
+      - decay_kernel
       - calc_choice
       - calc_normalize
+      - calc_travel_time
+      - calc_demand
 
   - title: "Data Processing Functions"
     desc: "Functions for processing spatial data"

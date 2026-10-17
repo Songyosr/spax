@@ -52,6 +52,11 @@ Snapshot fields are checked against the saved evaluated-system identity and
 other redundant small fields. Editing these fields is not a scenario update:
 prepare and evaluate a changed system. Coordinated manual mutation of every
 copied field cannot be verified against historical travel and is unsupported.
+The snapshot of a model with a declared decay kernel (see \code{\link[=decay_kernel]{decay_kernel()}})
+keeps the declaration, including its code, in its specification. Validation
+parses the code and never runs it; predicting rebuilds the function in the
+base environment and runs it on the requested travel, with sigma inside the
+declared bounds. Use saved results only from sources you trust.
 
 The result holds selected outputs, IDs, separate probability/demand/capacity
 validity, declared units/policies and compact facility values. Optional spatial

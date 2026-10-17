@@ -1,8 +1,8 @@
 ---
-title: "Comparing FCA methods: E2SFCA, 2SFCA and M2SFCA"
+title: "Comparing FCA methods"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Comparing FCA methods: E2SFCA, 2SFCA and M2SFCA}
+  %\VignetteIndexEntry{Comparing FCA methods}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -32,9 +32,10 @@ Floating catchment area (FCA) methods combine demand, facility supply and
 travel weights into an accessibility index. They differ in how they weight
 travel. This guide computes three of them on the same inputs and compares the
 results: the enhanced two-step FCA (E2SFCA) from [Getting started](spax.html),
-the original 2SFCA and the modified 2SFCA (M2SFCA). For a fitted allocation
-model with an outside option, see [Choosing an FCA index or an allocation
-model](model-choice.html).
+the original 2SFCA and the modified 2SFCA (M2SFCA). A last section adds two
+variants that first share each cell's demand among practices, 3SFCA and
+Huff-2SFCA. For a fitted allocation model with an outside option, see
+[Choosing an FCA index or an allocation model](model-choice.html).
 
 ## The inputs
 
@@ -141,12 +142,13 @@ names(all_three) <- c(
   "2SFCA, 15 min",
   "M2SFCA, Gaussian 10 min"
 )
+shared_range <- range(values(all_three), na.rm = TRUE)
 plot(
   all_three,
   nc = 3,
   axes = FALSE,
   col = hcl.colors(50, "viridis"),
-  range = range(values(all_three), na.rm = TRUE),
+  range = shared_range,
   mar = c(1, 1, 2, 5),
   plg = list(title = "GP FTE\nper 1,000")
 )
@@ -215,6 +217,196 @@ the E2SFCA and M2SFCA surfaces from their parts.
 
 The index has supply-per-demand units. It is not a share of people who use a
 practice, a waiting time or an observed rate of care.
+
+## Selection weights: 3SFCA and Huff-2SFCA
+
+With the weights above, the weights of all practices at one cell need not add
+up to 1, so where many practices are close each of them counts the same
+residents. Two further variants first share each cell's demand among the
+practices. At each cell, the **selection weight** `G` of a practice is its
+share of the cell's weights, so the shares at a cell add up to 1. Both steps
+then use the kernel `K = W * G` in place of the decay weights `W`: a practice
+gathers demand and spreads its ratio back to cells with the same weights.
+
+| Method | Selection weight `G` of a practice at a cell | Weights in both steps |
+|:--|:--|:--|
+| 3SFCA | Its Gaussian weight, divided by the sum of these weights over the cell's practices | `W * G` |
+| Huff-2SFCA | Its Gaussian weight times its GP FTE, divided by the sum of these products over the cell's practices | `W * G` |
+
+Huff-2SFCA puts the attractiveness of a practice into the share. By default the
+attractiveness is the supply measure, here GP FTE, raised to the power
+`alpha = 1`. Both functions also use the Gaussian decay for the selection
+weights, because `selection_params` defaults to `decay_params`; they have no
+`demand_normalize` argument, because the shares already divide each cell's
+demand. This differs from `demand_normalize = "standard"` in `spax_e2sfca()`,
+which divides the weights that gather demand only.
+
+```{r selection-methods}
+sfca3 <- spax_3sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+
+huff <- spax_huff2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"  # also the attractiveness
+)
+```
+
+3SFCA is the shared FCA calculation with a different kernel, so it can be
+rebuilt from `calc_decay()`, `calc_choice()` and `compute_access()`. The check
+is silent when the selection weights add up to 1 at every cell and the
+building blocks reproduce `spax_3sfca()`.
+
+```{r selection-blocks}
+w <- calc_decay(travel, method = "gaussian", sigma = 10)  # decay weights W
+g <- calc_choice(w)  # selection weights G: each cell's weights over their sum
+k <- w * g           # the kernel of both steps
+
+by_blocks <- compute_access(
+  demand = pop,
+  supply = gp,
+  demand_weights = k,
+  access_weights = k,
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+
+stopifnot(
+  isTRUE(all.equal(
+    range(values(sum(g), mat = FALSE), na.rm = TRUE),
+    c(1, 1)
+  )),
+  isTRUE(all.equal(
+    values(by_blocks, mat = FALSE),
+    values(sfca3$accessibility, mat = FALSE),
+    tolerance = 1e-10,
+    check.attributes = FALSE
+  ))
+)
+```
+
+Each variant uses one kernel in both steps, as E2SFCA and 2SFCA do, so it
+returns the supply of every practice that gathers demand, here all of them:
+residents times index, summed over cells, equals the total GP FTE. The check
+shows that sum as a share of total GP FTE. M2SFCA squares the access-side
+weights and returns only part of it.
+
+```{r selection-supply}
+# Residents times index, summed over cells, as a share of total GP FTE
+returned <- function(x) {
+  sum(p * values(x$accessibility, mat = FALSE), na.rm = TRUE) /
+    sum(gp$gp_fte_extg)
+}
+round(
+  c(
+    E2SFCA = returned(e2sfca),
+    `2SFCA` = returned(twosfca),
+    M2SFCA = returned(m2sfca),
+    `3SFCA` = returned(sfca3),
+    `Huff-2SFCA` = returned(huff)
+  ),
+  6
+)
+```
+
+The maps put E2SFCA, 3SFCA and Huff-2SFCA on the colour scale of the first map,
+in GP FTE per 1,000 residents.
+
+```{r selection-map, fig.width = 9, fig.height = 3.4, fig.alt = "Three raster maps of mainland Cornwall on the colour scale of the first map, in GP FTE per 1,000 residents: E2SFCA changes smoothly and is low on Bodmin Moor and at the tips of the peninsulas, while 3SFCA and Huff-2SFCA are patchier, stay low on Bodmin Moor and are higher than E2SFCA at the tips of the peninsulas, most clearly at the Lizard."}
+# Same colour scale as the first map; the new surfaces lie within its range
+selection_maps <- 1000 * c(
+  e2sfca$accessibility,
+  sfca3$accessibility,
+  huff$accessibility
+)
+names(selection_maps) <- c(
+  "E2SFCA, Gaussian 10 min",
+  "3SFCA, Gaussian 10 min",
+  "Huff-2SFCA, Gaussian 10 min"
+)
+stopifnot(
+  min(values(selection_maps), na.rm = TRUE) >= shared_range[1],
+  max(values(selection_maps), na.rm = TRUE) <= shared_range[2]
+)
+plot(
+  selection_maps,
+  nc = 3,
+  axes = FALSE,
+  col = hcl.colors(50, "viridis"),
+  range = shared_range,
+  mar = c(1, 1, 2, 5),
+  plg = list(title = "GP FTE\nper 1,000")
+)
+```
+
+```{r selection-compare}
+a3 <- per_1000(sfca3)
+ah <- per_1000(huff)
+
+# Cell quantiles and the resident-weighted index, as for the other methods
+round(
+  rbind(
+    E2SFCA = describe(a),
+    `3SFCA` = describe(a3),
+    `Huff-2SFCA` = describe(ah)
+  ),
+  2
+)
+
+# Agreement across cells
+c(
+  correlation_e2sfca_3sfca = round(cor(a, a3, use = "complete.obs"), 2),
+  correlation_e2sfca_huff = round(cor(a, ah, use = "complete.obs"), 2),
+  correlation_3sfca_huff = round(cor(a3, ah, use = "complete.obs"), 2)
+)
+```
+
+```{r selection-values, include = FALSE}
+cor_e2sfca_3sfca <- round(cor(a, a3, use = "complete.obs"), 2)
+cor_3sfca_huff <- round(cor(a3, ah, use = "complete.obs"), 2)
+```
+
+The resident-weighted index is the same for the three, because each returns
+the total supply. They differ in which cells the supply is credited to: across
+cells E2SFCA correlates at `r cor_e2sfca_3sfca` with 3SFCA, while adding
+attractiveness to 3SFCA changes the surface less (a correlation of
+`r cor_3sfca_huff`). On the maps, 3SFCA and Huff-2SFCA are higher than E2SFCA
+at the ends of the Lizard and Land's End peninsulas, where E2SFCA is lowest,
+and they are lowest on Bodmin Moor, where E2SFCA is also low. With `alpha = 0` attractiveness has no
+effect and Huff-2SFCA equals 3SFCA.
+
+```{r selection-alpha}
+no_attractiveness <- spax_huff2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  alpha = 0,
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+stopifnot(isTRUE(all.equal(
+  values(no_attractiveness$accessibility, mat = FALSE),
+  values(sfca3$accessibility, mat = FALSE),
+  tolerance = 1e-10,
+  check.attributes = FALSE
+)))
+```
+
+As for the other methods, the index has supply-per-demand units, and the decay
+scale, the attractiveness measure and `alpha` are choices that this guide does
+not estimate from data. `?spax_3sfca` and `?spax_huff2sfca` describe
+`selection_params`, which gives the selection weights another decay or a
+catchment limit, and cite the methods.
 
 ## Continue
 

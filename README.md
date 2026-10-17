@@ -11,30 +11,30 @@ use explicit demand, facility supply and travel inputs. Their
 normalization and output meanings remain model-specific.
 
 Existing `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()` and
-`compute_access()` workflows remain supported. The allocation functions
-are an additional route; they do not replace the FCA functions. Internal
-feedback-model machinery is private and is not part of the experimental
-CLM interface.
+`compute_access()` workflows remain supported, and the experimental
+`spax_3sfca()` and `spax_huff2sfca()` add selection-weighted variants.
+The allocation functions are an additional route; they do not replace
+the FCA functions. Internal feedback-model machinery is private and is
+not part of the experimental CLM interface.
 
-## Install the development version
+## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for this development version (0.2.0.9000). Existing public FCA calling
-semantics are unchanged.
+for spax 0.3.0. Existing public FCA calling semantics are unchanged.
 
-The allocation workflow described here is on the `develop` branch.
-Install that branch explicitly rather than relying on the repository’s
-default branch:
+Install version 0.3.0 by its release tag rather than from the
+repository’s default branch:
 
 ``` r
 # install.packages("pak")
-pak::pak("Songyosr/spax@develop")
+pak::pak("Songyosr/spax@v0.3.0")
 ```
 
-This is a development version, not a stable release, and the allocation
-interface is experimental. For reproducible work, record the source
-commit as well as the package version and retain the input IDs, units,
-observation declaration and saved results.
+The allocation interface is experimental and may change in later
+versions. For reproducible work, record the package version and retain
+the input IDs, units, observation declaration and saved results.
+Development continues on the `develop` branch
+(`pak::pak("Songyosr/spax@develop")`).
 
 Package and function help are available from an installed package.
 Installations that include built articles also provide the guides, which
@@ -195,7 +195,7 @@ coef(fit)
 ```
 
          sigma         v0 
-    4.35551721 0.01765791 
+    4.35551254 0.01764982 
 
 ``` r
 # Per cent registered outside mainland Cornwall: observed and modelled
@@ -214,7 +214,7 @@ round(100 * outside, 2)
 cor(colSums(fitted(fit)), colSums(observed))
 ```
 
-    [1] 0.9319956
+    [1] 0.9319953
 
 The fitted Gaussian scale is about 4.4 minutes: registration is very
 local. The printed shares are percentages of registered residents.
@@ -292,7 +292,7 @@ and dates. Data sources and licences are listed in
 | Function | Purpose |
 |:---|:---|
 | `prepare_allocation()` | Align IDs, validate inputs, record units and support, and prepare compact numeric inputs. |
-| `clm_allocation()` | Declare corrected static CLM with Gaussian, exponential or power travel decay. |
+| `clm_allocation()` | Declare corrected static CLM with Gaussian, exponential or power travel decay, or a kernel declared with `decay_kernel()`. |
 | `fit_allocation()` | Fit a selected output from explicit starts and retain diagnostics. |
 | `evaluate_allocation()` | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | `predict_allocation()` | Predict requested origins against saved facility loads; maps are explicit. |
@@ -307,12 +307,13 @@ it at the selected parameters. Supply can change attraction, allocation
 and loads. This is a model-based comparison, not a causal intervention
 estimate.
 
-The bootstrap has a narrower scope than fitting: Gaussian static CLM
-with jointly fitted `sigma` and `v0`, `kappa = beta = 1`, complete whole
-facility counts and an unweighted Poisson original fit. It requires an
-explicit event, reference period and independent-facility sampling
-declaration. The Cornwall fit above targets small area × practice flows,
-so it is outside this method.
+The bootstrap has a narrower scope than fitting: static CLM with a
+fitted outside mass `v0` and a decay kernel that is smooth in `sigma`
+(built in, or declared with `decay_kernel()`; a fitted `beta` is
+allowed), complete whole facility counts and an unweighted Poisson
+original fit. It requires an explicit event, reference period and
+independent-facility sampling declaration. The Cornwall fit above
+targets small area × practice flows, so it is outside this method.
 `vignette("facility-bootstrap", package = "spax")` supplies a generated
 example with all 399 attempts and a paired supply comparison;
 `vignette("allocation-workflow", package = "spax")` covers fitting,
@@ -322,10 +323,12 @@ data.
 Conditional percentile intervals require an eligible original, a
 complete run of 399 attempts and at least 380 finite successful values
 for the quantity. Failed attempts and successful inner-boundary fits
-remain visible. Validation in generated 80-origin/40-facility designs
-under tested fixed-input laws is not a universal coverage guarantee or
-evidence for an application’s observation law. No spatial simultaneous
-intervals are provided.
+remain visible. Coverage was evaluated for Gaussian decay with fitted
+`sigma` and `v0`, in generated 80-origin/40-facility designs under
+tested fixed-input laws; other kernels and a fitted `beta` use the same
+procedure without a separate coverage study. This is not a universal
+coverage guarantee or evidence for an application’s observation law. No
+spatial simultaneous intervals are provided.
 
 ## IDs, support and saved results
 

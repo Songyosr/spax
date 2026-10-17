@@ -210,7 +210,50 @@
   .interaction_substrate(demand, supply, distance, id_col = id_col, supply_cols = supply_cols)
 }
 
-.allocation_kernel <- function(substrate, family, sigma) {
+# Decay weights for the allocation workflow. `family` is a built-in kernel name,
+# the internal no-decay family "none", or the name of the declared `kernel` (a
+# custom `spax_decay_kernel`, with `fun` its rebuilt function when the caller
+# already has it). Built-ins are evaluated as before; "none" is 1 on every
+# finite distance; a custom kernel is evaluated on the finite distances only.
+# Non-finite distances keep a non-finite value for the caller's zeroing (an
+# infinite distance is already 0 for a custom kernel).
+.decay_weights <- function(family, kernel, distance, sigma, fun = NULL) {
+  if (!is.null(kernel)) {
+    return(.eval_decay_kernel(kernel, distance, sigma, fun))
+  }
+  if (identical(family, "none")) {
+    weights <- distance
+    storage.mode(weights) <- "double"
+    weights[is.finite(distance)] <- 1
+    return(weights)
+  }
+  calc_decay(distance, method = family, sigma = sigma, snap = TRUE)
+}
+
+# Which entries of a prepared travel matrix are finite, which does not change
+# with the parameters. A model with a declared kernel records it once, so that the
+# kernel runs on the finite entries only, without scanning the whole matrix at
+# every parameter value. The plan keeps only what is needed: when every entry is
+# finite there is nothing to select and no index is stored (the kernel then runs
+# on the matrix itself); otherwise it keeps the index of the finite entries, not a
+# copy of their values. `any_zero` is whether a finite entry is zero.
+.decay_kernel_plan <- function(distance) {
+  any_zero <- any(distance == 0, na.rm = TRUE)
+  finite <- which(is.finite(distance))
+  if (length(finite) && length(finite) == length(distance)) {
+    return(list(all_finite = TRUE, any_zero = any_zero))
+  }
+  list(all_finite = FALSE, index = finite, any_zero = any_zero)
+}
+
+# Domain checks and weights of the decay kernel on the active travel matrix. A
+# declared custom `kernel` also requires `sigma` inside its bounds and, when
+# declared undefined at distance zero, refuses finite zero travel on strict
+# inputs, as for the power kernel. With a `plan` from .decay_kernel_plan(), a
+# declared kernel is evaluated on the finite entries only; the weights are the
+# same as without it.
+.allocation_kernel <- function(substrate, family, sigma, kernel = NULL, fun = NULL,
+                               plan = NULL) {
   distance <- substrate$distance_active
   strict <- identical(substrate$input_policy$kernel_domain, "strict")
   if (strict && family == "power" && any(distance == 0, na.rm = TRUE)) {
@@ -219,7 +262,22 @@
   if (strict && family == "gaussian" && sigma <= 0) {
     stop("gaussian decay requires positive sigma")
   }
-  K <- calc_decay(distance, method = family, sigma = sigma, snap = TRUE)
+  if (!is.null(kernel)) {
+    if (sigma < kernel$lower || sigma > kernel$upper) {
+      stop(kernel$name, " decay requires sigma from ", format(kernel$lower), " to ",
+           format(kernel$upper))
+    }
+    if (sigma <= 0) {
+      stop(kernel$name, " decay requires positive sigma")
+    }
+    if (!is.null(plan)) {
+      return(.allocation_kernel_planned(kernel, fun, plan, distance, sigma, strict))
+    }
+    if (strict && !kernel$zero_distance && any(distance == 0, na.rm = TRUE)) {
+      stop(kernel$name, " decay requires strictly positive finite travel distances")
+    }
+  }
+  K <- .decay_weights(family, kernel, distance, sigma, fun)
   if (!strict) {
     K[!is.finite(K)] <- 0
   } else {
@@ -230,6 +288,43 @@
     # Only explicitly absent/unknown edges are zeroed on checked numeric input.
     K[!finite] <- 0
   }
+  K
+}
+
+# A declared kernel on the finite travel entries described by `plan`: on the
+# matrix itself when every entry is finite, otherwise on the finite entries only,
+# taken from `distance` at each call. Absent and unknown edges get 0, as on the
+# unplanned path, and the weights are the same.
+.allocation_kernel_planned <- function(kernel, fun, plan, distance, sigma, strict) {
+  if (strict && !kernel$zero_distance && plan$any_zero) {
+    stop(kernel$name, " decay requires strictly positive finite travel distances")
+  }
+  all_finite <- isTRUE(plan$all_finite)
+  if (!all_finite && !length(plan$index)) {
+    return(matrix(0, nrow(distance), ncol(distance), dimnames = dimnames(distance)))
+  }
+  if (is.null(fun)) fun <- .decay_kernel_function(kernel)
+  input <- if (all_finite) distance else distance[plan$index]
+  w <- do.call(fun, c(list(input, sigma), kernel$args))
+  if (!is.numeric(w) || length(w) != length(input)) {
+    stop("the kernel must return one numeric value for each distance")
+  }
+  if (strict) {
+    if (any(!is.finite(w) | w < 0)) {
+      stop("decay kernel is invalid on finite travel distances")
+    }
+  } else {
+    w[!is.finite(w)] <- 0
+  }
+  if (all_finite) {
+    attributes(w) <- NULL
+    storage.mode(w) <- "double"
+    dim(w) <- dim(distance)
+    dimnames(w) <- dimnames(distance)
+    return(w)
+  }
+  K <- matrix(0, nrow(distance), ncol(distance), dimnames = dimnames(distance))
+  K[plan$index] <- w
   K
 }
 

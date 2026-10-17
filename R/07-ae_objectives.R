@@ -39,12 +39,12 @@
 
 #' Gradient of the Poisson NLL with respect to parameters
 #'
-#' Both the loss and this gradient floor predictions at `eps`. Below the
-#' floor the loss is flat, but the gradient keeps the log-likelihood slope
-#' `1 - y / eps`. For an observed count above `eps` this pushes a prediction
-#' that collapsed towards zero back up instead of stalling the optimizer
-#' there; for a zero count it keeps the usual slope of 1. The two therefore
-#' disagree below `eps` by design.
+#' This is the gradient of [.poisson_loss()], floor included. A prediction
+#' below `eps` adds the constant `eps - y log(eps)` to the loss, so it adds
+#' nothing to the gradient, whatever its observed count. Quasi-Newton
+#' optimizers check every step against the loss, so a gradient that kept the
+#' slope `1 - y / eps` below the floor would point where the loss does not
+#' fall and stop line searches early (DEC-029).
 #' @keywords internal
 #' @md
 .poisson_gradient <- function(predicted, observed, sensitivity, eps = 1e-9) {
@@ -52,7 +52,8 @@
   .chck_numeric_vector(observed, "observed")
   .chck_numeric_matrix(sensitivity, "sensitivity")
   .chck_positive_scalar(eps, "eps")
-  predicted <- pmax(.coerce_numeric_vector(predicted), as.numeric(eps))
+  eps <- as.numeric(eps)
+  predicted <- .coerce_numeric_vector(predicted)
   observed <- .coerce_numeric_vector(observed)
   sensitivity <- .coerce_numeric_matrix(sensitivity)
   if (length(predicted) != length(observed)) {
@@ -61,7 +62,10 @@
   if (nrow(sensitivity) != length(predicted)) {
     stop("`sensitivity` must have one row per prediction")
   }
+  floored <- predicted < eps
+  predicted <- pmax(predicted, eps)
   weights <- 1 - observed / predicted          # d NLL / d mu_j
+  weights[floored] <- 0                        # the floored loss is flat there
   as.vector(crossprod(sensitivity, weights))
 }
 

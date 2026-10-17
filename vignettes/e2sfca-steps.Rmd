@@ -323,8 +323,8 @@ stopifnot(isTRUE(all.equal(
 )))
 ```
 
-[Comparing FCA methods](fca-methods.html) maps E2SFCA, 2SFCA and M2SFCA side
-by side and explains why only M2SFCA loses part of the supply. None of these
-indices is a fitted statistical model. An allocation model instead defines
-choice probabilities with an outside option; see [Choosing an FCA index or an
-allocation model](model-choice.html).
+[Comparing FCA methods](fca-methods.html) maps E2SFCA, 2SFCA, M2SFCA, 3SFCA and
+Huff-2SFCA side by side and explains why only M2SFCA loses part of the supply.
+None of these indices is a fitted statistical model. An allocation model instead
+defines choice probabilities with an outside option; see [Choosing an FCA index
+or an allocation model](model-choice.html).

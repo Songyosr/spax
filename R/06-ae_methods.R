@@ -18,14 +18,34 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
+# Display label for a fitted model: corrected CLM fits are built by the internal
+# huff family with allocation form "clm"; show the allocation users declared.
+.ae_model_label <- function(x) {
+  if (identical(x$model, "huff") && identical(x$allocation_form, "clm")) "clm" else x$model
+}
+
+# Display label for the decay family of a fit or fit summary, with what sigma
+# means: "gaussian (sigma = travel scale)". The built-in meanings come from a
+# fixed map; a declared kernel gives its own through the prediction snapshot.
+# Without a known meaning the family is shown alone.
+.fit_family_label <- function(x) {
+  family <- x$family
+  if (!is.character(family) || length(family) != 1L || is.na(family)) return(family)
+  builtin <- c(gaussian = "travel scale", exponential = "rate", power = "exponent")
+  parameter <- if (family %in% names(builtin)) builtin[[family]] else
+    x$prediction_snapshot$spec$kernel$parameter
+  if (!is.character(parameter) || length(parameter) != 1L || is.na(parameter)) return(family)
+  paste0(family, " (sigma = ", parameter, ")")
+}
+
 #' Print an AE problem calibration fit
 #' @method print ae_problem_nfxp_fit
 #' @keywords internal
 #' @export
 print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   cat("<ae_problem_nfxp_fit>\n")
-  cat("model: ", x$model, "\n", sep = "")
-  cat("family: ", x$family, "\n", sep = "")
+  cat("model: ", .ae_model_label(x), "\n", sep = "")
+  cat("family: ", .fit_family_label(x), "\n", sep = "")
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")
   }
@@ -74,6 +94,7 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
     list(
       model = object$model,
       family = object$family,
+      family_label = .fit_family_label(object),
       allocation_form = object$allocation_form,
       theta = theta_table,
       fit = data.frame(
@@ -98,8 +119,9 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
 #' @export
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   cat("<summary.ae_problem_nfxp_fit>\n")
-  cat("model: ", x$model, "\n", sep = "")
-  cat("family: ", x$family, "\n", sep = "")
+  cat("model: ", .ae_model_label(x), "\n", sep = "")
+  # Summaries saved before the label was stored show the family alone.
+  cat("family: ", x$family_label %||% x$family, "\n", sep = "")
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")
   }

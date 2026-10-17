@@ -25,7 +25,9 @@ spax_e2sfca(
 
 \item{decay_params}{List of parameters for decay function:
 \itemize{
-  \item method: "gaussian", "exponential", "power", or "binary"
+  \item method: "gaussian", "exponential", "power" or "binary", a
+    custom decay function, or a kernel declared with
+    \code{\link{decay_kernel}}
   \item sigma: decay parameter controlling the rate of distance decay
   \item Additional parameters passed to custom decay functions
 }}

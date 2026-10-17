@@ -62,8 +62,9 @@ stopifnot(
 head(names(travel))
 ```
 
-When supply is a data frame, `spax_e2sfca()` and `spax_2sfca()` match its rows
-to the travel layers through `id_col`, so the row order does not matter.
+When supply is a data frame, `spax_e2sfca()`, `spax_2sfca()`, `spax_3sfca()` and
+`spax_huff2sfca()` match its rows to the travel layers through `id_col`, so the
+row order does not matter.
 
 ```{r id-order}
 # The E2SFCA surface for a given supply table
@@ -346,7 +347,7 @@ workflow](allocation-workflow.html) for what the prepared inputs feed into.
 
 ## Continue
 
-- [Comparing FCA methods](fca-methods.html): E2SFCA, 2SFCA and M2SFCA on
-  these inputs.
+- [Comparing FCA methods](fca-methods.html): E2SFCA, 2SFCA, M2SFCA, 3SFCA and
+  Huff-2SFCA on these inputs.
 - [The E2SFCA calculation step by step](e2sfca-steps.html).
 - [Grid resolution, support and computational cost](grid-resolution.html).

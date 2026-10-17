@@ -19,7 +19,8 @@ fit_allocation(
 )
 }
 \arguments{
-\item{model}{A corrected CLM declared over checked prepared inputs.}
+\item{model}{A corrected CLM declared over checked prepared inputs. A kernel
+declared \code{smooth = FALSE} cannot be fitted.}
 
 \item{observed}{Numeric vector or origin-by-facility matrix. Named axes match
 declared IDs independently; unnamed axes are positional. Keep all IDs and
@@ -31,7 +32,9 @@ allowed. Other output domains pass through to the existing fitter.}
 row, with exactly the named model parameter columns. No random starts are
 added. Each start must lie inside the supplied positive bounds.}
 
-\item{lower, upper}{Complete named positive parameter bounds with lower < upper.}
+\item{lower, upper}{Complete named positive parameter bounds with lower < upper.
+For a declared kernel, the starts and bounds of sigma must lie within the
+bounds of the declaration.}
 
 \item{output}{Exact model output to calibrate; default facility utilization.
 \code{flow} is expected origin-facility counts, while \code{allocation} is an inside
@@ -66,12 +69,23 @@ Observation-indexed loss arguments must be in canonical order. Starts,
 boundaries, failed runs and disagreement retain the existing multistart
 result; a selected fit is not a claim of identification or global optimality.
 }
+\details{
+A model whose decay kernel was declared with \code{smooth = FALSE} (see
+\code{\link[=decay_kernel]{decay_kernel()}}) is refused, because fitting needs a kernel that is smooth in
+sigma. Evaluate such a kernel at fixed parameters with \code{\link[=evaluate_allocation]{evaluate_allocation()}},
+for example over a grid of sigma and v0.
+}
 \seealso{
 \link{allocation-fit-methods} for methods on saved fits.
 
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{calc_demand}()},
+\code{\link{calc_travel_time}()},
+\code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
+\code{\link{compare_allocations}()},
+\code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}

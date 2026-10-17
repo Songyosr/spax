@@ -13,6 +13,12 @@
 #' demand origins, including their canonical IDs and any existing spatial cell
 #' index; it does not expand to unknown or zero-demand prediction locations.
 #' Reported and raw conditional capacity remain separate saved columns.
+#' `type = "zones"` aggregates the saved cells to the zones in `zones` (a data
+#' frame with `origin_id` and `zone` columns covering every retained origin),
+#' averaging contact and attributed capacity over demand and conditional
+#' capacity over contacting demand, so that the zone values keep the same
+#' relationship as the cell values. Reporting floors and classes are applied
+#' after aggregation.
 #'
 #' Bootstrap tables contain saved point/interval estimates, every attempted draw,
 #' or every attempted start. Failed draws, inner boundaries and refusal statuses
@@ -20,6 +26,8 @@
 #' @param x A fitted allocation result, compact coverage, or bootstrap result.
 #' @param row.names,optional Standard `as.data.frame()` arguments.
 #' @param type Saved table to extract; choices depend on the result class.
+#' @param zones For coverage with `type = "zones"`: a data frame with
+#'   `origin_id` and `zone` columns.
 #' @param ... Additional generic arguments.
 #' @return A data frame of saved values. Coverage tables additionally carry
 #'   `support`, `input_metadata` and `reporting_settings` attributes.
@@ -52,10 +60,17 @@ as.data.frame.ae_multistart_fit <- function(x, row.names = NULL, optional = FALS
 #' @exportS3Method base::as.data.frame
 #' @md
 as.data.frame.ae_coverage <- function(x, row.names = NULL, optional = FALSE,
-                                     type = c("regional", "cells"), ...) {
+                                     type = c("regional", "cells", "zones"),
+                                     zones = NULL, ...) {
   .chck_class(x, "ae_coverage", "x")
   type <- match.arg(type)
-  out <- .allocation_saved_table(x[[type]], row.names, optional, ...)
+  if (type == "zones") {
+    if (is.null(zones)) stop("type = 'zones' requires a zones data frame")
+    out <- .allocation_saved_table(.coverage_aggregate(x, zones), row.names, optional, ...)
+  } else {
+    if (!is.null(zones)) stop("zones applies only to type = 'zones'")
+    out <- .allocation_saved_table(x[[type]], row.names, optional, ...)
+  }
   attr(out, "support") <- x$support
   attr(out, "input_metadata") <- x$input_metadata
   attr(out, "reporting_settings") <- x$settings
@@ -139,8 +154,8 @@ plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), .
 #' @param type Plot a saved interval or successful-draw distribution.
 #' @param ... Additional generic or graphics arguments.
 #' @return `summary()` returns saved estimates, original fit, status, counts,
-#'   diagnostics, capacity support and declarations in a
-#'   `summary.ae_allocation_bootstrap` object.
+#'   diagnostics, capacity support and declarations (and the coverage note, when
+#'   the result has one) in a `summary.ae_allocation_bootstrap` object.
 #'   Print and plot methods return their input invisibly.
 #' @name allocation-bootstrap-methods
 #' @export
@@ -157,7 +172,7 @@ print.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
 summary.ae_allocation_bootstrap <- function(object, ...) {
   .chck_class(object, "ae_allocation_bootstrap", "object")
   draws <- object$draws
-  structure(list(status = object$status, reasons = object$reasons,
+  out <- structure(list(status = object$status, reasons = object$reasons,
     counts = data.frame(planned = object$planned, attempted = object$attempted,
       successful = object$successful), estimates = object$intervals,
     diagnostics = list(failed_attempts = sum(draws$success %in% FALSE),
@@ -166,6 +181,8 @@ summary.ae_allocation_bootstrap <- function(object, ...) {
     observation = object$observation, input_metadata = object$input_metadata,
     facility_ids = object$facility_ids, capacity_support = object$capacity_support,
     seed = object$seed), class = "summary.ae_allocation_bootstrap")
+  if (!is.null(object$coverage_note)) out$coverage_note <- object$coverage_note
+  out
 }
 
 #' @rdname allocation-bootstrap-methods
@@ -196,6 +213,7 @@ print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
   for (label in c("capacity_identity", "evidence_scope")) {
     if (is.character(x$settings[[label]])) cat(paste(strwrap(paste(x$settings[[label]], collapse = " ")), collapse = "\n"), "\n")
   }
+  if (is.character(x$coverage_note)) cat(paste(strwrap(paste(x$coverage_note, collapse = " ")), collapse = "\n"), "\n")
   if (!identical(x$status, "complete")) cat("Regular interval reporting is unavailable for this run status.\n")
   if (identical(x$status, "complete") && any(
       x$estimates$status == "conditional_pointwise_bootstrap" &

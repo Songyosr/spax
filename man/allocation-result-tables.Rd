@@ -28,7 +28,8 @@
   x,
   row.names = NULL,
   optional = FALSE,
-  type = c("regional", "cells"),
+  type = c("regional", "cells", "zones"),
+  zones = NULL,
   ...
 )
 
@@ -48,6 +49,9 @@
 \item{type}{Saved table to extract; choices depend on the result class.}
 
 \item{...}{Additional generic arguments.}
+
+\item{zones}{For coverage with \code{type = "zones"}: a data frame with
+\code{origin_id} and \code{zone} columns.}
 }
 \value{
 A data frame of saved values. Coverage tables additionally carry
@@ -66,6 +70,12 @@ reporting settings as attributes. \code{type = "cells"} returns retained positiv
 demand origins, including their canonical IDs and any existing spatial cell
 index; it does not expand to unknown or zero-demand prediction locations.
 Reported and raw conditional capacity remain separate saved columns.
+\code{type = "zones"} aggregates the saved cells to the zones in \code{zones} (a data
+frame with \code{origin_id} and \code{zone} columns covering every retained origin),
+averaging contact and attributed capacity over demand and conditional
+capacity over contacting demand, so that the zone values keep the same
+relationship as the cell values. Reporting floors and classes are applied
+after aggregation.
 
 Bootstrap tables contain saved point/interval estimates, every attempted draw,
 or every attempted start. Failed draws, inner boundaries and refusal statuses

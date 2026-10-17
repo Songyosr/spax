@@ -34,12 +34,15 @@ and result types remain supported.
 | Binary catchment FCA | `spax_2sfca()` | `spax` result with accessibility raster |
 | Distance-weighted FCA | `spax_e2sfca()` | `spax` result with accessibility raster |
 | Squared access-side decay FCA | `spax_m2sfca()` | `spax` result with accessibility raster |
+| Selection-weighted FCA | `spax_3sfca()`, `spax_huff2sfca()` | `spax` result with accessibility raster |
 | Supply/demand calculation using supplied kernels | `compute_access()` | Accessibility `SpatRaster` |
-| Decay, normalization or choice weights | `calc_decay()`, `calc_normalize()`, `calc_choice()` | See the individual input/output contracts |
+| Decay, normalization or choice weights | `calc_decay()`, `decay_kernel()`, `calc_normalize()`, `calc_choice()` | See the individual input/output contracts |
 | Weighted reduction to facilities | `gather_weighted()`, `gather_demand()` | Facility vector/table |
 | Weighted distribution to origins | `spread_weighted()`, `spread_access()` | Raster result |
 | Checked allocation preparation and declaration | `prepare_allocation()`, `clm_allocation()` | Prepared inputs and experimental model |
 | Fit, evaluate, predict and bootstrap | `fit_allocation()`, `evaluate_allocation()`, `predict_allocation()`, `bootstrap_allocation()` | Model-specific saved results |
+| Check and compare fitted allocations | `check_allocation()`, `compare_allocations()` | Comparison tables; the fits are not changed |
+| Travel times and demand inputs | `calc_travel_time()`, `calc_demand()` | Travel matrix or raster; demand raster or vector |
 
 These function families share concepts such as supply, demand and facility IDs.
 Their arguments and result meanings are not interchangeable. In particular,
@@ -50,10 +53,14 @@ operation appropriate to the declared axes; do not infer behavior from a name.
 ```{r public-interface-check}
 functions <- c(
   # FCA accessibility
-  "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "compute_access",
+  "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
+  "compute_access",
   # Experimental allocation workflow
   "prepare_allocation", "clm_allocation", "fit_allocation",
-  "evaluate_allocation", "predict_allocation", "bootstrap_allocation"
+  "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
+  "check_allocation", "compare_allocations",
+  # Input helpers
+  "calc_travel_time", "calc_demand", "decay_kernel"
 )
 
 # Every name above is exported by the installed package

@@ -7,11 +7,11 @@
 .poisson_gradient(predicted, observed, sensitivity, eps = 1e-09)
 }
 \description{
-Both the loss and this gradient floor predictions at \code{eps}. Below the
-floor the loss is flat, but the gradient keeps the log-likelihood slope
-\code{1 - y / eps}. For an observed count above \code{eps} this pushes a prediction
-that collapsed towards zero back up instead of stalling the optimizer
-there; for a zero count it keeps the usual slope of 1. The two therefore
-disagree below \code{eps} by design.
+This is the gradient of \code{\link[=.poisson_loss]{.poisson_loss()}}, floor included. A prediction
+below \code{eps} adds the constant \verb{eps - y log(eps)} to the loss, so it adds
+nothing to the gradient, whatever its observed count. Quasi-Newton
+optimizers check every step against the loss, so a gradient that kept the
+slope \code{1 - y / eps} below the floor would point where the loss does not
+fall and stop line searches early (DEC-029).
 }
 \keyword{internal}

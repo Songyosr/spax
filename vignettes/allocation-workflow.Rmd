@@ -24,9 +24,10 @@ example data](cornwall-data.html).
 This guide runs the experimental allocation workflow from start to finish:
 prepare inputs, declare a model, fit it to observed registrations, inspect the
 saved fit, predict at new locations, compare a change in one practice's supply,
-and export the results and read them back in a fresh R session. Bootstrap
-intervals have their own guide, [Bootstrap intervals for a fitted allocation
-model](facility-bootstrap.html), on generated data.
+declare a decay function of your own, and export the results and read them back
+in a fresh R session. Bootstrap intervals have their own guide, [Bootstrap
+intervals for a fitted allocation model](facility-bootstrap.html), on generated
+data.
 
 The model is a corrected static conditional logit (CLM) with an explicit
 outside option. Each practice attracts residents in proportion to its supply,
@@ -159,9 +160,9 @@ as.data.frame(fit)
 ```
 
 The summary keeps every start, its convergence, boundaries and messages. All
-three starts converge away from the bounds and stop very close to each other,
-but the disagreement flag uses deliberately strict default tolerances, so read
-the gaps in the per-start table rather than the flag alone. Agreement among the
+three starts converge away from the bounds and stop very close to each other.
+The disagreement flag uses deliberately strict default tolerances, so read the
+gaps in the per-start table rather than the flag alone. Agreement among the
 supplied starts is a numerical check; it does not prove a global optimum or
 that the parameters are identified. A σ of about 4.4 minutes means
 registration is very local: a practice 9 minutes away keeps only about 12% of
@@ -197,6 +198,28 @@ The model gives each practice an attraction proportional to its GP FTE and
 uses only supply and travel. Practices with more registered patients per GP FTE
 than their neighbours therefore have larger observed than modelled lists and
 sit below the dashed line.
+
+## What the observations identify
+
+A good fit does not show that the travel kernel is right. `check_allocation()`
+never changes the fit; it compares the fitted model, on the same loss, with the
+same model without distance decay (each small area chooses among the practices it
+can reach in proportion to GP FTE), and reports the one-way trips each
+implies.
+
+```{r check}
+# The fit against an allocation without distance decay
+check_allocation(model, fit)
+```
+
+Here the target is the small area × practice matrix, which records where each
+practice's patients live, so dropping distance decay worsens the fit by a wide
+margin, and the fitted model's trips are short (a median of a few minutes).
+When only practice totals are observed, the check also fits an allocation that
+shares the totals by capacity alone. If that, or the no-decay allocation, fits
+at least as well as the model, the totals do not identify distance decay: the
+fitted value then depends on which travel times were treated as reachable, not
+on the counts.
 
 The outside share is the other observable output. Each small area's modelled
 outside share can be compared with the share of its residents registered
@@ -456,6 +479,92 @@ ggplot() +
   ) +
   theme_void()
 ```
+
+## Your own decay function
+
+`decay_kernel()` declares a decay function of your own. It takes a function of
+`distance` and `sigma`, a `name`, a label for what `sigma` means (`parameter`)
+and any fixed extra arguments (`args`). The kernel below gives full weight to
+practices within 3 minutes and decays as a Gaussian beyond that, with `sigma`
+the scale of the decay.
+
+```{r plateau-declare}
+# Full weight within `plateau` minutes, Gaussian decay beyond
+plateau_kernel <- decay_kernel(
+  function(distance, sigma, plateau) {
+    ifelse(
+      distance <= plateau,
+      1,
+      exp(-(distance - plateau)^2 / (2 * sigma^2))
+    )
+  },
+  name = "plateau",
+  parameter = "scale",
+  args = list(plateau = 3)
+)
+plateau_kernel
+```
+
+A declaration is plain data. It keeps the function's source text and rebuilds
+the function whenever it is used, so the function can use only its arguments,
+base R, `pkg::fn` calls and `args`. Declaring it also runs the function on a
+grid of distances and refuses one whose weights are not finite, nonnegative and
+non-increasing in distance; `?decay_kernel` lists the rules. A declaration works
+wherever a decay method is accepted, including `calc_decay()` and the FCA
+functions. Here it takes the place of `"gaussian"` in `clm_allocation()`, and
+the fit below repeats the Gaussian fit's starts and bounds.
+
+```{r plateau-fit}
+plateau_model <- clm_allocation(
+  inputs = inputs,
+  family = plateau_kernel,  # a declaration instead of "gaussian"
+  fit_v0 = TRUE
+)
+
+plateau_fit <- fit_allocation(
+  model = plateau_model,
+  observed = observed,
+  starts = starts,
+  lower = c(sigma = 0.5, v0 = 1e-6),
+  upper = c(sigma = 60, v0 = 10),
+  output = "flow",
+  loss = "poisson",
+  gradient = TRUE,
+  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
+)
+coef(plateau_fit)
+```
+
+`summary(plateau_fit)` shows how closely the starts agree. The
+`sigma` of a declared kernel is the scale of that kernel, so
+`r round(coef(plateau_fit)[["sigma"]], 2)` minutes for the plateau kernel and
+`r round(coef(fit)[["sigma"]], 2)` minutes for the Gaussian kernel are not
+comparable values. `compare_allocations()` puts the two fits side by side. Given
+the models as well, it checks that both fits use the same flow matrix, loss,
+inputs and travel times, which it requires before it reports a loss difference.
+
+```{r plateau-compare}
+# Loss differences are measured from the first fit, the Gaussian
+comparison <- compare_allocations(
+  fits = list(gaussian = fit, plateau = plateau_fit),
+  models = list(gaussian = model, plateau = plateau_model)
+)
+as.data.frame(comparison)[
+  c("specification", "parameters", "loss_difference", "count_correlation")
+]
+```
+
+Measured from the Gaussian fit, the plateau fit's Poisson loss is higher by
+`r format(round(as.data.frame(comparison)$loss_difference[2]), big.mark = ",")`
+and its fitted flows correlate with the observed flows at
+`r round(as.data.frame(comparison)$count_correlation[2], 2)`, against
+`r round(as.data.frame(comparison)$count_correlation[1], 2)` for the Gaussian
+fit. These figures say how close each kernel's fitted flows come to these
+registrations under one criterion; they do not show which kernel describes how
+residents choose practices. A saved fit that uses a declared kernel keeps the
+kernel's code and runs it when the fit is used, so read saved fits only from
+sources you trust; a kernel declared with `smooth = FALSE`, such as a cutoff,
+can be evaluated but not fitted.
 
 ## Save and reload
 

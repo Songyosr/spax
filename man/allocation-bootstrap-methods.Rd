@@ -29,8 +29,8 @@
 }
 \value{
 \code{summary()} returns saved estimates, original fit, status, counts,
-diagnostics, capacity support and declarations in a
-\code{summary.ae_allocation_bootstrap} object.
+diagnostics, capacity support and declarations (and the coverage note, when
+the result has one) in a \code{summary.ae_allocation_bootstrap} object.
 Print and plot methods return their input invisibly.
 }
 \description{

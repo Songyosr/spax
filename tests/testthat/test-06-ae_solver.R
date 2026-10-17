@@ -100,6 +100,193 @@ test_that("finite-difference state Jacobian matches analytic Jacobian", {
   expect_error(fd_jacobian(1, x), "function")
 })
 
+# Finite differences inside bounds ---------------------------------------------
+
+# A function that records the points at which it is evaluated. Its Jacobian,
+# [exp(x1), 2 x2; x2 cos(x1 x2), x1 cos(x1 x2)], is written out below.
+recording <- function() {
+  seen <- list()
+  list(
+    fn = function(x) {
+      seen[[length(seen) + 1L]] <<- x
+      c(exp(x[1]) + x[2]^2, sin(x[1] * x[2]))
+    },
+    points = function() do.call(rbind, seen)
+  )
+}
+plain_fn <- function(x) c(exp(x[1]) + x[2]^2, sin(x[1] * x[2]))
+exact_jacobian <- function(x) {
+  matrix(c(exp(x[1]), x[2] * cos(x[1] * x[2]), 2 * x[2], x[1] * cos(x[1] * x[2])), 2)
+}
+inside <- function(points, lower, upper) {
+  all(sweep(points, 2, lower, ">=") & sweep(points, 2, upper, "<="))
+}
+
+test_that("fd_jacobian takes the central steps it always took when the bounds are not reached", {
+  x <- c(a = 0.4, b = 0.7)
+  recorder <- recording()
+  bounded <- fd_jacobian(recorder$fn, x, lower = c(0, 0), upper = c(1, 1))
+  expect_identical(bounded, fd_jacobian(plain_fn, x))
+  expect_identical(fd_jacobian(plain_fn, x, lower = 0, upper = 1), fd_jacobian(plain_fn, x))
+  expect_identical(fd_jacobian(plain_fn, x, lower = -Inf, upper = Inf), fd_jacobian(plain_fn, x))
+  expect_identical(colnames(bounded), c("a", "b"))
+  expect_equal(unname(bounded), exact_jacobian(x), tolerance = 1e-6)
+  # The point itself and one step each side of every coordinate, nothing else.
+  h <- 1e-6
+  points <- unname(recorder$points())
+  expect_equal(points, rbind(x, c(x[1] + h, x[2]), c(x[1] - h, x[2]),
+                             c(x[1], x[2] + h), c(x[1], x[2] - h)), ignore_attr = TRUE)
+  # The forward method is unchanged too.
+  expect_identical(fd_jacobian(plain_fn, x, method = "forward", lower = 0, upper = 1),
+                   fd_jacobian(plain_fn, x, method = "forward"))
+})
+
+test_that("fd_jacobian uses a one-sided step at each bound and stays inside", {
+  h <- 1e-6
+  lower <- c(0, 0)
+  upper <- c(1, 1)
+  # Lower bound of the first coordinate: forward, the second stays central.
+  x <- c(0, 0.7)
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, x, lower = lower, upper = upper)
+  expect_true(inside(recorder$points(), lower, upper))
+  expect_identical(J[, 1], (plain_fn(c(h, 0.7)) - plain_fn(x)) / h)
+  expect_identical(J[, 2], (plain_fn(c(0, 0.7 + h)) - plain_fn(c(0, 0.7 - h))) / (2 * h))
+  expect_equal(J, exact_jacobian(x), tolerance = 1e-5)
+  # Upper bound of the second coordinate: backward.
+  x <- c(0.4, 1)
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, x, lower = lower, upper = upper)
+  expect_true(inside(recorder$points(), lower, upper))
+  expect_identical(J[, 2], (plain_fn(x) - plain_fn(c(0.4, 1 - h))) / h)
+  expect_identical(J[, 1], (plain_fn(c(0.4 + h, 1)) - plain_fn(c(0.4 - h, 1))) / (2 * h))
+  expect_equal(J, exact_jacobian(x), tolerance = 1e-5)
+  # Both bounds at once, each in its own coordinate.
+  x <- c(1, 0)
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, x, lower = lower, upper = upper)
+  expect_true(inside(recorder$points(), lower, upper))
+  expect_equal(J, exact_jacobian(x), tolerance = 1e-5)
+  # Within one step of a bound (the step is 1e-6, the room 5e-7): forward.
+  x <- c(5e-7, 0.7)
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, x, lower = lower, upper = upper)
+  expect_true(inside(recorder$points(), lower, upper))
+  expect_identical(J[, 1], (plain_fn(c(5e-7 + h, 0.7)) - plain_fn(x)) / h)
+  expect_equal(J, exact_jacobian(x), tolerance = 1e-5)
+  # Without the bounds the central step would have left them.
+  unbounded <- recording()
+  fd_jacobian(unbounded$fn, x)
+  expect_false(inside(unbounded$points(), lower, upper))
+  # Bounds elsewhere than at zero, and a single bound.
+  x <- c(2, 3)
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, x, lower = c(2, -Inf), upper = c(Inf, 3))
+  expect_true(inside(recorder$points(), c(2, -Inf), c(Inf, 3)))
+  expect_equal(J, exact_jacobian(x), tolerance = 1e-5)
+})
+
+test_that("fd_jacobian uses the larger room when neither side of the step fits", {
+  # Bounds closer together than one step (1e-6): the step is the larger room, to
+  # the farther bound (forward when the rooms tie), every evaluation stays inside
+  # the bounds, and the derivative of exp(x) is still 1.
+  cases <- list(list(x = 3e-7, moves_to = 1e-6),  # rooms 7e-7 above, 3e-7 below
+                list(x = 5e-7, moves_to = 1e-6),  # equal rooms: forward
+                list(x = 8e-7, moves_to = 0))     # rooms 2e-7 above, 8e-7 below
+  for (case in cases) {
+    seen <- numeric()
+    f <- function(x) {
+      seen <<- c(seen, x)
+      exp(x)
+    }
+    J <- fd_jacobian(f, case$x, lower = 0, upper = 1e-6)
+    expect_true(all(seen >= 0 & seen <= 1e-6), info = case$x)
+    expect_setequal(seen, c(case$x, case$moves_to))
+    expect_equal(drop(J), 1, tolerance = 1e-5, info = case$x)
+  }
+  # No room at all: a zero column, and the function is not evaluated elsewhere.
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, c(0.4, 0.7), lower = c(0.4, 0), upper = c(0.4, 1))
+  expect_identical(J[, 1], c(0, 0))
+  expect_equal(J[, 2], exact_jacobian(c(0.4, 0.7))[, 2], tolerance = 1e-6)
+  expect_true(all(recorder$points()[, 1] == 0.4))
+})
+
+test_that("fd_jacobian forward differences step up where they fit and down otherwise", {
+  h <- 1e-6
+  recorder <- recording()
+  J <- fd_jacobian(recorder$fn, c(0.4, 1), method = "forward", lower = c(0, 0), upper = c(1, 1))
+  expect_true(inside(recorder$points(), c(0, 0), c(1, 1)))
+  expect_identical(J[, 1], (plain_fn(c(0.4 + h, 1)) - plain_fn(c(0.4, 1))) / h)
+  expect_identical(J[, 2], (plain_fn(c(0.4, 1)) - plain_fn(c(0.4, 1 - h))) / h)
+  # At the lower bound the forward step is the usual one.
+  J <- fd_jacobian(plain_fn, c(0, 0.7), method = "forward", lower = 0, upper = 1)
+  expect_identical(J, fd_jacobian(plain_fn, c(0, 0.7), method = "forward"))
+  # Neither side fits: the larger room.
+  seen <- numeric()
+  f <- function(x) { seen <<- c(seen, x); exp(x) }
+  J <- fd_jacobian(f, 8e-7, method = "forward", lower = 0, upper = 1e-6)
+  expect_true(all(seen >= 0 & seen <= 1e-6))
+  expect_equal(drop(J), 1, tolerance = 1e-5)
+})
+
+test_that("fd_jacobian validates its bounds", {
+  x <- c(0.4, 0.7)
+  expect_error(fd_jacobian(plain_fn, x, lower = c(0, NA)), "lower")
+  expect_error(fd_jacobian(plain_fn, x, upper = NA_real_), "upper")
+  expect_error(fd_jacobian(plain_fn, x, lower = "a"), "lower")
+  expect_error(fd_jacobian(plain_fn, x, lower = c(0, 0, 0)), "length one or the length of `x`")
+  expect_error(fd_jacobian(plain_fn, x, upper = numeric(0)), "upper")
+  expect_error(fd_jacobian(plain_fn, x, lower = c(0, 2), upper = c(1, 1)), "must not exceed")
+  expect_error(fd_jacobian(plain_fn, x, lower = 1, upper = 0), "must not exceed")
+})
+
+test_that("the bounds of a theta contract are aligned with the names of theta", {
+  problem <- list(theta = list(names = c("sigma", "v0", "beta"), lower = c(10, 0, 1),
+                               upper = c(40, Inf, 5)))
+  expect_identical(.problem_theta_bounds(problem, c(beta = 2, sigma = 12, v0 = 3)),
+                   list(lower = c(1, 10, 0), upper = c(5, 40, Inf)))
+  expect_identical(.problem_theta_bounds(problem, c(sigma = 12, v0 = 3, beta = 2)),
+                   list(lower = c(10, 0, 1), upper = c(40, Inf, 5)))
+  # positional without names, and for a subset of the names
+  expect_identical(.problem_theta_bounds(problem, c(12, 3, 2)),
+                   list(lower = c(10, 0, 1), upper = c(40, Inf, 5)))
+  expect_identical(.problem_theta_bounds(problem, c(beta = 2, sigma = 12)),
+                   list(lower = c(1, 10), upper = c(5, 40)))
+  # no bounds in the contract, or bounds that cannot be aligned: unbounded
+  free <- list(theta = list(names = c("a", "b")))
+  expect_identical(.problem_theta_bounds(free, c(a = 1, b = 2)),
+                   list(lower = c(-Inf, -Inf), upper = c(Inf, Inf)))
+  expect_identical(.problem_theta_bounds(problem, c(1, 2, 3, 4)),
+                   list(lower = -Inf, upper = Inf))
+  expect_identical(.problem_theta_bounds(problem, numeric(0)), list(lower = -Inf, upper = Inf))
+  # a scalar bound applies to every parameter
+  scalar <- list(theta = list(names = c("a", "b"), lower = 0.5, upper = Inf))
+  expect_identical(.problem_theta_bounds(scalar, c(b = 1, a = 2)),
+                   list(lower = c(0.5, 0.5), upper = c(Inf, Inf)))
+})
+
+test_that("a model with a finite theta bound is differentiated inside it", {
+  # The ratio-response model bounds its feedback scale below by 1. At that bound
+  # its derivative of an output without a provided Jacobian is one-sided, and
+  # agrees with a forward difference of the solved output.
+  problem <- ae_ratio_problem()
+  expect_identical(problem$theta$lower, c(0, 0, 1))
+  theta <- ae_ratio_truth()
+  theta[["feedback_scale"]] <- 1
+  solve_at <- function(th) {
+    .solve_problem(problem, th, lambda = 0.7, tol = 1e-12, max_iter = 500)
+  }
+  x <- solve_at(theta)$x_star
+  sensitivity <- .problem_output_sensitivity(problem, theta, x, "access")
+  expect_true(all(is.finite(sensitivity)))
+  expect_identical(colnames(sensitivity), names(theta))
+  h <- 1e-6
+  forward <- (solve_at(replace(theta, "feedback_scale", 1 + h))$outputs$access -
+                solve_at(theta)$outputs$access) / h
+  expect_equal(unname(sensitivity[, "feedback_scale"]), unname(forward), tolerance = 1e-3)
+})
+
 test_that("implicit_gradient solves the fixed-point sensitivity equation", {
   A <- matrix(c(0.2, 0.1, 0, 0.3), nrow = 2)
   B <- matrix(c(1, 0, 0.5, 2), nrow = 2)

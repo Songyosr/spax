@@ -17,7 +17,10 @@ predict_allocation(
 }
 \arguments{
 \item{source}{A selected multistart result, NFXP fit or fixed evaluation with
-a valid built-in CLM prediction snapshot. Older objects need regeneration.}
+a valid CLM prediction snapshot, for a built-in decay kernel or one declared
+with \code{\link[=decay_kernel]{decay_kernel()}}. Older objects need regeneration. The snapshot of a
+declared kernel carries its code and predicting runs it, so use saved
+results only from sources you trust.}
 
 \item{distance}{Numeric requested-origin-by-facility travel matrix with
 complete facility column IDs. Named axes align independently; requested
@@ -67,7 +70,12 @@ overrides are deliberately absent. A changed system requires reevaluation.
 \seealso{
 Other experimental allocation workflow: 
 \code{\link{bootstrap_allocation}()},
+\code{\link{calc_demand}()},
+\code{\link{calc_travel_time}()},
+\code{\link{check_allocation}()},
 \code{\link{clm_allocation}()},
+\code{\link{compare_allocations}()},
+\code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{prepare_allocation}()}

@@ -1,7 +1,7 @@
 Package: spax
 Type: Package
 Title: Spatial Accessibility and Allocation Modeling
-Version: 0.2.0.9000
+Version: 0.3.0
 Authors@R:
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
@@ -12,8 +12,12 @@ Description: Spatial accessibility analysis using floating catchment area (FCA)
     The allocation workflow provides checked numeric preparation, observation-based
     calibration, requested-location prediction and fixed-parameter supply scenarios.
     Saved results retain input declarations, support information and fit diagnostics.
-    A conditional facility-case bootstrap is available for a restricted Gaussian
-    allocation model and an explicitly declared observation process.
+    A conditional facility-case bootstrap is available for static allocation
+    models with a fitted outside mass and a decay kernel that is smooth in sigma,
+    built in or declared, with an optional fitted supply elasticity beta, and an
+    explicitly declared observation process. Its coverage was evaluated for
+    Gaussian decay with fitted sigma and v0; other kernels and a fitted beta use
+    the same procedure without a separate coverage study.
 License: MIT + file LICENSE
 Copyright: See file inst/COPYRIGHTS for third-party example data.
 Encoding: UTF-8
