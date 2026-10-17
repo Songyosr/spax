@@ -128,16 +128,19 @@ test_that("a saved fit of the earlier version can be checked against the current
   expect_identical(names(out$parameters$fitted), c("sigma", "v0"))
   expect_identical(names(out$parameters$no_decay), "v0")
   expect_output(print(out), "ae_allocation_check")
-  # It gives the report of the fresh fit.
-  fresh <- check_allocation(f$model, fresh_fit())
-  expect_equal(as.data.frame(out)[, setdiff(names(as.data.frame(out)), "parameters")],
-               as.data.frame(fresh)[, setdiff(names(as.data.frame(fresh)), "parameters")],
-               tolerance = 1e-8)
-  # Like-for-like needs identical observed counts. The fixture's counts were built
-  # with exp() on the platform that wrote it, and exp() can differ in the last bit
-  # between platforms, so the fresh fit uses the saved fit's own counts.
+  # The fixture's counts were built with exp() on the platform that wrote it, and
+  # exp() can differ in the last bit between platforms, so the fresh fit uses the
+  # saved fit's own counts.
   refit <- fit_allocation(f$model, x$fit$best$observed, f$starts, f$lower, f$upper,
                           loss = "poisson", gradient = TRUE, control = list(maxit = 100))
+  # It gives the report of the fresh fit. The no-decay comparator re-optimizes v0
+  # on a flat loss, whose optimum is set only to about 1e-8 relative, and floating
+  # point differs between platforms: hence the tolerance.
+  fresh <- check_allocation(f$model, refit)
+  expect_equal(as.data.frame(out)[, setdiff(names(as.data.frame(out)), "parameters")],
+               as.data.frame(fresh)[, setdiff(names(as.data.frame(fresh)), "parameters")],
+               tolerance = 1e-6)
+  # Like-for-like needs identical observed counts, which the refit has.
   compared <- compare_allocations(list(saved = x$fit, fresh = refit),
                                   models = list(saved = f$model, fresh = f$model))
   table <- as.data.frame(compared)
