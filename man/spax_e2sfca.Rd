@@ -25,7 +25,9 @@ spax_e2sfca(
 
 \item{decay_params}{List of parameters for decay function:
 \itemize{
-  \item method: "gaussian", "exponential", "power", or "binary"
+  \item method: "gaussian", "exponential", "power" or "binary", a
+    custom decay function, or a kernel declared with
+    \code{\link{decay_kernel}}
   \item sigma: decay parameter controlling the rate of distance decay
   \item Additional parameters passed to custom decay functions
 }}
@@ -87,29 +89,29 @@ in overlapping service areas.
 library(terra)
 library(sf)
 
-# Convert under-5 population density to proper format
-pop_rast <- read_spax_example("u5pd.tif")
-hos_iscr <- read_spax_example("hos_iscr.tif")
+# Cornwall population grid and travel time to each GP practice
+pop_rast <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
 
 # Drop geometry for supply data
-hc12_hos <- hc12_hos |> st_drop_geometry()
+gp <- cornwall_gp |> st_drop_geometry()
 
 # Calculate accessibility with Gaussian decay
 result <- spax_e2sfca(
   demand = pop_rast,
-  supply = hc12_hos,
-  distance = hos_iscr,
+  supply = gp,
+  distance = travel,
   decay_params = list(
     method = "gaussian",
-    sigma = 30 # 30-minute characteristic distance
+    sigma = 10 # 10-minute characteristic travel time
   ),
   demand_normalize = "semi", # Prevent demand inflation
-  id_col = "id",
-  supply_cols = "s_doc"
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
 )
 
 # Extract and plot accessibility surface
-plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+plot(result$accessibility, main = "GP Accessibility (E2SFCA)")
 
 # Access facility-level information
 head(result$facilities)
@@ -117,15 +119,15 @@ head(result$facilities)
 # Compare different decay functions
 result_exp <- spax_e2sfca(
   demand = pop_rast,
-  supply = hc12_hos,
-  distance = hos_iscr,
+  supply = gp,
+  distance = travel,
   decay_params = list(
     method = "exponential",
     sigma = 0.1
   ),
   demand_normalize = "semi",
-  id_col = "id",
-  supply_cols = "s_doc"
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
 )
 
 # Plot both for comparison

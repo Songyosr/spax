@@ -8,7 +8,9 @@
 #' Prints a concise summary of a spax object, showing key information about the
 #' accessibility analysis without detailed statistics.
 #'
-#' @param x A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()
+#' @param x A spax object created by an FCA function, such as
+#'   \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+#'   \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
@@ -38,24 +40,17 @@ print.spax <- function(x, ...) {
   # Core parameters
   cat("\nParameters:\n")
   if (!is.null(x$parameters$decay_params)) {
-    cat("- Decay function:", x$parameters$decay_params$method)
-    if (!is.null(x$parameters$decay_params$sigma)) {
-      cat(sprintf(" (sigma = %g)", x$parameters$decay_params$sigma))
+    cat("- Decay function:", .decay_kernel_label(x$parameters$decay_params$method))
+    sigma <- x$parameters$decay_params$sigma
+    if (inherits(sigma, "SpatRaster")) {
+      cat(" (sigma = variable (raster))")
+    } else if (!is.null(sigma)) {
+      cat(sprintf(" (sigma = %g)", sigma))
     }
     cat("\n")
   }
   if (!is.null(x$parameters$demand_normalize)) {
     cat("- Demand normalization:", x$parameters$demand_normalize, "\n")
-  }
-
-  # Model-specific information
-  if (!is.null(x$iterations)) {
-    cat("\nModel Details:\n")
-    if (!is.null(x$iterations$convergence)) {
-      cat(sprintf("- Iterations: %d\n", x$iterations$convergence$iterations))
-      cat(sprintf("- Converged: %s\n",
-                  ifelse(x$iterations$convergence$converged, "Yes", "No")))
-    }
   }
 
   invisible(x)
@@ -73,11 +68,16 @@ print.spax <- function(x, ...) {
 #' Provides detailed statistical summaries of accessibility analysis results,
 #' including accessibility scores, facility statistics, and model-specific metrics.
 #'
-#' @param x A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()
+#' @param x A spax object created by an FCA function, such as
+#'   \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+#'   \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}
 #' @param quantiles Numeric vector of probabilities for quantile computation
 #' @param ... Currently ignored, for extensibility
 #'
-#' @return A summary.spax object
+#' @return A summary.spax object. For each accessibility layer, \code{coverage}
+#'   counts the cells with a value (\code{cells_total}; cells outside the study area,
+#'   such as sea, are missing and excluded) and the cells whose accessibility is
+#'   above zero (\code{cells_covered}), with their \code{proportion}.
 #' @exportS3Method base::summary
 summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
   # Calculate accessibility statistics
@@ -88,9 +88,10 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     # Basic statistics
     stats <- terra::global(layer, c("min", "max", "mean", "sd"), na.rm = TRUE)
 
-    # Coverage statistics
-    n_cells <- length(values)
-    n_covered <- sum(!is.na(values))
+    # Coverage among cells with a value: cells outside the study area (e.g. sea)
+    # are NA and do not enter the denominator; covered means accessibility > 0.
+    n_cells <- sum(!is.na(values))
+    n_covered <- sum(values > 0, na.rm = TRUE)
 
     # Quantiles
     quants <- terra::global(layer,
@@ -104,11 +105,12 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
       max = stats$max,
       mean = stats$mean,
       sd = stats$sd,
-      quantiles = as.vector(quants[[1]]),
+      quantiles = stats::setNames(as.numeric(quants[1, ]),
+                                  names(stats::quantile(0, quantiles))),
       coverage = list(
         cells_total = n_cells,
         cells_covered = n_covered,
-        proportion = n_covered / n_cells
+        proportion = if (n_cells > 0) n_covered / n_cells else NA_real_
       )
     )
   })
@@ -139,33 +141,11 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     }
   }
 
-  # Calculate model-specific statistics
-  model_stats <- NULL
-  if (!is.null(x$iterations)) {
-    model_stats <- list()
-
-    # Convergence information
-    if (!is.null(x$iterations$convergence)) {
-      model_stats$convergence <- x$iterations$convergence
-    }
-
-    # For iFCA: facility utilization statistics
-    if (x$type == "iFCA" && !is.null(x$facilities$utilization)) {
-      util_stats <- list(
-        min = min(x$facilities$utilization, na.rm = TRUE),
-        max = max(x$facilities$utilization, na.rm = TRUE),
-        mean = mean(x$facilities$utilization, na.rm = TRUE),
-        sd = sd(x$facilities$utilization, na.rm = TRUE)
-      )
-      model_stats$utilization <- util_stats
-    }
-  }
-
   # Create summary object using constructor
   .create_spax_summary(
     accessibility = acc_stats,
     facilities = fac_stats,
-    model_specific = model_stats,
+    model_specific = NULL,
     type = x$type,
     parameters = x$parameters
   )
@@ -206,7 +186,10 @@ print.summary.spax <- function(x, digits = 4, ...) {
 
     # Quantiles with labels
     cat("  Quantiles:\n")
-    quant_labels <- c("Min.", "1st Qu.", "Median", "3rd Qu.", "Max.")
+    quant_labels <- names(measure$quantiles)
+    if (identical(quant_labels, c("0%", "25%", "50%", "75%", "100%"))) {
+      quant_labels <- c("Min.", "1st Qu.", "Median", "3rd Qu.", "Max.")
+    }
     for (i in seq_along(measure$quantiles)) {
       cat(sprintf("    %-8s %s\n",
                   paste0(quant_labels[i], ":"),
@@ -214,7 +197,7 @@ print.summary.spax <- function(x, digits = 4, ...) {
     }
 
     # Coverage statistics
-    cat(sprintf("\n  Coverage: %.1f%% (%d of %d cells)\n",
+    cat(sprintf("\n  Coverage: %.1f%% (%d of %d cells with a value have accessibility > 0)\n",
                 100 * measure$coverage$proportion,
                 measure$coverage$cells_covered,
                 measure$coverage$cells_total))
@@ -240,35 +223,6 @@ print.summary.spax <- function(x, digits = 4, ...) {
     }
   }
 
-  # Model-specific Statistics (if present)
-  if (!is.null(x$model_specific)) {
-    cat("\nModel-specific Statistics:\n")
-    cat("------------------------\n")
-
-    # Convergence information
-    if (!is.null(x$model_specific$convergence)) {
-      conv <- x$model_specific$convergence
-      cat(sprintf("Iterations: %d\n", conv$iterations))
-      cat(sprintf("Converged: %s\n",
-                  ifelse(conv$converged, "Yes", "No")))
-      if (!is.null(conv$final_average)) {
-        cat(sprintf("Final convergence metric: %s\n",
-                    sprintf(fmt, conv$final_average)))
-      }
-    }
-
-    # Utilization statistics for iFCA
-    if (!is.null(x$model_specific$utilization)) {
-      util <- x$model_specific$utilization
-      cat("\nUtilization Statistics:\n")
-      cat(sprintf("  Mean (SD): %s (%s)\n",
-                  sprintf(fmt, util$mean),
-                  sprintf(fmt, util$sd)))
-      cat(sprintf("  Range: %s to %s\n",
-                  sprintf(fmt, util$min),
-                  sprintf(fmt, util$max)))
-    }
-  }
   invisible(x)
 }
 
@@ -308,30 +262,30 @@ print.summary.spax <- function(x, digits = 4, ...) {
 #' library(terra)
 #' library(sf)
 #'
-#' # Load data
-#' u5pd <- read_spax_example("u5pd.tif")
-#' hos_iscr <- read_spax_example("hos_iscr.tif")
+#' # Load data: Cornwall population grid and travel time to each GP practice
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
 #'
-#' # Calculate accessibility
+#' # Calculate accessibility for two GP supply measures
 #' result <- spax_e2sfca(
-#'   demand = u5pd,
-#'   supply = st_drop_geometry(hc12_hos),
-#'   distance = hos_iscr,
-#'   decay_params = list(method = "gaussian", sigma = 30),
+#'   demand = pop,
+#'   supply = st_drop_geometry(cornwall_gp),
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
 #'   demand_normalize = "standard",
-#'   id_col = "id",
-#'   supply_cols = c("s_doc", "s_nurse")
+#'   id_col = "practice",
+#'   supply_cols = c("gp_fte_extg", "gp_fte")
 #' )
 #'
 #' # Basic plot of all layers
 #' plot(result)
 #'
 #' # Plot with custom title and color scheme
-#' plot(result, main = c("Doctor Access", "Nurse Access"),
+#' plot(result, main = c("GPs excluding trainees", "All GPs"),
 #'      col = hcl.colors(100, "YlOrRd"))
 #'
 #' # Plot single layer by name
-#' plot(result, y = "s_doc", main = "Access to Doctors")
+#' plot(result, y = "gp_fte_extg", main = "Access to GPs")
 #' @exportS3Method graphics::plot
 plot.spax <- function(x, ...) {
   plot(x$accessibility, ...)

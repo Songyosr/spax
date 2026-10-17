@@ -1,0 +1,160 @@
+#' Update Probability Mass Function with Likelihood Surface
+#'
+#' @description
+#' Updates a spatial probability mass function (PMF) using a likelihood surface
+#' following Bayesian principles. The function combines:
+#' - Prior: Initial spatial PMF representing prior beliefs
+#' - Likelihood: Surface showing relative intensity of observations
+#' - Posterior: Updated PMF incorporating both prior and likelihood
+#'
+#' Values in the posterior will be higher where both prior probability
+#' and likelihood are high, representing areas supported by both prior
+#' beliefs and observed data.
+#'
+#' @param prior SpatRaster containing prior PMF (each layer summing to 1)
+#' @param likelihood SpatRaster containing likelihood surface. With several
+#'   layers, prior and likelihood must have the same number of layers, or one
+#'   of them a single layer that applies to every layer of the other.
+#' @param normalize Logical; if TRUE ensure output sums to 1 (default TRUE),
+#'   each layer of a multi-layer posterior separately
+#' @param density Logical; if TRUE return density surface instead of PMF
+#' @param snap Logical; if TRUE skip validation
+#' @return SpatRaster containing either:
+#'         - Posterior PMF if density = FALSE
+#'         - Posterior density if density = TRUE
+#'
+#' @examples
+#' pop <- read_spax_example("cornwall_pop.tif")
+#'
+#' # Group small areas into larger units (LSOA names end in a letter; dropping it
+#' # gives the containing MSOA) so every unit covers several grid cells
+#' areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas$msoa <- sub("[A-Z]$", "", areas$name)
+#' msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
+#'
+#' # Likelihood from a rate, not a count: the share of residents registered
+#' # with a GP outside Cornwall (counts would double-count population)
+#' msoa$out_rate <- msoa$sum_registered_out / msoa$sum_registered
+#' likelihood <- transform_likelihood(msoa, value_col = "out_rate", template = pop)
+#'
+#' # Prior from population; the posterior is proportional to population times
+#' # the out-of-area rate
+#' prior <- transform_pmf(pop)
+#' posterior <- update_pmf(prior, likelihood)
+#' @export
+update_pmf <- function(prior, likelihood, normalize = TRUE,
+                       density = FALSE, snap = FALSE) {
+  # Input validation
+  if (!snap) {
+    .chck_raster_input(prior)
+    .chck_raster_input(likelihood, prior) # Use prior as template
+    .chck_pmf_validity(prior)
+    n_prior <- terra::nlyr(prior)
+    n_likelihood <- terra::nlyr(likelihood)
+    if (n_prior != n_likelihood && n_prior != 1 && n_likelihood != 1) {
+      stop("prior and likelihood must have the same number of layers, ",
+           "or one of them a single layer")
+    }
+  }
+
+  # Calculate unnormalized posterior
+  posterior <- prior * likelihood
+
+  # Get total before normalization (needed for density)
+  total <- terra::global(posterior, "sum", na.rm = TRUE)[[1]]
+
+  # Normalize if requested
+  if (normalize) {
+    posterior <- transform_pmf(posterior, snap = TRUE)
+  }
+
+  # Convert to density if requested; an unnormalized posterior already is one
+  if (density && normalize) {
+    posterior <- posterior * total
+  }
+
+  return(posterior)
+}
+
+#' Convenience wrapper for Bayesian spatial updating
+#'
+#' @description
+#' Convenience function that handles the common case of updating a spatial
+#' distribution with vector-based observations. Combines the functionality
+#' of transform_pmf, transform_likelihood, and update_pmf into a single
+#' workflow.
+#'
+#' @param x SpatVector containing observations
+#' @param value_col Character name of column containing values
+#' @param prior Optional SpatRaster prior PMF. If NULL, a uniform prior over
+#'   the non-missing cells of the template's first layer is used.
+#' @param template SpatRaster template (required if prior = NULL)
+#' @param density Logical; if TRUE return density surface
+#' @param standardize Must be FALSE. Standardized (z-score) likelihood values
+#'   include negative values, so they cannot form a posterior PMF.
+#' @return SpatRaster containing posterior PMF or density surface
+#'
+#' @examples
+#' library(terra)
+#'
+#' # Registered patients by Cornwall small area, on the population grid
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' areas <- project(vect(cornwall_lsoa), pop)
+#'
+#' # Uniform prior over the populated grid
+#' result1 <- rasterize_demand(areas, value_col = "registered", template = pop)
+#'
+#' # Population-based prior, returned as a density surface
+#' prior <- transform_pmf(pop)
+#' result2 <- rasterize_demand(
+#'   areas,
+#'   value_col = "registered",
+#'   prior = prior,
+#'   density = TRUE
+#' )
+#' @export
+rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
+                             density = FALSE, standardize = FALSE) {
+  # Input validation
+  .chck_vector_input(x, value_col)
+  if (is.null(prior) && is.null(template)) {
+    stop("Either prior or template must be provided")
+  }
+  if (!isFALSE(standardize)) {
+    stop("standardize = TRUE gives negative likelihood values, which cannot ",
+         "form a posterior PMF")
+  }
+
+  # Uniform prior over the template's cells (cells missing in the template
+  # stay missing) when none is given
+  if (is.null(prior)) {
+    .chck_class(template, "SpatRaster", "template")
+    prior <- terra::init(template[[1]], 1)
+    if (terra::hasValues(template)) prior <- terra::mask(prior, template[[1]])
+    if (!isTRUE(terra::global(prior, "sum", na.rm = TRUE)[[1]] > 0)) {
+      stop("template has no non-missing cells")
+    }
+    prior <- transform_pmf(prior, snap = TRUE)
+  } else {
+    .chck_raster_input(prior)
+    .chck_pmf_validity(prior)
+    template <- prior
+  }
+
+  # Create likelihood surface
+  likelihood <- transform_likelihood(
+    x,
+    value_col = value_col,
+    template = template,
+    standardize = standardize
+  )
+
+  # Update prior with likelihood
+  posterior <- update_pmf(
+    prior = prior,
+    likelihood = likelihood,
+    density = density
+  )
+
+  return(posterior)
+}

@@ -1,0 +1,107 @@
+---
+title: "Finding functions and inspecting results"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Finding functions and inspecting results}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "",
+  class.output = "spax-output"
+)
+```
+
+The guides use the bundled Cornwall GP data, described in [The Cornwall GP
+example data](cornwall-data.html); this page needs no data.
+
+```{r packages}
+library(spax)
+```
+
+spax retains its public FCA functions alongside the experimental static
+allocation workflow. Names describe the interface they belong to; there is no
+rule that every complete workflow must start with `spax_`. Existing FCA calls
+and result types remain supported.
+
+## Choose the level of operation
+
+| Task | Public interface | What it returns |
+|:--|:--|:--|
+| Binary catchment FCA | `spax_2sfca()` | `spax` result with accessibility raster |
+| Distance-weighted FCA | `spax_e2sfca()` | `spax` result with accessibility raster |
+| Squared access-side decay FCA | `spax_m2sfca()` | `spax` result with accessibility raster |
+| Selection-weighted FCA | `spax_3sfca()`, `spax_huff2sfca()` | `spax` result with accessibility raster |
+| Supply/demand calculation using supplied kernels | `compute_access()` | Accessibility `SpatRaster` |
+| Decay, normalization or choice weights | `calc_decay()`, `decay_kernel()`, `calc_normalize()`, `calc_choice()` | See the individual input/output contracts |
+| Weighted reduction to facilities | `gather_weighted()`, `gather_demand()` | Facility vector/table |
+| Weighted distribution to origins | `spread_weighted()`, `spread_access()` | Raster result |
+| Checked allocation preparation and declaration | `prepare_allocation()`, `clm_allocation()` | Prepared inputs and experimental model |
+| Fit, evaluate, predict and bootstrap | `fit_allocation()`, `evaluate_allocation()`, `predict_allocation()`, `bootstrap_allocation()` | Model-specific saved results |
+| Check and compare fitted allocations | `check_allocation()`, `compare_allocations()` | Comparison tables; the fits are not changed |
+| Travel times and demand inputs | `calc_travel_time()`, `calc_demand()` | Travel matrix or raster; demand raster or vector |
+
+These function families share concepts such as supply, demand and facility IDs.
+Their arguments and result meanings are not interchangeable. In particular,
+`calc_normalize()` applied to a numeric matrix normalizes the whole matrix,
+whereas a multilayer raster is normalized across layers at each cell. Select the
+operation appropriate to the declared axes; do not infer behavior from a name.
+
+```{r public-interface-check}
+functions <- c(
+  # FCA accessibility
+  "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
+  "compute_access",
+  # Experimental allocation workflow
+  "prepare_allocation", "clm_allocation", "fit_allocation",
+  "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
+  "check_allocation", "compare_allocations",
+  # Input helpers
+  "calc_travel_time", "calc_demand", "decay_kernel"
+)
+
+# Every name above is exported by the installed package
+stopifnot(all(functions %in% getNamespaceExports("spax")))
+data.frame(function_name = functions)
+```
+
+The former iterative-FCA interface is no longer available. It is not an alias
+for static CLM or a supported fixed-point workflow. Private functions beginning
+with `.` and other unexported implementation functions are not public contracts;
+examples for users should not call them with `:::`.
+
+## Inspect saved results using standard R generics
+
+| Result | Inspection | Interpretation |
+|:--|:--|:--|
+| FCA `spax` object | `print()`, `summary()`, `plot()`, `$accessibility` | Saved supply-per-demand index; raster-cell summary |
+| Allocation multistart fit | `coef()`, `fitted()`, `summary()`, `as.data.frame(type = "parameters")`, `plot()` | Selected fit plus retained per-start diagnostics |
+| Allocation coverage | `summary()`, `as.data.frame(type = "regional")` or `type = "cells"` | Saved coverage on retained positive-demand support |
+| Allocation bootstrap | `summary()`, `as.data.frame(type = "estimates")`, `"draws"`, `"starts"`, `plot()` | Saved point/interval status and every attempted result |
+
+Inspection does not refit the allocation model or resample the bootstrap. A
+failed search can still be summarized, but parameter extraction requires an
+eligible selected fit. Bootstrap methods preserve incomplete and refused
+statuses; displaying a point estimate does not make an interval available.
+
+FCA rasters and allocation numeric tables have different storage contracts. Use
+`terra::as.data.frame()` to extract raster cell values, and preserve geometry
+separately. Allocation tables carry IDs; coverage tables also carry unit,
+support and reporting attributes. CSV loses those attributes, so retain the
+documented RDS bundle when exporting allocation results.
+
+## Keep input validation enabled
+
+Some legacy functions expose `snap`. Leave its default `FALSE` in ordinary user
+code. It is an internal optimization switch, not a different model or a general
+speed recommendation. New prepared allocation inputs validate IDs, geometry and
+support at their own boundary and do not use a universal `snap` convention.
+
+See [Choosing an FCA index or an allocation model](model-choice.html) for a
+runnable comparison, [The E2SFCA calculation step by step](e2sfca-steps.html)
+for public building blocks, the [allocation workflow](allocation-workflow.html)
+for fitting, prediction, scenarios and persistence, and [Bootstrap intervals
+for a fitted allocation model](facility-bootstrap.html) for intervals.

@@ -3,7 +3,8 @@
 #' @description
 #' Normalizes weights using different methods with support for outside options.
 #'
-#' @param x Numeric vector, matrix, or SpatRaster of weights
+#' @param x Numeric vector, matrix, or SpatRaster of weights. The built-in
+#'   methods require non-negative weights; a custom method receives `x` as is.
 #' @param method Character string specifying normalization method:
 #'
 #'        - "standard": Divide by sum + a0 (default)
@@ -16,13 +17,15 @@
 #'
 #'        - Or a custom function(x, ...)
 #'
-#' @param ref_value Optional reference value for "reference" method
+#' @param ref_value Optional reference value for "reference" method. When
+#'   `NULL`, the maximum of `x` is used; for a SpatRaster that is each cell's
+#'   maximum across layers.
 #' @param a0 Non-negative numeric value representing outside option weight (default = 0)
 #' @param snap Logical; if TRUE, avoid input validation
 #' @param ... Additional arguments passed to custom normalization function
-#' @return Object of the same class as input containing normalized weights
+#' @return Object of the same class as input containing normalized weights.
+#'   A SpatRaster is normalized cell by cell across its layers.
 #' @examples
-#' \dontrun{
 #' library(terra)
 #'
 #' # Example 1: Basic vector normalization
@@ -63,7 +66,6 @@
 #' # Example 8: Handling NA values
 #' weights_with_na <- c(2, NA, 5, 3)
 #' calc_normalize(weights_with_na) # NA values are handled appropriately
-#' }
 #' @export
 calc_normalize <- function(x, method = "standard", ref_value = NULL,
                            a0 = 0, snap = FALSE, ...) {
@@ -86,7 +88,12 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 .chck_normalize <- function(x, method, ref_value = NULL, a0 = 0) {
   # Input existence check
   if (length(x) == 0) {
-    stop("'x' weights cannot be empty")
+    stop("Input weights cannot be empty")
+  }
+
+  # Built-in methods need non-negative weights; a custom method gets x as is
+  if (!is.function(method)) {
+    .chck_nonnegative_weights(x, "weights")
   }
 
   # Method validation - handle both string methods and custom functions
@@ -97,8 +104,11 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
     }
     # ref_value validation
     if ((method == "reference") && !is.null(ref_value)) {
-      .assert_numeric(ref_value, "ref_value")
-      .assert_length(length(ref_value), 1, "ref_value")
+      .chck_is_numeric(ref_value, "ref_value")
+      .chck_length(length(ref_value), 1, "ref_value")
+      if (is.na(ref_value)) {
+        stop("ref_value must not be missing")
+      }
     }
   }
 
@@ -106,9 +116,9 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
 
   # a0 validation
-  .assert_numeric(a0, "a0")
-  .assert_length(length(a0), 1, "a0")
-  .assert_positive(a0, allow_zero = TRUE, "a0")
+  .chck_is_numeric(a0, "a0")
+  .chck_length(length(a0), 1, "a0")
+  .chck_positive(a0, allow_zero = TRUE, "a0")
 
   invisible(TRUE)
 }
@@ -126,11 +136,17 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
     result <- switch(method,
       "identity" = x,
-      "standard" = terra::ifel(x_sum + a0 > 0, x / (x_sum + a0), NA_real_), # no service = NA
-      "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
+    "standard" = terra::ifel(x_sum + a0 > 0, x / (x_sum + a0), 0 * x),
+    "semi" = terra::ifel(x_sum + a0 > 1, x / (x_sum + a0), x),
       "reference" = {
-        if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)
-        terra::ifel(ref_value > 0, x / ref_value, NA_real_) # Avoid division by zero
+        if (is.null(ref_value)) {
+          ref_value <- max(x, na.rm = TRUE) # each cell's maximum across layers
+          terra::ifel(ref_value > 0, x / ref_value, NA_real_) # Avoid division by zero
+        } else if (ref_value > 0) {
+          x / ref_value
+        } else {
+          terra::init(x, NA_real_)
+        }
       }
     )
 
@@ -147,7 +163,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 
   switch(method,
     "identity" = x,
-    "standard" = if (x_sum + a0 > 0) x / (x_sum + a0) else rep(NA_real_, length(x)),
+    "standard" = if (x_sum + a0 > 0) x / (x_sum + a0) else x,
     "semi" = if (x_sum + a0 > 1) x / (x_sum + a0) else x,
     "reference" = {
       if (is.null(ref_value)) ref_value <- max(x, na.rm = TRUE)

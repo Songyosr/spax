@@ -5,13 +5,14 @@
 #' surface using a vectorized approach. The function supports both deterministic sampling
 #' with fixed sample sizes and probabilistic sampling based on population parameters.
 #'
-#' @param x SpatRaster representing spatial distribution. Can be either:
+#' @param x Single-layer SpatRaster representing spatial distribution. Can be either:
 #'   - A PMF where values sum to 1
 #'   - Raw density values that will be converted to PMF (except in snap mode)
 #' @param n Integer or NULL. Fixed number of samples for deterministic sampling.
 #'        If specified, overrides probabilistic sampling parameters.
 #' @param size Integer or NULL. Population size parameter for probability distributions.
-#'        If NULL and input is density (not PMF), will be calculated from data.
+#'        If NULL and input is density (not PMF), the rounded total of the data
+#'        is used.
 #' @param prob Numeric between 0 and 1. Probability parameter for sampling methods
 #'        (e.g., disease prevalence, detection probability).
 #' @param method Character string or function specifying sampling method:
@@ -34,30 +35,25 @@
 #'         counts contain NA.
 #'
 #' @examples
-#' \dontrun{
-#' # Create sample population density
+#' # Population density on a small grid
 #' r <- terra::rast(nrows = 10, ncols = 10)
+#' set.seed(1)
 #' terra::values(r) <- runif(100) * 100
 #'
-#' # Example 1: Independent sampling (default)
+#' # Independent samples of 50 cases, five iterations
 #' samples1 <- sample_pmf(r, n = 50, iterations = 5)
 #'
-#' # Example 2: Evolving samples
-#' samples2 <- sample_pmf(r,
-#'   n = 50,
-#'   iterations = 5,
-#'   evolve_prop = 0.3 # 30% new samples each iteration
-#' )
+#' # Evolving samples: 30% of cases are redrawn at each iteration
+#' samples2 <- sample_pmf(r, n = 50, iterations = 5, evolve_prop = 0.3)
 #'
-#' # Example 3: Disease case simulation with evolution
+#' # Poisson counts with an expected prevalence of 0.1%
 #' samples3 <- sample_pmf(r,
-#'   size = 10000, # population size
-#'   prob = 0.001, # disease prevalence
+#'   size = 10000,
+#'   prob = 0.001,
 #'   method = "poisson",
-#'   iterations = 100,
+#'   iterations = 10,
 #'   evolve_prop = 0.2
 #' )
-#' }
 #'
 #' @export
 sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
@@ -74,10 +70,14 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     pmf_result <- .chck_n_convert_pmf(x)
     x <- pmf_result$pmf
     if (is.null(size) && is.null(n) && !is.null(pmf_result$total)) {
-      size <- pmf_result$total
+      size <- round(pmf_result$total)
       if (is.numeric(size) && !is.na(size) && size > 0) {
         message("Using total population ", format(round(size), scientific = FALSE), " as size parameter")
       }
+    }
+    if (is.null(n) && is.character(method) && is.null(size)) {
+      stop("size must be given when x is already a PMF; it is taken from the ",
+           "total only for raw density input")
     }
   } else {
     # Quick check in snap mode
@@ -116,15 +116,11 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @keywords internal
 .sample_pmf_internal <- function(x, n, size, prob, method, iterations,
                                  evolve_prop, replace_0, snap, ...) {
-  # Compute sample sizes - ensure n takes precedence
-  if (!is.null(n)) {
-    n_samples <- rep(n, iterations)
-  } else {
-    n_samples <- .help_gen_sample_size(
-      n = n, size = size, prob = prob,
-      method = method, iterations = iterations, ...
-    )
-  }
+  # Compute sample sizes (a fixed n takes precedence and is validated there)
+  n_samples <- .help_gen_sample_size(
+    n = n, size = size, prob = prob,
+    method = method, iterations = iterations, ...
+  )
 
   if (evolve_prop == 0) {
     warning("evolve_prop = 0 means no new samples, returning first iteration only")
@@ -174,6 +170,9 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   if (!inherits(x, "SpatRaster")) {
     stop("Input 'x' must be a SpatRaster object")
   }
+  if (terra::nlyr(x) != 1) {
+    stop("Input 'x' must have a single layer")
+  }
 
   # Extended validation (skip if snap=TRUE)
   if (!snap) {
@@ -181,8 +180,9 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
       stop("iterations must be a positive integer")
     }
 
-    if (is.null(n) && is.character(method) && (is.null(size) || is.null(prob))) {
-      stop("Either n or both size and prob must be specified for built-in methods")
+    if (is.null(n) && is.character(method) && is.null(prob)) {
+      stop("Either n or prob (with size, unless x holds raw density) must be ",
+           "specified for built-in methods")
     }
 
     if (!is.null(prob) && (prob < 0 || prob > 1)) {
@@ -208,7 +208,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   # Check if input is PMF
   sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
 
-  if (abs(sum_check - 1) > 1e-10) {
+  if (!is.finite(sum_check) || abs(sum_check - 1) > 1e-10) {
     # Not a PMF, need to convert
     pmf_result <- transform_pmf(x, return_total = TRUE)
     return(pmf_result) # Returns list with $pmf and $total
@@ -236,7 +236,8 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                                   method = "poisson", iterations = 1, ...) {
   # Fixed sample size takes precedence
   if (!is.null(n)) {
-    if (!is.numeric(n) || any(n < 0) || any(n != as.integer(n))) {
+    if (!is.numeric(n) || length(n) != 1 || !is.finite(n) || n < 0 ||
+        n != round(n)) {
       stop("n must be a non-negative integer")
     }
     return(rep(n, iterations))
@@ -325,11 +326,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     values(result) <- NA
   }
 
-  # Assign layer names if not in snap mode
-  if (!snap && is.null(names(result))) {
-    names(result) <- paste0("sim_", 1:iterations)
-  }
-
   return(result)
 }
 
@@ -359,9 +355,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Early return if no samples needed
   if (sum(n_samples) == 0) {
-    if (!snap && is.null(names(result))) {
-      names(result) <- paste0("sim_", 1:iterations)
-    }
     return(result)
   }
 
@@ -426,11 +419,6 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 
   # Assign counts to result raster
   values(result) <- counts
-
-  # Assign layer names if not in snap mode
-  if (!snap && is.null(names(result))) {
-    names(result) <- paste0("sim_", 1:iterations)
-  }
 
   return(result)
 }

@@ -30,24 +30,24 @@
   }
 
   # Type validation
-  .assert_class(accessibility, "SpatRaster", "accessibility")
-  .assert_class(type, "character", "type")
-  .assert_length(length(type), 1, "type")
+  .chck_class(accessibility, "SpatRaster", "accessibility")
+  .chck_class(type, "character", "type")
+  .chck_length(length(type), 1, "type")
 
   # Parameters validation
-  .assert_class(parameters, "list", "parameters")
+  .chck_class(parameters, "list", "parameters")
 
   # Optional components validation (only if provided)
   if (!is.null(facilities)) {
-    .assert_class(facilities, "data.frame", "facilities")
+    .chck_class(facilities, "data.frame", "facilities")
   }
 
   if (!is.null(iterations)) {
-    .assert_class(iterations, "list", "iterations")
+    .chck_class(iterations, "list", "iterations")
   }
 
   if (!is.null(variations)) {
-    .assert_class(variations, "list", "variations")
+    .chck_class(variations, "list", "variations")
   }
 
   invisible(TRUE)
@@ -155,19 +155,19 @@
   }
 
   # Type validation
-  .assert_class(type, "character", "type")
-  .assert_length(length(type), 1, "type")
+  .chck_class(type, "character", "type")
+  .chck_length(length(type), 1, "type")
 
   # Component validation
-  .assert_class(accessibility, "list", "accessibility")
+  .chck_class(accessibility, "list", "accessibility")
   if (!is.null(facilities)) {
-    .assert_class(facilities, "list", "facilities")
+    .chck_class(facilities, "list", "facilities")
   }
   if (!is.null(model_specific)) {
-    .assert_class(model_specific, "list", "model_specific")
+    .chck_class(model_specific, "list", "model_specific")
   }
   if (!is.null(parameters)) {
-    .assert_class(parameters, "list", "parameters")
+    .chck_class(parameters, "list", "parameters")
   }
 
   invisible(TRUE)

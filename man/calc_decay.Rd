@@ -10,13 +10,20 @@ calc_decay(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...)
 \item{distance}{Numeric vector, matrix, or SpatRaster of distances}
 
 \item{method}{Character string specifying the decay function or a custom function:
-"gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...)}
+"gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...);
+or a kernel declared with \code{\link{decay_kernel}}}
 
-\item{sigma}{Parameter controlling the rate of decay}
+\item{sigma}{Parameter controlling the rate of decay. A single number, or a
+SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
+spatially varying catchment (variable-catchment FCA / V2SFCA). A
+declared custom kernel needs a single positive number within its
+bounds.}
 
 \item{snap}{Logical; if TRUE, skip input validation}
 
-\item{...}{Additional parameters passed to custom decay functions}
+\item{...}{Additional parameters for custom decay functions, or the offset
+\code{c} of the "inverse" kernel. A declared custom kernel takes none:
+its fixed arguments belong to the declaration.}
 }
 \value{
 Object of the same class as input containing decay weights
@@ -26,65 +33,71 @@ Calculate weights using different spatial decay functions or a custom function.
 Supports built-in methods and custom decay functions. The decay weights represent
 how the influence or interaction strength diminishes with distance.
 }
+\details{
+Built-in kernels for a distance \eqn{d}, and the \code{sigma} used when
+none is given:
+\itemize{
+  \item \code{"gaussian"}: \eqn{\exp(-d^2 / (2\sigma^2))}{exp(-d^2 / (2 sigma^2))};
+    default \eqn{\sigma = 11.64884}{sigma = 11.64884}.
+  \item \code{"exponential"}: \eqn{\exp(-\sigma d)}{exp(-sigma d)}; default
+    \eqn{\sigma = 0.1}{sigma = 0.1}.
+  \item \code{"power"}: \eqn{d^{-\sigma}}{d^(-sigma)}; default
+    \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0.
+  \item \code{"inverse"}: \eqn{1 / (d + c)}{1 / (d + c)}, with \code{c = 1}
+    unless \code{c} is passed in \code{...}; \code{sigma} does not enter
+    the weights (a given value is still validated).
+  \item \code{"binary"}: 1 when \eqn{d \le \sigma}{d <= sigma}, otherwise 0;
+    default \eqn{\sigma = 97.5}{sigma = 97.5}.
+}
+The defaults are historical values, not recommendations: set \code{sigma}
+for the units and scale of your travel times.
+
+A kernel declared with \code{\link{decay_kernel}} can be given as
+\code{method}. A built-in declaration behaves exactly like its name. A
+declared custom kernel needs \code{sigma}, a single positive number within the
+bounds of the declaration, and takes its fixed arguments from the declaration, so
+\code{...} must be empty; a SpatRaster \code{sigma} is refused. It is
+evaluated on the finite distances only: a missing distance has the weight
+\code{NA} and an infinite distance (an absent edge) the weight 0, as with
+the built-in kernels. A negative or non-finite weight at a finite distance is
+an error. A vector or matrix keeps its shape, and a SpatRaster keeps its
+geometry, layer names and missing cells; it is read into memory for a
+declared kernel.
+}
 \examples{
-\dontrun{
 library(terra)
-library(spax)
 
-# Create a simple distance raster (10x10 grid)
+# Distances on a small 10 x 10 grid
 r <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
-values(r) <- 1:100 # Distance values
+values(r) <- 1:100
 
-# 1. Basic usage with different methods ----
-# Gaussian decay
-w1 <- calc_decay(r, method = "gaussian", sigma = 30)
+# Built-in decay functions
+w <- c(
+  calc_decay(r, method = "gaussian", sigma = 30),
+  calc_decay(r, method = "exponential", sigma = 0.1),
+  calc_decay(r, method = "power", sigma = 2),
+  calc_decay(r, method = "binary", sigma = 50)
+)
+names(w) <- c("gaussian", "exponential", "power", "binary")
+plot(w)
 
-# Exponential decay
-w2 <- calc_decay(r, method = "exponential", sigma = 0.1)
-
-# Power decay
-w3 <- calc_decay(r, method = "power", sigma = 2)
-
-# Binary threshold
-w4 <- calc_decay(r, method = "binary", sigma = 50)
-
-# Plot to compare
-plot(c(w1, w2, w3, w4))
-
-# 2. Custom decay function ----
-# Create a custom decay function that combines gaussian and power
-custom_decay <- function(distance, sigma = 30, power = 2, ...) {
-  gaussian <- exp(-(distance^2) / (2 * sigma^2))
-  power_decay <- distance^(-power)
-  return(gaussian * power_decay)
+# A custom decay function receives the distances and its own arguments
+gaussian_power <- function(distance, sigma = 30, power = 2, ...) {
+  exp(-(distance^2) / (2 * sigma^2)) * distance^(-power)
 }
+w_custom <- calc_decay(r, method = gaussian_power, sigma = 30, power = 1.5)
 
-w5 <- calc_decay(r, method = custom_decay, sigma = 30, power = 1.5)
+# A declared kernel records its meaning, bounds and fixed arguments
+plateau <- decay_kernel(
+  function(distance, sigma, plateau = 5) {
+    ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+  },
+  name = "plateau", parameter = "scale", args = list(plateau = 5)
+)
+w_plateau <- calc_decay(r, method = plateau, sigma = 10)
 
-# 3. Working with multiple facilities ----
-# Create distance rasters for 3 facilities
-distances <- rast(replicate(3, r)) # Stack of 3 identical rasters
+# One layer per facility gives one layer of weights per facility
+distances <- rast(replicate(3, r))
 names(distances) <- c("facility1", "facility2", "facility3")
-
-# Calculate decay weights for all facilities
 weights <- calc_decay(distances, method = "gaussian", sigma = 30)
-
-# 4. Performance optimization ----
-# Use snap=TRUE when calling repeatedly in performance-critical code
-weights_fast <- calc_decay(distances, method = "gaussian", sigma = 30, snap = TRUE)
-
-# 5. Compare decay parameters ----
-# Create a sequence of sigma values
-sigmas <- c(10, 20, 30, 40, 50)
-
-# Calculate and plot weights for each sigma
-weights_list <- lapply(sigmas, function(s) {
-  calc_decay(r, method = "gaussian", sigma = s)
-})
-
-# Convert to SpatRaster stack and plot
-weight_stack <- rast(weights_list)
-names(weight_stack) <- paste0("sigma_", sigmas)
-plot(weight_stack)
-}
 }

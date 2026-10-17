@@ -7,7 +7,9 @@
 \method{print}{spax}(x, ...)
 }
 \arguments{
-\item{x}{A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()}
+\item{x}{A spax object created by an FCA function, such as
+\code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+\code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}}
 
 \item{...}{Currently ignored, for extensibility}
 }

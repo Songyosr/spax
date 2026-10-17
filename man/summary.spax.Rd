@@ -7,14 +7,19 @@
 \method{summary}{spax}(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
 }
 \arguments{
-\item{x}{A spax object created by spax_2sfca(), spax_e2sfca(), or spax_ifca()}
+\item{x}{A spax object created by an FCA function, such as
+\code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+\code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}}
 
 \item{quantiles}{Numeric vector of probabilities for quantile computation}
 
 \item{...}{Currently ignored, for extensibility}
 }
 \value{
-A summary.spax object
+A summary.spax object. For each accessibility layer, \code{coverage}
+  counts the cells with a value (\code{cells_total}; cells outside the study area,
+  such as sea, are missing and excluded) and the cells whose accessibility is
+  above zero (\code{cells_covered}), with their \code{proportion}.
 }
 \description{
 Provides detailed statistical summaries of accessibility analysis results,
