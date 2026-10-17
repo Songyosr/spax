@@ -129,8 +129,10 @@
     O <- sweep(K, 2, exp(la), `*`)
     den <- rowSums(O) + v
     P <- O / den
-    mu <- pmax(D * P, 1e-9) # same floor as .poisson_loss
+    mu_raw <- D * P
+    mu <- pmax(mu_raw, 1e-9) # same floor as .poisson_loss
     r <- mu - Y
+    r[mu_raw < 1e-9] <- 0 # the floored loss is flat there (DEC-029)
     Rs <- rowSums(r)
     g_la <- colSums(r) - colSums(P * Rs)
     g_ls <- sum(r * t2 / sig^2) - sum(Rs * rowSums(P * t2 / sig^2))

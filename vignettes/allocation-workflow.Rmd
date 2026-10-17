@@ -529,15 +529,13 @@ plateau_fit <- fit_allocation(
   upper = c(sigma = 60, v0 = 10),
   output = "flow",
   loss = "poisson",
-  gradient = FALSE,  # numerical gradient, from the optimizer
+  gradient = TRUE,
   control = list(maxit = 300, factr = 10, pgtol = 1e-8)
 )
 coef(plateau_fit)
 ```
 
-Here the optimizer differences the loss numerically (`gradient = FALSE`) and all
-three starts converge; with `gradient = TRUE` the starts for this kernel do not
-all converge. `summary(plateau_fit)` shows how closely the starts agree. The
+`summary(plateau_fit)` shows how closely the starts agree. The
 `sigma` of a declared kernel is the scale of that kernel, so
 `r round(coef(plateau_fit)[["sigma"]], 2)` minutes for the plateau kernel and
 `r round(coef(fit)[["sigma"]], 2)` minutes for the Gaussian kernel are not

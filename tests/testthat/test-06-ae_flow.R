@@ -108,6 +108,49 @@ test_that("flow fits recover parameters from masked fractional counts", {
   expect_identical(restored$output_meanings, fit$output_meanings)
 })
 
+test_that("Poisson flow gradients match the floored loss when cells fall below eps", {
+  # Ten origins on a line and three practices; a few long trips are observed
+  # where the Gaussian kernel puts expected flow just below the 1e-9 floor.
+  x <- seq(0, 18, by = 2)
+  site <- c(f1 = 1, f2 = 9, f3 = 17)
+  travel <- abs(outer(x, site, "-"))
+  dimnames(travel) <- list(paste0("o", seq_along(x)), names(site))
+  demand <- setNames(rep(c(60, 90), length.out = length(x)), rownames(travel))
+  supply <- c(f1 = 20, f2 = 30, f3 = 25)
+  observed <- round(clm_oracle(travel, demand, supply, sigma = 1.5, v0 = 2)$flow)
+  observed["o7", "f1"] <- 1
+  observed["o4", "f3"] <- 2
+  observed["o1", "f3"] <- 1
+  model <- clm_allocation(prepare_allocation(demand, supply, travel), fit_v0 = TRUE)
+  y <- as.numeric(observed)
+  flow_at <- function(theta) {
+    .solve_problem(model, theta, keep_history = FALSE, warn = FALSE,
+                   diagnostics = FALSE, requested_outputs = "flow")
+  }
+  loss_at <- function(theta) .poisson_loss(as.numeric(flow_at(theta)$outputs$flow), y)
+
+  theta <- c(sigma = 1.5, v0 = 2)
+  solved <- flow_at(theta)
+  mu <- as.numeric(solved$outputs$flow)
+  expect_true(any(mu > 0 & mu < 1e-9 & y > 0))
+  sensitivity <- .problem_output_sensitivity(model, theta, solved$x_star, output = "flow")
+  expect_equal(.poisson_gradient(mu, y, sensitivity),
+               as.vector(fd_jacobian(loss_at, theta)), tolerance = 1e-6)
+
+  starts <- rbind(a = c(sigma = 1, v0 = 1), b = c(sigma = 3, v0 = 5))
+  fits <- lapply(c(analytic = TRUE, numerical = FALSE), function(gradient) {
+    fit_allocation(model, observed, starts,
+      lower = c(sigma = 0.3, v0 = 0.01), upper = c(sigma = 10, v0 = 50),
+      output = "flow", loss = "poisson", gradient = gradient,
+      control = list(maxit = 200, factr = 10, pgtol = 1e-10))
+  })
+  for (fit in fits) {
+    expect_identical(fit$table$optim_convergence, c(0L, 0L))
+    expect_false(fit$loss_disagreement)
+  }
+  expect_equal(fits$analytic$theta, fits$numerical$theta, tolerance = 1e-5)
+})
+
 test_that("default solves and fits never materialize optional flow", {
   f <- .flow_fixture()
   observed <- as.numeric(colSums(.flow_oracle(f$p, f$theta)$flow))
