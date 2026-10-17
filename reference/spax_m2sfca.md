@@ -42,7 +42,9 @@ spax_m2sfca(
 
   List of parameters for decay function:
 
-  - method: "gaussian", "exponential", "power", or "binary"
+  - method: "gaussian", "exponential", "power" or "binary", a custom
+    decay function, or a kernel declared with
+    [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 
   - sigma: decay parameter controlling the rate of distance decay
 

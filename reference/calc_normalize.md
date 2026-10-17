@@ -20,7 +20,8 @@ calc_normalize(
 
 - x:
 
-  Numeric vector, matrix, or SpatRaster of weights
+  Numeric vector, matrix, or SpatRaster of weights. The built-in methods
+  require non-negative weights; a custom method receives \`x\` as is.
 
 - method:
 
@@ -38,7 +39,9 @@ calc_normalize(
 
 - ref_value:
 
-  Optional reference value for "reference" method
+  Optional reference value for "reference" method. When \`NULL\`, the
+  maximum of \`x\` is used; for a SpatRaster that is each cell's maximum
+  across layers.
 
 - a0:
 
@@ -55,24 +58,27 @@ calc_normalize(
 
 ## Value
 
-Object of the same class as input containing normalized weights
+Object of the same class as input containing normalized weights. A
+SpatRaster is normalized cell by cell across its layers.
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
 library(terra)
 
 # Example 1: Basic vector normalization
 weights <- c(2, 3, 5)
 calc_normalize(weights) # Returns c(0.2, 0.3, 0.5)
+#> [1] 0.2 0.3 0.5
 
 # Example 2: Semi-normalization with vector
 small_weights <- c(0.2, 0.3, 0.4)
 calc_normalize(small_weights, method = "semi") # Returns original values
+#> [1] 0.2 0.3 0.4
 
 large_weights <- c(0.5, 0.7, 0.9)
 calc_normalize(large_weights, method = "semi") # Normalizes since sum > 1
+#> [1] 0.2380952 0.3333333 0.4285714
 
 # Example 3: Working with raster data
 r <- rast(nrows = 10, ncols = 10)
@@ -82,16 +88,19 @@ norm_rast <- calc_normalize(r) # Values sum to 1
 # Example 4: Using outside option (a0)
 weights_with_outside <- c(2, 3, 5)
 calc_normalize(weights_with_outside, a0 = 10) # Includes outside option weight
+#> [1] 0.10 0.15 0.25
 
 # Example 5: Reference normalization
 values <- c(10, 15, 25)
 calc_normalize(values, method = "reference", ref_value = 20)
+#> [1] 0.50 0.75 1.25
 
 # Example 6: Custom normalization function
 custom_norm <- function(x) {
   x / (max(x, na.rm = TRUE) + min(x, na.rm = TRUE))
 }
 calc_normalize(values, method = custom_norm)
+#> [1] 0.2857143 0.4285714 0.7142857
 
 # Example 7: Multi-layer raster normalization
 r_stack <- c(r, r * 2, r * 0.5) # Create 3-layer raster
@@ -101,5 +110,5 @@ norm_stack <- calc_normalize(r_stack) # Normalizes each cell across layers
 # Example 8: Handling NA values
 weights_with_na <- c(2, NA, 5, 3)
 calc_normalize(weights_with_na) # NA values are handled appropriately
-} # }
+#> [1] 0.2  NA 0.5 0.3
 ```

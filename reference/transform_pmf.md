@@ -1,8 +1,12 @@
 # Transform input into a probability mass function (PMF)
 
 Converts raster or vector inputs into a probability mass function where
-all values sum to 1. Raster inputs are normalised directly, while vector
-inputs are first rasterised using a supplied template.
+all values sum to 1. Raster inputs are normalised directly, each layer
+of a multi-layer raster separately, while vector inputs are first
+rasterised using a supplied template: points in the same cell add up
+(missing values are ignored, and each part of a multipoint carries the
+feature's full value), and a polygon's value is copied to every cell it
+covers.
 
 ## Usage
 
@@ -44,8 +48,9 @@ transform_pmf(
 
 ## Value
 
-If \`return_total = FALSE\`, returns a \`SpatRaster\` whose cells sum
-to 1. If \`return_total = TRUE\`, returns a list with components:
+If \`return_total = FALSE\`, returns a \`SpatRaster\` whose cells sum to
+1 in each layer. If \`return_total = TRUE\`, returns a list with
+components:
 
 - pmf:
 
@@ -53,13 +58,12 @@ to 1. If \`return_total = TRUE\`, returns a list with components:
 
 - total:
 
-  Numeric total of the original values
+  Numeric total of the original values, one per layer
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-pop <- terra::rast(u5pd)
+pop <- read_spax_example("cornwall_pop.tif")
 
 # Basic PMF
 pmf <- transform_pmf(pop)
@@ -67,5 +71,5 @@ pmf <- transform_pmf(pop)
 # Include total for later reuse
 result <- transform_pmf(pop, return_total = TRUE)
 result$total
-} # }
+#> [1] 542666
 ```

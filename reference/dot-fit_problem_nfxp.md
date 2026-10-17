@@ -1,0 +1,64 @@
+# Fit a private AE problem by nested fixed point
+
+`observed` may be a numeric vector (e.g. facility marginals) or a
+numeric matrix (e.g. origin-by-facility flows) matching the shape of the
+requested `output`; the state axis stays whatever the problem declares.
+`NA` cells in `observed` are treated as unobserved (e.g. suppressed flow
+cells) and are excluded from the loss and its gradient. Named
+observation axes are matched to declared provider IDs; unnamed axes
+retain positional behavior. Callbacks receive canonical target order, so
+observation-indexed `loss_args` must already use that order. Saved
+`target_alignment` records the canonical IDs and the input permutations.
+Unannotated custom providers keep unnamed positional fitting, without
+assuming that every fitted vector has facility identity. Corrected CLM
+supports requested `flow = D_active * allocation`, interpreted as
+expected counts in the caller's demand unit and period. Default fits do
+not save flow; accessors retrieve only outputs saved by the fit.
+Requesting flow does not select a loss: Poisson loss remains an explicit
+caller choice, and fractional expected counts are allowed. Probability
+and expected-count meanings require a valid choice denominator. When
+`v0 = 0` and an origin has zero opportunity at every facility, the
+existing convention returns zero inside allocation, outside share and
+flow. This row is not a normalized choice distribution; its missing mass
+is not automatically outside participation or unmet need.
+
+## Usage
+
+``` r
+.fit_problem_nfxp(
+  problem,
+  observed,
+  init,
+  lower,
+  upper,
+  output = "utilization",
+  loss = .weighted_sse_loss,
+  loss_grad = .weighted_sse_gradient,
+  loss_args = list(eta = 1),
+  lambda = 1,
+  tol = 1e-08,
+  max_iter = 1000,
+  norm = c("max", "l2"),
+  control = list(maxit = 25),
+  check = FALSE,
+  penalty = 1e+12,
+  gradient = FALSE,
+  fd_eps = 1e-06,
+  reuse = TRUE
+)
+```
+
+## Details
+
+With `reuse = TRUE`, providers declaring `spec$deterministic = TRUE` may
+reuse a successful objective's equilibrium for the next gradient request
+at exactly the same log parameters. This single-use entry belongs only
+to this fitting call; every new objective invalidates it. The gradient
+is evaluated at the objective's accepted state rather than refining that
+state by another solve. Loss and gradient callbacks still run on every
+request. Final history/diagnostics always use a fresh solve. Built-in
+providers declare determinism; custom providers remain uncached unless
+they explicitly do so. Inputs, provider behavior and controls must
+remain fixed during fitting; use `reuse = FALSE` for stateful/mutating
+providers or callbacks that alter model behavior. This is not a
+persistent cache across targets or scenarios.

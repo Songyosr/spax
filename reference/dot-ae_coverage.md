@@ -1,0 +1,44 @@
+# Coverage outputs of a fitted CLM allocation on its retained demand support
+
+Reuses saved allocation and utilization; no solve, raster extraction, or
+geometry reconstruction. Requires fits with `coverage_meta` (older saved
+fits must be regenerated). Supply is used in its original units, without
+the attractiveness scale `kappa`. No supply or allocation matrix is
+retained in the resulting object: subsequent summaries use the compact
+cell table.
+
+## Usage
+
+``` r
+.ae_coverage(
+  fit,
+  norm = NULL,
+  units = NULL,
+  observed = NULL,
+  rho_floor = 0,
+  contact_need_floor = 0,
+  contact_cut = NULL,
+  adequacy_cut = norm
+)
+```
+
+## Details
+
+`norm` optionally defines both capped readings,
+`E_post = min(A/norm, 1)` and `E_fac = P %*% min(r/norm, 1)`. Units are
+supplied by the caller. `observed` is an optional named facility vector;
+names are matched exactly, with NA permitted for unknown counts. Zero
+observed load has undefined plug-in ratio (NA), distinct from the
+model's zero-contribution convention.
+
+`contact_cut` defaults to regional demand-weighted contact;
+`adequacy_cut` defaults to `norm`. Without an adequacy cut, quadrants
+are unclassified. Contact floors mask reported `abar` and quadrant,
+never `A`, `rho`, or `abar_raw`. `contact_need_floor` applies to
+aggregates, not individual cells. Cell/zone values exactly at a floor or
+classification cut are retained/high. Accepts corrected static CLM and
+CLM ratio-response allocations. The compact table carries canonical
+`origin_id` and `registry_index`; `cell` is present only for a validated
+spatial mapping. Numeric summaries and origin zone joins do not require
+a template. Declared input units and policies are retained separately,
+without converting the supplied quantities.

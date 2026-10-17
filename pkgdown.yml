@@ -1,13 +1,18 @@
 pandoc: 3.8.3
-pkgdown: 2.2.0
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  allocation-workflow: allocation-workflow.html
+  cornwall-data: cornwall-data.html
+  data-prep: data-prep.html
+  e2sfca-steps: e2sfca-steps.html
+  facility-bootstrap: facility-bootstrap.html
+  fca-methods: fca-methods.html
   function-naming: function-naming.html
-  spax-101-intro: spax-101-intro.html
-  spax-102-data-prep: spax-102-data-prep.html
-  spax-103-dissection: spax-103-dissection.html
-  spax-104-raster-tradeoff: spax-104-raster-tradeoff.html
-last_built: 2026-06-05T16:06Z
+  grid-resolution: grid-resolution.html
+  model-choice: model-choice.html
+  spax: spax.html
+last_built: 2026-10-17T15:29Z
 urls:
   reference: https://songyosr.github.io/spax/reference
   article: https://songyosr.github.io/spax/articles

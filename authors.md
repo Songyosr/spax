@@ -8,14 +8,15 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/Songyosr/spax/blob/develop/inst/CITATION)
+[`inst/CITATION`](https://github.com/Songyosr/spax/blob/v0.3.0/inst/CITATION)
 
-Rajborirug S (2024). *spax: Modular Raster-Based Spatial Accessibility
-Analysis*. <https://github.com/songyosr/spax>.
+Rajborirug S (2026). *spax: Spatial Accessibility and Allocation
+Modeling*. R package version 0.3.0, <https://github.com/Songyosr/spax>.
 
     @Manual{,
-      title = {spax: Modular Raster-Based Spatial Accessibility Analysis},
+      title = {spax: Spatial Accessibility and Allocation Modeling},
       author = {Songyos Rajborirug},
-      year = {2024},
-      url = {https://github.com/songyosr/spax},
+      year = {2026},
+      note = {R package version 0.3.0},
+      url = {https://github.com/Songyosr/spax},
     }

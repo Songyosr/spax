@@ -53,21 +53,20 @@ options
 # Load example data
 library(terra)
 library(sf)
-#> Linking to GEOS 3.12.1, GDAL 3.8.4, PROJ 9.4.0; sf_use_s2() is TRUE
 
-# Load data
-u5pd <- read_spax_example("u5pd.tif")
-hos_iscr <- read_spax_example("hos_iscr.tif")
+# Load data: Cornwall population grid and travel time to each GP practice
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
 
-# Calculate accessibility
+# Calculate accessibility for two GP supply measures
 result <- spax_e2sfca(
-  demand = u5pd,
-  supply = st_drop_geometry(hc12_hos),
-  distance = hos_iscr,
-  decay_params = list(method = "gaussian", sigma = 30),
+  demand = pop,
+  supply = st_drop_geometry(cornwall_gp),
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
   demand_normalize = "standard",
-  id_col = "id",
-  supply_cols = c("s_doc", "s_nurse")
+  id_col = "practice",
+  supply_cols = c("gp_fte_extg", "gp_fte")
 )
 
 # Basic plot of all layers
@@ -75,10 +74,10 @@ plot(result)
 
 
 # Plot with custom title and color scheme
-plot(result, main = c("Doctor Access", "Nurse Access"),
+plot(result, main = c("GPs excluding trainees", "All GPs"),
      col = hcl.colors(100, "YlOrRd"))
 
 
 # Plot single layer by name
-plot(result, y = "s_doc", main = "Access to Doctors")
+plot(result, y = "gp_fte_extg", main = "Access to GPs")
 ```

@@ -40,7 +40,9 @@ spax_e2sfca(
 
   List of parameters for decay function:
 
-  - method: "gaussian", "exponential", "power", or "binary"
+  - method: "gaussian", "exponential", "power" or "binary", a custom
+    decay function, or a kernel declared with
+    [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 
   - sigma: decay parameter controlling the rate of distance decay
 
@@ -126,53 +128,53 @@ https://doi.org/10.1016/j.healthplace.2009.06.002
 library(terra)
 library(sf)
 
-# Convert under-5 population density to proper format
-pop_rast <- read_spax_example("u5pd.tif")
-hos_iscr <- read_spax_example("hos_iscr.tif")
+# Cornwall population grid and travel time to each GP practice
+pop_rast <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
 
 # Drop geometry for supply data
-hc12_hos <- hc12_hos |> st_drop_geometry()
+gp <- cornwall_gp |> st_drop_geometry()
 
 # Calculate accessibility with Gaussian decay
 result <- spax_e2sfca(
   demand = pop_rast,
-  supply = hc12_hos,
-  distance = hos_iscr,
+  supply = gp,
+  distance = travel,
   decay_params = list(
     method = "gaussian",
-    sigma = 30 # 30-minute characteristic distance
+    sigma = 10 # 10-minute characteristic travel time
   ),
   demand_normalize = "semi", # Prevent demand inflation
-  id_col = "id",
-  supply_cols = "s_doc"
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
 )
 
 # Extract and plot accessibility surface
-plot(result$accessibility, main = "Doctor Accessibility (E2SFCA)")
+plot(result$accessibility, main = "GP Accessibility (E2SFCA)")
 
 
 # Access facility-level information
 head(result$facilities)
-#>     id s_doc
-#> 1 c172   522
-#> 2 c173   321
-#> 3 c174    67
-#> 4 c175    81
-#> 5 c176   175
-#> 6 c177    77
+#>       id gp_fte_extg
+#> 1 L82001   10.298887
+#> 2 L82003    4.693333
+#> 3 L82004    4.341333
+#> 4 L82006    7.973333
+#> 5 L82007    2.888800
+#> 6 L82008    4.670400
 
 # Compare different decay functions
 result_exp <- spax_e2sfca(
   demand = pop_rast,
-  supply = hc12_hos,
-  distance = hos_iscr,
+  supply = gp,
+  distance = travel,
   decay_params = list(
     method = "exponential",
     sigma = 0.1
   ),
   demand_normalize = "semi",
-  id_col = "id",
-  supply_cols = "s_doc"
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
 )
 
 # Plot both for comparison

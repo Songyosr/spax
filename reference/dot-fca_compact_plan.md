@@ -3,9 +3,9 @@
 The semantic boundary: validate geometry once, then drop to plain
 matrices. Active-demand compaction (\`is.finite(D) & D \> 0\`) removes
 inactive origin rows from the gather – exact, since zero/NA-demand cells
-contribute nothing to facility load. The spread keeps cells reachable by
-at least one facility (cells unreachable by all stay NA, matching
-compute_fca).
+contribute nothing to facility load. The plan also records an
+access-side compaction (cells reachable by at least one facility) for a
+spread step; the SAE/HAAE plans use the demand-side fields.
 
 ## Usage
 

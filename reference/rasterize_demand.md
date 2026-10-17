@@ -30,7 +30,8 @@ rasterize_demand(
 
 - prior:
 
-  Optional SpatRaster prior PMF (if NULL, uses uniform prior)
+  Optional SpatRaster prior PMF. If NULL, a uniform prior over the
+  non-missing cells of the template's first layer is used.
 
 - template:
 
@@ -42,7 +43,8 @@ rasterize_demand(
 
 - standardize:
 
-  Logical; if TRUE standardize likelihood values
+  Must be FALSE. Standardized (z-score) likelihood values include
+  negative values, so they cannot form a posterior PMF.
 
 ## Value
 
@@ -51,21 +53,21 @@ SpatRaster containing posterior PMF or density surface
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Basic usage with uniform prior
-result1 <- rasterize_demand(
-  case_spatial,
-  value_col = "cases",
-  template = pop
-)
+library(terra)
 
-# With population-based prior
+# Registered patients by Cornwall small area, on the population grid
+pop <- read_spax_example("cornwall_pop.tif")
+areas <- project(vect(cornwall_lsoa), pop)
+
+# Uniform prior over the populated grid
+result1 <- rasterize_demand(areas, value_col = "registered", template = pop)
+
+# Population-based prior, returned as a density surface
 prior <- transform_pmf(pop)
 result2 <- rasterize_demand(
-  case_spatial,
-  value_col = "cases",
+  areas,
+  value_col = "registered",
   prior = prior,
   density = TRUE
 )
-} # }
 ```

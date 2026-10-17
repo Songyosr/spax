@@ -27,8 +27,10 @@ dataset is specified, returns the loaded dataset as a SpatRaster.
 ``` r
 # List available datasets
 read_spax_example()
-#> [1] "hos_iscr.tif" "phc_iscr.tif" "u5pd.tif"    
+#> [1] "cornwall_gp_travel.tif" "cornwall_pop.tif"      
 
-# Load a specific dataset
-hos_iscr <- read_spax_example("hos_iscr.tif")
+# Load a specific dataset: travel time to each Cornwall GP practice
+travel <- read_spax_example("cornwall_gp_travel.tif")
+names(travel)[1:3]
+#> [1] "L82001" "L82003" "L82004"
 ```

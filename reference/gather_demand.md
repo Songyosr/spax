@@ -33,25 +33,25 @@ potential_demand: weighted sum of demand for each site
 library(terra)
 
 # Load data
-u5pd <- read_spax_example("u5pd.tif")
-hos_iscr <- read_spax_example("hos_iscr.tif")
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
 
 # Calculate probability weights using gaussian decay
 weights <- calc_decay(
-  hos_iscr,
+  travel,
   method = "gaussian",
-  sigma = 30
+  sigma = 10
 ) |>
   calc_normalize(method = "semi") # Normalize to ensure proper probabilities
 
-# Calculate potential demand for each hospital
-hospital_demands <- gather_demand(u5pd, weights)
-head(hospital_demands)
+# Calculate potential demand for each GP practice
+practice_demands <- gather_demand(pop, weights)
+head(practice_demands)
 #>   location_id potential_demand
-#> 1        c172         7948.891
-#> 2        c173         8205.902
-#> 3        c174         4792.858
-#> 4        c175         7542.494
-#> 5        c176         6329.155
-#> 6        c177         4503.939
+#> 1      L82001        11945.558
+#> 2      L82003         7094.023
+#> 3      L82004        11031.416
+#> 4      L82006        10782.701
+#> 5      L82007         7922.204
+#> 6      L82008         8759.973
 ```

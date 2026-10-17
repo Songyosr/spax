@@ -21,13 +21,16 @@ calc_decay(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...)
 
   Character string specifying the decay function or a custom function:
   "gaussian", "exponential", "power", "inverse", "binary", or
-  function(distance, ...)
+  function(distance, ...); or a kernel declared with
+  [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 
 - sigma:
 
   Parameter controlling the rate of decay. A single number, or a
   SpatRaster aligned to `distance` (1 layer, or one per layer) for a
-  spatially varying catchment (variable-catchment FCA / V2SFCA).
+  spatially varying catchment (variable-catchment FCA / V2SFCA). A
+  declared custom kernel needs a single positive number within its
+  bounds.
 
 - snap:
 
@@ -35,73 +38,87 @@ calc_decay(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...)
 
 - ...:
 
-  Additional parameters passed to custom decay functions
+  Additional parameters for custom decay functions, or the offset `c` of
+  the "inverse" kernel. A declared custom kernel takes none: its fixed
+  arguments belong to the declaration.
 
 ## Value
 
 Object of the same class as input containing decay weights
 
+## Details
+
+Built-in kernels for a distance \\d\\, and the `sigma` used when none is
+given:
+
+- `"gaussian"`: \\\exp(-d^2 / (2\sigma^2))\\; default \\\sigma =
+  11.64884\\.
+
+- `"exponential"`: \\\exp(-\sigma d)\\; default \\\sigma = 0.1\\.
+
+- `"power"`: \\d^{-\sigma}\\; default \\\sigma = 2\\. The weight is
+  `Inf` at distance 0.
+
+- `"inverse"`: \\1 / (d + c)\\, with `c = 1` unless `c` is passed in
+  `...`; `sigma` does not enter the weights (a given value is still
+  validated).
+
+- `"binary"`: 1 when \\d \le \sigma\\, otherwise 0; default \\\sigma =
+  97.5\\.
+
+The defaults are historical values, not recommendations: set `sigma` for
+the units and scale of your travel times.
+
+A kernel declared with
+[`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
+can be given as `method`. A built-in declaration behaves exactly like
+its name. A declared custom kernel needs `sigma`, a single positive
+number within the bounds of the declaration, and takes its fixed
+arguments from the declaration, so `...` must be empty; a SpatRaster
+`sigma` is refused. It is evaluated on the finite distances only: a
+missing distance has the weight `NA` and an infinite distance (an absent
+edge) the weight 0, as with the built-in kernels. A negative or
+non-finite weight at a finite distance is an error. A vector or matrix
+keeps its shape, and a SpatRaster keeps its geometry, layer names and
+missing cells; it is read into memory for a declared kernel.
+
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
 library(terra)
-library(spax)
 
-# Create a simple distance raster (10x10 grid)
+# Distances on a small 10 x 10 grid
 r <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 10)
-values(r) <- 1:100 # Distance values
+values(r) <- 1:100
 
-# 1. Basic usage with different methods ----
-# Gaussian decay
-w1 <- calc_decay(r, method = "gaussian", sigma = 30)
+# Built-in decay functions
+w <- c(
+  calc_decay(r, method = "gaussian", sigma = 30),
+  calc_decay(r, method = "exponential", sigma = 0.1),
+  calc_decay(r, method = "power", sigma = 2),
+  calc_decay(r, method = "binary", sigma = 50)
+)
+names(w) <- c("gaussian", "exponential", "power", "binary")
+plot(w)
 
-# Exponential decay
-w2 <- calc_decay(r, method = "exponential", sigma = 0.1)
 
-# Power decay
-w3 <- calc_decay(r, method = "power", sigma = 2)
-
-# Binary threshold
-w4 <- calc_decay(r, method = "binary", sigma = 50)
-
-# Plot to compare
-plot(c(w1, w2, w3, w4))
-
-# 2. Custom decay function ----
-# Create a custom decay function that combines gaussian and power
-custom_decay <- function(distance, sigma = 30, power = 2, ...) {
-  gaussian <- exp(-(distance^2) / (2 * sigma^2))
-  power_decay <- distance^(-power)
-  return(gaussian * power_decay)
+# A custom decay function receives the distances and its own arguments
+gaussian_power <- function(distance, sigma = 30, power = 2, ...) {
+  exp(-(distance^2) / (2 * sigma^2)) * distance^(-power)
 }
+w_custom <- calc_decay(r, method = gaussian_power, sigma = 30, power = 1.5)
 
-w5 <- calc_decay(r, method = custom_decay, sigma = 30, power = 1.5)
+# A declared kernel records its meaning, bounds and fixed arguments
+plateau <- decay_kernel(
+  function(distance, sigma, plateau = 5) {
+    ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+  },
+  name = "plateau", parameter = "scale", args = list(plateau = 5)
+)
+w_plateau <- calc_decay(r, method = plateau, sigma = 10)
 
-# 3. Working with multiple facilities ----
-# Create distance rasters for 3 facilities
-distances <- rast(replicate(3, r)) # Stack of 3 identical rasters
+# One layer per facility gives one layer of weights per facility
+distances <- rast(replicate(3, r))
 names(distances) <- c("facility1", "facility2", "facility3")
-
-# Calculate decay weights for all facilities
 weights <- calc_decay(distances, method = "gaussian", sigma = 30)
-
-# 4. Performance optimization ----
-# Use snap=TRUE when calling repeatedly in performance-critical code
-weights_fast <- calc_decay(distances, method = "gaussian", sigma = 30, snap = TRUE)
-
-# 5. Compare decay parameters ----
-# Create a sequence of sigma values
-sigmas <- c(10, 20, 30, 40, 50)
-
-# Calculate and plot weights for each sigma
-weights_list <- lapply(sigmas, function(s) {
-  calc_decay(r, method = "gaussian", sigma = s)
-})
-
-# Convert to SpatRaster stack and plot
-weight_stack <- rast(weights_list)
-names(weight_stack) <- paste0("sigma_", sigmas)
-plot(weight_stack)
-} # }
 ```

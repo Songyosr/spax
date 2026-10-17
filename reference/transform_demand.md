@@ -58,22 +58,30 @@ area
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Basic PMF creation
+pop <- read_spax_example("cornwall_pop.tif")
+
+# Group small areas into larger units (LSOA names end in a letter; dropping it
+# gives the containing MSOA) so every unit covers several grid cells
+areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas$msoa <- sub("[A-Z]$", "", areas$name)
+msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
+
+# Area totals: residents registered with a GP outside Cornwall
+# Basic PMF creation (uniform within each area)
 result1 <- transform_demand(
-  case_spatial,
-  value_col = "cases",
+  msoa,
+  value_col = "sum_registered_out",
   template = pop
 )
+#> No PMF provided. Assuming uniform distribution within each area.
 
 # Create density surface with existing PMF
 pop_pmf <- transform_pmf(pop)
 result2 <- transform_demand(
-  case_spatial,
-  value_col = "cases",
+  msoa,
+  value_col = "sum_registered_out",
   pmf = pop_pmf,
   density = TRUE,
   full_output = TRUE
 )
-} # }
 ```

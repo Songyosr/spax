@@ -1,228 +1,130 @@
-# spax Package Function Naming Convention
+# Finding functions and inspecting results
+
+The guides use the bundled Cornwall GP data, described in [The Cornwall
+GP example
+data](https://songyosr.github.io/spax/articles/cornwall-data.md); this
+page needs no data.
 
 ``` r
 
 library(spax)
 ```
 
-## SPAX Package Development Guidelines
+spax retains its public FCA functions alongside the experimental static
+allocation workflow. Names describe the interface they belong to; there
+is no rule that every complete workflow must start with `spax_`.
+Existing FCA calls and result types remain supported.
 
-### Function Hierarchy and Naming Conventions
+## Choose the level of operation
 
-#### High-Level Functions (`spax_*`)
+| Task | Public interface | What it returns |
+|:---|:---|:---|
+| Binary catchment FCA | [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md) | `spax` result with accessibility raster |
+| Distance-weighted FCA | [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md) | `spax` result with accessibility raster |
+| Squared access-side decay FCA | [`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md) | `spax` result with accessibility raster |
+| Selection-weighted FCA | [`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md), [`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md) | `spax` result with accessibility raster |
+| Supply/demand calculation using supplied kernels | [`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md) | Accessibility `SpatRaster` |
+| Decay, normalization or choice weights | [`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md), [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md), [`calc_normalize()`](https://songyosr.github.io/spax/reference/calc_normalize.md), [`calc_choice()`](https://songyosr.github.io/spax/reference/calc_choice.md) | See the individual input/output contracts |
+| Weighted reduction to facilities | [`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md), [`gather_demand()`](https://songyosr.github.io/spax/reference/gather_demand.md) | Facility vector/table |
+| Weighted distribution to origins | [`spread_weighted()`](https://songyosr.github.io/spax/reference/spread_weighted.md), [`spread_access()`](https://songyosr.github.io/spax/reference/spread_access.md) | Raster result |
+| Checked allocation preparation and declaration | [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md), [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Prepared inputs and experimental model |
+| Fit, evaluate, predict and bootstrap | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md), [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md), [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md), [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md) | Model-specific saved results |
+| Check and compare fitted allocations | [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md) | Comparison tables; the fits are not changed |
+| Travel times and demand inputs | [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md), [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md) | Travel matrix or raster; demand raster or vector |
 
-- **Purpose**: Complete workflows that users interact with directly
-- **Naming**: Must start with `spax_`
-- **Examples**:
-  [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md),
-  `spax_ifca()`
-- **Input Requirements**: Should accept primitive inputs (demand,
-  supply, distance rasters)
-- **Documentation**: Must include complete examples in roxygen comments
-
-#### Semi-High Level Functions (`comp_*`)
-
-- **Purpose**: Complex computational operations that can work
-  independently
-- **Naming**: Must start with `comp_`
-- **Examples**: `comp_iterative()`, `comp_iterative_fast()`
-- **Note**: These functions often implement core algorithms
-
-#### Middle-Level Operations
-
-Four categories of operational functions:
-
-1.  **Gather Operations** (`gather_*`)
-    - Purpose: Dimension reduction (e.g., raster stack → vector)
-    - Examples:
-      [`gather_demand()`](https://songyosr.github.io/spax/reference/gather_demand.md),
-      [`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md)
-2.  **Spread Operations** (`spread_*`)
-    - Purpose: Dimension expansion (e.g., vector → raster stack)
-    - Examples:
-      [`spread_access()`](https://songyosr.github.io/spax/reference/spread_access.md),
-      [`spread_weighted()`](https://songyosr.github.io/spax/reference/spread_weighted.md)
-3.  **Calculate Operations** (`calc_*`)
-    - Purpose: Layer-wise operations maintaining dimensions
-    - Examples:
-      [`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md),
-      [`calc_normalize()`](https://songyosr.github.io/spax/reference/calc_normalize.md),
-      [`calc_choice()`](https://songyosr.github.io/spax/reference/calc_choice.md)
-4.  **Transform Operations** (`transform_*`)
-    - Purpose: Surface-wide transformations
-    - Examples:
-      [`transform_pmf()`](https://songyosr.github.io/spax/reference/transform_pmf.md)
-
-#### Low-Level Functions
-
-Internal functions not exported in the NAMESPACE:
-
-1.  **Validation Functions** (`.chck_*`)
-    - Purpose: Input validation
-    - Examples:
-      [`.chck_calc_choice()`](https://songyosr.github.io/spax/reference/dot-chck_calc_choice.md),
-      [`.chck_sample_pmf()`](https://songyosr.github.io/spax/reference/dot-chck_sample_pmf.md)
-2.  **Helper Functions** (`.help_*`)
-    - Purpose: Utility functions used by higher-level functions
-    - Examples: `.help_prep_facilities()`,
-      [`.help_gen_sample_size()`](https://songyosr.github.io/spax/reference/dot-help_gen_sample_size.md)
-3.  **Core Functions** (`.*_core`)
-    - Purpose: Main computational logic for complex operations
-    - Examples:
-      [`.sample_pmf_core_indp()`](https://songyosr.github.io/spax/reference/dot-sample_pmf_core_indp.md),
-      [`.sample_pmf_core_evlv()`](https://songyosr.github.io/spax/reference/dot-sample_pmf_core_evlv.md)
-
-### Function Structure Guidelines
-
-#### Standard Function Template
+These function families share concepts such as supply, demand and
+facility IDs. Their arguments and result meanings are not
+interchangeable. In particular,
+[`calc_normalize()`](https://songyosr.github.io/spax/reference/calc_normalize.md)
+applied to a numeric matrix normalizes the whole matrix, whereas a
+multilayer raster is normalized across layers at each cell. Select the
+operation appropriate to the declared axes; do not infer behavior from a
+name.
 
 ``` r
 
-function_name <- function(
-    required_param,
-    optional_param = default_value,
-    ...,
-    snap = FALSE
-) {
-    # 1. Input Validation (skip if snap = TRUE)
-    if (!snap) {
-        .chck_function_name(required_param, optional_param)
-    }
+functions <- c(
+  # FCA accessibility
+  "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
+  "compute_access",
+  # Experimental allocation workflow
+  "prepare_allocation", "clm_allocation", "fit_allocation",
+  "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
+  "check_allocation", "compare_allocations",
+  # Input helpers
+  "calc_travel_time", "calc_demand", "decay_kernel"
+)
 
-    # 2. Pre-processing
-    processed_data <- .help_process_data(required_param)
-
-    # 3. Main Computation
-    result <- .function_name_core(processed_data, ...)
-
-    # 4. Post-processing (skip if snap = TRUE)
-    if (!snap) {
-        result <- .help_post_process(result)
-    }
-
-    return(result)
-}
+# Every name above is exported by the installed package
+stopifnot(all(functions %in% getNamespaceExports("spax")))
+data.frame(function_name = functions)
 ```
 
-#### The `snap` Parameter
-
-- **Purpose**: Performance optimization for internal use
-- **Default**: Always `FALSE`
-- **When TRUE**:
-  - Skips input validation
-  - Skips non-essential processing
-  - Assumes inputs are correctly formatted
-  - May skip naming/attribute assignment
-- **Usage**: Only set `TRUE` when called from within other package
-  functions where inputs have already been validated
-
-#### Documentation Requirements
-
-1.  **Roxygen Headers**
-
-``` r
-
-#' @title Function Title
-#' @description Detailed description
-#' @param snap Logical; if TRUE enables fast computation mode with minimal validation
-#' @export
+``` spax-output
+          function_name
+1            spax_2sfca
+2           spax_e2sfca
+3           spax_m2sfca
+4            spax_3sfca
+5        spax_huff2sfca
+6        compute_access
+7    prepare_allocation
+8        clm_allocation
+9        fit_allocation
+10  evaluate_allocation
+11   predict_allocation
+12 bootstrap_allocation
+13     check_allocation
+14  compare_allocations
+15     calc_travel_time
+16          calc_demand
+17         decay_kernel
 ```
 
-2.  **Internal Function Documentation**
+The former iterative-FCA interface is no longer available. It is not an
+alias for static CLM or a supported fixed-point workflow. Private
+functions beginning with `.` and other unexported implementation
+functions are not public contracts; examples for users should not call
+them with `:::`.
 
-``` r
-#' @keywords internal
-.internal_function <- function() {
-```
+## Inspect saved results using standard R generics
 
-#### File Organization
+| Result | Inspection | Interpretation |
+|:---|:---|:---|
+| FCA `spax` object | [`print()`](https://rdrr.io/r/base/print.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), [`plot()`](https://rspatial.github.io/terra/reference/plot.html), `$accessibility` | Saved supply-per-demand index; raster-cell summary |
+| Allocation multistart fit | [`coef()`](https://rdrr.io/r/stats/coef.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), `as.data.frame(type = "parameters")`, [`plot()`](https://rspatial.github.io/terra/reference/plot.html) | Selected fit plus retained per-start diagnostics |
+| Allocation coverage | [`summary()`](https://rspatial.github.io/terra/reference/summary.html), `as.data.frame(type = "regional")` or `type = "cells"` | Saved coverage on retained positive-demand support |
+| Allocation bootstrap | [`summary()`](https://rspatial.github.io/terra/reference/summary.html), `as.data.frame(type = "estimates")`, `"draws"`, `"starts"`, [`plot()`](https://rspatial.github.io/terra/reference/plot.html) | Saved point/interval status and every attempted result |
 
-All R files must be in the `R/` directory (no subdirectories). Use file
-naming conventions:
+Inspection does not refit the allocation model or resample the
+bootstrap. A failed search can still be summarized, but parameter
+extraction requires an eligible selected fit. Bootstrap methods preserve
+incomplete and refused statuses; displaying a point estimate does not
+make an interval available.
 
-- `00-utils.R`: Helper functions
-- `01-core.R`: Core computations
-- `02-operations.R`: Middle-level operations
-- `03-compute.R`: Semi-high level functions
-- `04-spax.R`: High-level functions
+FCA rasters and allocation numeric tables have different storage
+contracts. Use
+[`terra::as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html)
+to extract raster cell values, and preserve geometry separately.
+Allocation tables carry IDs; coverage tables also carry unit, support
+and reporting attributes. CSV loses those attributes, so retain the
+documented RDS bundle when exporting allocation results.
 
-#### Error Handling
+## Keep input validation enabled
 
-1.  Use [`stop()`](https://rdrr.io/r/base/stop.html) for critical errors
-    in validation
-2.  Use [`warning()`](https://rdrr.io/r/base/warning.html) for
-    non-critical issues
-3.  Use [`message()`](https://rdrr.io/r/base/message.html) sparingly for
-    important information
+Some legacy functions expose `snap`. Leave its default `FALSE` in
+ordinary user code. It is an internal optimization switch, not a
+different model or a general speed recommendation. New prepared
+allocation inputs validate IDs, geometry and support at their own
+boundary and do not use a universal `snap` convention.
 
-#### Performance Considerations
-
-1.  Always include the `snap` parameter for functions that might be
-    called repeatedly
-2.  Use `terra` functions instead of `raster` when possible
-3.  Avoid loops when vectorized operations are possible
-4.  Consider parallel processing for computationally intensive
-    operations
-
-#### Testing Requirements
-
-1.  Each function should have corresponding tests in `tests/testthat/`
-2.  Include tests for both normal and `snap=TRUE` modes
-3.  Test error conditions and edge cases
-4.  Include performance benchmarks for critical functions
-
-### Development Workflow
-
-1.  **Creating New Functions**
-    - Start with the function template
-    - Add validation function if needed
-    - Implement core logic
-    - Add documentation
-    - Add tests
-2.  **Modifying Existing Functions**
-    - Maintain backward compatibility
-    - Update documentation
-    - Update tests
-    - Update vignettes if behavior changes
-3.  **Deprecating Functions**
-    - Use [`.Deprecated()`](https://rdrr.io/r/base/Deprecated.html)
-      function
-    - Maintain old function for at least one version
-    - Update documentation to point to new function
-    - Update vignettes to use new function
-
-### Version Control Guidelines
-
-1.  **Commit Messages**
-    - Start with type: feat, fix, docs, style, refactor, test, chore
-    - Include scope in parentheses
-    - Example: `feat(calc): add new decay function`
-2.  **Branches**
-    - `main`: Stable release
-    - `develop`: Development version
-    - `feature/*`: New features
-    - `fix/*`: Bug fixes
-
-### Documentation Updates
-
-When adding or modifying functions: 1. Update relevant vignettes 2.
-Update README.md if needed 3. Update NAMESPACE 4. Run roxygen2 to update
-documentation 5. Update NEWS.md with changes
-
-## Complete Function Catalog
-
-[TABLE]
-
-### Missing Functions (Suggested Additions)
-
-| Function Name | Level | Subcategory | Purpose |
-|----|----|----|----|
-| [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md) | High | Main | Complete 2SFCA workflow |
-| `spax_montecarlo()` | High | Main | Monte Carlo analysis |
-| `summarize_accessibility()` | Middle | Summarize | Accessibility statistics |
-| `validate_inputs_check()` | Low | Check | General input validation |
-| `plot_accessibility()` | Middle | Visualize | Standard accessibility plots |
-
-Would you like to: 1. Review specific function groups in detail? 2.
-Discuss the suggested name changes? 3. Prioritize which missing
-functions to implement first?
+See [Choosing an FCA index or an allocation
+model](https://songyosr.github.io/spax/articles/model-choice.md) for a
+runnable comparison, [The E2SFCA calculation step by
+step](https://songyosr.github.io/spax/articles/e2sfca-steps.md) for
+public building blocks, the [allocation
+workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)
+for fitting, prediction, scenarios and persistence, and [Bootstrap
+intervals for a fitted allocation
+model](https://songyosr.github.io/spax/articles/facility-bootstrap.md)
+for intervals.

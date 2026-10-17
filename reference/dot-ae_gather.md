@@ -1,9 +1,9 @@
 # Realize a source field onto the supply side (demand -\> facility)
 
 gather(v, W)\_j = sum_i v_i W_ij. Keeps terra::global's fused weighted
-reduction (no materialized product stack); equal to lift -\> transform
--\> aggregate-over-I. Returns a vector field on the weight field's non-I
-axis.
+reduction (no materialized product stack); equal to broadcasting the
+source over the weight layers, multiplying and summing over I. Returns a
+vector field on the weight field's non-I axis.
 
 ## Usage
 

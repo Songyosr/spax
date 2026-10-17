@@ -32,8 +32,8 @@ calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 - snap:
 
   Logical; if TRUE enables fast computation mode with: - Minimal
-  validation - Essential preprocessing only - No name/attribute
-  assignment Only use when inputs are known to be valid.
+  validation - Essential preprocessing only Only use when inputs are
+  known to be valid.
 
 ## Value
 
@@ -44,31 +44,31 @@ location)
 
 ``` r
 library(terra)
-#> terra 1.9.27
+#> terra 1.9.50
 # load data
-distance_raster <- read_spax_example("hos_iscr.tif")
+distance_raster <- read_spax_example("cornwall_gp_travel.tif")
 
-# Calculate decay weights using gaussian decay
-weights <- calc_decay(distance_raster, method = "gaussian", sigma = 30)
+# Calculate decay weights using gaussian decay (minutes)
+weights <- calc_decay(distance_raster, method = "gaussian", sigma = 10)
 
 # Basic usage (equivalent to calc_normalize)
 p1 <- calc_choice(weights)
 
-# With Huff model using number of doctors as attractiveness
+# With Huff model using GP full-time equivalents as attractiveness
 p2 <- calc_choice(weights,
-  attractiveness = hc12_hos$s_doc, # Number of doctors
+  attractiveness = cornwall_gp$gp_fte_extg, # GPs excluding trainees
   alpha = 1.5
 )
 
 # Plot to compare
 par(mfrow = c(1, 2)) # Set up 2 panels side by side
 plot(p1[[1]], main = "Basic Choice Prob.")
-plot(p2[[1]], main = "Doctor-weighted Choice Prob.")
+plot(p2[[1]], main = "GP-weighted Choice Prob.")
 
 
 # With outside option (a0)
 p3 <- calc_choice(weights,
-  attractiveness = hc12_hos$s_doc,
+  attractiveness = cornwall_gp$gp_fte_extg,
   a0 = 0.1
 )
 ```

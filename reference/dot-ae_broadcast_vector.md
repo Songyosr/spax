@@ -3,8 +3,7 @@
 Returns one value per raster layer, aligned by axis-tuple key (never by
 position). This is what lets \`raster \<op\> vector\` use terra's
 per-layer recycling instead of materializing the vector as a raster
-stack (SPAX-022): the lift/\`(data\*0)+v\` step is replaced by a plain
-numeric the op recycles.
+stack (SPAX-022): a plain numeric that the op recycles.
 
 ## Usage
 
