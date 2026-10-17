@@ -139,13 +139,17 @@ test_that("Poisson flow gradients match the floored loss when cells fall below e
 
   # Sanity check, not a regression check: with only three cells on the floor
   # the old gradient also fitted this case; the Cornwall guide fit is the case
-  # where it split the starts (DEC-029).
+  # where it split the starts (DEC-029). The fit names the old floor 1e-9, since
+  # at the default floor nothing here is floored.
   starts <- rbind(a = c(sigma = 1, v0 = 1), b = c(sigma = 3, v0 = 5))
   fits <- lapply(c(analytic = TRUE, numerical = FALSE), function(gradient) {
-    fit_allocation(model, observed, starts,
-      lower = c(sigma = 0.3, v0 = 0.01), upper = c(sigma = 10, v0 = 50),
-      output = "flow", loss = "poisson", gradient = gradient,
-      control = list(maxit = 200, factr = 10, pgtol = 1e-10))
+    expect_warning(
+      fit <- fit_allocation(model, observed, starts,
+        lower = c(sigma = 0.3, v0 = 0.01), upper = c(sigma = 10, v0 = 50),
+        output = "flow", loss = "poisson", loss_args = list(eps = 1e-9),
+        gradient = gradient, control = list(maxit = 200, factr = 10, pgtol = 1e-10)),
+      "below the Poisson floor")
+    fit
   })
   for (fit in fits) {
     expect_identical(fit$table$optim_convergence, c(0L, 0L))
@@ -239,4 +243,121 @@ test_that("invalid capabilities and unavailable requests fail explicitly", {
   expect_error(.solve_problem(legacy$p, legacy$theta, requested_outputs = "flow"),
                 "do not include requested output")
   expect_no_error(.solve_problem(legacy$p, legacy$theta))
+})
+
+# Poisson floor (SPAX-054) ------------------------------------------------------
+# Eleven origins on a line and three facilities; two residents are registered at
+# the far facility, where the Gaussian kernel puts almost no expected flow.
+far_flow_case <- function(absent_edge = FALSE) {
+  x <- seq(0, 50, by = 5)
+  site <- c(a = 0, b = 25, c = 50)
+  travel <- abs(outer(x, site, "-")) + 1
+  dimnames(travel) <- list(paste0("o", seq_along(x)), names(site))
+  if (absent_edge) travel["o1", "c"] <- Inf
+  demand <- setNames(rep(1000, length(x)), rownames(travel))
+  supply <- c(a = 4, b = 6, c = 5)
+  log_mu <- function(sigma, v0) {    # independent log-scale CLM flows
+    la <- sweep(-(travel^2) / (2 * sigma^2), 2, log(supply), "+")
+    m <- pmax(apply(la, 1, max), log(v0))
+    log_den <- m + log(rowSums(exp(la - m)) + exp(log(v0) - m))
+    sweep(la, 1, log_den, "-") + log(demand)
+  }
+  observed <- round(exp(log_mu(4, 0.2)))
+  observed["o1", "c"] <- 1
+  observed["o11", "a"] <- 1
+  nll <- function(sigma, v0) {
+    lm <- log_mu(sigma, v0)
+    sum(exp(lm)) - sum((observed * lm)[observed > 0])
+  }
+  inputs <- prepare_allocation(demand, supply, travel)
+  list(model = clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE),
+       observed = observed, nll = nll, log_mu = log_mu,
+       starts = rbind(s1 = c(sigma = 3, v0 = 0.1), s2 = c(sigma = 8, v0 = 1)),
+       lower = c(sigma = 0.5, v0 = 1e-4), upper = c(sigma = 30, v0 = 10))
+}
+far_flow_fit <- function(f, ...) fit_allocation(f$model, f$observed, f$starts, f$lower,
+  f$upper, output = "flow", loss = "poisson", gradient = TRUE,
+  control = list(maxit = 500, factr = 10, pgtol = 1e-10), ...)
+
+test_that("Poisson flow fits are maximum likelihood below the old floor", {
+  f <- far_flow_case()
+  # Reference optimum of the exact log-scale likelihood.
+  ref <- stats::optim(log(c(4, 0.2)), function(p) f$nll(exp(p[1]), exp(p[2])),
+                      method = "BFGS", control = list(reltol = 1e-15, maxit = 1000))
+  ref <- stats::nlminb(ref$par, function(p) f$nll(exp(p[1]), exp(p[2])),
+                       control = list(rel.tol = 1e-15, x.tol = 1e-12,
+                                      eval.max = 2000, iter.max = 1000))
+  # The two far cells are modelled near 1e-27 there: far below the old floor.
+  far <- f$log_mu(4.328, 0.3346)[cbind(c("o1", "o11"), c("c", "a"))] / log(10)
+  expect_true(all(far < -27))
+
+  fit <- expect_no_warning(far_flow_fit(f))
+  expect_identical(fit$best$loss_args, list(eps = 1e-250))
+  expect_equal(coef(fit), setNames(exp(ref$par), c("sigma", "v0")), tolerance = 1e-5)
+  expect_equal(fit$best$loss, f$nll(coef(fit)[["sigma"]], coef(fit)[["v0"]]),
+               tolerance = 1e-12)
+  expect_identical(.poisson_floor(fit$best), c(eps = 1e-250, positive_below = 0))
+  # Without the analytic gradient the default fit lands at the same optimum.
+  numerical <- fit_allocation(f$model, f$observed, f$starts, f$lower, f$upper,
+    output = "flow", loss = "poisson", gradient = FALSE,
+    control = list(maxit = 500, factr = 10, pgtol = 1e-10))
+  expect_equal(coef(numerical), coef(fit), tolerance = 1e-4)
+
+  # The old floor caps both far cells and is reported.
+  expect_warning(old <- far_flow_fit(f, loss_args = list(eps = 1e-9)),
+    "2 cells with positive observed counts are modelled below the Poisson floor \\(eps = 1e-09")
+  expect_equal(coef(old)[["sigma"]], 3.99759, tolerance = 1e-4)
+  expect_gt(exp(ref$par[1]) - coef(old)[["sigma"]], 0.3)
+  expect_identical(.poisson_floor(old$best), c(eps = 1e-9, positive_below = 2))
+
+  # One capped cell is reported in the singular. At the default floor nothing is
+  # floored, so this names the old floor.
+  one <- f
+  one$observed["o11", "a"] <- 0
+  expect_warning(far_flow_fit(one, loss_args = list(eps = 1e-9)),
+                 "1 cell with positive observed counts is modelled below")
+
+  # Other losses have no Poisson floor.
+  sse <- expect_no_warning(fit_allocation(f$model, f$observed, f$starts, f$lower, f$upper,
+    output = "flow", loss = "weighted_sse", gradient = TRUE,
+    control = list(maxit = 500, factr = 10, pgtol = 1e-10)))
+  expect_null(.poisson_floor(sse$best))
+
+  # check_allocation() reports the capped fit and not the default one.
+  checked_old <- check_allocation(f$model, old)
+  expect_true(checked_old$flags[["positive_counts_below_poisson_floor"]])
+  expect_identical(checked_old$poisson_floor, c(eps = 1e-9, positive_below = 2))
+  expect_output(print(checked_old), "2 cells with positive observed counts are modelled below")
+  checked_new <- check_allocation(f$model, fit)
+  expect_false(checked_new$flags[["positive_counts_below_poisson_floor"]])
+  expect_identical(checked_new$poisson_floor, c(eps = 1e-250, positive_below = 0))
+
+  # A capped fit is not comparable with the default-floor fit: the floors differ
+  # and the far cells lie below the larger one. A fit that stored no floor was
+  # made with 1e-9, so it is comparable with the capped fit.
+  models <- list(new = f$model, old = f$model)
+  compared <- as.data.frame(compare_allocations(list(new = fit, old = old), models = models))
+  expect_false(compared$comparable[compared$specification == "old"])
+  legacy <- old
+  legacy$best$loss_args <- list()
+  models <- list(old = f$model, legacy = f$model)
+  compared <- as.data.frame(compare_allocations(list(old = old, legacy = legacy),
+                                                models = models))
+  expect_true(all(compared$comparable))
+  expect_equal(compared$loss_difference, c(0, 0))
+
+  # Facility totals sit far above any floor, so differing floors do not matter.
+  s <- alloc_small_case()
+  fits <- lapply(list(old = list(eps = 1e-9), new = list()), function(args) {
+    fit_allocation(s$model, s$observed, s$starts, s$lower, s$upper, loss = "poisson",
+                   loss_args = args, gradient = TRUE, control = list(maxit = 100))
+  })
+  totals <- as.data.frame(compare_allocations(fits, models = list(old = s$model, new = s$model)))
+  expect_true(all(totals$comparable))
+  expect_equal(totals$loss_difference, c(0, 0), tolerance = 1e-8)
+
+  # An observed count on an absent edge cannot be modelled at all.
+  edge <- far_flow_case(absent_edge = TRUE)
+  expect_warning(absent <- far_flow_fit(edge), "1 cell with positive observed counts")
+  expect_equal(.poisson_floor(absent$best)[["positive_below"]], 1)
 })

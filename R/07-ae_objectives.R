@@ -69,6 +69,65 @@
   as.vector(crossprod(sensitivity, weights))
 }
 
+# The floor a built-in Poisson fit used: its stored eps, or 1e-9 (the default of
+# .poisson_loss) for fits that stored none, which is every fit made before the
+# default floor of fit_allocation() moved to 1e-250. NULL for any other loss.
+.poisson_floor_eps <- function(best) {
+  if (!.same_function(best$loss_fn, .poisson_loss)) return(NULL)
+  if ("eps" %in% names(best$loss_args)) best$loss_args$eps else 1e-9
+}
+
+# Positive observed counts that a selected Poisson fit models below its floor
+# (zero included): the loss is capped there, so the fit is not the Poisson
+# maximum likelihood estimate. NULL for any other loss.
+.poisson_floor <- function(best) {
+  eps <- .poisson_floor_eps(best)
+  if (is.null(eps)) return(NULL)
+  mask <- if (is.null(best$target_mask)) rep(TRUE, length(best$observed)) else best$target_mask
+  observed <- as.numeric(best$observed)[mask]
+  predicted <- as.numeric(best$predicted)[mask]
+  c(eps = eps, positive_below = sum(observed > 0 & predicted < eps))
+}
+
+# Loss arguments as the loss sees them: a built-in Poisson fit without a stored
+# eps used the default 1e-9 of .poisson_loss.
+.effective_loss_args <- function(best) {
+  args <- best$loss_args
+  eps <- .poisson_floor_eps(best)
+  if (!is.null(eps) && !"eps" %in% names(args)) args$eps <- eps
+  args
+}
+
+# Whether two fits' losses use the same arguments. Built-in Poisson fits are
+# compared by their floors, a missing eps meaning 1e-9; different floors still
+# give the same criterion when no masked prediction of either fit lies below the
+# larger floor, since the floor then changes neither loss.
+.same_loss_args <- function(a, b) {
+  args_a <- .effective_loss_args(a)
+  args_b <- .effective_loss_args(b)
+  if (identical(args_a, args_b)) return(TRUE)
+  eps_a <- .poisson_floor_eps(a)
+  eps_b <- .poisson_floor_eps(b)
+  if (is.null(eps_a) || is.null(eps_b) ||
+      !identical(args_a[names(args_a) != "eps"], args_b[names(args_b) != "eps"])) return(FALSE)
+  higher <- max(eps_a, eps_b)
+  below <- function(f) {
+    mask <- if (is.null(f$target_mask)) rep(TRUE, length(f$predicted)) else f$target_mask
+    any(as.numeric(f$predicted)[mask] < higher)
+  }
+  !below(a) && !below(b)
+}
+
+# Warning text for a selected Poisson fit with positive counts under its floor.
+.poisson_floor_message <- function(floor_info) {
+  n <- floor_info[["positive_below"]]
+  sprintf(paste0("%d %s with positive observed counts %s modelled below the Poisson floor ",
+                 "(eps = %g, zero included); the loss is capped there, so the fit is not the ",
+                 "Poisson maximum likelihood estimate. Look for observed counts on absent edges ",
+                 "or at facilities with zero supply, or use a kernel with a heavier tail."),
+          n, if (n == 1) "cell" else "cells", if (n == 1) "is" else "are", floor_info[["eps"]])
+}
+
 #' Gradient of weighted SSE with respect to parameters
 #'
 #' `sensitivity` is d predicted / d theta, with one row per observation and one

@@ -44,7 +44,9 @@
 #'   trips), the exact comparator `parameters` (those of `no_decay` are the
 #'   re-optimized parameters other than `sigma`, an empty vector when the model
 #'   fits only `sigma`), the selected fit's parameter `boundary` flags,
-#'   `search_at_edge`, and logical `flags`. Use `print()` or `as.data.frame()`.
+#'   `search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson fit:
+#'   its floor `eps` and the number of positive observed counts modelled below
+#'   it, which cap the loss; `NULL` otherwise). Use `print()` or `as.data.frame()`.
 #' @family experimental allocation workflow
 #' @export
 #' @md
@@ -170,12 +172,16 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
                  setdiff(names(tab), c("comparator", "loss", "loss_difference",
                                        "parameters", "contact")))]
   boundary <- stats::setNames(as.logical(fit$boundary[fit$best_start, ]), colnames(fit$boundary))
+  floor_info <- .poisson_floor(best)
   flags <- c(
     capacity_only_fits_at_least_as_well = isTRUE(cap_loss <= fitted_loss),
     no_decay_fits_at_least_as_well = isTRUE(flat_loss <= fitted_loss),
     decay_parameter_at_bound = isTRUE(boundary[["sigma"]]),
-    comparator_search_at_edge = any(edges))
+    comparator_search_at_edge = any(edges),
+    positive_counts_below_poisson_floor = !is.null(floor_info) &&
+      floor_info[["positive_below"]] > 0)
   structure(list(comparators = tab, boundary = boundary, flags = flags,
+                 poisson_floor = floor_info,
                  parameters = list(fitted = theta, no_decay = no_decay_theta,
                                    capacity_only = cap_par),
                  search_at_edge = edges,
@@ -298,6 +304,9 @@ print.ae_allocation_check <- function(x, digits = 4, ...) {
   }
   if (x$flags[["comparator_search_at_edge"]]) {
     cat("A comparator search ended at its widest range; its loss may be overstated.\n")
+  }
+  if (isTRUE(x$flags["positive_counts_below_poisson_floor"])) {   # absent in older objects
+    cat(strwrap(.poisson_floor_message(x$poisson_floor)), sep = "\n")
   }
   invisible(x)
 }

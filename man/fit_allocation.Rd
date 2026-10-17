@@ -42,11 +42,18 @@ probability operator. Requesting counts does not select a likelihood.}
 
 \item{loss}{\code{"weighted_sse"}, \code{"poisson"}, or a function accepting predicted
 and observed values. Weighted SSE divides squared residuals by observed+eta,
-with eta=1 by default. Poisson omits the data-only log-factorial constant
-and uses eps=1e-9 by default; joint fitting does not force total matching.}
+with eta=1 by default. Poisson omits the data-only log-factorial constant.
+It floors modelled counts at \code{eps} (\code{loss_args}), 1e-250 by default, only
+to avoid the log of zero; cells with positive observed counts modelled
+below the floor are reported with a warning, because the loss is capped
+there. Fits made before this default used 1e-9; pass
+\code{loss_args = list(eps = 1e-9)} to reproduce them. Joint fitting does not
+force total matching.}
 
-\item{loss_args}{Named auxiliary arguments passed unchanged to loss callbacks.
-Any observation-indexed values must already follow canonical observed order.}
+\item{loss_args}{Named auxiliary arguments passed to loss callbacks. For
+\code{loss = "poisson"} an \code{eps} of 1e-250 is added when none is given; other
+arguments pass unchanged. Any observation-indexed values must already
+follow canonical observed order.}
 
 \item{loss_grad}{Optional matching parameter-gradient callback. Built-in
 choices supply their existing analytic loss-gradient adapters. A custom
