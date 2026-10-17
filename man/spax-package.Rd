@@ -118,14 +118,14 @@ Save input declarations and support metadata with fitted results, preferably
 in an RDS bundle. CSV exports discard R attributes. Inspect saved results with
 \code{coef}, \code{fitted}, \code{summary}, \code{plot} and
 \code{as.data.frame}; these methods do not silently fit or bootstrap again.
-Record the source commit as well as the package version while using the
-experimental development branch.
+Record the package version, and the source commit when using a development
+version from the \code{develop} branch.
 }
 
-\section{Installed guides and development status}{
+\section{Installed guides and status}{
 
-The experimental interface is on the \code{develop} branch; it is
-not a new stable release. Package and function help are installed with the
+Version 0.3.0 is the first release that includes the experimental allocation
+interface, which may change in later versions. Package and function help are installed with the
 package. Use \code{help(package = "spax")} to browse them. Installations
 with built articles also expose \code{browseVignettes("spax")}. Start with
 \code{vignette("spax", package = "spax")}, which computes one FCA surface;

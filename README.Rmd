@@ -31,24 +31,23 @@ an additional route; they do not replace the FCA functions. Internal
 feedback-model machinery is private and is not part of the experimental CLM
 interface.
 
-## Install the development version
+## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor for
-this development version (0.2.0.9000). Existing public FCA calling semantics
-are unchanged.
+spax 0.3.0. Existing public FCA calling semantics are unchanged.
 
-The allocation workflow described here is on the `develop` branch. Install
-that branch explicitly rather than relying on the repository's default branch:
+Install version 0.3.0 by its release tag rather than from the repository's
+default branch:
 
 ```{r install, eval=FALSE}
 # install.packages("pak")
-pak::pak("Songyosr/spax@develop")
+pak::pak("Songyosr/spax@v0.3.0")
 ```
 
-This is a development version, not a stable release, and the allocation
-interface is experimental. For reproducible work, record the source commit as
-well as the package version and retain the input IDs, units, observation
-declaration and saved results.
+The allocation interface is experimental and may change in later versions. For
+reproducible work, record the package version and retain the input IDs, units,
+observation declaration and saved results. Development continues on the
+`develop` branch (`pak::pak("Songyosr/spax@develop")`).
 
 Package and function help are available from an installed package. Installations
 that include built articles also provide the guides, which follow one reader

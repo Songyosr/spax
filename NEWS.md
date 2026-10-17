@@ -1,7 +1,8 @@
-# spax 0.2.0.9000
+# spax 0.3.0
 
-The changes below are on the development branch and are not a stable release
-yet; record the source commit when reproducing an analysis.
+First release that includes the experimental allocation workflow. Experimental
+functions may change in later versions; record the package version when
+reproducing an analysis.
 
 * Fixed: with `loss = "poisson"` and `gradient = TRUE`, the analytic gradient
   is now the gradient of the floored loss. A modelled count below the floor
