@@ -159,8 +159,11 @@ summary(fit)
 as.data.frame(fit)
 ```
 
-The summary keeps every start, its convergence, boundaries and messages. All
-three starts converge away from the bounds and stop very close to each other.
+The summary keeps every start, its convergence, boundaries and messages. The
+starts stop away from the bounds and very close to each other. With the strict
+tolerance used here (`factr = 10`), a start can end with a line-search message
+at practically the same loss, so judge agreement by the losses and parameters
+in the per-start table rather than by the convergence codes alone.
 The disagreement flag uses deliberately strict default tolerances, so read the
 gaps in the per-start table rather than the flag alone. Agreement among the
 supplied starts is a numerical check; it does not prove a global optimum or

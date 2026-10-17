@@ -361,3 +361,13 @@ test_that("Poisson flow fits are maximum likelihood below the old floor", {
   expect_warning(absent <- far_flow_fit(edge), "1 cell with positive observed counts")
   expect_equal(.poisson_floor(absent$best)[["positive_below"]], 1)
 })
+
+test_that("the Poisson floor report skips masked targets", {
+  f <- far_flow_case()
+  # An unobserved (NA) target on a cell the old floor would cap is not counted,
+  # and the fit still reports the other floored cell.
+  f$observed["o1", "c"] <- NA_real_
+  expect_warning(fit <- far_flow_fit(f, loss_args = list(eps = 1e-9)),
+                 "1 cell with positive observed counts is modelled below")
+  expect_identical(.poisson_floor(fit$best), c(eps = 1e-9, positive_below = 1))
+})

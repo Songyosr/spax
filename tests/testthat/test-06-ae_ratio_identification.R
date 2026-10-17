@@ -127,3 +127,7 @@ test_that("free-attractiveness gradient matches finite differences with flows be
     expect_equal(unname(value(p)$grad), fd, tolerance = 1e-6)
   }
 })
+
+test_that("the private ratio fits use the floor of fit_allocation()", {
+  expect_identical(formals(.clm_free_attractiveness_objective)$eps, 1e-250)
+})
