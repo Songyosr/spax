@@ -160,9 +160,9 @@ as.data.frame(fit)
 ```
 
 The summary keeps every start, its convergence, boundaries and messages. All
-three starts converge away from the bounds and stop very close to each other,
-but the disagreement flag uses deliberately strict default tolerances, so read
-the gaps in the per-start table rather than the flag alone. Agreement among the
+three starts converge away from the bounds and stop very close to each other.
+The disagreement flag uses deliberately strict default tolerances, so read the
+gaps in the per-start table rather than the flag alone. Agreement among the
 supplied starts is a numerical check; it does not prove a global optimum or
 that the parameters are identified. A σ of about 4.4 minutes means
 registration is very local: a practice 9 minutes away keeps only about 12% of
@@ -529,15 +529,13 @@ plateau_fit <- fit_allocation(
   upper = c(sigma = 60, v0 = 10),
   output = "flow",
   loss = "poisson",
-  gradient = FALSE,  # numerical gradient, from the optimizer
+  gradient = TRUE,
   control = list(maxit = 300, factr = 10, pgtol = 1e-8)
 )
 coef(plateau_fit)
 ```
 
-Here the optimizer differences the loss numerically (`gradient = FALSE`) and all
-three starts converge; with `gradient = TRUE` the starts for this kernel do not
-all converge. `summary(plateau_fit)` shows how closely the starts agree. The
+`summary(plateau_fit)` shows how closely the starts agree. The
 `sigma` of a declared kernel is the scale of that kernel, so
 `r round(coef(plateau_fit)[["sigma"]], 2)` minutes for the plateau kernel and
 `r round(coef(fit)[["sigma"]], 2)` minutes for the Gaussian kernel are not

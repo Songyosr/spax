@@ -3,6 +3,14 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* Fixed: with `loss = "poisson"` and `gradient = TRUE`, the analytic gradient
+  is now the gradient of the floored loss. A modelled count below the floor
+  (`eps`, 1e-9) adds a constant to the loss, and it now adds nothing to the
+  gradient; before, it kept the slope `1 - y / eps`, which misled the
+  optimizer on flow targets with positive counts where the model puts almost
+  no flow (starts that stopped apart, or line-search failures). Fits whose
+  modelled counts all stay above the floor are unchanged; the Poisson loss
+  itself is unchanged, so saved fits keep working.
 * New experimental `decay_kernel()` declares a distance decay kernel as plain
   data: a built-in kernel by name, or your own function of `distance` and
   `sigma`, kept as the exact text of its code (comments and layout are not kept)
