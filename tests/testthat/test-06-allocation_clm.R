@@ -502,19 +502,40 @@ test_that("the no-decay family weights finite distances by one and has no predic
   expect_equal(weights, ifelse(is.finite(gaps$inputs$distance_active), 1, 0))
 })
 
-test_that("a custom kernel has no prediction snapshot until prediction support lands", {
-  # Transitional (SPAX-052 T2): custom-kernel snapshots follow in T3, which
-  # replaces this block. Built-ins keep their snapshot (see test-06-ae_prediction.R).
+test_that("a declared kernel attaches a v2 prediction snapshot that predicts; built-ins keep v1", {
   f <- alloc_small_case()
   k <- decay_kernel(function(distance, sigma) exp(-distance / sigma), name = "scaled-exp",
                     parameter = "scale")
   model <- clm_allocation(f$inputs, family = k, fit_v0 = TRUE)
-  expect_null(.bind_theta(model, c(sigma = 3, v0 = 10))$clm_prediction)
-  out <- evaluate_allocation(model, c(sigma = 3, v0 = 10))
-  expect_null(out$prediction_snapshot)
-  expect_null(out$evaluated_clm)
-  expect_error(predict_allocation(out, f$travel), "no prediction snapshot")
-  expect_false(is.null(evaluate_allocation(f$model, c(sigma = 3, v0 = 10))$prediction_snapshot))
+  theta <- c(sigma = 3, v0 = 10)
+  # The bound step declares the snapshot, with the declaration in its specification.
+  declaration <- .bind_theta(model, theta)$clm_prediction
+  expect_identical(declaration$spec$kernel, k)
+  expect_identical(declaration$theta, theta)
+  out <- evaluate_allocation(model, theta)
+  snapshot <- out$prediction_snapshot
+  expect_identical(snapshot$schema, "spax_clm_prediction_v2")
+  expect_identical(snapshot$kind, "declared_kernel_static_clm")
+  expect_identical(snapshot$spec$family, "scaled-exp")
+  expect_identical(snapshot$spec$kernel, k)
+  expect_identical(out$evaluated_clm, snapshot[c("spec", "theta", "facility_ids", "supply")])
+  # It predicts requested origins: the choice algebra with the same kernel.
+  request <- f$travel[c("o3", "o1"), , drop = FALSE]
+  rownames(request) <- c("new1", "new2")
+  oracle <- clm_oracle(request, c(0, 0), f$supply, 3, 10,
+                       kernel = function(distance, sigma) exp(-distance / sigma))
+  predicted <- predict_allocation(out, request, outputs = c("rho", "allocation"))
+  expect_equal(unname(predicted$outputs$rho), unname(oracle$rho), tolerance = 1e-12)
+  expect_equal(unname(predicted$outputs$allocation), unname(oracle$allocation),
+               tolerance = 1e-12)
+  # Built-in kernels, and their declarations, keep the v1 snapshot.
+  for (family in list("gaussian", decay_kernel("gaussian"))) {
+    v1 <- evaluate_allocation(clm_allocation(f$inputs, family = family, fit_v0 = TRUE),
+                              theta)$prediction_snapshot
+    expect_identical(v1$schema, "spax_clm_prediction_v1")
+    expect_identical(v1$kind, "builtin_static_clm")
+    expect_false("kernel" %in% names(v1$spec))
+  }
 })
 
 test_that("print and summary of a fit label sigma by the meaning of the kernel", {
@@ -543,11 +564,13 @@ test_that("print and summary of a fit label sigma by the meaning of the kernel",
   old$family_label <- NULL
   expect_true("family: power" %in%
     utils::capture.output(print(structure(old, class = "summary.ae_problem_nfxp_fit"))))
-  # A fit of a custom kernel prints its own name; the meaning of sigma is added
-  # from its saved declaration (a fit has none here, so only the name shows).
+  # A fit of a custom kernel prints its own name, and the meaning of sigma from
+  # the declaration kept in its prediction snapshot.
   copy <- gaussian_copy_fit()$best
-  expect_true(any(grepl("^family: gaussian-copy", utils::capture.output(print(copy)))))
-  expect_match(summary(copy)$family_label, "^gaussian-copy")
+  label <- "gaussian-copy (sigma = travel scale)"
+  expect_true(paste("family:", label) %in% utils::capture.output(print(copy)))
+  expect_identical(summary(copy)$family_label, label)
+  expect_true(paste("family:", label) %in% utils::capture.output(print(summary(copy))))
 })
 
 test_that("the family label takes the meaning of a custom kernel from its saved declaration", {

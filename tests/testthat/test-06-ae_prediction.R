@@ -401,3 +401,372 @@ test_that("requested maps preserve distinct cell indices and refuse matrix surfa
   expect_error(.prediction_surface(x, "flow"), "requested output")
   expect_error(.prediction_surface(x, c("A", "rho")), "one nonmissing name")
 })
+
+# Declared decay kernels (SPAX-052) -------------------------------------------------
+# Snapshots and prediction for models whose kernel was declared with
+# decay_kernel(). Expected values come from clm_oracle() with the kernel written
+# out again as plain algebra, never from the package's own kernel code.
+
+# A plateau kernel: full weight within 1.5 minutes, Gaussian decay beyond. Its
+# bounds on sigma are finite so that out-of-bounds snapshots can be built.
+plateau_kernel <- function() {
+  decay_kernel(
+    function(distance, sigma, plateau = 1.5) {
+      # Full weight within the plateau, Gaussian decay beyond it.
+      ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+    },
+    name = "plateau", parameter = "scale", lower = 0.25, upper = 40,
+    args = list(plateau = 1.5)
+  )
+}
+plateau_algebra <- function(distance, sigma) exp(-pmax(distance - 1.5, 0)^2 / (2 * sigma^2))
+
+# The prediction case of alloc_prediction_case() with the plateau kernel;
+# `fitted` makes v0 and beta parameters. Fixed constants are kappa .65, beta 1.3
+# and v0 4; the generating parameters are those of the Gaussian case.
+plateau_case <- function(fitted = FALSE) {
+  case <- alloc_prediction_case(fitted = fitted)
+  case$model <- clm_allocation(case$model$substrate, family = plateau_kernel(),
+    kappa = .65, beta = 1.3, v0 = 4, fit_v0 = fitted, fit_beta = fitted)
+  case$family <- "plateau"
+  case
+}
+
+# A fixed evaluation and a multistart flow fit of each plateau case.
+plateau_sources <- function() {
+  alloc_memo("plateau_sources", {
+    out <- list()
+    for (fitted in c(FALSE, TRUE)) {
+      case <- plateau_case(fitted)
+      flow <- clm_oracle(case$distance, case$demand, case$supply, case$theta[["sigma"]],
+        v0 = case$v0, beta = case$beta, kappa = case$kappa, kernel = plateau_algebra)$flow
+      out[[if (fitted) "fitted" else "fixed"]] <- list(case = case,
+        solved = evaluate_allocation(case$model, case$theta),
+        fit = fit_allocation(case$model, flow, rbind(truth = case$theta),
+          case$theta / 4, case$theta * 4, output = "flow", loss = "poisson",
+          gradient = TRUE, control = list(maxit = 20)))
+    }
+    out
+  })
+}
+
+# Requested origins: mixed contact (n1), finite zero travel and travel exactly at
+# the plateau edge (n2), an absent edge (n3) and an unknown travel time (n4).
+plateau_request <- function() {
+  request <- rbind(n1 = c(1, 2, 3), n2 = c(0, 1.5, 9), n3 = c(Inf, 4, 6), n4 = c(2, NA, 1))
+  colnames(request) <- c("b", "a", "c")
+  request
+}
+
+# Requested-location algebra for a plateau-kernel system at (sigma, v0, beta):
+# probabilities from the requested travel, capacity ratios from the loads of the
+# saved system. Rows with unknown travel are NA.
+plateau_prediction_oracle <- function(case, sigma, v0, beta, request, demand) {
+  choice <- function(distance, demand) clm_oracle(distance, demand, case$supply, sigma,
+    v0 = v0, beta = beta, kappa = case$kappa, kernel = plateau_algebra)
+  loads <- choice(case$distance, case$demand)$utilization
+  ratio <- ifelse(loads > 0, case$supply / loads, 0)
+  known <- rowSums(is.na(request)) == 0
+  requested <- choice(request[known, , drop = FALSE], rep(0, sum(known)))
+  A <- as.vector(requested$probability %*% ratio)
+  expand <- function(x) {
+    full <- if (is.matrix(x)) matrix(NA_real_, nrow(request), ncol(x)) else
+      rep(NA_real_, nrow(request))
+    if (is.matrix(x)) full[known, ] <- x else full[known] <- x
+    full
+  }
+  list(allocation = expand(unname(requested$probability)), rho = expand(unname(requested$rho)),
+       outside_share = expand(unname(requested$outside_share)), A = expand(A),
+       abar = expand(ifelse(requested$rho > 0, A / requested$rho, NA_real_)),
+       flow = expand(unname(requested$probability * demand[known])), utilization = loads)
+}
+
+# The parameters a source holds: sigma, and v0 and beta when fitted, else the
+# constants of its case.
+plateau_parameters <- function(case, theta) {
+  list(sigma = theta[["sigma"]], v0 = if ("v0" %in% names(theta)) theta[["v0"]] else case$v0,
+       beta = if ("beta" %in% names(theta)) theta[["beta"]] else case$beta)
+}
+
+test_that("built-in snapshots keep the v1 record and a declared kernel writes v2", {
+  fields <- c("schema", "kind", "spec", "theta", "facility_ids", "supply", "utilization",
+              "input_metadata", "input_policy", "provenance")
+  spec_names <- c("family", "allocation", "kappa", "beta", "v0", "fit_beta", "fit_v0")
+  # Built-in kernels: the v1 record, with no kernel in the specification.
+  for (entry in alloc_prediction_sources()) for (source in entry[c("solved", "fit")]) {
+    snapshot <- source$prediction_snapshot
+    expect_identical(snapshot$schema, "spax_clm_prediction_v1")
+    expect_identical(snapshot$kind, "builtin_static_clm")
+    expect_identical(names(snapshot), fields)
+    expect_identical(names(snapshot$spec), spec_names)
+  }
+  # A declared kernel: v2, the same fields, and the declaration appended last.
+  reference <- alloc_prediction_sources()[["gaussian fixed"]]$solved$prediction_snapshot
+  plain <- function(x) if (is.list(x)) all(vapply(x, plain, logical(1))) else is.atomic(x)
+  for (entry in plateau_sources()) {
+    for (snapshot in list(entry$solved$prediction_snapshot, entry$fit$best$prediction_snapshot)) {
+      expect_identical(snapshot$schema, "spax_clm_prediction_v2")
+      expect_identical(snapshot$kind, "declared_kernel_static_clm")
+      expect_identical(names(snapshot), fields)
+      expect_identical(names(snapshot$spec), c(spec_names, "kernel"))
+      expect_identical(snapshot$spec$family, "plateau")
+      expect_identical(snapshot$spec$allocation, "clm")
+      expect_identical(snapshot$spec$kernel, plateau_kernel())
+      # The declaration is plain data and survives serialization unchanged.
+      expect_true(plain(snapshot))
+      expect_identical(unserialize(serialize(snapshot, NULL)), snapshot)
+      # The record of the same inputs differs only in kernel-specific fields.
+      expect_identical(snapshot[c("facility_ids", "supply", "input_metadata", "input_policy",
+                                  "provenance")],
+                       reference[c("facility_ids", "supply", "input_metadata", "input_policy",
+                                   "provenance")])
+    }
+    # The redundant evaluation identity carries the declaration as well.
+    expect_identical(entry$solved$evaluated_clm$spec, entry$solved$prediction_snapshot$spec)
+    expect_identical(entry$fit$best$prediction_snapshot,
+                     entry$fit$best$equilibrium$prediction_snapshot)
+  }
+})
+
+test_that("predictions from declared-kernel sources equal the choice algebra", {
+  request <- plateau_request()
+  demand <- c(n1 = 5, n2 = 0, n3 = NA, n4 = 4)
+  outputs <- c("rho", "outside_share", "A", "abar", "allocation", "flow")
+  for (entry in plateau_sources()) {
+    for (source in entry[c("solved", "fit")]) {
+      theta <- if (inherits(source, "ae_multistart_fit")) coef(source) else entry$case$theta
+      p <- plateau_parameters(entry$case, theta)
+      oracle <- plateau_prediction_oracle(entry$case, p$sigma, p$v0, p$beta, request, demand)
+      x <- predict_allocation(source, request, demand = demand, outputs = outputs)
+      for (name in outputs) {
+        expect_equal(unname(x$outputs[[name]]), oracle[[name]], tolerance = 1e-12, info = name)
+      }
+      expect_equal(x$facilities$utilization, oracle$utilization, tolerance = 1e-12)
+      expect_identical(x$validity$status, c("valid", "valid", "valid", "unknown_travel"))
+      expect_identical(x$validity$demand_status, c("positive", "zero", "unknown", "positive"))
+      # The plateau edge and the zero travel time are known contact.
+      expect_true(all(x$outputs$rho[1:3] > 0))
+      expect_true(all(is.na(x$outputs$allocation[4, ])) && all(is.na(x$outputs$flow[3:4, ])))
+      expect_true(all(x$outputs$flow[2, ] == 0))
+      expect_identical(unname(x$outputs$allocation[3, 1]), 0)
+    }
+  }
+  # Requested rows, columns and demand still align by name, whatever their order.
+  fixed <- plateau_sources()$fixed$solved
+  shuffled <- predict_allocation(fixed, request[c(4, 2, 1, 3), c(3, 1, 2)],
+    origin_ids = rownames(request), demand = demand[c(4, 2, 1, 3)], outputs = outputs)
+  expect_identical(shuffled, predict_allocation(fixed, request, demand = demand, outputs = outputs))
+})
+
+test_that("saved declared-kernel results predict identically after a save and reload", {
+  request <- plateau_request()
+  demand <- c(n1 = 5, n2 = 0, n3 = 2, n4 = 4)
+  outputs <- c("rho", "A", "abar", "allocation", "flow")
+  for (entry in plateau_sources()) for (source in entry[c("solved", "fit")]) {
+    path <- withr::local_tempfile(fileext = ".rds")
+    saveRDS(source, path)
+    restored <- readRDS(path)
+    expect_identical(predict_allocation(restored, request, demand = demand, outputs = outputs),
+                     predict_allocation(source, request, demand = demand, outputs = outputs))
+  }
+  # The snapshot is a plain record: it reads back unchanged, with its code as text.
+  fixed <- plateau_sources()$fixed$solved
+  path <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(fixed$prediction_snapshot, path)
+  expect_identical(readRDS(path), fixed$prediction_snapshot)
+  expect_type(readRDS(path)$spec$kernel$code, "character")
+})
+
+test_that("tampered v2 snapshots are refused, and their code is not run to refuse them", {
+  fixed <- plateau_sources()$fixed
+  solved <- fixed$solved
+  request <- plateau_request()
+  other <- decay_kernel(function(distance, sigma) exp(-distance / sigma), name = "plateau",
+                        parameter = "scale", lower = 0.25, upper = 40)
+  edits <- list(
+    # The kernel declaration must be a valid custom declaration that names the family.
+    "unparseable code" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$kernel$code <- "function(distance, sigma) {"; s }),
+    "two expressions" = list("invalid CLM snapshot specification",
+      function(s) {
+        s$spec$kernel$code <- paste(s$spec$kernel$code, "function(distance, sigma) 1", sep = "\n")
+        s
+      }),
+    "an expression that is not a function" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$kernel$code <- "stop('this must not run')"; s }),
+    "a function hidden in a block" = list("invalid CLM snapshot specification",
+      function(s) {
+        s$spec$kernel$code <- "{ stop('this must not run'); function(distance, sigma) 1 }"
+        s
+      }),
+    "a family other than the kernel name" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$family <- "other"; s }),
+    "a built-in family name" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$family <- "gaussian"; s }),
+    "a built-in declaration" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$kernel <- decay_kernel("gaussian"); s$spec$family <- "gaussian"; s }),
+    "a declaration that fails its own checks" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$kernel$lower <- -1; s }),
+    "no declaration" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$kernel <- NULL; s }),
+    "an extra specification field" = list("invalid CLM snapshot specification",
+      function(s) { s$spec$extra <- 1; s }),
+    "a declaration under a v1 record" = list("invalid CLM snapshot specification",
+      function(s) { s$schema <- "spax_clm_prediction_v1"; s$kind <- "builtin_static_clm"; s }),
+    # sigma must lie within the declared bounds.
+    "sigma above the kernel bounds" = list("invalid CLM snapshot theta",
+      function(s) { s$theta[["sigma"]] <- 41; s }),
+    "sigma below the kernel bounds" = list("invalid CLM snapshot theta",
+      function(s) { s$theta[["sigma"]] <- 0.2; s }),
+    # Any other schema or kind is unsupported.
+    "an unknown schema" = list("unsupported prediction snapshot; regenerate",
+      function(s) { s$schema <- "spax_clm_prediction_v3"; s }),
+    "a v2 schema with the built-in kind" = list("unsupported prediction snapshot",
+      function(s) { s$kind <- "builtin_static_clm"; s }),
+    "a v1 schema with the declared kind" = list("unsupported prediction snapshot",
+      function(s) { s$schema <- "spax_clm_prediction_v1"; s }),
+    "an unknown kind" = list("unsupported prediction snapshot",
+      function(s) { s$kind <- "other_static_clm"; s }),
+    "a missing field" = list("unsupported prediction snapshot",
+      function(s) { s$provenance <- NULL; s }))
+  for (label in names(edits)) {
+    bad <- solved
+    bad$prediction_snapshot <- edits[[label]][[2]](bad$prediction_snapshot)
+    error <- tryCatch(predict_allocation(bad, request), error = conditionMessage)
+    expect_match(error, edits[[label]][[1]], fixed = TRUE, info = label)
+    expect_false(grepl("must not run", error, fixed = TRUE), info = label)
+  }
+  # The same refusals hold for the snapshot of a fit.
+  fit <- plateau_sources()$fitted$fit
+  bad <- fit
+  bad$best$prediction_snapshot$spec$kernel$code <- "function(distance, sigma) {"
+  expect_error(predict_allocation(bad, request), "invalid CLM snapshot specification")
+  bad <- fit
+  bad$best$prediction_snapshot$theta[["sigma"]] <- 41
+  expect_error(predict_allocation(bad, request), "invalid CLM snapshot theta")
+  # A well-formed declaration that differs from the evaluated source is a conflict.
+  bad <- solved
+  bad$prediction_snapshot$spec$kernel <- other
+  expect_error(predict_allocation(bad, request), "conflicts")
+  bad <- fit
+  bad$best$prediction_snapshot$spec$kernel <- other
+  expect_error(predict_allocation(bad, request), "conflicts")
+  # Unmodified sources still predict.
+  expect_no_error(predict_allocation(solved, request))
+  expect_no_error(predict_allocation(fit, request))
+})
+
+test_that("a kernel declared smooth = FALSE is evaluated and predicts", {
+  case <- alloc_prediction_case()
+  cutoff <- decay_kernel(
+    function(distance, sigma) {
+      # Weight one within the cutoff and zero beyond it.
+      0 + (distance <= sigma)
+    },
+    name = "cutoff", parameter = "cutoff", smooth = FALSE
+  )
+  model <- clm_allocation(case$model$substrate, family = cutoff, kappa = .65, beta = 1.3, v0 = 4)
+  solved <- evaluate_allocation(model, c(sigma = 2.5))
+  expect_identical(solved$prediction_snapshot$schema, "spax_clm_prediction_v2")
+  expect_false(solved$prediction_snapshot$spec$kernel$smooth)
+  # n2 reaches no facility within the cutoff; n3 has an absent edge.
+  request <- rbind(n1 = c(1, 2.5, 3), n2 = c(4, 5, 6), n3 = c(2, Inf, 3))
+  colnames(request) <- c("b", "a", "c")
+  demand <- c(n1 = 2, n2 = 3, n3 = 4)
+  step <- function(distance, sigma) 0 + (distance <= sigma)
+  choice <- function(distance, demand) clm_oracle(distance, demand, case$supply, 2.5, v0 = 4,
+    beta = 1.3, kappa = .65, kernel = step)
+  loads <- choice(case$distance, case$demand)$utilization
+  expect_true(all(loads > 0))
+  requested <- choice(request, rep(0, 3))
+  A <- as.vector(requested$probability %*% (case$supply / loads))
+  x <- predict_allocation(solved, request, demand = demand,
+    outputs = c("rho", "A", "abar", "allocation", "flow"))
+  expect_equal(unname(x$outputs$allocation), unname(requested$probability), tolerance = 1e-12)
+  expect_equal(unname(x$outputs$rho), unname(requested$rho), tolerance = 1e-12)
+  expect_equal(unname(x$outputs$A), A, tolerance = 1e-12)
+  expect_equal(unname(x$outputs$flow), unname(requested$probability * demand), tolerance = 1e-12)
+  expect_identical(unname(x$outputs$rho[2]), 0)
+  expect_true(is.na(x$outputs$abar[2]))
+  expect_identical(x$validity$status, c("valid", "known_absence", "valid"))
+  # The same model is still refused by fit_allocation().
+  expect_error(fit_allocation(model, case$supply, rbind(a = c(sigma = 2)), c(sigma = 0.5),
+                              c(sigma = 4)), "smooth = FALSE")
+})
+
+test_that("prediction applies the domain rules of the declared kernel", {
+  case <- alloc_prediction_case()
+  hyperbolic <- decay_kernel(function(distance, sigma) 1 / (distance * sigma),
+                             name = "hyperbolic", parameter = "scale", zero_distance = FALSE)
+  late <- decay_kernel(
+    function(distance, sigma) ifelse(distance > 2000, NA_real_, exp(-distance / sigma)),
+    name = "late-failure", parameter = "scale")
+  declare <- function(kernel, inputs = case$model$substrate) {
+    evaluate_allocation(clm_allocation(inputs, family = kernel, kappa = .65, beta = 1.3, v0 = 4),
+                        c(sigma = 2))
+  }
+  # The shared fixture is first used before any mock is installed.
+  fixed_snapshot <- plateau_sources()$fixed$solved$prediction_snapshot
+  legacy_inputs <- case$model$substrate
+  legacy_inputs$input_policy$kernel_domain <- "legacy_zero"
+  strict <- declare(hyperbolic)
+  legacy <- declare(hyperbolic, legacy_inputs)
+  declared_late <- declare(late)
+  expect_identical(legacy$prediction_snapshot$input_policy$kernel_domain, "legacy_zero")
+  zero <- case$distance
+  zero[1, 1] <- 0
+  # A kernel declared undefined at zero refuses finite zero travel, but not an
+  # absent or unknown edge, and not positive travel.
+  message <- "hyperbolic decay requires strictly positive finite travel distances"
+  expect_error(predict_allocation(strict, zero), message)
+  expect_error(predict_allocation(strict, zero, missing_travel = "legacy_zero"), message)
+  for (value in c(Inf, NA)) {
+    request <- case$distance
+    request[1, 1] <- value
+    expect_no_error(predict_allocation(strict, request))
+  }
+  oracle <- clm_oracle(case$distance, rep(0, 3), case$supply, 2, v0 = 4, beta = 1.3, kappa = .65,
+                       kernel = function(distance, sigma) 1 / (distance * sigma))
+  expect_equal(unname(predict_allocation(strict, case$distance,
+    outputs = "allocation")$outputs$allocation), unname(oracle$allocation), tolerance = 1e-12)
+  # Only an explicit legacy request on a legacy source accepts it: the infinite
+  # weight at zero travel is then zeroed and flagged, as for the built-in kernels.
+  expect_error(predict_allocation(legacy, zero), message)
+  imputed <- predict_allocation(legacy, zero, missing_travel = "legacy_zero",
+                                outputs = c("rho", "allocation"))
+  zeroed <- clm_oracle(zero, rep(0, 3), case$supply, 2, v0 = 4, beta = 1.3, kappa = .65,
+                       kernel = function(distance, sigma) 1 / (distance * sigma))
+  expect_identical(imputed$validity$legacy_kernel_imputed, c(TRUE, FALSE, FALSE))
+  expect_identical(unname(imputed$outputs$allocation[1, 1]), 0)
+  expect_equal(unname(imputed$outputs$allocation), unname(zeroed$allocation), tolerance = 1e-12)
+  # A kernel that fails only beyond its test grid is refused on strict inputs.
+  far <- case$distance
+  far[2, 3] <- 3000
+  expect_error(predict_allocation(declared_late, far),
+               "decay kernel is invalid on finite requested travel")
+  expect_no_error(predict_allocation(declared_late, case$distance))
+  # The engine checks sigma against the declared bounds itself, so a source that
+  # skipped validation is refused.
+  testthat::local_mocked_bindings(.clm_prediction_source = function(source) source)
+  request <- plateau_request()[1:3, ]
+  expect_no_error(.predict_clm(fixed_snapshot, request))
+  for (sigma in c(0.2, 41)) {
+    bad <- fixed_snapshot
+    bad$theta[["sigma"]] <- sigma
+    expect_error(.predict_clm(bad, request), "plateau decay requires sigma from 0.25 to 40",
+                 info = sigma)
+  }
+})
+
+test_that("a fit of a declared kernel prints and summarizes the meaning of sigma", {
+  fit <- plateau_sources()$fitted$fit
+  label <- "plateau (sigma = scale)"
+  expect_true(paste("family:", label) %in% utils::capture.output(print(fit$best)))
+  expect_identical(summary(fit$best)$family_label, label)
+  expect_identical(summary(fit$best)$family, "plateau")
+  expect_true(paste("family:", label) %in% utils::capture.output(print(summary(fit$best))))
+  expect_true(paste("family:", label) %in% utils::capture.output(print(summary(fit))))
+  # The built-in label does not depend on a saved declaration.
+  gaussian <- alloc_prediction_sources()[["gaussian fitted"]]$fit
+  expect_true("family: gaussian (sigma = travel scale)" %in% utils::capture.output(print(gaussian)))
+})

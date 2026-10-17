@@ -291,7 +291,10 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' vector only; inspect numeric validity before interpreting a map. Supply/theta
 #' overrides are deliberately absent. A changed system requires reevaluation.
 #' @param source A selected multistart result, NFXP fit or fixed evaluation with
-#'   a valid built-in CLM prediction snapshot. Older objects need regeneration.
+#'   a valid CLM prediction snapshot, for a built-in decay kernel or one declared
+#'   with [decay_kernel()]. Older objects need regeneration. The snapshot of a
+#'   declared kernel carries its code and predicting runs it, so use saved
+#'   results only from sources you trust.
 #' @param distance Numeric requested-origin-by-facility travel matrix with
 #'   complete facility column IDs. Named axes align independently; requested
 #'   origin IDs may define a new domain outside the fitted load support.

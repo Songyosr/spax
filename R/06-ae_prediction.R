@@ -1,15 +1,24 @@
 # Private fixed-system CLM prediction --------------------------------------
 
+# The specification a snapshot keeps: the built-in fields and, for a declared
+# decay kernel only, the declaration itself (plain data), appended last.
 .clm_prediction_spec <- function(spec) {
-  spec[c("family", "allocation", "kappa", "beta", "v0", "fit_beta", "fit_v0")]
+  out <- spec[c("family", "allocation", "kappa", "beta", "v0", "fit_beta", "fit_v0")]
+  kernel <- spec[["kernel", exact = TRUE]]
+  if (!is.null(kernel)) out$kernel <- kernel
+  out
 }
 
 .new_clm_prediction_snapshot <- function(problem, step, evaluated) {
   declaration <- step[["clm_prediction", exact = TRUE]]
   if (is.null(declaration) || !isTRUE(evaluated$converged)) return(NULL)
   s <- problem$substrate
+  # Built-in kernels keep the v1 record; a declared kernel writes v2, which
+  # differs only in its schema, kind and the declaration in its specification.
+  declared <- !is.null(declaration$spec[["kernel", exact = TRUE]])
   # Plain O(J) values only: no provider closure, raster, origin registry or P.
-  list(schema = "spax_clm_prediction_v1", kind = "builtin_static_clm",
+  list(schema = if (declared) "spax_clm_prediction_v2" else "spax_clm_prediction_v1",
+    kind = if (declared) "declared_kernel_static_clm" else "builtin_static_clm",
     spec = declaration$spec, theta = declaration$theta,
     facility_ids = as.character(s$facility_ids), supply = as.numeric(s$S[, 1]),
     utilization = as.numeric(evaluated$outputs$utilization),
@@ -18,22 +27,40 @@
                        zero_load_ratio = "unsupported_capacity"))
 }
 
+# Accepts the v1 record of a built-in kernel exactly as before, and the v2 record
+# of a declared kernel: the same fields, with the declaration appended to the
+# specification. The declaration is checked as data (its code is parsed, never
+# run, here); it must be a custom declaration that names the family.
 .validate_clm_prediction_snapshot <- function(x) {
   fields <- c("schema", "kind", "spec", "theta", "facility_ids", "supply",
               "utilization", "input_metadata", "input_policy", "provenance")
-  if (!is.list(x) || !identical(names(x), fields) ||
-      !identical(x$schema, "spax_clm_prediction_v1") ||
-      !identical(x$kind, "builtin_static_clm")) {
+  fielded <- is.list(x) && identical(names(x), fields)
+  v1 <- fielded && identical(x$schema, "spax_clm_prediction_v1") &&
+    identical(x$kind, "builtin_static_clm")
+  v2 <- fielded && identical(x$schema, "spax_clm_prediction_v2") &&
+    identical(x$kind, "declared_kernel_static_clm")
+  if (!v1 && !v2) {
     stop("unsupported prediction snapshot; regenerate the evaluated CLM source")
   }
   spec <- x$spec
   expected <- c("family", "allocation", "kappa", "beta", "v0", "fit_beta", "fit_v0")
+  if (v2) expected <- c(expected, "kernel")
   scalar_choice <- function(value, choices) {
     is.character(value) && length(value) == 1L && !is.na(value) && value %in% choices
   }
   if (!is.list(spec) || !identical(names(spec), expected) ||
-      !scalar_choice(spec$family, c("gaussian", "exponential", "power")) ||
       !identical(spec$allocation, "clm")) stop("invalid CLM snapshot specification")
+  if (v1 && !scalar_choice(spec$family, c("gaussian", "exponential", "power"))) {
+    stop("invalid CLM snapshot specification")
+  }
+  if (v2) {
+    reason <- tryCatch({ .validate_decay_kernel(spec$kernel); NULL },
+                       error = function(e) conditionMessage(e))
+    if (!is.null(reason)) stop("invalid CLM snapshot specification: ", reason)
+    if (!isFALSE(spec$kernel$builtin) || !identical(spec$family, spec$kernel$name)) {
+      stop("invalid CLM snapshot specification")
+    }
+  }
   for (key in c("kappa", "beta", "v0")) {
     z <- spec[[key]]
     if (!is.numeric(z) || length(z) != 1L || !is.finite(z) ||
@@ -49,6 +76,9 @@
       !identical(names(x$theta), parameters) ||
       any(!is.finite(x$theta) | x$theta < 0)) stop("invalid CLM snapshot theta")
   if (spec$fit_beta && x$theta[["beta"]] <= 0) stop("snapshot beta must be positive")
+  if (v2 && (x$theta[["sigma"]] < spec$kernel$lower || x$theta[["sigma"]] > spec$kernel$upper)) {
+    stop("invalid CLM snapshot theta: sigma is outside the bounds of its decay kernel")
+  }
   ids <- .allocation_ids(x$facility_ids, "snapshot facility IDs")
   if (!identical(ids, x$facility_ids)) stop("snapshot facility IDs must be strings")
   for (key in c("supply", "utilization")) {
@@ -180,6 +210,11 @@
 #' other redundant small fields. Editing these fields is not a scenario update:
 #' prepare and evaluate a changed system. Coordinated manual mutation of every
 #' copied field cannot be verified against historical travel and is unsupported.
+#' The snapshot of a model with a declared decay kernel (see [decay_kernel()])
+#' keeps the declaration, including its code, in its specification. Validation
+#' parses the code and never runs it; predicting rebuilds the function in the
+#' base environment and runs it on the requested travel, with sigma inside the
+#' declared bounds. Use saved results only from sources you trust.
 #'
 #' The result holds selected outputs, IDs, separate probability/demand/capacity
 #' validity, declared units/policies and compact facility values. Optional spatial
@@ -240,7 +275,20 @@
   if (!legacy && spec$family == "gaussian" && sigma <= 0) {
     stop("gaussian decay requires positive sigma")
   }
-  kernel <- calc_decay(distance, spec$family, sigma, snap = TRUE)
+  # A declared kernel (the v2 snapshot) also needs sigma inside its bounds and,
+  # when declared undefined at distance zero, no finite zero travel; its code is
+  # rebuilt from the saved declaration and run on the requested travel below.
+  declared <- spec[["kernel", exact = TRUE]]
+  if (!is.null(declared)) {
+    if (sigma < declared$lower || sigma > declared$upper) {
+      stop(declared$name, " decay requires sigma from ", format(declared$lower), " to ",
+           format(declared$upper))
+    }
+    if (!legacy && !declared$zero_distance && minimum_distance == 0) {
+      stop(declared$name, " decay requires strictly positive finite travel distances")
+    }
+  }
+  kernel <- .decay_weights(spec$family, declared, distance, sigma)
   rm(distance)
   kernel_min <- min(kernel, Inf, na.rm = TRUE)
   kernel_max <- max(kernel, 0, na.rm = TRUE)

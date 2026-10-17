@@ -475,10 +475,10 @@
   # the bind closure that runs inside the optimizer.
   kernel <- spec[["kernel", exact = TRUE]]
   kernel_fun <- if (!is.null(kernel)) .decay_kernel_function(kernel)
-  # Prediction snapshots exist for the built-in kernels only; the internal
-  # no-decay family never has one (custom kernels follow in SPAX-052 T3).
-  has_snapshot <- spec$allocation == "clm" && is.null(kernel) &&
-    !identical(spec$family, "none")
+  # Corrected CLM models declare a prediction snapshot for the built-in kernels
+  # and for a declared kernel (kept in the snapshot specification as plain data);
+  # the internal no-decay family never has one.
+  has_snapshot <- spec$allocation == "clm" && !identical(spec$family, "none")
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
@@ -601,6 +601,9 @@
 #' snapshot containing the actual specification, theta, aligned supply/load and
 #' declared input policy/units. Requested-location prediction uses this record
 #' after serialization without retaining the problem or original travel matrix.
+#' A model with a declared decay kernel (see [decay_kernel()]) attaches the same
+#' record with the declaration, which is plain data, appended to the
+#' specification; the record then has a separate schema version.
 #' @param requested_outputs Optional output names to materialize in addition to
 #'   the provider's default outputs. `NULL` retains the legacy output callback.
 #' @keywords internal

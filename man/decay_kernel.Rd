@@ -41,9 +41,10 @@ its grid, and a model from \code{\link[=clm_allocation]{clm_allocation()}} refus
 contain a finite zero travel time when it is evaluated or fitted.}
 
 \item{smooth}{\code{FALSE} declares a kernel that is not smooth in \code{sigma} (steps
-or thresholds). It can be evaluated and used in FCA, and a model built with
-\code{\link[=clm_allocation]{clm_allocation()}} can be evaluated at fixed parameters with
-\code{\link[=evaluate_allocation]{evaluate_allocation()}}, but \code{\link[=fit_allocation]{fit_allocation()}} refuses it, because model
+or thresholds). It can be evaluated, predicted and used in FCA: a model built
+with \code{\link[=clm_allocation]{clm_allocation()}} can be evaluated at fixed parameters with
+\code{\link[=evaluate_allocation]{evaluate_allocation()}} and used for requested-location prediction with
+\code{\link[=predict_allocation]{predict_allocation()}}, but \code{\link[=fit_allocation]{fit_allocation()}} refuses it, because model
 fitting and bootstrapping need a kernel that is smooth in \code{sigma}.}
 
 \item{args}{A named list of fixed extra arguments for \code{fun}. Its names must
@@ -94,7 +95,12 @@ text or as given. A function that fails a check is refused with the reason.
 
 \strong{Saving.} The stored code is parsed, and turned into a function without
 running it, whenever the kernel is used; running the kernel runs that code.
-As with any R function, use declarations only from sources you trust.
+As with any R function, use declarations only from sources you trust. Fits,
+evaluations and predictions that use a declared kernel carry its code, and
+\code{saveRDS()} saves it with them. Using such a result again, for example to
+predict from it after \code{readRDS()}, runs that code, so read saved results only
+from sources you trust, as for any file that holds functions such as a loss
+function.
 }
 \examples{
 # A built-in declaration behaves like its method string

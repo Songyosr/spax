@@ -40,7 +40,12 @@
 #'
 #' **Saving.** The stored code is parsed, and turned into a function without
 #' running it, whenever the kernel is used; running the kernel runs that code.
-#' As with any R function, use declarations only from sources you trust.
+#' As with any R function, use declarations only from sources you trust. Fits,
+#' evaluations and predictions that use a declared kernel carry its code, and
+#' `saveRDS()` saves it with them. Using such a result again, for example to
+#' predict from it after `readRDS()`, runs that code, so read saved results only
+#' from sources you trust, as for any file that holds functions such as a loss
+#' function.
 #'
 #' @param fun A built-in kernel name (`"gaussian"`, `"exponential"` or
 #'   `"power"`), or a closure `function(distance, sigma, ...)` that returns the
@@ -59,9 +64,10 @@
 #'   its grid, and a model from [clm_allocation()] refuses prepared inputs that
 #'   contain a finite zero travel time when it is evaluated or fitted.
 #' @param smooth `FALSE` declares a kernel that is not smooth in `sigma` (steps
-#'   or thresholds). It can be evaluated and used in FCA, and a model built with
-#'   [clm_allocation()] can be evaluated at fixed parameters with
-#'   [evaluate_allocation()], but [fit_allocation()] refuses it, because model
+#'   or thresholds). It can be evaluated, predicted and used in FCA: a model built
+#'   with [clm_allocation()] can be evaluated at fixed parameters with
+#'   [evaluate_allocation()] and used for requested-location prediction with
+#'   [predict_allocation()], but [fit_allocation()] refuses it, because model
 #'   fitting and bootstrapping need a kernel that is smooth in `sigma`.
 #' @param args A named list of fixed extra arguments for `fun`. Its names must
 #'   be arguments of `fun` other than `distance` and `sigma`; its values must be
@@ -220,19 +226,31 @@ print.spax_decay_kernel <- function(x, ...) {
 # Evaluate a custom kernel on the finite entries of a numeric vector or matrix and
 # return an array of the input's shape. An infinite distance is an absent edge and
 # gets the weight 0, as with the built-in kernels; a missing distance keeps NA.
-# `fun` is the rebuilt function when the caller already has it.
+# `fun` is the rebuilt function when the caller already has it. When every
+# distance is finite (as in prediction), the kernel runs on the input itself, so
+# no full-size copies are made.
 .eval_decay_kernel <- function(kernel, distance, sigma, fun = NULL) {
   finite <- is.finite(distance)
-  out <- rep(NA_real_, length(distance))
-  if (any(finite)) {
+  if (length(distance) && all(finite)) {
     if (is.null(fun)) fun <- .decay_kernel_function(kernel)
-    weights <- do.call(fun, c(list(distance[finite], sigma), kernel$args))
-    if (!is.numeric(weights) || length(weights) != sum(finite)) {
+    out <- do.call(fun, c(list(distance, sigma), kernel$args))
+    if (!is.numeric(out) || length(out) != length(distance)) {
       stop("the kernel must return one numeric value for each distance")
     }
-    out[finite] <- weights
+    attributes(out) <- NULL
+    storage.mode(out) <- "double"
+  } else {
+    out <- rep(NA_real_, length(distance))
+    if (any(finite)) {
+      if (is.null(fun)) fun <- .decay_kernel_function(kernel)
+      weights <- do.call(fun, c(list(distance[finite], sigma), kernel$args))
+      if (!is.numeric(weights) || length(weights) != sum(finite)) {
+        stop("the kernel must return one numeric value for each distance")
+      }
+      out[finite] <- weights
+    }
+    out[!is.na(distance) & distance == Inf] <- 0
   }
-  out[!is.na(distance) & distance == Inf] <- 0
   if (is.null(dim(distance))) {
     names(out) <- names(distance)
   } else {
@@ -275,7 +293,8 @@ print.spax_decay_kernel <- function(x, ...) {
   }
   .check_decay_kernel_name(x$name)
   if (!scalar_string(x$code)) stop("code must be one string")
-  formal_list <- as.list(formals(.decay_kernel_function(x)))
+  fun <- .decay_kernel_function(x)
+  formal_list <- as.list(formals(fun))
   if (length(formal_list) < 2L || !identical(names(formal_list)[1:2], c("distance", "sigma"))) {
     stop("the first two arguments of the function must be named distance and sigma")
   }

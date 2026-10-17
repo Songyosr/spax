@@ -13,6 +13,21 @@ test_that("a fresh process predicts, maps and rebuilds coverage from saved objec
     rownames(request) <- c("newA", "newB")
     requests[[length(requests) + 1L]] <- list(source = source, request = request)
   }
+  # A declared kernel keeps its code in the snapshot as plain text: the fresh
+  # process rebuilds and runs it, without the function declared here.
+  plateau <- decay_kernel(
+    function(distance, sigma) {
+      # Full weight within 1.5 minutes, Gaussian decay beyond.
+      ifelse(distance <= 1.5, 1, exp(-(distance - 1.5)^2 / (2 * sigma^2)))
+    },
+    name = "plateau", parameter = "scale"
+  )
+  case <- alloc_prediction_case()
+  declared <- evaluate_allocation(clm_allocation(case$model$substrate, family = plateau,
+    kappa = .65, beta = 1.3, v0 = 4), c(sigma = 2))
+  request <- case$distance[c(3, 1), ]
+  rownames(request) <- c("newA", "newB")
+  requests[[length(requests) + 1L]] <- list(source = declared, request = request)
   expected <- lapply(requests, function(r) {
     predict_allocation(r$source, r$request, outputs = outputs)
   })

@@ -29,5 +29,8 @@ Successful built-in corrected CLM evaluations attach a plain O(J) prediction
 snapshot containing the actual specification, theta, aligned supply/load and
 declared input policy/units. Requested-location prediction uses this record
 after serialization without retaining the problem or original travel matrix.
+A model with a declared decay kernel (see \code{\link[=decay_kernel]{decay_kernel()}}) attaches the same
+record with the declaration, which is plain data, appended to the
+specification; the record then has a separate schema version.
 }
 \keyword{internal}
