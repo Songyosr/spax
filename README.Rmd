@@ -25,9 +25,11 @@ supply scenarios. Both use explicit demand, facility supply and travel inputs.
 Their normalization and output meanings remain model-specific.
 
 Existing `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()` and `compute_access()`
-workflows remain supported. The allocation functions are an additional route;
-they do not replace the FCA functions. Internal feedback-model machinery is
-private and is not part of the experimental CLM interface.
+workflows remain supported, and the experimental `spax_3sfca()` and
+`spax_huff2sfca()` add selection-weighted variants. The allocation functions are
+an additional route; they do not replace the FCA functions. Internal
+feedback-model machinery is private and is not part of the experimental CLM
+interface.
 
 ## Install the development version
 

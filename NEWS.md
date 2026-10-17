@@ -3,6 +3,18 @@
 The changes below are on the development branch and are not a stable release
 yet; record the source commit when reproducing an analysis.
 
+* New experimental `spax_3sfca()` computes the three-step floating catchment
+  area index. Each origin first divides its demand among the facilities with
+  selection weights, a facility's share of the origin's decay weights, and both
+  steps then use the product of the decay and selection weights. The selection
+  weights can use a different decay from the one that weights distance
+  (`selection_params`). Because both steps share one kernel, the index returns
+  the total supply of the facilities that gather demand.
+* New experimental `spax_huff2sfca()` is the same calculation with Huff
+  selection probabilities, which also depend on facility attractiveness (by
+  default the single supply measure; `alpha` is its exponent). With
+  `alpha = 0` it equals `spax_3sfca()`. Several supply measures need an
+  explicit `attractiveness`.
 * New experimental `calc_demand()` computes demand from population groups
   (for example age bands) and group-specific rates, times a common scale. With
   a total-population grid, each cell's group composition is applied to its
