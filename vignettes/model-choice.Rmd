@@ -310,8 +310,8 @@ round(100 * outside, 2)
 ```
 
 ```{r check-values, include = FALSE}
-r_min <- round(cor(areas$clm_minutes, observed_minutes), 2)
-r_tot <- round(cor(colSums(fitted(fit)), colSums(observed)), 2)
+r_min <- sprintf("%.2f", cor(areas$clm_minutes, observed_minutes))
+r_tot <- sprintf("%.2f", cor(colSums(fitted(fit)), colSums(observed)))
 ```
 
 Modelled and observed mean travel times correlate at `r r_min` across areas,
