@@ -51,6 +51,51 @@ test_that("loss differences are withheld when inputs are not verified or differ"
                 "like-for-like")
 })
 
+test_that("a fit saved and read back is compared like for like with the original", {
+  k <- compare_case()
+  f <- k$f
+  # The fit holds the package's Poisson loss function. Where package functions
+  # keep source references (development loading), a copy read back from disk
+  # differs from the original unless the comparison ignores them.
+  path <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(k$gauss, path)
+  reloaded <- readRDS(path)
+  cmp <- compare_allocations(list(original = k$gauss, reloaded = reloaded),
+                             models = list(original = f$model, reloaded = f$model))
+  tab <- as.data.frame(cmp)
+  expect_true(all(tab$comparable))
+  expect_identical(tab$not_comparable, c("", ""))
+  expect_identical(tab$loss_difference, c(0, 0))
+  # Another loss function is still not like for like.
+  sse <- fit_allocation(f$model, f$observed, f$starts, f$lower, f$upper,
+                        loss = "weighted_sse", control = list(maxit = 100))
+  other <- as.data.frame(compare_allocations(list(a = reloaded, b = sse),
+                                             models = list(a = f$model, b = f$model)))
+  expect_false(other$comparable[2])
+  expect_match(other$not_comparable[2], "loss")
+})
+
+test_that(".same_function() compares code and environments, not source references", {
+  # Nested braces carry source references of their own. The global environment is
+  # the same one after a save and read, as a package namespace is.
+  text <- "function(x) {\n  if (x > 0) {\n    x\n  } else {\n    -x\n  }\n}"
+  kept <- eval(parse(text = text, keep.source = TRUE), globalenv())
+  path <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(kept, path)
+  expect_true(.same_function(kept, readRDS(path)))
+  expect_true(.same_function(kept, eval(parse(text = text, keep.source = FALSE), globalenv())))
+  expect_true(.same_function(sum, sum))
+
+  # Different code, a different environment, and values that are not functions
+  changed <- eval(parse(text = sub("-x", "x * 2", text, fixed = TRUE), keep.source = TRUE),
+                  globalenv())
+  expect_false(.same_function(kept, changed))
+  expect_false(.same_function(.poisson_loss, .weighted_sse_loss))
+  expect_false(.same_function(kept, eval(parse(text = text, keep.source = TRUE), new.env())))
+  expect_false(.same_function(kept, "kept"))
+  expect_false(.same_function(NULL, NULL))
+})
+
 test_that("zone summaries keep the identity and report class changes", {
   k <- compare_case()
   f <- k$f

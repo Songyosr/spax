@@ -73,6 +73,17 @@ test_that("inference aligns masked counts and dependence declarations by IDs", {
   expect_error(.allocation_inference(modified, fit, declared), "source conflicts")
 })
 
+test_that("inference accepts a fit read back from disk as it accepts the original", {
+  f <- alloc_generated_case()
+  fit <- alloc_generated_fit()
+  path <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(fit, path)
+  reloaded <- readRDS(path)
+  observation <- .observation(f, f$y)
+  expect_identical(.allocation_inference(f$model, reloaded, observation),
+                   .allocation_inference(f$model, fit, observation))
+})
+
 test_that("source agreement includes supply invisible to calibration support", {
   f <- alloc_generated_case(); d <- f$distance; d[, 24] <- Inf
   model <- clm_allocation(prepare_allocation(f$demand, f$supply, d), fit_v0 = TRUE)

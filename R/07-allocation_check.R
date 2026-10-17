@@ -12,10 +12,12 @@
 #' rather than on the counts. The comparators are:
 #'
 #' * `fitted`: the selected fit, recomputed at its parameters.
-#' * `no_decay`: distance decay switched off within the prepared travel support
-#'   (absent edges stay absent). Origins choose among reachable facilities in
-#'   proportion to attractiveness, and the outside mass is re-optimized when the
-#'   model fits it.
+#' * `no_decay`: distance decay switched off within the prepared travel support:
+#'   every finite travel time gets the same weight, whatever decay kernel the
+#'   model uses, and absent edges stay absent. Origins choose among reachable
+#'   facilities in proportion to attractiveness, and the outside mass is
+#'   re-optimized when the model fits it. Its reported parameters leave out the
+#'   decay parameter `sigma`, which this allocation does not use.
 #' * `capacity_only`: facility loads proportional to attractiveness, ignoring
 #'   travel entirely, with one fitted scale factor. Available for facility
 #'   `utilization` targets only.
@@ -39,9 +41,10 @@
 #'   which the share of expected trips longer than each value is reported.
 #' @return An `ae_allocation_check` with a `comparators` table (loss, loss
 #'   difference from the fit, parameters, need-weighted contact and implied
-#'   trips), the exact comparator `parameters`, the selected fit's parameter
-#'   `boundary` flags, `search_at_edge`, and logical `flags`. Use `print()` or
-#'   `as.data.frame()`.
+#'   trips), the exact comparator `parameters` (those of `no_decay` are the
+#'   re-optimized parameters other than `sigma`, an empty vector when the model
+#'   fits only `sigma`), the selected fit's parameter `boundary` flags,
+#'   `search_at_edge`, and logical `flags`. Use `print()` or `as.data.frame()`.
 #' @family experimental allocation workflow
 #' @export
 #' @md
@@ -59,7 +62,6 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   sub <- model$substrate
   output <- ctx$output
   loss_of <- ctx$loss_of
-  solve_at <- ctx$solve_at
   theta <- best$theta
   fitted_out <- ctx$fitted_outputs
   fitted_loss <- ctx$fitted_loss
@@ -67,12 +69,13 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   beta_hat <- if (has_beta) theta[["beta"]] else spec$beta
   edges <- c(no_decay = FALSE, capacity_only = FALSE)
 
-  ## No decay within the travel support: the decay parameter at its flat limit;
-  ## the outside mass (and beta, when fitted) are re-optimized.
-  flat <- c(gaussian = 1e8, exponential = 1e-10, power = 1e-10)[[spec$family]]
+  ## No decay within the travel support: the model with the internal no-decay
+  ## family (weight 1 on every finite travel time, 0 on absent edges), solved at
+  ## the fitted parameters, whose sigma that family ignores. The outside mass
+  ## (and beta, when fitted) are re-optimized.
+  solve_flat <- .allocation_solver(.no_decay_model(model), output)
   flat_theta <- theta
-  flat_theta[["sigma"]] <- flat
-  flat_loss_at <- function(th) loss_of(solve_at(th)[[output]])
+  flat_loss_at <- function(th) loss_of(solve_flat(th)[[output]])
   if ("v0" %in% names(theta)) {
     v0_eval <- function(log_v0) {
       th <- flat_theta
@@ -95,8 +98,10 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
       "Nelder-Mead" else "BFGS", control = list(reltol = 1e-12, maxit = 2000))
     if (opt$value < flat_loss_at(flat_theta)) flat_theta[free] <- exp(opt$par)
   }
-  flat_out <- solve_at(flat_theta)
+  flat_out <- solve_flat(flat_theta)
   flat_loss <- loss_of(flat_out[[output]])
+  # The decay parameter is not part of this allocation: report the others.
+  no_decay_theta <- flat_theta[setdiff(names(flat_theta), "sigma")]
 
   ## Capacity only, ignoring travel: loads proportional to attractiveness,
   ## with one fitted scale (and beta, when the model fits it).
@@ -154,7 +159,10 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   tab$loss_difference <- tab$loss - fitted_loss
   tab$parameters <- c(
     paste(sprintf("%s=%.4g", names(theta), theta), collapse = ", "),
-    paste(sprintf("%s=%.4g", names(flat_theta), flat_theta), collapse = ", "),
+    if (length(no_decay_theta)) {
+      paste0("no decay; ", paste(sprintf("%s=%.4g", names(no_decay_theta), no_decay_theta),
+                                 collapse = ", "))
+    } else "no decay",
     if (is.na(cap_loss)) NA_character_ else
       paste(sprintf("%s=%.4g", names(cap_par)[c(TRUE, has_beta)],
                     cap_par[c(TRUE, has_beta)]), collapse = ", "))
@@ -168,7 +176,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
     decay_parameter_at_bound = isTRUE(boundary[["sigma"]]),
     comparator_search_at_edge = any(edges))
   structure(list(comparators = tab, boundary = boundary, flags = flags,
-                 parameters = list(fitted = theta, no_decay = flat_theta,
+                 parameters = list(fitted = theta, no_decay = no_decay_theta,
                                    capacity_only = cap_par),
                  search_at_edge = edges,
                  family = spec$family, output = output,
@@ -177,15 +185,45 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
             class = "ae_allocation_check")
 }
 
+# Solve `model` at a parameter vector and return the outputs the checks read: the
+# fit's own output, flow and access.
+.allocation_solver <- function(model, output) {
+  function(theta) {
+    .solve_problem(model, theta, keep_history = FALSE, warn = FALSE, check = FALSE,
+                   requested_outputs = unique(c(output, "flow", "access")))$outputs
+  }
+}
+
+# The model with distance decay switched off: a copy with the internal "none"
+# family (weight 1 on every finite travel time, 0 on absent edges), no declared
+# kernel and so no prediction snapshot, with its map rebuilt from that
+# specification. The parameter contract is unchanged, so the model is solved at a
+# full parameter vector whose sigma it ignores.
+.no_decay_model <- function(model) {
+  spec <- model$metadata$spec
+  spec$family <- "none"
+  spec[["kernel"]] <- NULL
+  model$metadata$spec <- spec
+  model$bind <- .compile_huff_map(spec, model$substrate)$bind
+  model
+}
+
 # Reproduce a selected fit from its model: the fit's own loss on its own masked,
-# ID-aligned targets. Errors when the model did not produce the fit.
+# ID-aligned targets. Errors when the model did not produce the fit. A fit with
+# a prediction snapshot must also carry this model's decay kernel declaration
+# (none for a built-in kernel), which tells apart two declared kernels that share
+# a name. Other constants of the specification are not compared: the loss check
+# below catches those that change the fit.
 .allocation_fit_context <- function(model, best) {
   spec <- model$metadata$spec
   if (!identical(best$family, spec$family) || !identical(best$allocation_form, spec$allocation) ||
       !identical(as.character(best$coverage_meta$facility_ids),
                  as.character(model$substrate$facility_ids)) ||
       !isTRUE(all.equal(as.numeric(best$coverage_meta$demand), as.numeric(model$substrate$D_active))) ||
-      !isTRUE(all.equal(as.numeric(best$coverage_meta$supply), as.numeric(model$substrate$S)))) {
+      !isTRUE(all.equal(as.numeric(best$coverage_meta$supply), as.numeric(model$substrate$S))) ||
+      (!is.null(best$prediction_snapshot) &&
+         !identical(best$prediction_snapshot$spec[["kernel", exact = TRUE]],
+                    spec[["kernel", exact = TRUE]]))) {
     stop("fit does not belong to this model")
   }
   output <- best$output
@@ -196,10 +234,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
                                           observed = observed), best$loss_args))
     if (is.numeric(value) && length(value) == 1L && is.finite(value)) value else Inf
   }
-  solve_at <- function(theta) {
-    .solve_problem(model, theta, keep_history = FALSE, warn = FALSE, check = FALSE,
-                   requested_outputs = unique(c(output, "flow", "access")))$outputs
-  }
+  solve_at <- .allocation_solver(model, output)
   fitted_outputs <- solve_at(best$theta)
   fitted_loss <- loss_of(fitted_outputs[[output]])
   if (!isTRUE(all.equal(fitted_loss, best$loss, tolerance = 1e-6))) {

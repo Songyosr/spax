@@ -17,9 +17,16 @@ clm_allocation(
 \arguments{
 \item{inputs}{An \code{ae_prepared_inputs} object from checked preparation.}
 
-\item{family}{Travel kernel: Gaussian, exponential or power. Gaussian sigma
-is a travel scale, exponential sigma a rate, and power sigma an exponent.
-Power requires strictly positive finite travel distances.}
+\item{family}{Travel kernel: \code{"gaussian"}, \code{"exponential"}, \code{"power"}, or a
+declaration from \code{\link[=decay_kernel]{decay_kernel()}}. Gaussian sigma is a travel scale,
+exponential sigma a rate, and power sigma an exponent. Power requires
+strictly positive finite travel distances. A built-in declaration, such as
+\code{decay_kernel("gaussian")}, is the same as its string. For a declaration of
+your own function, sigma has the meaning the declaration gives it, the
+declaration's \code{lower} and \code{upper} bounds apply to sigma (starts, bounds and
+parameters outside them are refused, and sigma must be positive), and
+\code{zero_distance = FALSE} refuses a finite zero travel time in the prepared
+inputs.}
 
 \item{kappa}{Positive supply scale used in attractiveness, not in reported
 raw supply or capacity attribution.}
@@ -34,7 +41,7 @@ returns zero mass; that row is not a normalized choice distribution.}
 to fitted parameters.}
 }
 \value{
-The existing private \code{ae_problem} for built-in corrected static CLM.
+The existing private \code{ae_problem} for corrected static CLM.
 Parameter order is sigma, then v0 and beta when their flags are true.
 }
 \description{
@@ -47,6 +54,7 @@ Other experimental allocation workflow:
 \code{\link{calc_travel_time}()},
 \code{\link{check_allocation}()},
 \code{\link{compare_allocations}()},
+\code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{predict_allocation}()},

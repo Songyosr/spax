@@ -154,8 +154,8 @@ plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), .
 #' @param type Plot a saved interval or successful-draw distribution.
 #' @param ... Additional generic or graphics arguments.
 #' @return `summary()` returns saved estimates, original fit, status, counts,
-#'   diagnostics, capacity support and declarations in a
-#'   `summary.ae_allocation_bootstrap` object.
+#'   diagnostics, capacity support and declarations (and the coverage note, when
+#'   the result has one) in a `summary.ae_allocation_bootstrap` object.
 #'   Print and plot methods return their input invisibly.
 #' @name allocation-bootstrap-methods
 #' @export
@@ -172,7 +172,7 @@ print.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
 summary.ae_allocation_bootstrap <- function(object, ...) {
   .chck_class(object, "ae_allocation_bootstrap", "object")
   draws <- object$draws
-  structure(list(status = object$status, reasons = object$reasons,
+  out <- structure(list(status = object$status, reasons = object$reasons,
     counts = data.frame(planned = object$planned, attempted = object$attempted,
       successful = object$successful), estimates = object$intervals,
     diagnostics = list(failed_attempts = sum(draws$success %in% FALSE),
@@ -181,6 +181,8 @@ summary.ae_allocation_bootstrap <- function(object, ...) {
     observation = object$observation, input_metadata = object$input_metadata,
     facility_ids = object$facility_ids, capacity_support = object$capacity_support,
     seed = object$seed), class = "summary.ae_allocation_bootstrap")
+  if (!is.null(object$coverage_note)) out$coverage_note <- object$coverage_note
+  out
 }
 
 #' @rdname allocation-bootstrap-methods
@@ -211,6 +213,7 @@ print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
   for (label in c("capacity_identity", "evidence_scope")) {
     if (is.character(x$settings[[label]])) cat(paste(strwrap(paste(x$settings[[label]], collapse = " ")), collapse = "\n"), "\n")
   }
+  if (is.character(x$coverage_note)) cat(paste(strwrap(paste(x$coverage_note, collapse = " ")), collapse = "\n"), "\n")
   if (!identical(x$status, "complete")) cat("Regular interval reporting is unavailable for this run status.\n")
   if (identical(x$status, "complete") && any(
       x$estimates$status == "conditional_pointwise_bootstrap" &

@@ -11,8 +11,15 @@
   v0 = 0,
   fit_v0 = FALSE,
   fit_beta = FALSE,
-  allocation = c("clm", "huff_decay")
+  allocation = c("clm", "huff_decay"),
+  kernel = NULL
 )
+}
+\arguments{
+\item{kernel}{\code{NULL} for a built-in \code{family}, or a custom \code{spax_decay_kernel}
+declaration (see \code{\link[=decay_kernel]{decay_kernel()}}). The declaration then names the family,
+its bounds become the bounds of \code{sigma}, and the spec carries it as
+\code{spec$kernel}; built-in specs have no \code{kernel} element.}
 }
 \description{
 The no-state member of the ladder: attractiveness is exogenous

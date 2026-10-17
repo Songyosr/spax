@@ -10,16 +10,20 @@ calc_decay(distance, method = "gaussian", sigma = NULL, snap = FALSE, ...)
 \item{distance}{Numeric vector, matrix, or SpatRaster of distances}
 
 \item{method}{Character string specifying the decay function or a custom function:
-"gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...)}
+"gaussian", "exponential", "power", "inverse", "binary", or function(distance, ...);
+or a kernel declared with \code{\link{decay_kernel}}}
 
 \item{sigma}{Parameter controlling the rate of decay. A single number, or a
 SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
-spatially varying catchment (variable-catchment FCA / V2SFCA).}
+spatially varying catchment (variable-catchment FCA / V2SFCA). A
+declared custom kernel needs a single positive number within its
+bounds.}
 
 \item{snap}{Logical; if TRUE, skip input validation}
 
 \item{...}{Additional parameters for custom decay functions, or the offset
-\code{c} of the "inverse" kernel}
+\code{c} of the "inverse" kernel. A declared custom kernel takes none:
+its fixed arguments belong to the declaration.}
 }
 \value{
 Object of the same class as input containing decay weights
@@ -47,6 +51,18 @@ none is given:
 }
 The defaults are historical values, not recommendations: set \code{sigma}
 for the units and scale of your travel times.
+
+A kernel declared with \code{\link{decay_kernel}} can be given as
+\code{method}. A built-in declaration behaves exactly like its name. A
+declared custom kernel needs \code{sigma}, a single positive number within the
+bounds of the declaration, and takes its fixed arguments from the declaration, so
+\code{...} must be empty; a SpatRaster \code{sigma} is refused. It is
+evaluated on the finite distances only: a missing distance has the weight
+\code{NA} and an infinite distance (an absent edge) the weight 0, as with
+the built-in kernels. A negative or non-finite weight at a finite distance is
+an error. A vector or matrix keeps its shape, and a SpatRaster keeps its
+geometry, layer names and missing cells; it is read into memory for a
+declared kernel.
 }
 \examples{
 library(terra)
@@ -70,6 +86,15 @@ gaussian_power <- function(distance, sigma = 30, power = 2, ...) {
   exp(-(distance^2) / (2 * sigma^2)) * distance^(-power)
 }
 w_custom <- calc_decay(r, method = gaussian_power, sigma = 30, power = 1.5)
+
+# A declared kernel records its meaning, bounds and fixed arguments
+plateau <- decay_kernel(
+  function(distance, sigma, plateau = 5) {
+    ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+  },
+  name = "plateau", parameter = "scale", args = list(plateau = 5)
+)
+w_plateau <- calc_decay(r, method = plateau, sigma = 10)
 
 # One layer per facility gives one layer of weights per facility
 distances <- rast(replicate(3, r))

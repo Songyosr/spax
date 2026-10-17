@@ -10,18 +10,22 @@
 #' @section Choose a workflow:
 #' \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}} and
 #' \code{\link{spax_m2sfca}} remain supported public FCA entry points;
-#' \code{\link{compute_access}} is also retained. These take raster demand and
-#' facility travel layers. Multiple supply columns produce independent
-#' accessibility indicators, not interacting resource constraints.
+#' \code{\link{compute_access}} is also retained. The experimental
+#' \code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add selection
+#' weights that divide each origin's demand among the facilities. These take
+#' raster demand and facility travel layers. Multiple supply columns produce
+#' independent accessibility indicators, not interacting resource constraints.
 #'
 #' The six experimental allocation operations are
 #' \code{\link{prepare_allocation}}, \code{\link{clm_allocation}},
 #' \code{\link{fit_allocation}}, \code{\link{evaluate_allocation}},
 #' \code{\link{predict_allocation}} and \code{\link{bootstrap_allocation}}.
 #' They describe one static CLM system with one supply vector and an outside
-#' option. The first five support Gaussian, exponential and power decay;
-#' bootstrap has the narrower scope below. Broader feedback-model declarations
-#' and general-purpose inference are not part of this experimental interface.
+#' option. The first five support Gaussian, exponential and power decay and
+#' kernels declared with \code{\link{decay_kernel}} (fitting needs a kernel that
+#' is smooth in \code{sigma}); bootstrap has the narrower scope below. Broader
+#' feedback-model declarations and general-purpose inference are not part of
+#' this experimental interface.
 #'
 #' @section Inputs, observations and support:
 #' Preserve facility and origin IDs on numeric inputs. Named axes align
@@ -56,10 +60,13 @@
 #' model-based comparison, not a causal intervention estimate.
 #'
 #' @section Conditional bootstrap scope:
-#' \code{bootstrap_allocation} requires Gaussian static CLM with jointly fitted
-#' \code{sigma} and \code{v0}, \code{kappa = beta = 1}, complete whole facility
-#' counts and an unweighted built-in Poisson original fit. Declare the event,
-#' reference period and independent-facility sampling assumption explicitly.
+#' \code{bootstrap_allocation} requires a static CLM with a fitted outside mass
+#' (\code{v0}) and a decay kernel that is smooth in \code{sigma}, either built in
+#' or declared with \code{\link{decay_kernel}}. The supply elasticity \code{beta}
+#' may be fixed or fitted, and \code{kappa} and a fixed \code{beta} may be any
+#' positive values. It also requires complete whole facility counts and an
+#' unweighted built-in Poisson original fit. Declare the event, reference period
+#' and independent-facility sampling assumption explicitly.
 #' Non-overlapping registrations alone do not establish independence.
 #' Demand, travel, supply and the included network stay fixed while facility
 #' observation multiplicities are resampled. Every physical facility remains
@@ -69,11 +76,14 @@
 #' run of 399 attempts and at least 380 finite successful values per quantity.
 #' Refused and incomplete results remain inspectable. Failed attempts are not
 #' replaced; successful inner-boundary estimates remain in the distribution.
-#' Validation in generated 80-origin/40-facility designs under tested fixed-input
-#' laws is not a universal coverage guarantee or validation of an application's
-#' observation law. Regional attributed capacity per demand is a fixed-input
-#' identity and has no bootstrap interval. No simultaneous spatial intervals
-#' are provided. See \code{\link{bootstrap_allocation}} for the full restrictions.
+#' Coverage was evaluated for Gaussian decay with fitted \code{sigma} and
+#' \code{v0}, in generated 80-origin/40-facility designs under tested fixed-input
+#' laws; other kernels and a fitted \code{beta} use the same procedure without a
+#' separate coverage study. This is not a universal coverage guarantee or
+#' validation of an application's observation law. Regional attributed capacity
+#' per demand is a fixed-input identity and has no bootstrap interval. No
+#' simultaneous spatial intervals are provided. See
+#' \code{\link{bootstrap_allocation}} for the full restrictions.
 #'
 #' @section Compatibility and migration:
 #' Existing public FCA calls remain supported. Their independent supply columns

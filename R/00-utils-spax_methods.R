@@ -8,7 +8,9 @@
 #' Prints a concise summary of a spax object, showing key information about the
 #' accessibility analysis without detailed statistics.
 #'
-#' @param x A spax object created by spax_2sfca() or spax_e2sfca()
+#' @param x A spax object created by an FCA function, such as
+#'   \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+#'   \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
@@ -38,9 +40,12 @@ print.spax <- function(x, ...) {
   # Core parameters
   cat("\nParameters:\n")
   if (!is.null(x$parameters$decay_params)) {
-    cat("- Decay function:", x$parameters$decay_params$method)
-    if (!is.null(x$parameters$decay_params$sigma)) {
-      cat(sprintf(" (sigma = %g)", x$parameters$decay_params$sigma))
+    cat("- Decay function:", .decay_kernel_label(x$parameters$decay_params$method))
+    sigma <- x$parameters$decay_params$sigma
+    if (inherits(sigma, "SpatRaster")) {
+      cat(" (sigma = variable (raster))")
+    } else if (!is.null(sigma)) {
+      cat(sprintf(" (sigma = %g)", sigma))
     }
     cat("\n")
   }
@@ -63,7 +68,9 @@ print.spax <- function(x, ...) {
 #' Provides detailed statistical summaries of accessibility analysis results,
 #' including accessibility scores, facility statistics, and model-specific metrics.
 #'
-#' @param x A spax object created by spax_2sfca() or spax_e2sfca()
+#' @param x A spax object created by an FCA function, such as
+#'   \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
+#'   \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}
 #' @param quantiles Numeric vector of probabilities for quantile computation
 #' @param ... Currently ignored, for extensibility
 #'

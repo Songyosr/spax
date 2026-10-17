@@ -32,9 +32,10 @@ which the share of expected trips longer than each value is reported.}
 \value{
 An \code{ae_allocation_check} with a \code{comparators} table (loss, loss
 difference from the fit, parameters, need-weighted contact and implied
-trips), the exact comparator \code{parameters}, the selected fit's parameter
-\code{boundary} flags, \code{search_at_edge}, and logical \code{flags}. Use \code{print()} or
-\code{as.data.frame()}.
+trips), the exact comparator \code{parameters} (those of \code{no_decay} are the
+re-optimized parameters other than \code{sigma}, an empty vector when the model
+fits only \code{sigma}), the selected fit's parameter \code{boundary} flags,
+\code{search_at_edge}, and logical \code{flags}. Use \code{print()} or \code{as.data.frame()}.
 }
 \description{
 Compares a fitted allocation with two simpler allocations on the same loss
@@ -50,10 +51,12 @@ the travel support, such as a catchment limit on the prepared travel times,
 rather than on the counts. The comparators are:
 \itemize{
 \item \code{fitted}: the selected fit, recomputed at its parameters.
-\item \code{no_decay}: distance decay switched off within the prepared travel support
-(absent edges stay absent). Origins choose among reachable facilities in
-proportion to attractiveness, and the outside mass is re-optimized when the
-model fits it.
+\item \code{no_decay}: distance decay switched off within the prepared travel support:
+every finite travel time gets the same weight, whatever decay kernel the
+model uses, and absent edges stay absent. Origins choose among reachable
+facilities in proportion to attractiveness, and the outside mass is
+re-optimized when the model fits it. Its reported parameters leave out the
+decay parameter \code{sigma}, which this allocation does not use.
 \item \code{capacity_only}: facility loads proportional to attractiveness, ignoring
 travel entirely, with one fitted scale factor. Available for facility
 \code{utilization} targets only.
@@ -78,6 +81,7 @@ Other experimental allocation workflow:
 \code{\link{calc_travel_time}()},
 \code{\link{clm_allocation}()},
 \code{\link{compare_allocations}()},
+\code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
 \code{\link{predict_allocation}()},

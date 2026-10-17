@@ -87,7 +87,7 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
       ids = identical(as.character(b$coverage_meta$facility_ids),
                       as.character(ref$coverage_meta$facility_ids)) &&
         identical(coverage[[nm]]$cells$origin_id, coverage[[reference]]$cells$origin_id),
-      loss = identical(b$loss_fn, ref$loss_fn) && identical(b$loss_args, ref$loss_args) &&
+      loss = .same_function(b$loss_fn, ref$loss_fn) && identical(b$loss_args, ref$loss_args) &&
         identical(b$output, ref$output),
       demand = identical(as.numeric(b$coverage_meta$demand), as.numeric(ref$coverage_meta$demand)),
       supply = identical(as.numeric(b$coverage_meta$supply), as.numeric(ref$coverage_meta$supply)),

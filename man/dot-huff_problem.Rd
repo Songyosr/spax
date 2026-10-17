@@ -16,8 +16,13 @@
   fit_beta = FALSE,
   id_col = NULL,
   supply_cols = NULL,
-  allocation = c("clm", "huff_decay")
+  allocation = c("clm", "huff_decay"),
+  kernel = NULL
 )
+}
+\arguments{
+\item{kernel}{\code{NULL} for a built-in \code{family}, or a custom \code{spax_decay_kernel}
+declaration passed on to \code{.huff_spec()}.}
 }
 \description{
 The \code{dT/dstate = 0} member of the ladder: the map is constant, the

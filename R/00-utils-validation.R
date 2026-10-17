@@ -166,3 +166,10 @@
   }
   invisible(TRUE)
 }
+
+# 6. Function Checks ----------------------------------------------------------
+# Same function, ignoring source references, which a saved copy read back can differ in.
+.same_function <- function(a, b) {
+  is.function(a) && is.function(b) &&
+    identical(utils::removeSource(a), utils::removeSource(b))
+}

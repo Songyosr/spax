@@ -157,11 +157,17 @@
 #' The default `clm` allocation is the conditional logit (DEC-013).
 #' Appended order is `sigma`, then
 #' `v0`, then `beta`; all bounded `[0, Inf)` with positive search bounds from the
-#' caller.
+#' caller. A declared decay kernel replaces the bounds of `sigma` with its own.
+#' @param fit_v0,fit_beta Whether `v0` and `beta` are fitted parameters.
+#' @param sigma_lower,sigma_upper Inclusive bounds of `sigma`; the declaration's
+#'   `lower` and `upper` for a declared decay kernel.
 #' @keywords internal
 #' @md
-.huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE) {
+.huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE,
+                                 sigma_lower = 0, sigma_upper = Inf) {
   contract <- .decay_theta_contract()
+  contract$lower <- sigma_lower
+  contract$upper <- sigma_upper
   append_param <- function(contract, name) {
     list(
       names = c(contract$names, name),
@@ -187,13 +193,18 @@
 #' otherwise they (and `kappa`) are constants. `allocation = "clm"` is the
 #' conditional-logit share (DEC-013); `"huff_decay"` preserves the historical
 #' extra decay factor used for one-pass HAAE comparisons.
+#' @param kernel `NULL` for a built-in `family`, or a custom `spax_decay_kernel`
+#'   declaration (see [decay_kernel()]). The declaration then names the family,
+#'   its bounds become the bounds of `sigma`, and the spec carries it as
+#'   `spec$kernel`; built-in specs have no `kernel` element.
 #' @keywords internal
 #' @md
 .huff_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, beta = 1, v0 = 0,
                        fit_v0 = FALSE, fit_beta = FALSE,
-                       allocation = c("clm", "huff_decay")) {
-  family <- match.arg(family)
+                       allocation = c("clm", "huff_decay"),
+                       kernel = NULL) {
+  if (is.null(kernel)) family <- match.arg(family) else family <- kernel$name
   allocation <- match.arg(allocation)
   .chck_positive_scalar(kappa, "kappa")
   .chck_positive_scalar(beta, "beta")
@@ -202,7 +213,7 @@
       !is.logical(fit_beta) || length(fit_beta) != 1L || is.na(fit_beta)) {
     stop("`fit_v0` and `fit_beta` must be TRUE or FALSE")
   }
-  list(
+  spec <- list(
     model = "huff",
     family = family,
     deterministic = TRUE,
@@ -224,8 +235,16 @@
     v0 = as.numeric(v0),
     fit_v0 = isTRUE(fit_v0),
     fit_beta = isTRUE(fit_beta),
-    theta = .huff_theta_contract(fit_v0, fit_beta)
+    theta = .huff_theta_contract(
+      fit_v0, fit_beta,
+      sigma_lower = if (is.null(kernel)) 0 else kernel$lower,
+      sigma_upper = if (is.null(kernel)) Inf else kernel$upper
+    )
   )
+  # Appended only for a declared kernel: a NULL element inside list() would
+  # change the built-in specs.
+  if (!is.null(kernel)) spec$kernel <- kernel
+  spec
 }
 
 #' Create an AE inner problem object
@@ -341,6 +360,8 @@
 #' the shared NFXP runner unchanged.
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
+#' @param kernel `NULL` for a built-in `family`, or a custom `spax_decay_kernel`
+#'   declaration passed on to `.huff_spec()`.
 #' @keywords internal
 #' @md
 .huff_problem <- function(demand, supply = NULL, distance = NULL,
@@ -348,7 +369,8 @@
                           kappa = 1, beta = 1, v0 = 0,
                           fit_v0 = FALSE, fit_beta = FALSE,
                           id_col = NULL, supply_cols = NULL,
-                          allocation = c("clm", "huff_decay")) {
+                          allocation = c("clm", "huff_decay"),
+                          kernel = NULL) {
   substrate <- .resolve_allocation(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
@@ -357,7 +379,7 @@
   }
   spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0,
                      fit_v0 = fit_v0, fit_beta = fit_beta,
-                     allocation = match.arg(allocation))
+                     allocation = match.arg(allocation), kernel = kernel)
   compiled <- .compile_ae_map(spec, substrate)
   a_init <- .allocation_supply(substrate, kappa, beta)
   .new_problem(
@@ -449,9 +471,20 @@
   n <- length(S)
   n_theta <- length(spec$theta$names)
   zero_state <- matrix(0, n, n)
+  # A declared kernel is rebuilt from its stored code once per model, outside
+  # the bind closure that runs inside the optimizer.
+  kernel <- spec[["kernel", exact = TRUE]]
+  kernel_fun <- if (!is.null(kernel)) .decay_kernel_function(kernel)
+  # Which travel entries are finite does not change with the parameters: record it once.
+  kernel_plan <- if (!is.null(kernel)) .decay_kernel_plan(substrate$distance_active)
+  # Corrected CLM models declare a prediction snapshot for the built-in kernels
+  # and for a declared kernel (kept in the snapshot specification as plain data);
+  # the internal no-decay family never has one.
+  has_snapshot <- spec$allocation == "clm" && !identical(spec$family, "none")
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
-    K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]])
+    K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
+                            kernel = kernel, fun = kernel_fun, plan = kernel_plan)
     v0 <- if (isTRUE(spec$fit_v0)) theta[["v0"]] else spec$v0
     beta <- if (isTRUE(spec$fit_beta)) theta[["beta"]] else spec$beta
     a <- .allocation_supply(substrate, spec$kappa, beta)
@@ -476,7 +509,7 @@
         out
       } else NULL,
       state_independent_outputs = if (spec$allocation == "clm") "flow" else NULL,
-      clm_prediction = if (spec$allocation == "clm") list(
+      clm_prediction = if (has_snapshot) list(
         spec = .clm_prediction_spec(spec), theta = theta
       ) else NULL,
       jac_state = function(x) {
@@ -570,6 +603,9 @@
 #' snapshot containing the actual specification, theta, aligned supply/load and
 #' declared input policy/units. Requested-location prediction uses this record
 #' after serialization without retaining the problem or original travel matrix.
+#' A model with a declared decay kernel (see [decay_kernel()]) attaches the same
+#' record with the declaration, which is plain data, appended to the
+#' specification; the record then has a separate schema version.
 #' @param requested_outputs Optional output names to materialize in addition to
 #'   the provider's default outputs. `NULL` retains the legacy output callback.
 #' @keywords internal
@@ -714,7 +750,10 @@
   reused_solves <- 0L
   evaluate <- function(log_theta, keep_history = FALSE, warn = FALSE,
                        diagnostics = FALSE, update_warm = TRUE, solved = NULL) {
-    theta <- stats::setNames(exp(log_theta), expected)
+    # exp(log(x)) can round just outside x: keep trial values inside the
+    # parameter contract, so a finite declared bound can be reached.
+    theta <- stats::setNames(pmin(pmax(exp(log_theta), problem$theta$lower),
+                                  problem$theta$upper), expected)
     x0 <- if (.state_within_problem_bounds(problem, warm)) warm else NULL
     fit <- if (!is.null(solved)) solved else .solve_problem(
       problem,
@@ -833,7 +872,9 @@
   )
   elapsed <- proc.time()[["elapsed"]] - started
 
-  theta_hat <- stats::setNames(exp(opt$par), expected)
+  # The estimate stays inside the search bounds (and so inside the contract),
+  # also when exp(log(bound)) rounds outside them.
+  theta_hat <- stats::setNames(pmin(pmax(exp(opt$par), lower), upper), expected)
   .warn_search_boundary(opt$par, lower, upper, expected)
   paired <- NULL
   final <- .solve_problem(
@@ -967,7 +1008,7 @@
            "` use different `loss_args`")
     }
     if (is.function(f$loss_fn) && is.function(ref$loss_fn) &&
-        !identical(f$loss_fn, ref$loss_fn)) {
+        !.same_function(f$loss_fn, ref$loss_fn)) {
       stop("fits `", ref_label, "` and `", label,
            "` use different loss functions")
     }
@@ -1175,7 +1216,31 @@
   fn <- function(theta_value) {
     .bind_theta(problem, theta_value)$map(x)
   }
-  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
+  bounds <- .problem_theta_bounds(problem, theta)
+  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE,
+              lower = bounds$lower, upper = bounds$upper)
+}
+
+# The inclusive bounds of the theta contract in the order of the names of
+# `theta` (positional when it has none), so that a finite-difference step never
+# leaves them. Unbounded when the contract has none or cannot be aligned.
+.problem_theta_bounds <- function(problem, theta) {
+  contract <- problem$theta
+  n <- length(contract$names)
+  bound <- function(value, default) {
+    if (is.null(value)) rep(default, n) else rep_len(as.numeric(value), n)
+  }
+  lower <- bound(contract$lower, -Inf)
+  upper <- bound(contract$upper, Inf)
+  at <- if (!is.null(names(theta)) && !anyNA(match(names(theta), contract$names))) {
+    match(names(theta), contract$names)
+  } else {
+    seq_along(theta)
+  }
+  if (!length(theta) || length(at) != length(theta) || anyNA(at) || any(at > n)) {
+    return(list(lower = -Inf, upper = Inf))
+  }
+  list(lower = lower[at], upper = upper[at])
 }
 
 .problem_output_jac_state <- function(step, x, output, fd_eps = 1e-6,
@@ -1215,7 +1280,9 @@
     step <- .bind_theta(problem, theta_value)
     .problem_output_from_step(step, x, output, required = TRUE)
   }
-  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE)
+  bounds <- .problem_theta_bounds(problem, theta)
+  fd_jacobian(fn, theta, eps = fd_eps, check = FALSE,
+              lower = bounds$lower, upper = bounds$upper)
 }
 
 .problem_output_sensitivity <- function(problem, theta, x,

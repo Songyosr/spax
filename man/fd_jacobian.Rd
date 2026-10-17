@@ -10,10 +10,35 @@ fd_jacobian(
   ...,
   eps = 1e-06,
   method = c("central", "forward"),
-  check = TRUE
+  check = TRUE,
+  lower = -Inf,
+  upper = Inf
 )
 }
+\arguments{
+\item{fn}{A function of a numeric vector returning a numeric vector.}
+
+\item{x}{The point at which to differentiate, a numeric vector.}
+
+\item{...}{Further arguments passed to \code{fn}.}
+
+\item{eps}{Relative step size.}
+
+\item{method}{\code{"central"} or \code{"forward"} differences.}
+
+\item{check}{Whether to check that \code{fn} returns numeric vectors.}
+
+\item{lower, upper}{Inclusive bounds of the evaluation points, recycled to the
+length of \code{x}.}
+}
 \description{
-Finite-difference Jacobian of a vector-valued function
+Column \code{j} is a central difference with step \code{eps * max(abs(x[j]), 1)}. With
+finite \code{lower} or \code{upper}, no evaluation point leaves the bounds: where one
+side of a central step would, the difference is one-sided with the same step
+(forward, or backward when only the lower side fits). When neither side
+fits, the larger feasible one-sided step is used, \code{max(upper - x, x - lower)},
+and a coordinate with no room at all gives a zero column. Inside the bounds
+the result is exactly the unbounded one. The \code{"forward"} method steps up when
+that stays inside the bounds and down otherwise.
 }
 \keyword{internal}

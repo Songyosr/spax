@@ -2,11 +2,12 @@
 # results: no package kernels, normalization or contraction. `distance` is an
 # origin-by-facility matrix; NA or infinite travel contributes no attraction.
 # `allocation = "huff_decay"` gives the legacy form that applies the kernel
-# twice.
+# twice. A `kernel` given as a function of (distance, sigma), written out by the
+# caller, replaces the three named families.
 clm_oracle <- function(distance, demand, supply, sigma, v0 = 0,
                        family = "gaussian", beta = 1, kappa = 1,
-                       allocation = "clm") {
-  K <- switch(family,
+                       allocation = "clm", kernel = NULL) {
+  K <- if (is.function(kernel)) kernel(distance, sigma) else switch(family,
     gaussian = exp(-distance^2 / (2 * sigma^2)),
     exponential = exp(-sigma * distance),
     power = distance^(-sigma))

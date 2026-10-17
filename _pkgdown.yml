@@ -37,6 +37,8 @@ reference:
       - spax_2sfca
       - spax_e2sfca
       - spax_m2sfca
+      - spax_3sfca
+      - spax_huff2sfca
       - compute_access
 
   - title: "Experimental Allocation Workflow"
@@ -60,6 +62,7 @@ reference:
     desc: "Functions for handling distance relationships"
     contents:
       - calc_decay
+      - decay_kernel
       - calc_choice
       - calc_normalize
       - calc_travel_time
