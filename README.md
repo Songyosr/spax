@@ -203,7 +203,7 @@ coef(fit)
 ```
 
          sigma         v0 
-    4.35551254 0.01764982 
+    4.59099724 0.02733454 
 
 ``` r
 # Per cent registered outside mainland Cornwall: observed and modelled
@@ -215,16 +215,16 @@ round(100 * outside, 2)
 ```
 
     observed modelled 
-        0.91     0.45 
+        0.91     0.54 
 
 ``` r
 # Practice totals: modelled against observed
 cor(colSums(fitted(fit)), colSums(observed))
 ```
 
-    [1] 0.9319953
+    [1] 0.9326925
 
-The fitted Gaussian scale is about 4.4 minutes: registration is very
+The fitted Gaussian scale is about 4.6 minutes: registration is very
 local. The printed shares are percentages of registered residents.
 Practice totals of the fitted flows correlate at 0.93 with the observed
 ones. One constant outside weight understates registration outside

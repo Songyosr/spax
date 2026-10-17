@@ -75,7 +75,7 @@
     s <- matrix(s, nrow = nrow(starts), dimnames = list(rownames(starts), pars))
     fit <- do.call(.fit_problem_multistart, c(list(problem, observed, s,
       bounds_lo[pars], bounds_hi[pars], output = "flow", loss = .poisson_loss,
-      loss_grad = .poisson_gradient, loss_args = list(), gradient = TRUE,
+      loss_grad = .poisson_gradient, loss_args = list(eps = 1e-250), gradient = TRUE,
       control = list(maxit = 500)), solve_control))
     if (is.null(fit$best)) stop(sprintf("no eligible fit for the %s model", name))
     th <- fit$best$theta
@@ -115,9 +115,9 @@
 # Poisson loss and analytic gradient of the static CLM with a free
 # attractiveness per facility (Gaussian kernel) on flows. Parameters are the
 # log attractiveness of facilities 2..J (the first is fixed at its supply),
-# log sigma and log v0. Flows below the floor of .poisson_loss add a constant,
+# log sigma and log v0. Flows below the floor (1e-250, as in fit_allocation()) add a constant,
 # so they add nothing to the gradient (DEC-029).
-.clm_free_attractiveness_objective <- function(inputs, observed, eps = 1e-9) {
+.clm_free_attractiveness_objective <- function(inputs, observed, eps = 1e-250) {
   D <- inputs$D_active
   S <- as.numeric(inputs$S)
   t2 <- inputs$distance_active^2

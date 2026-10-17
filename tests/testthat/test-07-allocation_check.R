@@ -1,7 +1,7 @@
 # check_allocation(): comparators and implied trips. Expected values come from
 # clm_oracle() (helper-clm.R) and hand-computed Poisson losses, not internals.
 
-poisson_nll <- function(U, Y) sum(pmax(U, 1e-9) - Y * log(pmax(U, 1e-9)))
+poisson_nll <- function(U, Y, eps) sum(pmax(U, eps) - Y * log(pmax(U, eps)))
 
 test_that("a distance-generated fit beats both comparators", {
   f <- alloc_small_case()
@@ -15,6 +15,14 @@ test_that("a distance-generated fit beats both comparators", {
   expect_false(any(out$flags))
   expect_equal(tab$loss_difference[1], 0)
   expect_output(print(out), "better than both comparators")
+  # The floor report: the default floor binds nowhere, and an object saved before
+  # the flag existed still prints.
+  expect_identical(tail(names(out$flags), 1L), "positive_counts_below_poisson_floor")
+  expect_identical(out$poisson_floor, c(eps = 1e-250, positive_below = 0))
+  old <- out
+  old$flags <- old$flags[-length(old$flags)]
+  old$poisson_floor <- NULL
+  expect_output(print(old), "better than both comparators")
 })
 
 test_that("comparator losses and trips match independent calculations", {
@@ -25,12 +33,12 @@ test_that("comparator losses and trips match independent calculations", {
   Y <- f$observed
   # Capacity only: the Poisson optimum matches the observed total.
   U_cap <- f$supply * sum(Y) / sum(f$supply)
-  expect_equal(tab$loss[3], poisson_nll(U_cap, Y), tolerance = 1e-6)
+  expect_equal(tab$loss[3], poisson_nll(U_cap, Y, eps = out$poisson_floor[["eps"]]), tolerance = 1e-6)
   # No decay: a flat kernel with the reported outside mass.
   v0 <- out$parameters$no_decay[["v0"]]
   travel <- f$travel[f$active, , drop = FALSE]
   flat <- clm_oracle(travel, f$demand[f$active], f$supply, sigma = 1e8, v0 = v0)
-  expect_equal(tab$loss[2], poisson_nll(flat$utilization, Y), tolerance = 1e-6)
+  expect_equal(tab$loss[2], poisson_nll(flat$utilization, Y, eps = out$poisson_floor[["eps"]]), tolerance = 1e-6)
   expect_equal(tab$contact[2], sum(f$demand[f$active] * flat$rho) / sum(f$demand[f$active]),
                tolerance = 1e-6)
   # Fitted trips: flow-weighted travel-time quantiles and exceedance shares.
@@ -95,7 +103,7 @@ test_that("a model without a fitted outside mass can be checked", {
   expect_identical(names(out$parameters$fitted), "sigma")
   # Supply shares spread the retained demand: loads are supply * D / sum(supply).
   loads <- f$supply * sum(f$demand[f$active]) / sum(f$supply)
-  expect_equal(tab$loss[2], poisson_nll(loads, f$observed), tolerance = 1e-10)
+  expect_equal(tab$loss[2], poisson_nll(loads, f$observed, eps = out$poisson_floor[["eps"]]), tolerance = 1e-10)
 })
 
 test_that("comparator searches follow the scale of the outside mass", {
@@ -114,7 +122,7 @@ test_that("comparator searches follow the scale of the outside mass", {
   v0s <- exp(seq(log(1e4), log(1e16), length.out = 400))
   brute <- min(vapply(v0s, function(v) {
     o <- clm_oracle(travel, demand[f$active], supply, sigma = 1e8, v0 = v)
-    poisson_nll(o$utilization, Y)
+    poisson_nll(o$utilization, Y, eps = out$poisson_floor[["eps"]])
   }, numeric(1)))
   expect_lte(as.data.frame(out)$loss[2], brute + 1e-6 * abs(brute))
   expect_false(out$flags[["comparator_search_at_edge"]])
@@ -139,7 +147,7 @@ test_that("a fitted attractiveness exponent is re-optimized in both comparators"
   # Capacity only with a free exponent reproduces counts proportional to supply^1.5.
   expect_equal(out$parameters$capacity_only[["beta"]], 1.5, tolerance = 1e-3)
   fixed <- f$supply^coef(fit)[["beta"]]
-  fixed_loss <- poisson_nll(fixed * sum(f$supply^1.5 * 0.05) / sum(fixed), f$supply^1.5 * 0.05)
+  fixed_loss <- poisson_nll(fixed * sum(f$supply^1.5 * 0.05) / sum(fixed), f$supply^1.5 * 0.05, eps = out$poisson_floor[["eps"]])
   expect_lte(tab$loss[3], fixed_loss + 1e-9)
 })
 
@@ -166,7 +174,7 @@ test_that("no decay weights every finite travel time equally and does not report
   v0 <- out$parameters$no_decay[["v0"]]
   expect_equal(v0, sum(f$supply) * (D / sum(Y) - 1), tolerance = 1e-6)
   loads <- f$supply * D / (sum(f$supply) + v0)
-  expect_equal(tab$loss[2], poisson_nll(loads, Y), tolerance = 1e-10)
+  expect_equal(tab$loss[2], poisson_nll(loads, Y, eps = out$poisson_floor[["eps"]]), tolerance = 1e-10)
   expect_equal(tab$contact[2], sum(f$supply) / (sum(f$supply) + v0), tolerance = 1e-10)
   # The decay parameter is not part of this allocation.
   expect_identical(names(out$parameters$fitted), c("sigma", "v0"))
@@ -189,7 +197,7 @@ test_that("no decay keeps absent edges absent", {
   v0 <- out$parameters$no_decay[["v0"]]
   # Origin c cannot reach x: with equal weights it chooses y or the outside option.
   loads <- c(x = (50 + 40) * 20 / (50 + v0), y = (50 + 40) * 30 / (50 + v0) + 30 * 30 / (30 + v0))
-  expect_equal(as.data.frame(out)$loss[2], poisson_nll(loads, Y), tolerance = 1e-9)
+  expect_equal(as.data.frame(out)$loss[2], poisson_nll(loads, Y, eps = out$poisson_floor[["eps"]]), tolerance = 1e-9)
 })
 
 test_that("the no-decay comparator is the same whichever built-in kernel was fitted", {
@@ -209,7 +217,7 @@ test_that("the no-decay comparator is the same whichever built-in kernel was fit
     expect_identical(fit$status, "selected", info = family)
     out <- check_allocation(model, fit)
     expect_equal(out$parameters$no_decay[["v0"]], v0_best, tolerance = 1e-6, info = family)
-    expect_equal(as.data.frame(out)$loss[2], poisson_nll(loads, Y), tolerance = 1e-8, info = family)
+    expect_equal(as.data.frame(out)$loss[2], poisson_nll(loads, Y, eps = out$poisson_floor[["eps"]]), tolerance = 1e-8, info = family)
     expect_identical(names(out$parameters$no_decay), "v0", info = family)
   }
 })
@@ -259,7 +267,7 @@ test_that("a model with a declared kernel can be checked and compared", {
   expect_output(print(out), "better than both comparators")
   loads <- f$supply * sum(f$demand[f$active]) /
     (sum(f$supply) + out$parameters$no_decay[["v0"]])
-  expect_equal(tab$loss[2], poisson_nll(loads, f$observed), tolerance = 1e-10)
+  expect_equal(tab$loss[2], poisson_nll(loads, f$observed, eps = out$poisson_floor[["eps"]]), tolerance = 1e-10)
   # Comparing the custom-kernel fit with the built-in Gaussian fit is like for like.
   cmp <- compare_allocations(list(custom = k$fit, builtin = reference),
                              models = list(custom = k$model, builtin = f$model))
