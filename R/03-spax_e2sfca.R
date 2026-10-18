@@ -213,12 +213,6 @@
   do.call(calc_decay, c(list(distance = distance), params, list(snap = snap)))
 }
 
-# The block engine of SPAX-055 is the default; options(spax.fca_engine =
-# "field") selects the old path until it is removed.
-.fca_use_blocks <- function() {
-  identical(getOption("spax.fca_engine", "block"), "block")
-}
-
 # The decay weights of one decay_params list for the block engine.
 # Returns `rasters`, the named SpatRasters the weights are read from, and
 # `weights(b, rows)`, which gives the weights of the block rows `rows` as a
@@ -361,7 +355,7 @@
     list(demand = choice_kernel, access = choice_kernel)
   )
 
-  .compute_fca_blocks(
+  compute_fca(
     demand = demand, supply = supply, rasters = rasters, kernels = kernels,
     demand_normalize = demand_normalize, id_col = id_col,
     supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
@@ -379,7 +373,7 @@
     stop("demand and access kernels must span the same facility ids")
   }
   pos <- match(demand_ids, access_ids)
-  .compute_fca_blocks(
+  compute_fca(
     demand = demand, supply = supply,
     rasters = list(demand_weights = demand_weights,
                    access_weights = access_weights),
@@ -487,28 +481,10 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
     )
   }
 
-  # The block engine (SPAX-055). It is a separate driver until the field path
-  # is removed (task T4), which renames .compute_fca_blocks() to compute_fca().
-  if (.fca_use_blocks()) {
-    return(.fca_access_block(
-      demand, supply, demand_weights, access_weights,
-      id_col, supply_cols, indicator_names, snap
-    ))
-  }
-
-  result <- compute_fca(
-    demand = demand,
-    supply = supply,
-    demand_kernel = demand_weights,
-    access_kernel = access_weights,
-    demand_normalize = "identity",
-    id_col = id_col,
-    supply_cols = supply_cols,
-    indicator_names = indicator_names,
-    snap = snap
+  .fca_access_block(
+    demand, supply, demand_weights, access_weights,
+    id_col, supply_cols, indicator_names, snap
   )
-
-  .fca_result_raster(result)
 }
 
 #' Calculate Enhanced Two-Step Floating Catchment Area (E2SFCA) accessibility scores
@@ -651,29 +627,11 @@ spax_e2sfca <- function(demand, supply, distance,
     )
   }
 
-  if (.fca_use_blocks()) {
-    result <- .fca_block_run(
-      "e2sfca", demand, supply, distance, decay_params,
-      demand_normalize = demand_normalize, id_col = id_col,
-      supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
-    )
-  } else {
-    # Compute weights using decay function
-    weights <- do.call(calc_decay, c(list(distance = distance), decay_params, list(snap = snap)))
-
-    result <- compute_fca(
-      demand = demand,
-      supply = supply,
-      demand_kernel = weights,
-      access_kernel = weights,
-      demand_normalize = demand_normalize,
-      id_col = id_col,
-      supply_cols = supply_cols,
-      indicator_names = indicator_names,
-      snap = snap
-    )
-    result <- .fca_result_raster(result)
-  }
+  result <- .fca_block_run(
+    "e2sfca", demand, supply, distance, decay_params,
+    demand_normalize = demand_normalize, id_col = id_col,
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
+  )
 
   # Process facility information
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
@@ -712,7 +670,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #'
 #' M2SFCA is not a separate engine here: it is the shared FCA recipe with the
 #' access-side kernel squared. It is exactly equivalent to
-#' `compute_fca(demand, supply, demand_kernel = W, access_kernel = W^2)`.
+#' `compute_access(demand, supply, W, W^2)`.
 #'
 #' @references
 #' Delamater, P. L. (2013). Spatial accessibility in suboptimally configured
@@ -720,7 +678,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #' metric. *Health & Place*, *24*, 30-43.
 #' https://doi.org/10.1016/j.healthplace.2013.07.012
 #'
-#' @seealso [spax_e2sfca()], [spax_2sfca()], [compute_fca()], [calc_decay()]
+#' @seealso [spax_e2sfca()], [spax_2sfca()], [compute_access()], [calc_decay()]
 #' @export
 spax_m2sfca <- function(demand, supply, distance,
                         decay_params = list(method = "gaussian", sigma = 30),
@@ -736,30 +694,11 @@ spax_m2sfca <- function(demand, supply, distance,
     )
   }
 
-  if (.fca_use_blocks()) {
-    result <- .fca_block_run(
-      "m2sfca", demand, supply, distance, decay_params,
-      demand_normalize = demand_normalize, id_col = id_col,
-      supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
-    )
-  } else {
-    # Distance decay weights, shared by both steps
-    weights <- do.call(calc_decay, c(list(distance = distance), decay_params, list(snap = snap)))
-
-    # M2SFCA: step 1 uses W (demand_kernel); step 2 uses W^2 (access_kernel).
-    result <- compute_fca(
-      demand = demand,
-      supply = supply,
-      demand_kernel = weights,
-      access_kernel = weights * weights,
-      demand_normalize = demand_normalize,
-      id_col = id_col,
-      supply_cols = supply_cols,
-      indicator_names = indicator_names,
-      snap = snap
-    )
-    result <- .fca_result_raster(result)
-  }
+  result <- .fca_block_run(
+    "m2sfca", demand, supply, distance, decay_params,
+    demand_normalize = demand_normalize, id_col = id_col,
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
+  )
 
   # Process facility information
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
@@ -1045,38 +984,11 @@ spax_3sfca <- function(demand, supply, distance,
     .chck_selection_params(selection_params)
   }
 
-  if (.fca_use_blocks()) {
-    result <- .fca_block_run(
-      "3sfca", demand, supply, distance, decay_params,
-      selection_params = selection_params, id_col = id_col,
-      supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
-    )
-  } else {
-    # Decay weights W, and the weights T the selection weights are built from
-    weights <- .fca_decay_weights(distance, decay_params, snap)
-    selection <- if (identical(selection_params, decay_params)) {
-      weights
-    } else {
-      .fca_decay_weights(distance, selection_params, snap)
-    }
-
-    # Selection weights G: the weights T of each origin divided by their sum.
-    # Both steps use the kernel K = W * G.
-    kernel <- weights * calc_choice(selection, snap = snap)
-
-    result <- compute_fca(
-      demand = demand,
-      supply = supply,
-      demand_kernel = kernel,
-      access_kernel = kernel,
-      demand_normalize = "identity",
-      id_col = id_col,
-      supply_cols = supply_cols,
-      indicator_names = indicator_names,
-      snap = snap
-    )
-    result <- .fca_result_raster(result)
-  }
+  result <- .fca_block_run(
+    "3sfca", demand, supply, distance, decay_params,
+    selection_params = selection_params, id_col = id_col,
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
+  )
 
   # Process facility information
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
@@ -1243,44 +1155,12 @@ spax_huff2sfca <- function(demand, supply, distance,
     attractiveness, supply, distance, id_col, supply_cols, snap
   )
 
-  if (.fca_use_blocks()) {
-    result <- .fca_block_run(
-      "huff", demand, supply, distance, decay_params,
-      selection_params = selection_params, attractiveness = attractiveness,
-      alpha = alpha, id_col = id_col, supply_cols = supply_cols,
-      indicator_names = indicator_names, snap = snap
-    )
-  } else {
-    # Decay weights W, and the weights T the selection probabilities come from
-    weights <- .fca_decay_weights(distance, decay_params, snap)
-    selection <- if (identical(selection_params, decay_params)) {
-      weights
-    } else {
-      .fca_decay_weights(distance, selection_params, snap)
-    }
-
-    # Selection probabilities G: a^alpha * T of each origin divided by their sum.
-    # Both steps use the kernel K = W * G.
-    kernel <- weights * calc_choice(
-      selection,
-      attractiveness = unname(attractiveness),
-      alpha = alpha,
-      snap = snap
-    )
-
-    result <- compute_fca(
-      demand = demand,
-      supply = supply,
-      demand_kernel = kernel,
-      access_kernel = kernel,
-      demand_normalize = "identity",
-      id_col = id_col,
-      supply_cols = supply_cols,
-      indicator_names = indicator_names,
-      snap = snap
-    )
-    result <- .fca_result_raster(result)
-  }
+  result <- .fca_block_run(
+    "huff", demand, supply, distance, decay_params,
+    selection_params = selection_params, attractiveness = attractiveness,
+    alpha = alpha, id_col = id_col, supply_cols = supply_cols,
+    indicator_names = indicator_names, snap = snap
+  )
 
   # Process facility information
   facilities <- .fca_facility_table(supply, id_col, supply_cols)

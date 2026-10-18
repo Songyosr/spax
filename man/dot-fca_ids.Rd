@@ -8,9 +8,6 @@
 }
 \description{
 The layer names, or `facility_1..J` by position when the names are terra
-defaults (`lyr.N`) or missing. This is the rule of
-`.field_has_semantic_layer_names()` and `.resolve_raster_layer_frame()` in
-R/00-spax_field.R, copied here so that it survives the removal of that file.
-Duplicate IDs are an error.
+defaults (`lyr.N`) or missing. Duplicate IDs are an error.
 }
 \keyword{internal}

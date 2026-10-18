@@ -1,8 +1,8 @@
 # SPAX-020 / SPAX-007: private compact matrix executor ----------------------
 #
 # Engine-instance #1 of the platform (see notes "Spax Platform Vision"): the
-# no-state, single-pass T_theta. The checked spax_field / terra layer decides
-# meaning and geometry; this layer does the repeated numeric work on compact
+# no-state, single-pass T_theta. The checked terra layer decides meaning and
+# geometry; this layer does the repeated numeric work on compact
 # matrices. Public API is unchanged -- these are private; the plan below serves
 # the internal SAE/HAAE reference models.
 #
@@ -143,7 +143,7 @@
 #' use the demand-side fields.
 #'
 #' Kernels are taken as `SpatRaster`s here (the proven oracle shape); the
-#' boundary check mirrors `compute_fca()`'s alignment contract.
+#' boundary check mirrors the alignment contract of [compute_access()].
 #' @keywords internal
 .fca_compact_plan <- function(demand, supply, demand_kernel, access_kernel,
                               demand_normalize = "identity",
@@ -185,8 +185,8 @@
   Kd0  <- .fca_normalize_kernel(Kd0, method = demand_normalize)
 
   # spread keeps cells reachable by >=1 facility; cells unreachable by every
-  # facility stay NA (matches compute_fca's na.rm aggregate, which yields NA for
-  # an all-NA cell). Within a kept row, an NA facility contributes 0.
+  # facility stay NA (the access of an all-NA cell is NA). Within a kept row, an
+  # NA facility contributes 0.
   access_kept <- which(rowSums(is.finite(Ka)) > 0)
   Ka0 <- Ka[access_kept, , drop = FALSE]
   Ka0[is.na(Ka0)] <- 0
@@ -207,18 +207,14 @@
 
 # Block FCA engine (SPAX-055) -----------------------------------------------
 #
-# The FCA wrappers run on this engine instead of the spax_field layer:
-# the rasters are read in row blocks into plain matrices, and the same
-# contraction primitives as above do the work in two passes. This is the default; options(spax.fca_engine = "field") selects the old path
-# until it is removed (task T4 of the design note).
+# The FCA wrappers run on this engine: the rasters are read in row blocks into
+# plain matrices, and the same contraction primitives as above do the work in
+# two passes.
 
 #' Facility IDs of a raster stack
 #'
 #' The layer names, or `facility_1..J` by position when the names are terra
-#' defaults (`lyr.N`) or missing. This is the rule of
-#' `.field_has_semantic_layer_names()` and `.resolve_raster_layer_frame()` in
-#' R/00-spax_field.R, copied here so that it survives the removal of that file.
-#' Duplicate IDs are an error.
+#' defaults (`lyr.N`) or missing. Duplicate IDs are an error.
 #' @keywords internal
 .fca_ids <- function(x, arg = "distance") {
   .chck_class(x, "SpatRaster", arg)

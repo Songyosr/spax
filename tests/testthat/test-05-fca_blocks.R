@@ -1,6 +1,6 @@
 # The block FCA engine (SPAX-055): facility IDs, row blocks, the raster reader,
 # the two-pass engine against base-R algebra, the driver's kept errors, and
-# each wrapper under the block engine against the field engine.
+# each wrapper against base-R algebra (fca_oracle()).
 
 gauss_block <- function(sigma) {
   function(b, rows) exp(-b$distance[rows, , drop = FALSE]^2 / (2 * sigma^2))
@@ -192,12 +192,12 @@ test_that(".fca_rewrap puts columns on the grid with the given names", {
   expect_equal(terra::nlyr(.fca_rewrap(v[, 1, drop = FALSE], tmpl, "x")), 1)
 })
 
-test_that(".compute_fca_blocks binds supply, names layers and checks its inputs", {
+test_that("compute_fca binds supply, names layers and checks its inputs", {
   f <- fca_block_fixture(3)
   kernels <- list(demand = gauss_block(2.5), access = gauss_block(2.5))
   W <- exp(-f$dist^2 / (2 * 2.5^2))
   run <- function(...) {
-    .compute_fca_blocks(f$demand, rasters = list(distance = f$distance),
+    compute_fca(f$demand, rasters = list(distance = f$distance),
                         kernels = kernels, ...)
   }
 
@@ -225,7 +225,7 @@ test_that(".compute_fca_blocks binds supply, names layers and checks its inputs"
   # Facilities without layer names are numbered by position.
   numbered <- f$distance
   names(numbered) <- paste0("lyr.", 1:3)
-  out <- .compute_fca_blocks(f$demand, rasters = list(distance = numbered),
+  out <- compute_fca(f$demand, rasters = list(distance = numbered),
                              kernels = kernels,
                              supply = c(facility_1 = 5, facility_2 = 8, facility_3 = 11))
   expect_equal(terra::values(out)[, 1], unname(terra::values(
@@ -235,11 +235,11 @@ test_that(".compute_fca_blocks binds supply, names layers and checks its inputs"
   dup <- f$distance
   names(dup) <- c("a", "a", "b")
   for (snap in c(FALSE, TRUE)) {
-    expect_error(.compute_fca_blocks(f$demand, f$S, list(distance = dup), kernels,
+    expect_error(compute_fca(f$demand, f$S, list(distance = dup), kernels,
                                      snap = snap),
                  "duplicate coordinate tuples")
     expect_error(
-      .compute_fca_blocks(c(f$demand, f$demand), f$S, list(distance = f$distance),
+      compute_fca(c(f$demand, f$demand), f$S, list(distance = f$distance),
                           kernels, snap = snap),
       "multi-layer raster fields must declare at least one non-I axis"
     )
@@ -249,17 +249,16 @@ test_that(".compute_fca_blocks binds supply, names layers and checks its inputs"
   expect_error(run(supply = f$S[1:2, ]), "one row for each facility")
   # The geometry check is unconditional.
   wide <- toy_rast(1:20, nrows = 4, ncols = 5)
-  expect_error(.compute_fca_blocks(wide, f$S, list(distance = f$distance), kernels,
+  expect_error(compute_fca(wide, f$S, list(distance = f$distance), kernels,
                                    snap = TRUE),
                "same number of rows and columns")
-  expect_error(.compute_fca_blocks(f$demand, f$S,
+  expect_error(compute_fca(f$demand, f$S,
                                    list(distance = f$distance, sigma = wide), kernels,
                                    snap = TRUE),
                "demand and sigma must have the same number of rows and columns")
 })
 
 test_that("compute_access under the block engine aligns kernels by layer name", {
-  withr::local_options(spax.fca_engine = "block")
   f <- fca_block_fixture(3)
   W <- exp(-f$dist^2 / (2 * 2.5^2))
   k <- terra::setValues(f$distance, W)
@@ -294,7 +293,6 @@ test_that("compute_access under the block engine aligns kernels by layer name", 
 })
 
 test_that("the wrappers keep their errors and names under the block engine", {
-  withr::local_options(spax.fca_engine = "block")
   td <- fca_toy()
 
   # Facility IDs: terra's default names become facility_N and bind by name,
@@ -373,27 +371,40 @@ test_that("the wrappers keep their errors and names under the block engine", {
                td$supply_df, ignore_attr = TRUE)
 })
 
-expect_same_fca <- function(fun, block_values = NULL, info = NULL) {
-  both <- fca_engines(fun, block_values)
-  as_values <- function(x) {
-    unname(terra::values(if (inherits(x, "SpatRaster")) x else x$accessibility,
-                         mat = TRUE))
-  }
-  nm <- function(x) names(if (inherits(x, "SpatRaster")) x else x$accessibility)
-  field <- as_values(both$field)
-  block <- as_values(both$block)
-  expect_identical(is.na(block), is.na(field), info = info)
-  expect_equal(block, field, tolerance = 1e-12, info = info)
-  expect_identical(nm(both$block), nm(both$field), info = info)
-  if (!inherits(both$field, "SpatRaster")) {
-    expect_equal(both$block$facilities, both$field$facilities, info = info)
-    expect_equal(both$block$parameters, both$field$parameters, info = info)
-    expect_equal(both$block$type, both$field$type, info = info)
-  }
-  invisible(both)
+# The weights of a decay specification on the whole distance raster, as a
+# cell-by-facility matrix: calc_decay() on SpatRasters, which the block engine
+# does not use for its built-in methods.
+decay_matrix <- function(distance, params) {
+  unname(terra::values(
+    do.call(calc_decay, c(list(distance = distance), params, list(snap = TRUE))),
+    mat = TRUE
+  ))
 }
 
-test_that("each wrapper gives the same surface under the block and field engines", {
+# Selection weights written in base R: the weights T of each cell, after
+# multiplying by attract^alpha per facility, divided by their sum (0 where the
+# sum is 0, missing weights stay missing).
+choice_matrix <- function(Tm, attract = NULL, alpha = 1) {
+  if (!is.null(attract)) {
+    Tm <- Tm * rep(attract^alpha, each = nrow(Tm))
+  }
+  total <- rowSums(Tm, na.rm = TRUE)
+  Tm * ifelse(total > 0, 1 / total, 0)
+}
+
+# `result` (a spax object or a SpatRaster) equals the oracle surface: the same
+# missing cells and values within 1e-12.
+expect_fca_oracle <- function(result, demand, Wd, Wa = Wd, S,
+                              normalize = "identity", info = NULL) {
+  r <- if (inherits(result, "SpatRaster")) result else result$accessibility
+  got <- unname(terra::values(r, mat = TRUE))
+  expected <- fca_oracle(unname(terra::values(demand, mat = FALSE)), Wd, Wa,
+                         S, normalize)
+  expect_identical(is.na(got), is.na(expected), info = info)
+  expect_equal(got, expected, tolerance = 1e-12, info = info)
+}
+
+test_that("each wrapper gives the oracle surface for every block size", {
   td <- fca_toy()
   d <- terra::values(td$distance, mat = TRUE)
   d[1, 1] <- NA # cell 1 does not reach facility1
@@ -402,89 +413,131 @@ test_that("each wrapper gives the same surface under the block and field engines
   demand <- td$demand
   demand[5] <- NA
   decay <- list(method = "gaussian", sigma = 2.4)
+  W <- decay_matrix(distance, decay)
+  S2 <- unname(td$supply_matrix)
+  S1 <- matrix(c(10, 15), ncol = 1)
 
   for (block_values in list(NULL, 1, 6)) {
+    withr::local_options(list(spax.fca_block_values = block_values))
     info <- paste("block values", format(block_values))
-    expect_same_fca(function() spax_2sfca(demand, td$supply_matrix, distance, 3),
-                    block_values, info)
+    expect_fca_oracle(spax_2sfca(demand, td$supply_matrix, distance, 3), demand,
+                      decay_matrix(distance, list(method = "binary", sigma = 3)),
+                      S = S2, info = info)
     for (norm in c("identity", "standard", "semi")) {
-      expect_same_fca(function() spax_e2sfca(demand, td$supply_matrix, distance, decay,
-                                             demand_normalize = norm),
-                      block_values, paste(info, norm))
-      expect_same_fca(function() spax_m2sfca(demand, td$supply_df, distance, decay,
-                                             demand_normalize = norm, id_col = "id",
-                                             supply_cols = c("nurses", "doctors")),
-                      block_values, paste(info, norm))
+      expect_fca_oracle(
+        spax_e2sfca(demand, td$supply_matrix, distance, decay,
+                    demand_normalize = norm),
+        demand, W, S = S2, normalize = norm, info = paste(info, norm))
+      expect_fca_oracle(
+        spax_m2sfca(demand, td$supply_df, distance, decay, demand_normalize = norm,
+                    id_col = "id", supply_cols = c("nurses", "doctors")),
+        demand, W, W^2, S = cbind(c(20, 25), c(10, 15)), normalize = norm,
+        info = paste(info, norm))
     }
-    expect_same_fca(function() spax_3sfca(demand, td$supply_vector, distance, decay),
-                    block_values, info)
-    expect_same_fca(function() spax_3sfca(
-      demand, td$supply_matrix, distance, decay,
-      selection_params = list(method = "exponential", sigma = 0.4)),
-      block_values, info)
-    expect_same_fca(function() spax_huff2sfca(demand, td$supply_vector, distance,
-                                              decay, alpha = 1.5),
-                    block_values, info)
-    expect_same_fca(function() spax_huff2sfca(
-      demand, td$supply_matrix, distance, decay, attractiveness = c(2, 1),
-      selection_params = list(method = "power", sigma = 1)),
-      block_values, info)
+    K <- W * choice_matrix(W)
+    expect_fca_oracle(spax_3sfca(demand, td$supply_vector, distance, decay),
+                      demand, K, S = S1, info = info)
+    K <- W * choice_matrix(decay_matrix(distance, list(method = "exponential",
+                                                       sigma = 0.4)))
+    expect_fca_oracle(
+      spax_3sfca(demand, td$supply_matrix, distance, decay,
+                 selection_params = list(method = "exponential", sigma = 0.4)),
+      demand, K, S = S2, info = info)
+    K <- W * choice_matrix(W, c(10, 15), 1.5)
+    expect_fca_oracle(
+      spax_huff2sfca(demand, td$supply_vector, distance, decay, alpha = 1.5),
+      demand, K, S = S1, info = info)
+    K <- W * choice_matrix(decay_matrix(distance, list(method = "power", sigma = 1)),
+                           c(2, 1))
+    expect_fca_oracle(
+      spax_huff2sfca(demand, td$supply_matrix, distance, decay,
+                     attractiveness = c(2, 1),
+                     selection_params = list(method = "power", sigma = 1)),
+      demand, K, S = S2, info = info)
     w <- calc_decay(distance, "gaussian", sigma = 2)
-    expect_same_fca(function() compute_access(demand, td$supply_matrix, w, w^2),
-                    block_values, info)
-    expect_same_fca(function() compute_access(demand, td$supply_matrix, w, w[[2:1]]),
-                    block_values, info)
+    Wg <- unname(terra::values(w, mat = TRUE))
+    expect_fca_oracle(compute_access(demand, td$supply_matrix, w, w^2), demand,
+                      Wg, Wg^2, S = S2, info = info)
+    # Access weights in another layer order are matched by layer name.
+    expect_fca_oracle(compute_access(demand, td$supply_matrix, w, w[[2:1]]), demand,
+                      Wg, Wg, S = S2, info = info)
   }
 })
 
-test_that("variable catchments, plain functions and declared kernels agree under both engines", {
+test_that("variable catchments, plain functions and declared kernels give the oracle surface", {
   td <- fca_toy()
   demand <- td$demand
+  distance <- td$distance
   sigma1 <- terra::rast(demand)
   terra::values(sigma1) <- seq(1.5, 4, length.out = 9)
   sigma2 <- c(sigma1, sigma1 * 0.8)
-  names(sigma2) <- names(td$distance)
-  ids <- names(td$distance)
+  names(sigma2) <- names(distance)
+  S2 <- unname(td$supply_matrix)
+  S1 <- matrix(c(10, 15), ncol = 1)
+  plain <- function(distance, sigma = 3) terra::ifel(distance < sigma, 1, 0)
+  with_raster <- function(distance, sigma) exp(-distance / sigma)
+  plateau <- decay_kernel(function(distance, sigma, plateau = 2) {
+    ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
+  }, name = "plateau", parameter = "scale", args = list(plateau = 2))
+  W <- function(params) decay_matrix(distance, params)
+  gauss1 <- list(method = "gaussian", sigma = sigma1)
 
   for (block_values in list(NULL, 1, 6)) {
-    run <- function(decay, fun = spax_e2sfca, supply = td$supply_matrix, ...) {
-      expect_same_fca(
-        function() fun(demand, supply, td$distance, decay, ...),
-        block_values, paste(format(block_values), format(decay$method)[1])
-      )
-    }
+    withr::local_options(list(spax.fca_block_values = block_values))
+    info <- format(block_values)
     # One sigma layer, or one per facility, with a built-in method.
-    run(list(method = "gaussian", sigma = sigma1))
-    run(list(method = "exponential", sigma = sigma2))
-    run(list(method = "binary", sigma = sigma2), spax_m2sfca)
-    run(list(method = "gaussian", sigma = sigma2), spax_3sfca,
-        selection_params = list(method = "gaussian", sigma = sigma1))
-    run(list(method = decay_kernel("gaussian"), sigma = sigma1))
-    # A plain function sees the whole distance raster as today.
-    plain <- function(distance, sigma = 3) terra::ifel(distance < sigma, 1, 0)
-    run(list(method = plain, sigma = 3))
-    run(list(method = plain, sigma = 3), spax_3sfca,
-        selection_params = list(method = "gaussian", sigma = 2))
-    run(list(method = "gaussian", sigma = 2), spax_huff2sfca, td$supply_vector,
-        selection_params = list(method = plain, sigma = 4))
-    with_raster <- function(distance, sigma) exp(-distance / sigma)
-    run(list(method = with_raster, sigma = sigma1))
+    expect_fca_oracle(spax_e2sfca(demand, td$supply_matrix, distance, gauss1),
+                      demand, W(gauss1), S = S2, info = info)
+    ex2 <- list(method = "exponential", sigma = sigma2)
+    expect_fca_oracle(spax_e2sfca(demand, td$supply_matrix, distance, ex2),
+                      demand, W(ex2), S = S2, info = info)
+    bin2 <- list(method = "binary", sigma = sigma2)
+    expect_fca_oracle(spax_m2sfca(demand, td$supply_matrix, distance, bin2),
+                      demand, W(bin2), W(bin2)^2, S = S2, info = info)
+    g2 <- list(method = "gaussian", sigma = sigma2)
+    expect_fca_oracle(
+      spax_3sfca(demand, td$supply_matrix, distance, g2, selection_params = gauss1),
+      demand, W(g2) * choice_matrix(W(gauss1)), S = S2, info = info)
+    expect_fca_oracle(
+      spax_e2sfca(demand, td$supply_matrix, distance,
+                  list(method = decay_kernel("gaussian"), sigma = sigma1)),
+      demand, W(gauss1), S = S2, info = info)
+    # A plain function sees the whole distance raster.
+    pl <- list(method = plain, sigma = 3)
+    expect_fca_oracle(spax_e2sfca(demand, td$supply_matrix, distance, pl),
+                      demand, W(pl), S = S2, info = info)
+    g2s <- list(method = "gaussian", sigma = 2)
+    expect_fca_oracle(
+      spax_3sfca(demand, td$supply_matrix, distance, pl,
+                 selection_params = g2s),
+      demand, W(pl) * choice_matrix(W(g2s)), S = S2, info = info)
+    pl4 <- list(method = plain, sigma = 4)
+    expect_fca_oracle(
+      spax_huff2sfca(demand, td$supply_vector, distance, g2s,
+                     selection_params = pl4),
+      demand, W(g2s) * choice_matrix(W(pl4), c(10, 15)), S = S1, info = info)
+    wr <- list(method = with_raster, sigma = sigma1)
+    expect_fca_oracle(spax_e2sfca(demand, td$supply_matrix, distance, wr),
+                      demand, W(wr), S = S2, info = info)
     # Declared kernels, as demand and selection method.
-    plateau <- decay_kernel(function(distance, sigma, plateau = 2) {
-      ifelse(distance <= plateau, 1, exp(-(distance - plateau)^2 / (2 * sigma^2)))
-    }, name = "plateau", parameter = "scale", args = list(plateau = 2))
-    run(list(method = plateau, sigma = 2), spax_3sfca)
-    run(list(method = "gaussian", sigma = 2.4), spax_huff2sfca, td$supply_vector,
-        selection_params = list(method = plateau, sigma = 2))
+    pk <- list(method = plateau, sigma = 2)
+    expect_fca_oracle(spax_3sfca(demand, td$supply_matrix, distance, pk),
+                      demand, W(pk) * choice_matrix(W(pk)), S = S2, info = info)
+    g24 <- list(method = "gaussian", sigma = 2.4)
+    expect_fca_oracle(
+      spax_huff2sfca(demand, td$supply_vector, distance, g24,
+                     selection_params = pk),
+      demand, W(g24) * choice_matrix(W(pk), c(10, 15)), S = S1, info = info)
     # The inverse kernel takes its constant through the parameter list.
-    run(list(method = "inverse", c = 0.5))
+    inv <- list(method = "inverse", c = 0.5)
+    expect_fca_oracle(spax_e2sfca(demand, td$supply_matrix, distance, inv),
+                      demand, W(inv), S = S2, info = info)
   }
 })
 
 test_that("snap leaves the block results unchanged on valid inputs", {
   td <- fca_toy()
   decay <- list(method = "gaussian", sigma = 2.4)
-  withr::local_options(spax.fca_engine = "block")
   checked <- spax_3sfca(td$demand, td$supply_matrix, td$distance, decay)
   snapped <- spax_3sfca(td$demand, td$supply_matrix, td$distance, decay, snap = TRUE)
   expect_equal(terra::values(snapped$accessibility),
@@ -645,19 +698,17 @@ test_that("D2 refuses negative or infinite demand unless snap", {
   expect_error(compute_access(bad, f$S, k, k), msg, fixed = TRUE)
 })
 
-test_that("a missing sigma cell gives no weight, as in the field engine", {
+test_that("a missing sigma cell gives no weight", {
   f <- fca_toy()
   sigma <- terra::rast(f$demand)
   terra::values(sigma) <- 8
   sigma[2] <- NA
   params <- list(method = "gaussian", sigma = sigma)
-  run <- function(engine) {
-    withr::local_options(spax.fca_engine = engine)
-    terra::values(spax_e2sfca(f$demand, f$supply_vector, f$distance,
-                              decay_params = params)$accessibility)
-  }
-  block <- expect_no_error(run("block"))
-  field <- run("field")
-  expect_identical(unname(is.na(block)), unname(is.na(field)))
-  expect_equal(unname(block), unname(field), tolerance = 1e-12)
+  got <- expect_no_error(
+    spax_e2sfca(f$demand, f$supply_vector, f$distance, decay_params = params)
+  )
+  # Cell 2 has no kernel value for any facility, so its access is missing.
+  W <- decay_matrix(f$distance, params)
+  expect_true(all(is.na(W[2, ])))
+  expect_fca_oracle(got, f$demand, W, S = matrix(c(10, 15), ncol = 1))
 })

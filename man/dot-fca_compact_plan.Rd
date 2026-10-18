@@ -25,6 +25,6 @@ use the demand-side fields.
 }
 \details{
 Kernels are taken as `SpatRaster`s here (the proven oracle shape); the
-boundary check mirrors `compute_fca()`'s alignment contract.
+boundary check mirrors the alignment contract of [compute_access()].
 }
 \keyword{internal}

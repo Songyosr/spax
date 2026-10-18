@@ -1,4 +1,4 @@
-# Shared fixtures and a base-R oracle for the legacy FCA, field, raster-tool
+# Shared fixtures and a base-R oracle for the legacy FCA, raster-tool
 # and PMF tests. Every value is fixed; nothing here draws random numbers.
 
 # A small raster with fixed values. `vals` fills cells row by row, one layer
@@ -11,19 +11,6 @@ toy_rast <- function(vals, nrows = 3, ncols = 3, nlyr = 1, names = NULL) {
     names(r) <- names
   }
   r
-}
-
-# An n-layer 2 x 2 raster whose layer i holds the value i, for spax_field
-# tests. Without `names` the layers keep terra's positional names (lyr.1, ...).
-field_rast <- function(n = 1, names = NULL) {
-  toy_rast(rep(seq_len(n), each = 4), nrows = 2, ncols = 2, nlyr = n,
-           names = names)
-}
-
-# The layer index of a raster field or the node index of a vector field.
-field_index_frame <- function(field) {
-  if (inherits(field, "spax_raster_field")) .field_layer_index(field)
-  else .field_node_index(field)
 }
 
 # The 3 x 3 FCA toy: demand 10..90 and two facilities whose distances run
@@ -67,17 +54,6 @@ fca_oracle <- function(D, Wd, Wa = Wd, S, normalize = "identity") {
   A <- Wa0 %*% R
   A[rowSums(!is.na(Wa)) == 0, ] <- NA
   unname(A)
-}
-
-# Run `fun()` under the field engine and under the block engine of
-# SPAX-055 (option spax.fca_engine) and return both results. `block_values`
-# sets spax.fca_block_values for the block run: 1 gives one-row blocks.
-fca_engines <- function(fun, block_values = NULL) {
-  field <- withr::with_options(list(spax.fca_engine = "field"), fun())
-  block <- withr::with_options(
-    list(spax.fca_engine = "block", spax.fca_block_values = block_values), fun()
-  )
-  list(field = field, block = block)
 }
 
 # A 3 x 4 grid with `nlyr` facilities for the block engine. Demand is missing
