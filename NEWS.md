@@ -1,4 +1,7 @@
-# spax (development version)
+# spax 0.3.1
+
+Patch release. Poisson flow fits are now maximum likelihood estimates; saved
+fits from 0.3.0 keep working.
 
 * Poisson fits in `fit_allocation()` now floor modelled counts at 1e-250 instead of 1e-9
   (set by `loss_args = list(eps = ...)`). The old floor capped the loss of positive counts
