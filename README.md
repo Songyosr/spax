@@ -25,14 +25,14 @@ not part of the experimental CLM interface.
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.3.0. Existing public FCA calling semantics are unchanged.
+for spax 0.3.1. Existing public FCA calling semantics are unchanged.
 
-Install version 0.3.0 by its release tag rather than from the
+Install version 0.3.1 by its release tag rather than from the
 repository’s default branch:
 
 ``` r
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.3.0")
+pak::pak("Songyosr/spax@v0.3.1")
 ```
 
 The allocation interface is experimental and may change in later
@@ -41,8 +41,9 @@ the input IDs, units, observation declaration and saved results.
 Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
 
-Version 0.3.0 is archived on Zenodo as doi:10.5281/zenodo.23438612; cite
-it with `citation("spax")`.
+Each release is archived on Zenodo; doi:10.5281/zenodo.23438611 refers to all
+versions (version 0.3.0 is doi:10.5281/zenodo.23438612). Cite the version you
+used with `citation("spax")`.
 
 Package and function help are available from an installed package.
 Installations that include built articles also provide the guides, which
