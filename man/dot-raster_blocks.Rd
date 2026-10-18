@@ -4,7 +4,7 @@
 \alias{.raster_blocks}
 \title{Row blocks for reading a list of rasters}
 \usage{
-.raster_blocks(rasters, max_values = getOption("spax.fca_block_values", 1e+07))
+.raster_blocks(rasters, max_values = getOption("spax.fca_block_values", 2e+06))
 }
 \arguments{
 \item{rasters}{Named list of SpatRasters with the same number of rows and

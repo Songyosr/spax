@@ -274,10 +274,13 @@
   list(
     rasters = rasters,
     weights = function(b, rows) {
-      d <- b$distance[rows, , drop = FALSE]
+      # Pass 2 asks for every row of the block: use the block as read, without a copy.
+      all_rows <- length(rows) == nrow(b$distance)
+      d <- if (all_rows) b$distance else b$distance[rows, , drop = FALSE]
       args <- fixed
       for (arg in names(keys)) {
-        x <- b[[keys[[arg]]]][rows, , drop = FALSE]
+        x <- b[[keys[[arg]]]]
+        if (!all_rows) x <- x[rows, , drop = FALSE]
         if (ncol(x) > 1L && ncol(x) != ncol(b$distance)) {
           stop("`", arg, "` raster must have 1 layer or one layer per `distance` layer")
         }

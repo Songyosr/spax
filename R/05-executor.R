@@ -250,7 +250,7 @@
 #'   block, columns per row, and the alias map.
 #' @keywords internal
 .raster_blocks <- function(rasters,
-                           max_values = getOption("spax.fca_block_values", 1e7)) {
+                           max_values = getOption("spax.fca_block_values", 2e6)) {
   nms <- names(rasters)
   same <- stats::setNames(nms, nms)
   for (i in seq_along(rasters)[-1L]) {
@@ -313,7 +313,11 @@
   distinct <- unique(unname(same))
   values <- lapply(stats::setNames(distinct, distinct), function(nm) {
     x <- rasters[[nm]]
-    terra::readValues(x, start, n, 1, terra::ncol(x), mat = TRUE)
+    # terra returns the values layer by layer, which is the column order of a cells
+    # x layers matrix: setting the dimensions avoids the copy that mat = TRUE makes.
+    v <- terra::readValues(x, start, n, 1, terra::ncol(x))
+    dim(v) <- c(n * terra::ncol(x), terra::nlyr(x))
+    v
   })
   stats::setNames(values[unname(same)], names(same))
 }
@@ -359,12 +363,17 @@
   close <- .raster_open(rasters, blocks$same)
   on.exit(close(), add = TRUE)
 
+  # A grid that fits in one block is read once and used by both passes.
+  single <- length(blocks$starts) == 1L
+  cached <- if (single) .raster_read(rasters, blocks$same, blocks$starts, blocks$n)
+
   # Pass 1: the demand that reaches each facility.
   U <- numeric(J)
   for (k in seq_along(blocks$starts)) {
     # Demand first: a block with no demand needs no travel values in this pass.
-    D <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
-                      only = "demand")$demand[, 1L]
+    D <- if (single) cached$demand[, 1L] else
+      .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
+                   only = "demand")$demand[, 1L]
     active <- which(is.finite(D) & D > 0)
     # D2 (SPAX-055): negative or infinite demand is refused (all rows of the
     # block) unless `snap`, where such cells are simply not active.
@@ -373,9 +382,13 @@
            call. = FALSE)
     }
     if (!length(active)) next
-    b <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
-                      only = setdiff(names(blocks$same), "demand"))
-    b$demand <- matrix(D)
+    if (single) {
+      b <- cached
+    } else {
+      b <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
+                        only = setdiff(names(blocks$same), "demand"))
+      b$demand <- matrix(D)
+    }
     Kd <- .fca_kernel_rows(kernels$demand, b, active, J)
     Kd[is.na(Kd)] <- 0
     Kd <- .fca_normalize_kernel(Kd, normalize)
@@ -388,8 +401,9 @@
   out <- matrix(NA_real_, terra::ncell(rasters[[1L]]), ncol(supply))
   for (k in seq_along(blocks$starts)) {
     # Demand is not needed to spread the ratios.
-    b <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
-                      only = setdiff(names(blocks$same), "demand"))
+    b <- if (single) cached else
+      .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
+                   only = setdiff(names(blocks$same), "demand"))
     rows <- seq_len(blocks$n[k] * blocks$ncol)
     Ka <- .fca_kernel_rows(kernels$access, b, rows, J)
     reach <- which(rowSums(is.finite(Ka)) > 0)
