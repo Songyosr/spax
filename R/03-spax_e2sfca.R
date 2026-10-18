@@ -227,13 +227,25 @@
   method <- params$method
   if (is.function(method)) {
     nm <- paste0("weights_", key)
+    weights <- .fca_decay_weights(distance, params, snap)
+    # The weight layers belong to facilities by their names, as before; layers
+    # with terra's default names (or none) are taken in distance-layer order.
+    ids <- .fca_ids(distance)
+    weight_ids <- .fca_ids(weights, "decay weights")
+    if (terra::nlyr(weights) != length(ids)) {
+      stop("a decay function must return one layer per distance layer")
+    }
+    positional <- identical(weight_ids, paste0("facility_", seq_along(weight_ids)))
+    if (!positional && !setequal(weight_ids, ids)) {
+      stop("the layer names returned by the decay function must be the distance layer names")
+    }
+    order <- if (positional) seq_along(ids) else match(ids, weight_ids)
     # The distance is read as well, for the finite-travel mask of decision D1.
-    rasters <- c(list(distance = distance),
-                 stats::setNames(list(.fca_decay_weights(distance, params, snap)), nm))
+    rasters <- c(list(distance = distance), stats::setNames(list(weights), nm))
     return(list(
       rasters = rasters,
       weights = function(b, rows) {
-        W <- b[[nm]][rows, , drop = FALSE]
+        W <- b[[nm]][rows, order, drop = FALSE]
         .check_finite_weights(b$distance[rows, , drop = FALSE], W)
         W
       }
@@ -728,7 +740,9 @@ spax_m2sfca <- function(demand, supply, distance,
 #' uses a single distance/time threshold to define service areas and computes
 #' accessibility as a ratio of supply to demand within these catchments.
 #'
-#' @param demand SpatRaster representing spatial distribution of demand
+#' @param demand SpatRaster representing spatial distribution of demand. Demand
+#'        must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+#'        which ignores other cells.
 #' @param supply vector, matrix, or data.frame containing supply capacity values
 #' @param distance SpatRaster stack of travel times/distances to facilities
 #' @param threshold Numeric value defining the catchment area cutoff (same units as distance)
@@ -866,7 +880,9 @@ spax_2sfca <- function(demand, supply, distance, threshold,
 #'        \itemize{
 #'          \item method: "gaussian", "exponential", "power" or "binary", a
 #'            custom decay function, or a kernel declared with
-#'            \code{\link{decay_kernel}}
+#'            \code{\link{decay_kernel}}. Weights must be finite where the
+#'            distance is finite, so power decay needs a positive minimum
+#'            distance
 #'          \item sigma: decay parameter controlling the rate of distance decay
 #'          \item Additional parameters passed to custom decay functions
 #'        }
@@ -874,7 +890,8 @@ spax_2sfca <- function(demand, supply, distance, threshold,
 #'        \code{decay_params}, for the decay weights that the selection weights
 #'        are built from. The default is \code{decay_params}, so one decay both
 #'        weights distance and selects facilities; give a different list to
-#'        select with another decay.
+#'        select with another decay. Its weights must also be finite where the
+#'        distance is finite.
 #' @return A spax object (see \code{\link{spax_e2sfca}}) whose \code{type} is
 #'         "3SFCA". Its \code{parameters} are the named list
 #'         \code{decay_params}, \code{selection_params}.

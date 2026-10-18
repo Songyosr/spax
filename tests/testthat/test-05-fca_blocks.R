@@ -712,3 +712,47 @@ test_that("a missing sigma cell gives no weight", {
   expect_true(all(is.na(W[2, ])))
   expect_fca_oracle(got, f$demand, W, S = matrix(c(10, 15), ncol = 1))
 })
+
+test_that("a raster is recognized as itself and not as a copy", {
+  f <- fca_toy()
+  # terra keeps the C++ object in an internal slot; if terra renames it, this fails.
+  expect_false(is.null(.raster_pointer(f$distance)))
+  expect_true(.same_raster(f$distance, f$distance))
+  expect_false(.same_raster(f$distance, f$distance * 1))
+})
+
+test_that("decay function layers are matched to facilities by name", {
+  f <- fca_toy()
+  params <- list(method = "gaussian", sigma = 2)
+  ref <- terra::values(spax_e2sfca(f$demand, f$supply_vector, f$distance,
+                                   decay_params = params)$accessibility)
+  # A function that returns its layers in reverse order, names included
+  reversed <- function(distance, sigma) {
+    w <- exp(-distance^2 / (2 * sigma^2))
+    w[[rev(seq_len(terra::nlyr(w)))]]
+  }
+  got <- terra::values(spax_e2sfca(f$demand, f$supply_vector, f$distance,
+                                   decay_params = list(method = reversed, sigma = 2))$accessibility)
+  expect_equal(unname(got), unname(ref), tolerance = 1e-12)
+  # Unknown names are refused
+  renamed <- function(distance, sigma) {
+    w <- exp(-distance^2 / (2 * sigma^2))
+    names(w) <- paste0("other", seq_len(terra::nlyr(w)))
+    w
+  }
+  expect_error(spax_e2sfca(f$demand, f$supply_vector, f$distance,
+                           decay_params = list(method = renamed, sigma = 2)),
+               "must be the distance layer names")
+})
+
+test_that("an infinite weight where travel is missing is not refused (D1)", {
+  f <- fca_toy()
+  d <- f$distance
+  terra::values(d)[1, 1] <- NA
+  inf_where_missing <- function(distance, sigma) {
+    w <- exp(-distance^2 / (2 * sigma^2))
+    terra::ifel(is.na(distance), Inf, w)
+  }
+  expect_no_error(spax_e2sfca(f$demand, f$supply_vector, d,
+                              decay_params = list(method = inf_where_missing, sigma = 2)))
+})

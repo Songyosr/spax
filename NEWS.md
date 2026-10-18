@@ -6,7 +6,12 @@
   on large grids they are faster (about 4 times on a 600 x 600 grid with 250 facilities) and
   no longer rounded to single precision in temporary files. Decay weights that are infinite
   where travel is finite, such as power decay at distance 0, and negative or infinite demand
-  are now refused; they produced meaningless surfaces before.
+  are now refused; they produced meaningless surfaces before. Smaller changes:
+  `compute_access()` refuses infinite weights, also with `snap = TRUE`; with `snap = TRUE`,
+  negative or infinite demand counts as no demand and a `sigma` vector longer than one is
+  refused; facility IDs now always come from the distance layers, so a one-layer `sigma`
+  raster or a decay function whose layers keep terra's default names no longer fails with
+  "Some weight layer IDs not found"; cells whose weights are all NaN give NA, not NaN.
 * Version 0.3.1 is archived on Zenodo: cite it as doi:10.5281/zenodo.23446335.
   doi:10.5281/zenodo.23438611 refers to all versions.
 

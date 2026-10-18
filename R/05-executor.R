@@ -234,7 +234,15 @@
 # SpatRasters as a comparison of their values, which reads both rasters and is
 # FALSE when they contain missing cells, even for the same object.
 .same_raster <- function(x, y) {
-  identical(x@pntr, y@pntr)
+  px <- .raster_pointer(x)
+  !is.null(px) && identical(px, .raster_pointer(y))
+}
+
+# The C++ object behind a SpatRaster. terra keeps it in an internal slot
+# ("pntr" in terra 1.8); a test checks that a raster is recognized as itself, so
+# a change of that slot in terra shows up there rather than in user code.
+.raster_pointer <- function(x) {
+  tryCatch(x@pntr, error = function(e) NULL)
 }
 
 #' Row blocks for reading a list of rasters
