@@ -93,11 +93,13 @@ An `ae_allocation_comparison` with a `table` (one row per fit), a long
 
 Loss differences from the reference are reported only when the
 comparison is like for like: the same observed targets, loss function
-and arguments, demand, supply, origin and facility IDs and prepared
-travel times. Travel times are checked only when `models` are supplied,
-and each model must reproduce its own fit; otherwise loss differences
-are left missing. Contact and capacity values remain comparable across
-specifications, but they are conditional on each specification's inputs.
+and arguments (Poisson fits: the same floor, a fit that stored none used
+1e-9, or floors that change neither loss), demand, supply, origin and
+facility IDs and prepared travel times. Travel times are checked only
+when `models` are supplied, and each model must reproduce its own fit;
+otherwise loss differences are left missing. Contact and capacity values
+remain comparable across specifications, but they are conditional on
+each specification's inputs.
 
 With `zones`, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the

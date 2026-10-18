@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,12 @@
       <small>Source: <a href="https://github.com/Songyosr/spax/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1" id="spax-031">spax 0.3.1<a class="anchor" aria-label="anchor" href="#spax-031"></a></h2>
+<p>Patch release. Poisson flow fits are now maximum likelihood estimates; saved fits from 0.3.0 keep working.</p>
+<ul><li><p>Poisson fits in <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> now floor modelled counts at 1e-250 instead of 1e-9 (set by <code>loss_args = list(eps = ...)</code>). The old floor capped the loss of positive counts that the model puts almost no weight on, such as residents registered far from home, so a flow fit was not the Poisson maximum likelihood estimate and moved with the floor: in the Cornwall registration guide the Gaussian scale changes from 4.36 to 4.59 minutes and the outside weight from 0.0176 to 0.0273. Facility-total estimates are unaffected. <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> warns and <code><a href="../reference/check_allocation.html">check_allocation()</a></code> reports cells with positive counts that are still modelled below the floor (for example counts on absent edges or at a facility with zero supply); <code><a href="../reference/check_allocation.html">check_allocation()</a></code> also reports them for saved fits made with the old floor. <code><a href="../reference/compare_allocations.html">compare_allocations()</a></code> treats a saved Poisson fit without a stored floor as using 1e-9, and compares fits with different floors when neither floor changes either loss.</p></li>
+<li><p>Version 0.3.0 is archived on Zenodo: cite it as <a href="doi:10.5281/zenodo.23438612" class="uri">doi:10.5281/zenodo.23438612</a>. <a href="doi:10.5281/zenodo.23438611" class="uri">doi:10.5281/zenodo.23438611</a> refers to all versions. <code>citation("spax")</code> gives the reference.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="spax-030">spax 0.3.0<a class="anchor" aria-label="anchor" href="#spax-030"></a></h2>
 <p>First release that includes the experimental allocation workflow. Experimental functions may change in later versions; record the package version when reproducing an analysis.</p>
@@ -143,7 +149,8 @@
 <li><p>Saved-result methods provide parameter, bootstrap, regional and cell tables, summaries and plots without rerunning fitting or resampling. The allocation article demonstrates a supply scenario, export and reload.</p></li>
 <li><p>Package help now explains compatibility with public FCA and older private allocation results. Older objects may require regeneration for current prediction or reporting; <code>huff_decay</code> results must not be relabeled as corrected CLM outputs.</p></li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

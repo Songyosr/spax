@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -220,17 +220,17 @@ status: selected; selected start: near
 loss disagreement: FALSE; parameter disagreement: FALSE
 Supplied-start diagnostics (not a global-optimum or identification guarantee):
   start     loss eligible optim_convergence solver_converged residual seconds
-   near -3182000     TRUE                 0             TRUE        0   0.707
- middle -3182000     TRUE                 0             TRUE        0   0.268
-    far -3182000     TRUE                 0             TRUE        0   0.482
+   near -3168000     TRUE                 0             TRUE        0   0.631
+ middle -3168000     TRUE                 0             TRUE        0   0.190
+    far -3168000     TRUE                 0             TRUE        0   0.314
  boundary   status                                   optim_message
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
  solver_message log_parameter_gap loss_gap
       converged         0.000e+00        0
-      converged         1.654e-07        0
-      converged         1.554e-07        0
+      converged         1.762e-07        0
+      converged         2.758e-07        0
 
 Selected fit:
 &lt;summary.ae_problem_nfxp_fit&gt;
@@ -240,38 +240,42 @@ allocation_form: clm
 
 theta:
  parameter estimate
-     sigma  4.35600
-        v0  0.01765
+     sigma  4.59100
+        v0  0.02733
 
 fit:
      loss convergence seconds spectral_radius gradient
- -3182000           0   0.702               0     TRUE
+ -3168000           0   0.623               0     TRUE
 
 predicted:
-        min       q25    median  mean       q75  max
- 5.907e-181 1.825e-44 1.166e-16 33.17 0.0006825 2932
+        min       q25   median  mean      q75  max
+ 1.072e-162 8.783e-40 8.28e-15 33.14 0.002554 2872
 
 state:
    min   q25 median  mean  q75   max
  1.133 3.272   4.88 5.765 7.93 13.36
 
 residual:
-   min       q25    median   mean       q75  max
- -1936 1.577e-67 3.719e-25 0.1541 1.634e-07 1209</code></pre>
+   min       q25   median   mean       q75  max
+ -1932 6.052e-59 6.31e-22 0.1232 2.367e-06 1135</code></pre>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>  parameter   estimate
-1     sigma 4.35551274
-2        v0 0.01764985</code></pre>
+1     sigma 4.59099725
+2        v0 0.02733455</code></pre>
 <p>The summary keeps every start, its convergence, boundaries and
-messages. All three starts converge away from the bounds and stop very
-close to each other. The disagreement flag uses deliberately strict
-default tolerances, so read the gaps in the per-start table rather than
-the flag alone. Agreement among the supplied starts is a numerical
-check; it does not prove a global optimum or that the parameters are
-identified. A σ of about 4.4 minutes means registration is very local: a
-practice 9 minutes away keeps only about 12% of the pull it would have
-next door.</p>
+messages. The starts stop away from the bounds and very close to each
+other. With the strict tolerance used here (<code>factr = 10</code>), a
+start can end with a line-search message at practically the same loss,
+so judge agreement by the losses and parameters in the per-start table
+rather than by the convergence codes alone. The disagreement flag uses
+deliberately strict default tolerances, so read the gaps in the
+per-start table rather than the flag alone. Agreement among the supplied
+starts is a numerical check; it does not prove a global optimum or that
+the parameters are identified.</p>
+<p>A σ of about 4.6 minutes means registration is very local: a practice
+9 minutes away keeps only about 15% of the pull it would have next
+door.</p>
 </div>
 <div class="section level2">
 <h2 id="fitted-against-observed">Fitted against observed<a class="anchor" aria-label="anchor" href="#fitted-against-observed"></a>
@@ -287,7 +291,7 @@ registered list.</p>
 <span>  fitted <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">practices</span><span class="op">$</span><span class="va">observed</span>, <span class="va">practices</span><span class="op">$</span><span class="va">fitted</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] 0.9319953</code></pre>
+<pre class="spax-output"><code>[1] 0.9326925</code></pre>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">practices</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">observed</span> <span class="op">/</span> <span class="fl">1000</span>, <span class="va">fitted</span> <span class="op">/</span> <span class="fl">1000</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_abline</a></span><span class="op">(</span>linetype <span class="op">=</span> <span class="fl">2</span>, colour <span class="op">=</span> <span class="st">"grey50"</span><span class="op">)</span> <span class="op">+</span></span>
@@ -318,8 +322,8 @@ proportion to GP FTE), and reports the one-way trips each implies.</p>
 <span><span class="fu"><a href="../reference/check_allocation.html">check_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>&lt;ae_allocation_check&gt;
     comparator     loss loss_difference contact trip_median trip_p90
-        fitted -3181928               0  0.9955           3        9
-      no_decay -1567076         1614852  0.9909          39       84
+        fitted -3168283               0  0.9946           3       10
+      no_decay -1567076         1601207  0.9909          39       84
  capacity_only       NA              NA      NA          NA       NA
 Trip lengths are one-way, in minutes, weighted by expected flows.
 
@@ -460,10 +464,10 @@ Inspect these flags before reading a map.</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>             cells population_percent 
-             81.00               0.08 </code></pre>
+             74.00               0.06 </code></pre>
 <p>Some grid cells far from every practice get a high outside share
 because the fitted travel scale is short and the outside weight is
-constant. The 81 cells above 0.5 hold 0.08% of the grid’s population,
+constant. The 74 cells above 0.5 hold 0.06% of the grid’s population,
 but their values are an extrapolation of the model, not a measure of
 unmet need. The grid population (WorldPop 2020) and the registrations
 (NHS England 2026) are different sources and dates, so the grid is used
@@ -525,13 +529,13 @@ attraction, allocation and every practice’s modelled load together.</p>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">name</span>, <span class="va">baseline</span>, <span class="va">scenario</span>, <span class="va">change</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>                         name  baseline  scenario     change
-L82047       MARAZION SURGERY  5649.823     0.000 -5649.8233
-L82036 BODRIGGY HEALTH CENTRE 16315.213 17795.627  1480.4144
-L82038 ATLANTIC MEDICAL GROUP 14519.656 15698.907  1179.2517
-Y01050      ROSMELLYN SURGERY 11129.279 12033.173   903.8934
-Y01922       STENNACK SURGERY  9882.199 10532.752   650.5532
-L82070      SUNNYSIDE SURGERY  6055.999  6547.852   491.8537
-Y01051         MORRAB SURGERY  3627.982  3985.176   357.1943</code></pre>
+L82047       MARAZION SURGERY  5723.246     0.000 -5723.2461
+L82036 BODRIGGY HEALTH CENTRE 16060.322 17480.494  1420.1723
+L82038 ATLANTIC MEDICAL GROUP 14575.930 15774.507  1198.5775
+Y01050      ROSMELLYN SURGERY 11172.413 12091.120   918.7066
+Y01922       STENNACK SURGERY  9742.274 10434.108   691.8340
+L82070      SUNNYSIDE SURGERY  6079.470  6579.384   499.9143
+L82018 HELSTON MEDICAL CENTRE 18359.690 18711.998   352.3076</code></pre>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Change in the number of residents modelled outside mainland practices</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
@@ -539,12 +543,13 @@ Y01051         MORRAB SURGERY  3627.982  3985.176   357.1943</code></pre>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span> <span class="op">*</span> <span class="va">baseline</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code><span><span class="va">outside_change</span> </span>
-<span>      <span class="fl">10.73859</span> </span></code></pre>
-<p>The modelled list of the closed practice moves to nearby practices in
-Penzance and St Ives Bay, with a small part going to the outside option.
-Where a closed practice has no near neighbour, a larger part goes to the
-outside option; that follows from the constant outside weight, not from
-evidence about where patients would go.</p>
+<span>      <span class="fl">14.75119</span> </span></code></pre>
+<p>The modelled list of the closed practice moves mostly to nearby
+practices in Penzance, Hayle and St Ives Bay. A farther practice,
+Helston Medical Centre, gains less, and a small part goes to the outside
+option. Where a closed practice has no near neighbour, a larger part
+goes to the outside option; that follows from the constant outside
+weight, not from evidence about where patients would go.</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Each area's modelled share of residents at the closed practice</span></span>
 <span><span class="va">moved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
@@ -669,10 +674,10 @@ below repeats the Gaussian fit’s starts and bounds.</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">plateau_fit</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>     sigma         v0 
-3.57932959 0.03066002 </code></pre>
+3.88744084 0.05433508 </code></pre>
 <p><code>summary(plateau_fit)</code> shows how closely the starts agree.
 The <code>sigma</code> of a declared kernel is the scale of that kernel,
-so 3.58 minutes for the plateau kernel and 4.36 minutes for the Gaussian
+so 3.89 minutes for the plateau kernel and 4.59 minutes for the Gaussian
 kernel are not comparable values. <code><a href="../reference/compare_allocations.html">compare_allocations()</a></code>
 puts the two fits side by side. Given the models as well, it checks that
 both fits use the same flow matrix, loss, inputs and travel times, which
@@ -687,11 +692,11 @@ it requires before it reports a loss difference.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"parameters"</span>, <span class="st">"loss_difference"</span>, <span class="st">"count_correlation"</span><span class="op">)</span></span>
 <span><span class="op">]</span></span></code></pre></div>
 <pre class="spax-output"><code>  specification              parameters loss_difference count_correlation
-1      gaussian sigma=4.356, v0=0.01765            0.00         0.8905881
-2       plateau sigma=3.579, v0=0.03066        52820.34         0.8552432</code></pre>
+1      gaussian sigma=4.591, v0=0.02733            0.00         0.8846533
+2       plateau sigma=3.887, v0=0.05434        62248.12         0.8464323</code></pre>
 <p>Measured from the Gaussian fit, the plateau fit’s Poisson loss is
-higher by 52,820 and its fitted flows correlate with the observed flows
-at 0.86, against 0.89 for the Gaussian fit. These figures say how close
+higher by 62,248 and its fitted flows correlate with the observed flows
+at 0.85, against 0.88 for the Gaussian fit. These figures say how close
 each kernel’s fitted flows come to these registrations under one
 criterion; they do not show which kernel describes how residents choose
 practices. A saved fit that uses a declared kernel keeps the kernel’s

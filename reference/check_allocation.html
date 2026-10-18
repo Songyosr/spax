@@ -11,7 +11,7 @@ The check reports only: it never changes or replaces the fit."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -116,7 +116,9 @@ difference from the fit, parameters, need-weighted contact and implied
 trips), the exact comparator <code>parameters</code> (those of <code>no_decay</code> are the
 re-optimized parameters other than <code>sigma</code>, an empty vector when the model
 fits only <code>sigma</code>), the selected fit's parameter <code>boundary</code> flags,
-<code>search_at_edge</code>, and logical <code>flags</code>. Use <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> or <code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code>.</p>
+<code>search_at_edge</code>, logical <code>flags</code>, and <code>poisson_floor</code> (for a Poisson fit:
+its floor <code>eps</code> and the number of cells with positive observed counts modelled below
+it, which cap the loss; <code>NULL</code> otherwise). Use <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> or <code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

@@ -191,10 +191,10 @@ coef(fit)
 
 ``` spax-output
      sigma         v0 
-4.35551274 0.01764985 
+4.59099725 0.02733455 
 ```
 
-The fitted Gaussian scale is about 4.4 minutes, much shorter than the 10
+The fitted Gaussian scale is about 4.6 minutes, much shorter than the 10
 minutes chosen for the FCA: registration is very local. Inspect
 `summary(fit)` for all starts, failures and boundaries; agreement among
 starts does not establish identification or a global optimum.
@@ -232,10 +232,10 @@ data.frame(
 
 ``` spax-output
                   practice minutes fca_weight clm_probability observed_share
-1     CARNON DOWNS SURGERY       2       0.98           0.236          0.573
-2           PENRYN SURGERY       5       0.88           0.202          0.089
+1     CARNON DOWNS SURGERY       2       0.98           0.216          0.573
+2           PENRYN SURGERY       5       0.88           0.196          0.089
 3 CHACEWATER HEALTH CENTRE       6       0.84           0.071          0.171
-4  LANDER MEDICAL PRACTICE       7       0.78           0.139          0.028
+4  LANDER MEDICAL PRACTICE       7       0.78           0.143          0.028
 ```
 
 ``` r
@@ -253,7 +253,7 @@ round(
 
 ``` spax-output
 fca_weights  clm_inside clm_outside 
-    10.3451      0.9991      0.0009 
+    10.3451      0.9988      0.0012 
 ```
 
 The FCA weights are separate distance discounts, one per practice. They
@@ -330,7 +330,7 @@ c(
 
 ``` spax-output
    mean_minutes practice_totals 
-      0.9115940       0.9319953 
+      0.9023549       0.9326925 
 ```
 
 ``` r
@@ -346,10 +346,10 @@ round(100 * outside, 2)
 
 ``` spax-output
 observed modelled 
-    0.91     0.45 
+    0.91     0.54 
 ```
 
-Modelled and observed mean travel times correlate at 0.91 across areas,
+Modelled and observed mean travel times correlate at 0.90 across areas,
 and modelled and observed practice totals at 0.93. One constant outside
 weight understates registration outside mainland Cornwall (the last
 line, in per cent of registered residents), which is concentrated in a
@@ -359,7 +359,7 @@ few areas near the Devon border.
 |:---|:---|:---|
 | Per area | One supply-per-demand score per supply column | A probability for each practice plus the outside option |
 | Supply | Each column is a separate indicator | One supply vector, which sets attraction |
-| Distance decay | Chosen by the analyst (10 minutes here) | Fitted to the declared target (about 4.4 minutes here) |
+| Distance decay | Chosen by the analyst (10 minutes here) | Fitted to the declared target (about 4.6 minutes here) |
 | Outside option | None | Explicit weight v0, fitted here |
 | Check against registrations | No observed counterpart | Fitted flows, practice totals and outside share |
 

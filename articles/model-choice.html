@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -308,8 +308,8 @@ starts.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">status</span>, <span class="st">"selected"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>     sigma         v0 
-4.35551274 0.01764985 </code></pre>
-<p>The fitted Gaussian scale is about 4.4 minutes, much shorter than the
+4.59099725 0.02733455 </code></pre>
+<p>The fitted Gaussian scale is about 4.6 minutes, much shorter than the
 10 minutes chosen for the FCA: registration is very local. Inspect
 <code>summary(fit)</code> for all starts, failures and boundaries;
 agreement among starts does not establish identification or a global
@@ -346,10 +346,10 @@ practices.</p>
 <span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>                  practice minutes fca_weight clm_probability observed_share
-1     CARNON DOWNS SURGERY       2       0.98           0.236          0.573
-2           PENRYN SURGERY       5       0.88           0.202          0.089
+1     CARNON DOWNS SURGERY       2       0.98           0.216          0.573
+2           PENRYN SURGERY       5       0.88           0.196          0.089
 3 CHACEWATER HEALTH CENTRE       6       0.84           0.071          0.171
-4  LANDER MEDICAL PRACTICE       7       0.78           0.139          0.028</code></pre>
+4  LANDER MEDICAL PRACTICE       7       0.78           0.143          0.028</code></pre>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Totals over all practices for this area</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
@@ -361,7 +361,7 @@ practices.</p>
 <span>  <span class="fl">4</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>fca_weights  clm_inside clm_outside 
-    10.3451      0.9991      0.0009 </code></pre>
+    10.3451      0.9988      0.0012 </code></pre>
 <p>The FCA weights are separate distance discounts, one per practice.
 They do not compete with each other and they sum to far more than 1
 here. The CLM probabilities do compete: a nearby practice with more GP
@@ -427,7 +427,7 @@ index has no corresponding observed quantity in these data.</p>
 <span>  practice_totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>   mean_minutes practice_totals 
-      0.9115940       0.9319953 </code></pre>
+      0.9023549       0.9326925 </code></pre>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Share of residents registered outside mainland Cornwall, observed and</span></span>
 <span><span class="co"># modelled</span></span>
@@ -437,8 +437,8 @@ index has no corresponding observed quantity in these data.</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">outside</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>observed modelled 
-    0.91     0.45 </code></pre>
-<p>Modelled and observed mean travel times correlate at 0.91 across
+    0.91     0.54 </code></pre>
+<p>Modelled and observed mean travel times correlate at 0.90 across
 areas, and modelled and observed practice totals at 0.93. One constant
 outside weight understates registration outside mainland Cornwall (the
 last line, in per cent of registered residents), which is concentrated
@@ -469,7 +469,7 @@ option</td>
 <tr class="odd">
 <td align="left">Distance decay</td>
 <td align="left">Chosen by the analyst (10 minutes here)</td>
-<td align="left">Fitted to the declared target (about 4.4 minutes
+<td align="left">Fitted to the declared target (about 4.6 minutes
 here)</td>
 </tr>
 <tr class="even">

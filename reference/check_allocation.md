@@ -61,7 +61,9 @@ difference from the fit, parameters, need-weighted contact and implied
 trips), the exact comparator `parameters` (those of `no_decay` are the
 re-optimized parameters other than `sigma`, an empty vector when the
 model fits only `sigma`), the selected fit's parameter `boundary` flags,
-`search_at_edge`, and logical `flags`. Use
+`search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson
+fit: its floor `eps` and the number of cells with positive observed
+counts modelled below it, which cap the loss; `NULL` otherwise). Use
 [`print()`](https://rdrr.io/r/base/print.html) or
 [`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html).
 

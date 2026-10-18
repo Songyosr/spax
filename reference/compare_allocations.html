@@ -15,7 +15,7 @@ refitted."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -152,12 +152,14 @@ long <code>zones</code> table when zones are supplied, and the reference name. U
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Loss differences from the reference are reported only when the comparison is
-like for like: the same observed targets, loss function and arguments,
-demand, supply, origin and facility IDs and prepared travel times. Travel
-times are checked only when <code>models</code> are supplied, and each model must
-reproduce its own fit; otherwise loss differences are left missing. Contact
-and capacity values remain comparable across specifications, but they are
-conditional on each specification's inputs.</p>
+like for like: the same observed targets, loss function and arguments
+(Poisson fits: the same floor, a fit that stored none used 1e-9, or floors
+that change neither loss), demand, supply, origin and facility IDs and
+prepared travel times. Travel times are checked only when <code>models</code> are
+supplied, and each model must reproduce its own fit; otherwise loss
+differences are left missing. Contact and capacity values remain comparable
+across specifications, but they are conditional on each specification's
+inputs.</p>
 <p>With <code>zones</code>, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the reference
 are listed. Classes require an adequacy cut in <code>coverage_args</code>; each fit uses

@@ -173,17 +173,17 @@ status: selected; selected start: near
 loss disagreement: FALSE; parameter disagreement: FALSE
 Supplied-start diagnostics (not a global-optimum or identification guarantee):
   start     loss eligible optim_convergence solver_converged residual seconds
-   near -3182000     TRUE                 0             TRUE        0   0.707
- middle -3182000     TRUE                 0             TRUE        0   0.268
-    far -3182000     TRUE                 0             TRUE        0   0.482
+   near -3168000     TRUE                 0             TRUE        0   0.631
+ middle -3168000     TRUE                 0             TRUE        0   0.190
+    far -3168000     TRUE                 0             TRUE        0   0.314
  boundary   status                                   optim_message
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
  solver_message log_parameter_gap loss_gap
       converged         0.000e+00        0
-      converged         1.654e-07        0
-      converged         1.554e-07        0
+      converged         1.762e-07        0
+      converged         2.758e-07        0
 
 Selected fit:
 <summary.ae_problem_nfxp_fit>
@@ -193,24 +193,24 @@ allocation_form: clm
 
 theta:
  parameter estimate
-     sigma  4.35600
-        v0  0.01765
+     sigma  4.59100
+        v0  0.02733
 
 fit:
      loss convergence seconds spectral_radius gradient
- -3182000           0   0.702               0     TRUE
+ -3168000           0   0.623               0     TRUE
 
 predicted:
-        min       q25    median  mean       q75  max
- 5.907e-181 1.825e-44 1.166e-16 33.17 0.0006825 2932
+        min       q25   median  mean      q75  max
+ 1.072e-162 8.783e-40 8.28e-15 33.14 0.002554 2872
 
 state:
    min   q25 median  mean  q75   max
  1.133 3.272   4.88 5.765 7.93 13.36
 
 residual:
-   min       q25    median   mean       q75  max
- -1936 1.577e-67 3.719e-25 0.1541 1.634e-07 1209
+   min       q25   median   mean       q75  max
+ -1932 6.052e-59 6.31e-22 0.1232 2.367e-06 1135
 ```
 
 ``` r
@@ -220,18 +220,23 @@ as.data.frame(fit)
 
 ``` spax-output
   parameter   estimate
-1     sigma 4.35551274
-2        v0 0.01764985
+1     sigma 4.59099725
+2        v0 0.02733455
 ```
 
 The summary keeps every start, its convergence, boundaries and messages.
-All three starts converge away from the bounds and stop very close to
-each other. The disagreement flag uses deliberately strict default
-tolerances, so read the gaps in the per-start table rather than the flag
-alone. Agreement among the supplied starts is a numerical check; it does
-not prove a global optimum or that the parameters are identified. A σ of
-about 4.4 minutes means registration is very local: a practice 9 minutes
-away keeps only about 12% of the pull it would have next door.
+The starts stop away from the bounds and very close to each other. With
+the strict tolerance used here (`factr = 10`), a start can end with a
+line-search message at practically the same loss, so judge agreement by
+the losses and parameters in the per-start table rather than by the
+convergence codes alone. The disagreement flag uses deliberately strict
+default tolerances, so read the gaps in the per-start table rather than
+the flag alone. Agreement among the supplied starts is a numerical
+check; it does not prove a global optimum or that the parameters are
+identified.
+
+A σ of about 4.6 minutes means registration is very local: a practice 9
+minutes away keeps only about 15% of the pull it would have next door.
 
 ## Fitted against observed
 
@@ -251,7 +256,7 @@ cor(practices$observed, practices$fitted)
 ```
 
 ``` spax-output
-[1] 0.9319953
+[1] 0.9326925
 ```
 
 ``` r
@@ -293,8 +298,8 @@ check_allocation(model, fit)
 ``` spax-output
 <ae_allocation_check>
     comparator     loss loss_difference contact trip_median trip_p90
-        fitted -3181928               0  0.9955           3        9
-      no_decay -1567076         1614852  0.9909          39       84
+        fitted -3168283               0  0.9946           3       10
+      no_decay -1567076         1601207  0.9909          39       84
  capacity_only       NA              NA      NA          NA       NA
 Trip lengths are one-way, in minutes, weighted by expected flows.
 
@@ -466,12 +471,12 @@ c(
 
 ``` spax-output
              cells population_percent 
-             81.00               0.08 
+             74.00               0.06 
 ```
 
 Some grid cells far from every practice get a high outside share because
 the fitted travel scale is short and the outside weight is constant. The
-81 cells above 0.5 hold 0.08% of the grid’s population, but their values
+74 cells above 0.5 hold 0.06% of the grid’s population, but their values
 are an extrapolation of the model, not a measure of unmet need. The grid
 population (WorldPop 2020) and the registrations (NHS England 2026) are
 different sources and dates, so the grid is used here only for
@@ -543,13 +548,13 @@ practices |>
 
 ``` spax-output
                          name  baseline  scenario     change
-L82047       MARAZION SURGERY  5649.823     0.000 -5649.8233
-L82036 BODRIGGY HEALTH CENTRE 16315.213 17795.627  1480.4144
-L82038 ATLANTIC MEDICAL GROUP 14519.656 15698.907  1179.2517
-Y01050      ROSMELLYN SURGERY 11129.279 12033.173   903.8934
-Y01922       STENNACK SURGERY  9882.199 10532.752   650.5532
-L82070      SUNNYSIDE SURGERY  6055.999  6547.852   491.8537
-Y01051         MORRAB SURGERY  3627.982  3985.176   357.1943
+L82047       MARAZION SURGERY  5723.246     0.000 -5723.2461
+L82036 BODRIGGY HEALTH CENTRE 16060.322 17480.494  1420.1723
+L82038 ATLANTIC MEDICAL GROUP 14575.930 15774.507  1198.5775
+Y01050      ROSMELLYN SURGERY 11172.413 12091.120   918.7066
+Y01922       STENNACK SURGERY  9742.274 10434.108   691.8340
+L82070      SUNNYSIDE SURGERY  6079.470  6579.384   499.9143
+L82018 HELSTON MEDICAL CENTRE 18359.690 18711.998   352.3076
 ```
 
 ``` r
@@ -563,14 +568,15 @@ c(
 
 ``` spax-output
 outside_change 
-      10.73859 
+      14.75119 
 ```
 
-The modelled list of the closed practice moves to nearby practices in
-Penzance and St Ives Bay, with a small part going to the outside option.
-Where a closed practice has no near neighbour, a larger part goes to the
-outside option; that follows from the constant outside weight, not from
-evidence about where patients would go.
+The modelled list of the closed practice moves mostly to nearby
+practices in Penzance, Hayle and St Ives Bay. A farther practice,
+Helston Medical Centre, gains less, and a small part goes to the outside
+option. Where a closed practice has no near neighbour, a larger part
+goes to the outside option; that follows from the constant outside
+weight, not from evidence about where patients would go.
 
 ``` r
 
@@ -711,12 +717,12 @@ coef(plateau_fit)
 
 ``` spax-output
      sigma         v0 
-3.57932959 0.03066002 
+3.88744084 0.05433508 
 ```
 
 `summary(plateau_fit)` shows how closely the starts agree. The `sigma`
-of a declared kernel is the scale of that kernel, so 3.58 minutes for
-the plateau kernel and 4.36 minutes for the Gaussian kernel are not
+of a declared kernel is the scale of that kernel, so 3.89 minutes for
+the plateau kernel and 4.59 minutes for the Gaussian kernel are not
 comparable values.
 [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
 puts the two fits side by side. Given the models as well, it checks that
@@ -737,13 +743,13 @@ as.data.frame(comparison)[
 
 ``` spax-output
   specification              parameters loss_difference count_correlation
-1      gaussian sigma=4.356, v0=0.01765            0.00         0.8905881
-2       plateau sigma=3.579, v0=0.03066        52820.34         0.8552432
+1      gaussian sigma=4.591, v0=0.02733            0.00         0.8846533
+2       plateau sigma=3.887, v0=0.05434        62248.12         0.8464323
 ```
 
 Measured from the Gaussian fit, the plateau fit’s Poisson loss is higher
-by 52,820 and its fitted flows correlate with the observed flows at
-0.86, against 0.89 for the Gaussian fit. These figures say how close
+by 62,248 and its fitted flows correlate with the observed flows at
+0.85, against 0.88 for the Gaussian fit. These figures say how close
 each kernel’s fitted flows come to these registrations under one
 criterion; they do not show which kernel describes how residents choose
 practices. A saved fit that uses a declared kernel keeps the kernel’s
