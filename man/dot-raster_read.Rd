@@ -4,7 +4,7 @@
 \alias{.raster_read}
 \title{Read one block of rows from every raster of a list}
 \usage{
-.raster_read(rasters, same, start, n)
+.raster_read(rasters, same, start, n, only = names(same))
 }
 \description{
 Returns a named list of numeric matrices with `n * ncol` rows (cell index

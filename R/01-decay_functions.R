@@ -211,8 +211,11 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 # counts as no weight, as before. `distance` and `weights` are numeric arrays of
 # the same size.
 .check_finite_weights <- function(distance, weights) {
-  if (length(distance) == length(weights) &&
-      any(is.finite(distance) & (is.infinite(weights) | is.nan(weights)))) {
+  # Find the infinite or NaN weights first (a missing weight is neither); the
+  # distance is looked at only at those entries.
+  bad <- which(is.infinite(weights) | is.nan(weights))
+  if (length(bad) && length(distance) == length(weights) &&
+      any(is.finite(distance[bad]))) {
     stop("decay weights must be finite where travel is finite (power decay is ",
          "infinite at distance 0); use a positive minimum distance or another kernel",
          call. = FALSE)
