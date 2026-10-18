@@ -206,11 +206,13 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 
 # Decay weights of a block must be finite where the travel value is finite
 # (SPAX-055, decision D1): power decay is infinite at distance 0, and so is 1/d.
-# A missing or infinite distance is not checked. `distance` and `weights` are
-# numeric arrays of the same size.
+# A missing or infinite distance is not checked, and a missing weight (for
+# example from a missing cell of a variable-catchment sigma) stays allowed: it
+# counts as no weight, as before. `distance` and `weights` are numeric arrays of
+# the same size.
 .check_finite_weights <- function(distance, weights) {
   if (length(distance) == length(weights) &&
-      any(is.finite(distance) & !is.finite(weights))) {
+      any(is.finite(distance) & (is.infinite(weights) | is.nan(weights)))) {
     stop("decay weights must be finite where travel is finite (power decay is ",
          "infinite at distance 0); use a positive minimum distance or another kernel",
          call. = FALSE)

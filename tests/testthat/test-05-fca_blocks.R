@@ -644,3 +644,20 @@ test_that("D2 refuses negative or infinite demand unless snap", {
   bad <- terra::setValues(f$demand, replace(terra::values(f$demand, mat = FALSE), 1, -1))
   expect_error(compute_access(bad, f$S, k, k), msg, fixed = TRUE)
 })
+
+test_that("a missing sigma cell gives no weight, as in the field engine", {
+  f <- fca_toy()
+  sigma <- terra::rast(f$demand)
+  terra::values(sigma) <- 8
+  sigma[2] <- NA
+  params <- list(method = "gaussian", sigma = sigma)
+  run <- function(engine) {
+    withr::local_options(spax.fca_engine = engine)
+    terra::values(spax_e2sfca(f$demand, f$supply_vector, f$distance,
+                              decay_params = params)$accessibility)
+  }
+  block <- expect_no_error(run("block"))
+  field <- run("field")
+  expect_identical(unname(is.na(block)), unname(is.na(field)))
+  expect_equal(unname(block), unname(field), tolerance = 1e-12)
+})
