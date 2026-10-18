@@ -19,7 +19,9 @@ spax_huff2sfca(
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand. Demand
+must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 
@@ -30,7 +32,9 @@ steps:
 \itemize{
   \item method: "gaussian", "exponential", "power" or "binary", a
     custom decay function, or a kernel declared with
-    \code{\link{decay_kernel}}
+    \code{\link{decay_kernel}}. Weights must be finite where the
+    distance is finite, so power decay needs a positive minimum
+    distance
   \item sigma: decay parameter controlling the rate of distance decay
   \item Additional parameters passed to custom decay functions
 }}
@@ -39,7 +43,8 @@ steps:
 \code{decay_params}, for the decay weights that the selection weights
 are built from. The default is \code{decay_params}, so one decay both
 weights distance and selects facilities; give a different list to
-select with another decay.}
+select with another decay. Its weights must also be finite where the
+distance is finite.}
 
 \item{attractiveness}{Numeric vector of facility attractiveness with one
 finite, nonnegative value per facility. A named vector is matched to

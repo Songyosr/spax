@@ -17,7 +17,9 @@ spax_e2sfca(
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand. Demand
+must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 
@@ -27,7 +29,9 @@ spax_e2sfca(
 \itemize{
   \item method: "gaussian", "exponential", "power" or "binary", a
     custom decay function, or a kernel declared with
-    \code{\link{decay_kernel}}
+    \code{\link{decay_kernel}}. Weights must be finite where the
+    distance is finite, so power decay needs a positive minimum
+    distance
   \item sigma: decay parameter controlling the rate of distance decay
   \item Additional parameters passed to custom decay functions
 }}

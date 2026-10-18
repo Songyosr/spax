@@ -28,7 +28,7 @@
 #'   \item \code{"exponential"}: \eqn{\exp(-\sigma d)}{exp(-sigma d)}; default
 #'     \eqn{\sigma = 0.1}{sigma = 0.1}.
 #'   \item \code{"power"}: \eqn{d^{-\sigma}}{d^(-sigma)}; default
-#'     \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0.
+#'     \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0, which the FCA functions refuse.
 #'   \item \code{"inverse"}: \eqn{1 / (d + c)}{1 / (d + c)}, with \code{c = 1}
 #'     unless \code{c} is passed in \code{...}; \code{sigma} does not enter
 #'     the weights (a given value is still validated).
@@ -148,7 +148,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 # The weights of a custom declared kernel for a numeric vector, matrix or
 # SpatRaster. Only the finite distances are evaluated; an infinite distance gets
 # 0 and a missing one NA.
-.calc_decay_declared <- function(distance, kernel, sigma, snap, ...) {
+.calc_decay_declared <- function(distance, kernel, sigma, snap, ..., .d1 = FALSE) {
   if (...length() > 0L) {
     stop("pass fixed arguments through decay_kernel(args = )")
   }
@@ -175,13 +175,13 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
   if (inherits(distance, "SpatRaster")) {
     values <- terra::values(distance, mat = TRUE)
     weights <- .eval_decay_kernel(kernel, values, sigma, fun)
-    .check_declared_weights(values, weights, sigma)
+    .check_declared_weights(values, weights, sigma, .d1)
     out <- terra::rast(distance)
     terra::values(out) <- weights
     return(out)
   }
   weights <- .eval_decay_kernel(kernel, distance, sigma, fun)
-  .check_declared_weights(distance, weights, sigma)
+  .check_declared_weights(distance, weights, sigma, .d1)
   weights
 }
 
@@ -189,11 +189,38 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 # The declaration only tests a grid, so other distances are checked here, where the
 # weights are returned to the caller. A missing distance keeps NA and an infinite
 # one (an absent edge) 0, which are not checked.
-.check_declared_weights <- function(distance, weights, sigma) {
+#
+# With `d1` (the block FCA engine, SPAX-055) a non-finite weight at a finite
+# distance is refused with the message of .check_finite_weights().
+.check_declared_weights <- function(distance, weights, sigma, d1 = FALSE) {
+  if (d1) {
+    .check_finite_weights(distance, weights)
+  }
   bad <- which(is.finite(distance) & (!is.finite(weights) | weights < 0))
   if (length(bad)) {
     stop("the kernel returned a negative or non-finite weight at distance ",
          format(distance[bad[1L]]), " with sigma = ", format(sigma), call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+# Decay weights of a block must be finite where the travel value is finite
+# (SPAX-055, decision D1): power decay is infinite at distance 0, and so is 1/d.
+# A missing or infinite distance is not checked, and a missing or NaN weight (for
+# example from a missing cell of a variable-catchment sigma) stays allowed: it
+# counts as no weight, as before. `distance` and `weights` are numeric arrays of
+# the same size.
+.check_finite_weights <- function(distance, weights) {
+  # The sum of the weights is finite unless a weight is infinite: one pass with no
+  # copy settles the usual case. Only then are the infinite weights located and the
+  # distance looked at there. A NaN weight, like a missing one, counts as no weight.
+  if (is.finite(sum(weights, na.rm = TRUE))) return(invisible(TRUE))
+  bad <- which(is.infinite(weights))
+  if (length(bad) && length(distance) == length(weights) &&
+      any(is.finite(distance[bad]))) {
+    stop("decay weights must be finite where travel is finite (power decay is ",
+         "infinite at distance 0); use a positive minimum distance or another kernel",
+         call. = FALSE)
   }
   invisible(TRUE)
 }

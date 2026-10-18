@@ -17,7 +17,9 @@ spax_m2sfca(
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand. Demand
+must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 
@@ -27,7 +29,9 @@ spax_m2sfca(
 \itemize{
   \item method: "gaussian", "exponential", "power" or "binary", a
     custom decay function, or a kernel declared with
-    \code{\link{decay_kernel}}
+    \code{\link{decay_kernel}}. Weights must be finite where the
+    distance is finite, so power decay needs a positive minimum
+    distance
   \item sigma: decay parameter controlling the rate of distance decay
   \item Additional parameters passed to custom decay functions
 }}
@@ -65,7 +69,7 @@ Step 2 (modified): \eqn{A_i = \sum_j R_j \, W(d_{ij})^2}.
 
 M2SFCA is not a separate engine here: it is the shared FCA recipe with the
 access-side kernel squared. It is exactly equivalent to
-`compute_fca(demand, supply, demand_kernel = W, access_kernel = W^2)`.
+`compute_access(demand, supply, W, W^2)`.
 }
 \references{
 Delamater, P. L. (2013). Spatial accessibility in suboptimally configured
@@ -74,5 +78,5 @@ metric. *Health & Place*, *24*, 30-43.
 https://doi.org/10.1016/j.healthplace.2013.07.012
 }
 \seealso{
-[spax_e2sfca()], [spax_2sfca()], [compute_fca()], [calc_decay()]
+[spax_e2sfca()], [spax_2sfca()], [compute_access()], [calc_decay()]
 }

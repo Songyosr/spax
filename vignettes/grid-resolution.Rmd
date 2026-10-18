@@ -70,9 +70,12 @@ data.frame(
 The rectangular grid is about three times larger than its populated part,
 because it also covers sea and land outside Cornwall. That is small here, but
 the same arithmetic at 100 metres, or with hundreds of facilities, reaches
-gigabytes. A calculation may hold travel, weights, temporary products and
-outputs at the same time. `object.size()` of a `SpatRaster` measures a pointer
-or file reference, not these arrays, so measure memory and elapsed time on the
+gigabytes. A calculation that works on whole rasters may hold travel, weights,
+temporary products and outputs at the same time. The FCA functions of spax
+read the rasters in blocks of rows, so they need less memory than these
+arrays; a decay given as a plain R function is still evaluated on the whole
+raster. `object.size()` of a `SpatRaster` measures a pointer or file
+reference, not these arrays, so measure memory and elapsed time on the
 whole workflow.
 
 ## Change the resolution

@@ -1,4 +1,4 @@
-# Shared fixtures and a base-R oracle for the legacy FCA, field, raster-tool
+# Shared fixtures and a base-R oracle for the legacy FCA, raster-tool
 # and PMF tests. Every value is fixed; nothing here draws random numbers.
 
 # A small raster with fixed values. `vals` fills cells row by row, one layer
@@ -11,19 +11,6 @@ toy_rast <- function(vals, nrows = 3, ncols = 3, nlyr = 1, names = NULL) {
     names(r) <- names
   }
   r
-}
-
-# An n-layer 2 x 2 raster whose layer i holds the value i, for spax_field
-# tests. Without `names` the layers keep terra's positional names (lyr.1, ...).
-field_rast <- function(n = 1, names = NULL) {
-  toy_rast(rep(seq_len(n), each = 4), nrows = 2, ncols = 2, nlyr = n,
-           names = names)
-}
-
-# The layer index of a raster field or the node index of a vector field.
-field_index_frame <- function(field) {
-  if (inherits(field, "spax_raster_field")) .field_layer_index(field)
-  else .field_node_index(field)
 }
 
 # The 3 x 3 FCA toy: demand 10..90 and two facilities whose distances run
@@ -67,4 +54,22 @@ fca_oracle <- function(D, Wd, Wa = Wd, S, normalize = "identity") {
   A <- Wa0 %*% R
   A[rowSums(!is.na(Wa)) == 0, ] <- NA
   unname(A)
+}
+
+# A 3 x 4 grid with `nlyr` facilities for the block engine. Demand is missing
+# in cell 7 and zero in cell 5; cell 9 reaches no facility and cell 3 does not
+# reach facility 1.
+fca_block_fixture <- function(nlyr = 3) {
+  ids <- paste0("f", seq_len(nlyr))
+  dist <- vapply(seq_len(nlyr), function(j) ((1:12) * j) %% 7 + 1, numeric(12))
+  dist[9, ] <- NA
+  dist[3, 1] <- NA
+  D <- c(10, 20, 30, 40, 0, 60, NA, 80, 90, 100, 110, 120)
+  list(
+    ids = ids, D = D, dist = dist,
+    demand = toy_rast(D, nrows = 3, ncols = 4),
+    distance = toy_rast(c(dist), nrows = 3, ncols = 4, nlyr = nlyr, names = ids),
+    S = matrix(seq(5, by = 3, length.out = nlyr * 2), nlyr, 2,
+               dimnames = list(ids, c("a", "b")))
+  )
 }
