@@ -68,3 +68,32 @@ fca_oracle <- function(D, Wd, Wa = Wd, S, normalize = "identity") {
   A[rowSums(!is.na(Wa)) == 0, ] <- NA
   unname(A)
 }
+
+# Run `fun()` under the field engine and under the block engine of
+# SPAX-055 (option spax.fca_engine) and return both results. `block_values`
+# sets spax.fca_block_values for the block run: 1 gives one-row blocks.
+fca_engines <- function(fun, block_values = NULL) {
+  field <- withr::with_options(list(spax.fca_engine = "field"), fun())
+  block <- withr::with_options(
+    list(spax.fca_engine = "block", spax.fca_block_values = block_values), fun()
+  )
+  list(field = field, block = block)
+}
+
+# A 3 x 4 grid with `nlyr` facilities for the block engine. Demand is missing
+# in cell 7 and zero in cell 5; cell 9 reaches no facility and cell 3 does not
+# reach facility 1.
+fca_block_fixture <- function(nlyr = 3) {
+  ids <- paste0("f", seq_len(nlyr))
+  dist <- vapply(seq_len(nlyr), function(j) ((1:12) * j) %% 7 + 1, numeric(12))
+  dist[9, ] <- NA
+  dist[3, 1] <- NA
+  D <- c(10, 20, 30, 40, 0, 60, NA, 80, 90, 100, 110, 120)
+  list(
+    ids = ids, D = D, dist = dist,
+    demand = toy_rast(D, nrows = 3, ncols = 4),
+    distance = toy_rast(c(dist), nrows = 3, ncols = 4, nlyr = nlyr, names = ids),
+    S = matrix(seq(5, by = 3, length.out = nlyr * 2), nlyr, 2,
+               dimnames = list(ids, c("a", "b")))
+  )
+}

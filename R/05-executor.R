@@ -204,3 +204,203 @@
     template          = demand_kernel[[1]]
   )
 }
+
+# Block FCA engine (SPAX-055) -----------------------------------------------
+#
+# The FCA wrappers can run on this engine instead of the spax_field layer:
+# the rasters are read in row blocks into plain matrices, and the same
+# contraction primitives as above do the work in two passes. It is switched on
+# with options(spax.fca_engine = "block"); the field path stays the default
+# until the identity suite has passed (tasks T2-T4 of the design note).
+
+#' Facility IDs of a raster stack
+#'
+#' The layer names, or `facility_1..J` by position when the names are terra
+#' defaults (`lyr.N`) or missing. This is the rule of
+#' `.field_has_semantic_layer_names()` and `.resolve_raster_layer_frame()` in
+#' R/00-spax_field.R, copied here so that it survives the removal of that file.
+#' Duplicate IDs are an error.
+#' @keywords internal
+.fca_ids <- function(x, arg = "distance") {
+  .chck_class(x, "SpatRaster", arg)
+  layer_names <- names(x)
+  semantic <- !(is.null(layer_names) || any(is.na(layer_names)) ||
+                  any(layer_names == "")) &&
+    !all(grepl("^lyr\\.[0-9]+$", layer_names))
+  ids <- if (semantic) layer_names else paste0("facility_", seq_len(terra::nlyr(x)))
+  if (anyDuplicated(ids)) {
+    stop("index$layer contains duplicate coordinate tuples")
+  }
+  ids
+}
+
+# Whether two SpatRasters are one and the same object (the same C++ object
+# behind them). identical() cannot be used: terra defines it for two
+# SpatRasters as a comparison of their values, which reads both rasters and is
+# FALSE when they contain missing cells, even for the same object.
+.same_raster <- function(x, y) {
+  identical(x@pntr, y@pntr)
+}
+
+#' Row blocks for reading a list of rasters
+#'
+#' Plans the blocks without opening anything. `same` maps each element to the
+#' name of its first element that is the same raster object, so a raster passed
+#' twice is read (and counted) once. A block holds at most `max_values` values over the
+#' distinct rasters, and at least one row.
+#' @param rasters Named list of SpatRasters with the same number of rows and
+#'   columns.
+#' @param max_values Values per block over all layers read.
+#' @return `list(starts, n, ncol, same)`: first row and number of rows of each
+#'   block, columns per row, and the alias map.
+#' @keywords internal
+.raster_blocks <- function(rasters,
+                           max_values = getOption("spax.fca_block_values", 2e6)) {
+  nms <- names(rasters)
+  same <- stats::setNames(nms, nms)
+  for (i in seq_along(rasters)[-1L]) {
+    for (j in seq_len(i - 1L)) {
+      if (.same_raster(rasters[[j]], rasters[[i]])) {
+        same[i] <- nms[j]
+        break
+      }
+    }
+  }
+  distinct <- unique(unname(same))
+  layers <- sum(vapply(rasters[distinct], terra::nlyr, numeric(1)))
+  nr <- terra::nrow(rasters[[1L]])
+  nc <- terra::ncol(rasters[[1L]])
+  per <- min(nr, max(1, floor(max_values / (nc * layers))))
+  starts <- seq.int(1L, nr, by = as.integer(per))
+  list(starts = starts,
+       n = as.integer(pmin(per, nr - starts + 1L)),
+       ncol = as.integer(nc),
+       same = same)
+}
+
+#' Open the distinct rasters of a list for block reading
+#'
+#' Returns a function that closes them again. Call it as
+#' `close <- .raster_open(rasters, same); on.exit(close(), add = TRUE)`; if
+#' one raster fails to open, the ones already opened are closed.
+#' @keywords internal
+.raster_open <- function(rasters, same) {
+  distinct <- unique(unname(same))
+  opened <- character()
+  close_all <- function() {
+    for (nm in opened) {
+      try(terra::readStop(rasters[[nm]]), silent = TRUE)
+    }
+    opened <<- character()
+    invisible(NULL)
+  }
+  tryCatch(
+    for (nm in distinct) {
+      terra::readStart(rasters[[nm]])
+      opened <- c(opened, nm)
+    },
+    error = function(e) {
+      close_all()
+      stop(e)
+    }
+  )
+  close_all
+}
+
+#' Read one block of rows from every raster of a list
+#'
+#' Returns a named list of numeric matrices with `n * ncol` rows (cell index
+#' of row k is `(start - 1) * ncol + k`) and one column per layer. Each
+#' distinct raster is read once and shared with its aliases.
+#' @keywords internal
+.raster_read <- function(rasters, same, start, n) {
+  distinct <- unique(unname(same))
+  values <- lapply(stats::setNames(distinct, distinct), function(nm) {
+    x <- rasters[[nm]]
+    terra::readValues(x, start, n, 1, terra::ncol(x), mat = TRUE)
+  })
+  stats::setNames(values[unname(same)], names(same))
+}
+
+# The rows of one kernel of a kernel specification, checked for shape.
+# D1 (SPAX-055, task T3) refuses non-finite weights at finite distances where
+# the weights are computed, so that it also applies under `snap`.
+.fca_kernel_rows <- function(kernel, b, rows, J) {
+  K <- kernel(b, rows)
+  if (!is.matrix(K) || nrow(K) != length(rows) || ncol(K) != J) {
+    stop("a kernel must return one row per cell and one column per facility")
+  }
+  K
+}
+
+#' Two-pass block FCA engine
+#'
+#' Pass 1 reads each block, takes the cells with finite positive demand,
+#' evaluates the demand kernel on those rows, replaces missing weights by 0,
+#' applies the demand normalization and accumulates the demand that reaches
+#' each facility, `U`. The ratio is `R = supply / U` (0 where not finite).
+#' Pass 2 evaluates the access kernel on every row of each block and writes
+#' `A = K R` for the rows with at least one finite kernel value; the other
+#' cells stay NA.
+#' @param rasters Named list of SpatRasters read in blocks; it must contain
+#'   `demand` (one layer) and whatever the kernels read.
+#' @param kernels `list(demand = function(b, rows), access = function(b, rows))`.
+#'   `b` is the list of block matrices from `.raster_read()` and `rows` the
+#'   block rows to compute; each returns a `length(rows) x J` matrix in
+#'   facility-ID order.
+#' @param supply Numeric J x M matrix in facility-ID order.
+#' @param normalize Demand normalization of the gather kernel.
+#' @param snap Reserved for the checks that `snap` skips (negative or
+#'   infinite demand, non-finite weights); see SPAX-055 decisions D1 and D2.
+#' @return A matrix with one row per cell of the grid and one column per
+#'   supply measure.
+#' @keywords internal
+.fca_blocks <- function(rasters, kernels, supply, normalize = "identity",
+                        snap = FALSE) {
+  supply <- as.matrix(supply)
+  J <- nrow(supply)
+  blocks <- .raster_blocks(rasters)
+  close <- .raster_open(rasters, blocks$same)
+  on.exit(close(), add = TRUE)
+
+  # Pass 1: the demand that reaches each facility.
+  U <- numeric(J)
+  for (k in seq_along(blocks$starts)) {
+    b <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k])
+    D <- b$demand[, 1L]
+    active <- which(is.finite(D) & D > 0)
+    # D2 (SPAX-055, task T3): refuse negative or infinite demand here when
+    # `snap` is FALSE; with `snap`, such cells are not active.
+    if (!length(active)) next
+    Kd <- .fca_kernel_rows(kernels$demand, b, active, J)
+    Kd[is.na(Kd)] <- 0
+    Kd <- .fca_normalize_kernel(Kd, normalize)
+    U <- U + .contract(D[active], Kd, "rows")
+  }
+  R <- supply / U
+  R[!is.finite(R)] <- 0
+
+  # Pass 2: spread the ratios back to the cells that reach a facility.
+  out <- matrix(NA_real_, terra::ncell(rasters[[1L]]), ncol(supply))
+  for (k in seq_along(blocks$starts)) {
+    b <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k])
+    rows <- seq_len(blocks$n[k] * blocks$ncol)
+    Ka <- .fca_kernel_rows(kernels$access, b, rows, J)
+    reach <- which(rowSums(is.finite(Ka)) > 0)
+    if (!length(reach)) next
+    A <- Ka[reach, , drop = FALSE]
+    A[is.na(A)] <- 0
+    cells <- (as.numeric(blocks$starts[k]) - 1) * blocks$ncol + reach
+    out[cells, ] <- .contract(R, A, "cols")
+  }
+  out
+}
+
+#' Put a cell-by-measure matrix on a raster grid, one layer per column
+#' @keywords internal
+.fca_rewrap <- function(values, template, names) {
+  out <- terra::rast(template, nlyrs = ncol(values))
+  out <- terra::setValues(out, values)
+  names(out) <- names
+  out
+}
