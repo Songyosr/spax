@@ -112,7 +112,7 @@ test_that("free-attractiveness gradient matches finite differences with flows be
   inputs <- prepare_allocation(demand, supply, travel)
   observed <- matrix(1 + (seq_len(length(travel)) %% 7), nrow(travel),
                      dimnames = dimnames(travel))
-  value <- .clm_free_attractiveness_objective(inputs, observed)
+  value <- .clm_free_attractiveness_objective(inputs, observed, eps = 1e-9)
   for (sigma in c(3, 4, 6)) {
     p <- c(log(supply[-1]) + c(0.2, -0.1, 0.3), log(sigma), log(0.5))
     attraction <- exp(c(log(supply[[1]]), p[1:3]))
@@ -126,4 +126,8 @@ test_that("free-attractiveness gradient matches finite differences with flows be
     }, numeric(1))
     expect_equal(unname(value(p)$grad), fd, tolerance = 1e-6)
   }
+})
+
+test_that("the private ratio fits use the floor of fit_allocation()", {
+  expect_identical(formals(.clm_free_attractiveness_objective)$eps, 1e-250)
 })

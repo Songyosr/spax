@@ -2,32 +2,34 @@ name: R CMD check
 
 "on":
   pull_request:
-    branches: [develop, codex-assist-main]
+    branches: [develop, main]
   push:
-    branches: [develop, codex-assist-main]
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: r-check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # The event name keeps a push from cancelling a full run started by dispatch.
+  group: r-check-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Tiered checks. Every PR push and every push to codex-assist-main runs the
-# quick check: one Linux cell, CRAN-mode check with all tests, without
-# rebuilding vignettes or the PDF manual. The full five-cell matrix (vignettes,
-# PDF manual with index, evidence and preservation records) runs only for major
-# updates: PRs into develop, PRs labelled `full-check` (the label takes effect
-# on the next push or a close/reopen; re-running reuses the old labels), manual
-# "Run workflow" dispatch, and pushes to develop. Label PRs that substantially
+# Tiered checks. develop is the integration branch and main the latest release.
+# Every push to develop and every PR into develop runs the quick check: one
+# Linux cell, CRAN-mode check with all tests, without rebuilding vignettes or
+# the PDF manual. The full five-cell matrix (vignettes, PDF manual with index,
+# evidence and preservation records) runs before releases and other milestones:
+# manual "Run workflow" dispatch, PRs into main (the release promotion) and PRs
+# labelled `full-check` (the label takes effect on the next push or a
+# close/reopen; re-running reuses the old labels). Label PRs that substantially
 # change Rd files, since only the full matrix builds the PDF manual.
 jobs:
   quick:
     name: quick (Linux, R release, no vignette rebuild)
     if: >-
-      (github.event_name == 'push' && github.ref != 'refs/heads/develop') ||
-      (github.event_name == 'pull_request' && github.base_ref != 'develop' &&
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.base_ref != 'main' &&
        !contains(github.event.pull_request.labels.*.name, 'full-check'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -76,9 +78,8 @@ jobs:
     name: ${{ matrix.config.id }} (R ${{ matrix.config.r }})
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'pull_request' &&
-       (github.base_ref == 'develop' ||
+       (github.base_ref == 'main' ||
         contains(github.event.pull_request.labels.*.name, 'full-check')))
     runs-on: ${{ matrix.config.os }}
     timeout-minutes: 90

@@ -2,13 +2,21 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "spax: Spatial Accessibility and Allocation Modeling"
-version: 0.3.0
-date-released: 2026-10-17
+version: 0.3.1
+date-released: 2026-10-18
 authors:
   - family-names: Rajborirug
     given-names: Songyos
     orcid: "https://orcid.org/0000-0002-5000-7409"
 license: MIT
+doi: 10.5281/zenodo.23438611
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23438611
+    description: All versions of spax
+  - type: doi
+    value: 10.5281/zenodo.23438612
+    description: spax version 0.3.0
 repository-code: "https://github.com/Songyosr/spax"
 url: "https://songyosr.github.io/spax/"
 abstract: >-

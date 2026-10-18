@@ -2,9 +2,9 @@ name: Documentation sync
 
 "on":
   pull_request:
-    branches: [develop, codex-assist-main]
+    branches: [develop, main]
   push:
-    branches: [develop, codex-assist-main]
+    branches: [develop]
   workflow_dispatch:
 
 permissions:

@@ -3,6 +3,11 @@
 
 # spax: spatial accessibility and allocation modeling
 
+<!-- badges: start -->
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23438611.svg)](https://doi.org/10.5281/zenodo.23438611)
+<!-- badges: end -->
+
 `spax` supports two user workflows: public floating catchment area (FCA)
 methods for accessibility surfaces, and an experimental static
 conditional-logit model (CLM) workflow for fitting allocation to
@@ -20,14 +25,14 @@ not part of the experimental CLM interface.
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.3.0. Existing public FCA calling semantics are unchanged.
+for spax 0.3.1. Existing public FCA calling semantics are unchanged.
 
-Install version 0.3.0 by its release tag rather than from the
+Install version 0.3.1 by its release tag rather than from the
 repository’s default branch:
 
 ``` r
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.3.0")
+pak::pak("Songyosr/spax@v0.3.1")
 ```
 
 The allocation interface is experimental and may change in later
@@ -35,6 +40,10 @@ versions. For reproducible work, record the package version and retain
 the input IDs, units, observation declaration and saved results.
 Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
+
+Each release is archived on Zenodo; doi:10.5281/zenodo.23438611 refers to all
+versions (version 0.3.0 is doi:10.5281/zenodo.23438612). Cite the version you
+used with `citation("spax")`.
 
 Package and function help are available from an installed package.
 Installations that include built articles also provide the guides, which
@@ -195,7 +204,7 @@ coef(fit)
 ```
 
          sigma         v0 
-    4.35551254 0.01764982 
+    4.59099724 0.02733454 
 
 ``` r
 # Per cent registered outside mainland Cornwall: observed and modelled
@@ -207,16 +216,16 @@ round(100 * outside, 2)
 ```
 
     observed modelled 
-        0.91     0.45 
+        0.91     0.54 
 
 ``` r
 # Practice totals: modelled against observed
 cor(colSums(fitted(fit)), colSums(observed))
 ```
 
-    [1] 0.9319953
+    [1] 0.9326925
 
-The fitted Gaussian scale is about 4.4 minutes: registration is very
+The fitted Gaussian scale is about 4.6 minutes: registration is very
 local. The printed shares are percentages of registered residents.
 Practice totals of the fitted flows correlate at 0.93 with the observed
 ones. One constant outside weight understates registration outside

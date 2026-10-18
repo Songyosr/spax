@@ -7,12 +7,14 @@
 #' refitted.
 #'
 #' Loss differences from the reference are reported only when the comparison is
-#' like for like: the same observed targets, loss function and arguments,
-#' demand, supply, origin and facility IDs and prepared travel times. Travel
-#' times are checked only when `models` are supplied, and each model must
-#' reproduce its own fit; otherwise loss differences are left missing. Contact
-#' and capacity values remain comparable across specifications, but they are
-#' conditional on each specification's inputs.
+#' like for like: the same observed targets, loss function and arguments
+#' (Poisson fits: the same floor, a fit that stored none used 1e-9, or floors
+#' that change neither loss), demand, supply, origin and facility IDs and
+#' prepared travel times. Travel times are checked only when `models` are
+#' supplied, and each model must reproduce its own fit; otherwise loss
+#' differences are left missing. Contact and capacity values remain comparable
+#' across specifications, but they are conditional on each specification's
+#' inputs.
 #'
 #' With `zones`, each fit is also summarized by zone using contact-weighted
 #' aggregation, and the zones whose reporting class differs from the reference
@@ -87,7 +89,7 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
       ids = identical(as.character(b$coverage_meta$facility_ids),
                       as.character(ref$coverage_meta$facility_ids)) &&
         identical(coverage[[nm]]$cells$origin_id, coverage[[reference]]$cells$origin_id),
-      loss = .same_function(b$loss_fn, ref$loss_fn) && identical(b$loss_args, ref$loss_args) &&
+      loss = .same_function(b$loss_fn, ref$loss_fn) && .same_loss_args(b, ref) &&
         identical(b$output, ref$output),
       demand = identical(as.numeric(b$coverage_meta$demand), as.numeric(ref$coverage_meta$demand)),
       supply = identical(as.numeric(b$coverage_meta$supply), as.numeric(ref$coverage_meta$supply)),

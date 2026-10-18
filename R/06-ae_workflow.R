@@ -133,10 +133,17 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #'   probability operator. Requesting counts does not select a likelihood.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
-#'   with eta=1 by default. Poisson omits the data-only log-factorial constant
-#'   and uses eps=1e-9 by default; joint fitting does not force total matching.
-#' @param loss_args Named auxiliary arguments passed unchanged to loss callbacks.
-#'   Any observation-indexed values must already follow canonical observed order.
+#'   with eta=1 by default. Poisson omits the data-only log-factorial constant.
+#'   It floors modelled counts at `eps` (`loss_args`), 1e-250 by default, only
+#'   to avoid the log of zero; cells with positive observed counts modelled
+#'   below the floor are reported with a warning, because the loss is capped
+#'   there. Fits made before this default used 1e-9; pass
+#'   `loss_args = list(eps = 1e-9)` to reproduce them. Joint fitting does not
+#'   force total matching.
+#' @param loss_args Named auxiliary arguments passed to loss callbacks. For
+#'   `loss = "poisson"` an `eps` of 1e-250 is added when none is given; other
+#'   arguments pass unchanged. Any observation-indexed values must already
+#'   follow canonical observed order.
 #' @param loss_grad Optional matching parameter-gradient callback. Built-in
 #'   choices supply their existing analytic loss-gradient adapters. A custom
 #'   loss requires its own loss_grad when gradient=TRUE; none is invented.
@@ -167,15 +174,26 @@ fit_allocation <- function(model, observed, starts, lower, upper,
   }
   if (is.character(loss)) {
     loss <- match.arg(loss, c("weighted_sse", "poisson"))
+    if (loss == "poisson" && is.list(loss_args) && !"eps" %in% names(loss_args)) {
+      loss_args$eps <- 1e-250
+    }
     default_gradient <- if (loss == "poisson") .poisson_gradient else .weighted_sse_gradient
     loss <- if (loss == "poisson") .poisson_loss else .weighted_sse_loss
     if (is.null(loss_grad)) loss_grad <- default_gradient
   } else if (!is.function(loss)) {
     stop("loss must be 'weighted_sse', 'poisson' or a function")
   }
-  .fit_problem_multistart(model, observed, starts, lower, upper,
+  result <- .fit_problem_multistart(model, observed, starts, lower, upper,
     output = output, loss = loss, loss_args = loss_args, loss_grad = loss_grad,
     gradient = gradient, ...)
+  # A binding floor caps the loss: report it rather than return a capped fit silently.
+  if (inherits(result, "ae_multistart_fit") && !is.null(result$best)) {
+    floor_info <- .poisson_floor(result$best)
+    if (!is.null(floor_info) && floor_info[["positive_below"]] > 0) {
+      warning(.poisson_floor_message(floor_info), call. = FALSE)
+    }
+  }
+  result
 }
 
 .selected_allocation_fit <- function(object) {

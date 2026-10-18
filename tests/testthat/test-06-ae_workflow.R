@@ -88,6 +88,7 @@ test_that("loss choices pass through and count targets reject negatives", {
   expect_identical(fit_allocation(f$model, f$observed, f$starts, f$lower, f$upper), "passed")
   expect_identical(received$loss, .weighted_sse_loss)
   expect_identical(received$loss_grad, .weighted_sse_gradient)
+  expect_identical(received$loss_args, list())
   expect_false(received$gradient)
   predicted <- f$observed * 1.1
   expect_equal(received$loss(predicted, f$observed),
@@ -95,6 +96,11 @@ test_that("loss choices pass through and count targets reject negatives", {
   fit_allocation(f$model, f$observed, f$starts, f$lower, f$upper, loss = "poisson")
   expect_identical(received$loss, .poisson_loss)
   expect_identical(received$loss_grad, .poisson_gradient)
+  # The default Poisson floor is stored explicitly; a given eps is kept.
+  expect_identical(received$loss_args, list(eps = 1e-250))
+  fit_allocation(f$model, f$observed, f$starts, f$lower, f$upper, loss = "poisson",
+                 loss_args = list(eps = 1e-6))
+  expect_identical(received$loss_args, list(eps = 1e-6))
   flow[2, 3] <- 0.5
   expect_identical(fit_allocation(f$model, flow, f$starts, f$lower, f$upper,
                                   output = "flow"), "passed")
@@ -107,7 +113,7 @@ test_that("loss choices pass through and count targets reject negatives", {
   expect_identical(received$observed, probability)
   expect_identical(received$loss, custom)
   expect_null(received$loss_grad)
-  expect_equal(calls, 4L)
+  expect_equal(calls, 5L)
 })
 
 test_that("custom workflow callbacks retain canonical masked order and auxiliary arguments", {

@@ -159,14 +159,24 @@ summary(fit)
 as.data.frame(fit)
 ```
 
-The summary keeps every start, its convergence, boundaries and messages. All
-three starts converge away from the bounds and stop very close to each other.
+The summary keeps every start, its convergence, boundaries and messages. The
+starts stop away from the bounds and very close to each other. With the strict
+tolerance used here (`factr = 10`), a start can end with a line-search message
+at practically the same loss, so judge agreement by the losses and parameters
+in the per-start table rather than by the convergence codes alone.
 The disagreement flag uses deliberately strict default tolerances, so read the
 gaps in the per-start table rather than the flag alone. Agreement among the
 supplied starts is a numerical check; it does not prove a global optimum or
-that the parameters are identified. A σ of about 4.4 minutes means
-registration is very local: a practice 9 minutes away keeps only about 12% of
-the pull it would have next door.
+that the parameters are identified.
+
+```{r sigma-note, include = FALSE}
+sigma_hat <- coef(fit)[["sigma"]]
+keep9 <- exp(-9^2 / (2 * sigma_hat^2))
+```
+
+A σ of about `r round(sigma_hat, 1)` minutes means registration is very local:
+a practice 9 minutes away keeps only about `r round(100 * keep9)`% of the pull
+it would have next door.
 
 ## Fitted against observed
 
@@ -417,8 +427,9 @@ c(
 )
 ```
 
-The modelled list of the closed practice moves to nearby practices in
-Penzance and St Ives Bay, with a small part going to the outside option. Where
+The modelled list of the closed practice moves mostly to nearby practices in
+Penzance, Hayle and St Ives Bay. A farther practice, Helston Medical Centre,
+gains less, and a small part goes to the outside option. Where
 a closed practice has no near neighbour, a larger part goes to the outside
 option; that follows from the constant outside weight, not from evidence about
 where patients would go.

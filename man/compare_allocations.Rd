@@ -65,12 +65,14 @@ refitted.
 }
 \details{
 Loss differences from the reference are reported only when the comparison is
-like for like: the same observed targets, loss function and arguments,
-demand, supply, origin and facility IDs and prepared travel times. Travel
-times are checked only when \code{models} are supplied, and each model must
-reproduce its own fit; otherwise loss differences are left missing. Contact
-and capacity values remain comparable across specifications, but they are
-conditional on each specification's inputs.
+like for like: the same observed targets, loss function and arguments
+(Poisson fits: the same floor, a fit that stored none used 1e-9, or floors
+that change neither loss), demand, supply, origin and facility IDs and
+prepared travel times. Travel times are checked only when \code{models} are
+supplied, and each model must reproduce its own fit; otherwise loss
+differences are left missing. Contact and capacity values remain comparable
+across specifications, but they are conditional on each specification's
+inputs.
 
 With \code{zones}, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the reference
