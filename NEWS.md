@@ -1,5 +1,12 @@
 # spax (development version)
 
+* FCA functions (`spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`,
+  `spax_huff2sfca()` and `compute_access()`) now compute on the same numeric engine as the
+  allocation workflow, reading rasters in row blocks. Results are unchanged up to rounding;
+  on large grids they are faster (about 4 times on a 600 x 600 grid with 250 facilities) and
+  no longer rounded to single precision in temporary files. Decay weights that are infinite
+  where travel is finite, such as power decay at distance 0, and negative or infinite demand
+  are now refused; they produced meaningless surfaces before.
 * Version 0.3.1 is archived on Zenodo: cite it as doi:10.5281/zenodo.23446335.
   doi:10.5281/zenodo.23438611 refers to all versions.
 

@@ -19,7 +19,9 @@ spax_huff2sfca(
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand. Demand
+must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 

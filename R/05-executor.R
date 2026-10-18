@@ -207,11 +207,10 @@
 
 # Block FCA engine (SPAX-055) -----------------------------------------------
 #
-# The FCA wrappers can run on this engine instead of the spax_field layer:
+# The FCA wrappers run on this engine instead of the spax_field layer:
 # the rasters are read in row blocks into plain matrices, and the same
-# contraction primitives as above do the work in two passes. It is switched on
-# with options(spax.fca_engine = "block"); the field path stays the default
-# until the identity suite has passed (tasks T2-T4 of the design note).
+# contraction primitives as above do the work in two passes. This is the default; options(spax.fca_engine = "field") selects the old path
+# until it is removed (task T4 of the design note).
 
 #' Facility IDs of a raster stack
 #'
@@ -322,9 +321,9 @@
   stats::setNames(values[unname(same)], names(same))
 }
 
-# The rows of one kernel of a kernel specification, checked for shape.
-# D1 (SPAX-055, task T3) refuses non-finite weights at finite distances where
-# the weights are computed, so that it also applies under `snap`.
+# The rows of one kernel of a kernel specification, checked for shape. D1
+# (SPAX-055) is checked inside the kernel closures, where the weights are
+# computed and the finite-travel mask is known, so it also applies under `snap`.
 .fca_kernel_rows <- function(kernel, b, rows, J) {
   K <- kernel(b, rows)
   if (!is.matrix(K) || nrow(K) != length(rows) || ncol(K) != J) {
@@ -350,8 +349,8 @@
 #'   facility-ID order.
 #' @param supply Numeric J x M matrix in facility-ID order.
 #' @param normalize Demand normalization of the gather kernel.
-#' @param snap Reserved for the checks that `snap` skips (negative or
-#'   infinite demand, non-finite weights); see SPAX-055 decisions D1 and D2.
+#' @param snap When FALSE, negative or infinite demand is refused (D2); when
+#'   TRUE such cells are not active. Weight checks (D1) live in the kernels.
 #' @return A matrix with one row per cell of the grid and one column per
 #'   supply measure.
 #' @keywords internal
@@ -369,8 +368,12 @@
     b <- .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k])
     D <- b$demand[, 1L]
     active <- which(is.finite(D) & D > 0)
-    # D2 (SPAX-055, task T3): refuse negative or infinite demand here when
-    # `snap` is FALSE; with `snap`, such cells are not active.
+    # D2 (SPAX-055): negative or infinite demand is refused (all rows of the
+    # block) unless `snap`, where such cells are simply not active.
+    if (!snap && any(D < 0 | is.infinite(D), na.rm = TRUE)) {
+      stop("demand must be finite and nonnegative; use NA for unknown",
+           call. = FALSE)
+    }
     if (!length(active)) next
     Kd <- .fca_kernel_rows(kernels$demand, b, active, J)
     Kd[is.na(Kd)] <- 0

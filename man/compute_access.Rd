@@ -16,14 +16,18 @@ compute_access(
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand. Demand
+must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values.
 If using an sf object, please use st_drop_geometry() first.}
 
-\item{demand_weights}{Multi-layer SpatRaster of demand-side weights}
+\item{demand_weights}{Multi-layer SpatRaster of demand-side weights; values
+may be NA but not infinite}
 
-\item{access_weights}{Multi-layer SpatRaster of accessibility-side weights}
+\item{access_weights}{Multi-layer SpatRaster of accessibility-side weights;
+values may be NA but not infinite}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 

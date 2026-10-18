@@ -213,9 +213,10 @@
   do.call(calc_decay, c(list(distance = distance), params, list(snap = snap)))
 }
 
-# The block engine of SPAX-055, behind options(spax.fca_engine = "block").
+# The block engine of SPAX-055 is the default; options(spax.fca_engine =
+# "field") selects the old path until it is removed.
 .fca_use_blocks <- function() {
-  identical(getOption("spax.fca_engine", "field"), "block")
+  identical(getOption("spax.fca_engine", "block"), "block")
 }
 
 # The decay weights of one decay_params list for the block engine.
@@ -232,10 +233,16 @@
   method <- params$method
   if (is.function(method)) {
     nm <- paste0("weights_", key)
-    rasters <- stats::setNames(list(.fca_decay_weights(distance, params, snap)), nm)
+    # The distance is read as well, for the finite-travel mask of decision D1.
+    rasters <- c(list(distance = distance),
+                 stats::setNames(list(.fca_decay_weights(distance, params, snap)), nm))
     return(list(
       rasters = rasters,
-      weights = function(b, rows) b[[nm]][rows, , drop = FALSE]
+      weights = function(b, rows) {
+        W <- b[[nm]][rows, , drop = FALSE]
+        .check_finite_weights(b$distance[rows, , drop = FALSE], W)
+        W
+      }
     ))
   }
 
@@ -273,6 +280,7 @@
   list(
     rasters = rasters,
     weights = function(b, rows) {
+      d <- b$distance[rows, , drop = FALSE]
       args <- fixed
       for (arg in names(keys)) {
         x <- b[[keys[[arg]]]][rows, , drop = FALSE]
@@ -281,11 +289,16 @@
         }
         args[arg] <- list(if (ncol(x) == 1L) x[, 1L] else x)
       }
-      do.call(calc_decay, c(
-        list(distance = b$distance[rows, , drop = FALSE], method = method,
-             snap = TRUE),
-        args
-      ))
+      if (builtin) {
+        W <- do.call(calc_decay, c(list(distance = d, method = method, snap = TRUE), args))
+        .check_finite_weights(d, W)
+        W
+      } else {
+        # A declared kernel checks its weights as it evaluates them (D1).
+        do.call(.calc_decay_declared, c(
+          list(distance = d, kernel = method, snap = TRUE), args, list(.d1 = TRUE)
+        ))
+      }
     }
   )
 }
@@ -371,12 +384,25 @@
     rasters = list(demand_weights = demand_weights,
                    access_weights = access_weights),
     kernels = list(
-      demand = function(b, rows) b$demand_weights[rows, , drop = FALSE],
-      access = function(b, rows) b$access_weights[rows, pos, drop = FALSE]
+      demand = function(b, rows) {
+        .check_user_weights(b$demand_weights[rows, , drop = FALSE])
+      },
+      access = function(b, rows) {
+        .check_user_weights(b$access_weights[rows, pos, drop = FALSE])
+      }
     ),
     demand_normalize = "identity", id_col = id_col, supply_cols = supply_cols,
     indicator_names = indicator_names, snap = snap
   )
+}
+
+# User weights of compute_access() may be missing but not infinite (SPAX-055,
+# decision D1); this also holds under `snap`.
+.check_user_weights <- function(W) {
+  if (any(is.infinite(W))) {
+    stop("weights must be finite or NA", call. = FALSE)
+  }
+  W
 }
 
 # selection_params has the form of decay_params: a list with a decay method.
@@ -434,11 +460,15 @@
 #' demand-side and supply-side weighted distributions. Supports multiple
 #' supply measures and flexible weight specifications.
 #'
-#' @param demand SpatRaster representing spatial distribution of demand
+#' @param demand SpatRaster representing spatial distribution of demand. Demand
+#'        must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+#'        which ignores other cells.
 #' @param supply vector, matrix, or data.frame containing supply capacity values.
 #'        If using an sf object, please use st_drop_geometry() first.
-#' @param demand_weights Multi-layer SpatRaster of demand-side weights
-#' @param access_weights Multi-layer SpatRaster of accessibility-side weights
+#' @param demand_weights Multi-layer SpatRaster of demand-side weights; values
+#'        may be NA but not infinite
+#' @param access_weights Multi-layer SpatRaster of accessibility-side weights;
+#'        values may be NA but not infinite
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
@@ -489,14 +519,18 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' distance decay effects and allowing for variable catchment sizes, providing more
 #' realistic measures of spatial accessibility to services.
 #'
-#' @param demand SpatRaster representing spatial distribution of demand
+#' @param demand SpatRaster representing spatial distribution of demand. Demand
+#'        must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+#'        which ignores other cells.
 #' @param supply vector, matrix, or data.frame containing supply capacity values
 #' @param distance SpatRaster stack of travel times/distances to facilities
 #' @param decay_params List of parameters for decay function:
 #'        \itemize{
 #'          \item method: "gaussian", "exponential", "power" or "binary", a
 #'            custom decay function, or a kernel declared with
-#'            \code{\link{decay_kernel}}
+#'            \code{\link{decay_kernel}}. Weights must be finite where the
+#'            distance is finite, so power decay needs a positive minimum
+#'            distance
 #'          \item sigma: decay parameter controlling the rate of distance decay
 #'          \item Additional parameters passed to custom decay functions
 #'        }

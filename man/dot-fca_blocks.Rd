@@ -19,8 +19,8 @@ facility-ID order.}
 
 \item{normalize}{Demand normalization of the gather kernel.}
 
-\item{snap}{Reserved for the checks that `snap` skips (negative or
-infinite demand, non-finite weights); see SPAX-055 decisions D1 and D2.}
+\item{snap}{When FALSE, negative or infinite demand is refused (D2); when
+TRUE such cells are not active. Weight checks (D1) live in the kernels.}
 }
 \value{
 A matrix with one row per cell of the grid and one column per

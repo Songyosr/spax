@@ -42,14 +42,13 @@ SpatRaster of accessibility.
 }
 \description{
 This has the signature that `compute_fca()` takes when the field path is
-removed (SPAX-055, task T4), which renames it. Until then it runs only
-under `options(spax.fca_engine = "block")`.
+removed (SPAX-055, task T4), which renames it. Until then it runs unless
+`options(spax.fca_engine = "field")` is set.
 }
 \details{
 Checks the grids, binds the supply to the facility IDs, runs the two-pass
 block engine and returns a SpatRaster with one layer per supply measure on
 the grid of the first raster of `rasters`. That raster also names the
-facilities; the wrappers pass the distance raster (or, for a plain decay
-function, its weight raster) first.
+facilities; the wrappers pass the distance raster first.
 }
 \keyword{internal}

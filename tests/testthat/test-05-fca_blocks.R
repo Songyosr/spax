@@ -490,3 +490,157 @@ test_that("snap leaves the block results unchanged on valid inputs", {
   expect_equal(terra::values(snapped$accessibility),
                terra::values(checked$accessibility))
 })
+
+# Decisions D1 and D2 of SPAX-055 ------------------------------------------
+
+d1_message <- paste0(
+  "decay weights must be finite where travel is finite (power decay is ",
+  "infinite at distance 0); use a positive minimum distance or another kernel"
+)
+
+# The toy distance raster with a zero distance in the first cell of the first
+# facility, and a missing one in the second cell.
+fca_toy_zero <- function() {
+  td <- fca_toy()
+  v <- terra::values(td$distance, mat = TRUE)
+  v[1, 1] <- 0
+  v[2, 2] <- NA
+  td$distance <- terra::setValues(td$distance, v)
+  td
+}
+
+test_that("D1 refuses non-finite decay weights at finite distances", {
+  td <- fca_toy_zero()
+  inv_power <- decay_kernel(function(distance, sigma) distance^(-sigma),
+                            name = "invpow", parameter = "exponent",
+                            zero_distance = FALSE)
+  cases <- list(
+    builtin = list(method = "power", sigma = 2),
+    inverse = list(method = "inverse", c = 0),
+    declared_builtin = list(method = decay_kernel("power"), sigma = 2),
+    declared = list(method = inv_power, sigma = 2),
+    plain = list(method = function(distance) 1 / distance)
+  )
+  funs <- list(spax_e2sfca, spax_m2sfca, spax_3sfca)
+  for (case in names(cases)) {
+    for (snap in c(FALSE, TRUE)) {
+      for (fun in funs) {
+        expect_error(
+          fun(td$demand, td$supply_matrix, td$distance, cases[[case]], snap = snap),
+          d1_message, fixed = TRUE, info = paste(case, snap)
+        )
+      }
+      expect_error(
+        spax_huff2sfca(td$demand, td$supply_vector, td$distance, cases[[case]],
+                       selection_params = list(method = "gaussian", sigma = 2),
+                       snap = snap),
+        d1_message, fixed = TRUE, info = paste(case, snap)
+      )
+    }
+  }
+  # Also with small blocks, and with an infinite distance (an absent edge)
+  # and a missing one, which are not checked.
+  withr::local_options(spax.fca_block_values = 1)
+  expect_error(
+    spax_e2sfca(td$demand, td$supply_vector, td$distance,
+                list(method = "power", sigma = 2)),
+    d1_message, fixed = TRUE
+  )
+  ok <- fca_toy()
+  v <- terra::values(ok$distance, mat = TRUE)
+  v[1, 1] <- Inf
+  v[2, 2] <- NA
+  ok$distance <- terra::setValues(ok$distance, v)
+  res <- spax_e2sfca(ok$demand, ok$supply_vector, ok$distance,
+                     list(method = "power", sigma = 2))
+  expect_true(all(is.finite(terra::values(res$accessibility)[-1, ][
+    !is.na(terra::values(res$accessibility)[-1, ])])))
+})
+
+test_that("D1 acts on the selection kernel of 3SFCA and Huff", {
+  td <- fca_toy_zero()
+  # Decay weights are finite everywhere; the selection weights are not.
+  decay <- list(method = "gaussian", sigma = 2.4)
+  selection <- list(method = "power", sigma = 2)
+  for (snap in c(FALSE, TRUE)) {
+    expect_error(spax_3sfca(td$demand, td$supply_matrix, td$distance, decay,
+                            selection_params = selection, snap = snap),
+                 d1_message, fixed = TRUE)
+    expect_error(spax_huff2sfca(td$demand, td$supply_vector, td$distance, decay,
+                                selection_params = selection, snap = snap),
+                 d1_message, fixed = TRUE)
+  }
+  # A positive minimum distance is the remedy.
+  td$distance <- terra::ifel(td$distance < 0.5, 0.5, td$distance)
+  expect_no_error(spax_3sfca(td$demand, td$supply_matrix, td$distance, decay,
+                             selection_params = selection))
+})
+
+test_that("compute_access refuses infinite user weights and allows missing ones", {
+  f <- fca_block_fixture(3)
+  W <- exp(-f$dist^2 / (2 * 2.5^2))
+  k <- terra::setValues(f$distance, W)
+  names(k) <- f$ids
+  for (bad in c(Inf, -Inf)) {
+    for (snap in c(FALSE, TRUE)) {
+      inf_demand <- terra::setValues(k, replace(W, 2, bad))
+      names(inf_demand) <- f$ids
+      expect_error(compute_access(f$demand, f$S, inf_demand, k, snap = snap),
+                   "weights must be finite or NA", fixed = TRUE)
+      expect_error(compute_access(f$demand, f$S, k, inf_demand, snap = snap),
+                   "weights must be finite or NA", fixed = TRUE)
+    }
+  }
+  # A missing weight is allowed (it counts as 0 in a reachable cell).
+  Wna <- W
+  Wna[3, 1] <- NA
+  kna <- terra::setValues(k, Wna)
+  names(kna) <- f$ids
+  res <- compute_access(f$demand, f$S, kna, kna)
+  expected <- fca_oracle(f$D, Wna, Wna, f$S)
+  expect_equal(unname(terra::values(res, mat = TRUE)), expected, tolerance = 1e-12)
+})
+
+test_that("D2 refuses negative or infinite demand unless snap", {
+  td <- fca_toy()
+  decay <- list(method = "gaussian", sigma = 2.4)
+  msg <- "demand must be finite and nonnegative; use NA for unknown"
+  with_cell <- function(value, cell = 9) {
+    v <- terra::values(td$demand, mat = FALSE)
+    v[cell] <- value
+    terra::setValues(td$demand, v)
+  }
+  funs <- list(spax_e2sfca, spax_m2sfca, spax_3sfca)
+  for (value in c(-5, Inf, -Inf)) {
+    bad <- with_cell(value)
+    for (fun in funs) {
+      expect_error(fun(bad, td$supply_matrix, td$distance, decay), msg, fixed = TRUE)
+    }
+    # The check covers every row of the block, also with one-row blocks.
+    withr::with_options(list(spax.fca_block_values = 1), {
+      expect_error(spax_e2sfca(bad, td$supply_matrix, td$distance, decay),
+                   msg, fixed = TRUE)
+    })
+    # Under snap the cell is not active: the result is that of a missing cell.
+    missing_cell <- with_cell(NA_real_)
+    for (fun in funs) {
+      snapped <- fun(bad, td$supply_matrix, td$distance, decay, snap = TRUE)
+      reference <- fun(missing_cell, td$supply_matrix, td$distance, decay,
+                       snap = TRUE)
+      expect_equal(terra::values(snapped$accessibility),
+                   terra::values(reference$accessibility), tolerance = 1e-12)
+    }
+  }
+  expect_error(spax_2sfca(with_cell(-5), td$supply_matrix, td$distance, 3), msg,
+               fixed = TRUE)
+  # Zero demand and missing demand stay valid.
+  expect_no_error(spax_e2sfca(with_cell(0), td$supply_matrix, td$distance, decay))
+  expect_no_error(spax_e2sfca(with_cell(NA_real_), td$supply_matrix, td$distance, decay))
+  # compute_access has the same rule.
+  f <- fca_block_fixture(3)
+  W <- exp(-f$dist^2 / (2 * 2.5^2))
+  k <- terra::setValues(f$distance, W)
+  names(k) <- f$ids
+  bad <- terra::setValues(f$demand, replace(terra::values(f$demand, mat = FALSE), 1, -1))
+  expect_error(compute_access(bad, f$S, k, k), msg, fixed = TRUE)
+})
