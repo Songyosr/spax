@@ -42,7 +42,7 @@ Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
 
 Each release is archived on Zenodo; doi:10.5281/zenodo.23438611 refers to all
-versions (version 0.3.0 is doi:10.5281/zenodo.23438612). Cite the version you
+versions (version 0.3.1 is doi:10.5281/zenodo.23446335). Cite the version you
 used with `citation("spax")`.
 
 Package and function help are available from an installed package.

@@ -1,3 +1,8 @@
+# spax (development version)
+
+* Version 0.3.1 is archived on Zenodo: cite it as doi:10.5281/zenodo.23446335.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 # spax 0.3.1
 
 Patch release. Poisson flow fits are now maximum likelihood estimates; saved
