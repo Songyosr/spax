@@ -15,13 +15,16 @@
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand, or a
+named list of SpatRasters (demand groups)}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 
-\item{distance}{SpatRaster stack of travel times/distances to facilities}
+\item{distance}{SpatRaster stack of travel times/distances to facilities, or
+with groups a named list of them (one per group)}
 
-\item{decay_params}{List of parameters for decay function}
+\item{decay_params}{List of parameters for decay function, or with groups a
+named list of them (one per group)}
 
 \item{demand_normalize}{Character specifying normalization method}
 

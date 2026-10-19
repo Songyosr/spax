@@ -31,11 +31,136 @@
   }
 }
 
+# Demand groups (SPAX-056) ----------------------------------------------------
+
+# The group IDs of a `demand` argument: NULL for one single-layer SpatRaster
+# (ungrouped), the names of the list for a named list of single-layer
+# SpatRasters (grouped, also a list of one). A multi-layer SpatRaster is not
+# taken as groups. The group structure is checked always, also under `snap`:
+# the names (unique, non-empty, not NA, not "all", no "."), the class and layer
+# count of each element, and one geometry for all of them.
+.fca_demand_groups <- function(demand) {
+  if (inherits(demand, "SpatRaster")) {
+    if (terra::nlyr(demand) > 1L) {
+      stop("give demand groups as a named list of single-layer rasters",
+           call. = FALSE)
+    }
+    return(NULL)
+  }
+  if (!is.list(demand)) {
+    .chck_class(demand, "SpatRaster", "demand")
+  }
+  groups <- names(demand)
+  if (!length(demand) || is.null(groups) || anyNA(groups) || any(groups == "") ||
+      anyDuplicated(groups) || any(groups == "all") ||
+      any(grepl(".", groups, fixed = TRUE))) {
+    stop("demand group names must be unique, non-empty, not NA, not \"all\" ",
+         "and without \".\"", call. = FALSE)
+  }
+  for (g in groups) {
+    .chck_class(demand[[g]], "SpatRaster", paste0("demand group '", g, "'"))
+    if (terra::nlyr(demand[[g]]) > 1L) {
+      stop("give demand groups as a named list of single-layer rasters",
+           call. = FALSE)
+    }
+  }
+  for (g in groups[-1L]) {
+    if (!terra::compareGeom(demand[[1L]], demand[[g]], stopOnError = FALSE)) {
+      stop("all demand groups must have the same geometry", call. = FALSE)
+    }
+  }
+  groups
+}
+
+# Whether an argument is given per group, and then its elements in group
+# order. It is per group if and only if it is a list (an atomic named vector
+# when `atomic`) whose names equal the group IDs as a set; the result is the
+# elements reordered to `groups`. Names that overlap the group IDs only partly
+# are an error. Otherwise the argument is shared and NULL is returned.
+.fca_per_group <- function(x, groups, arg, atomic = FALSE) {
+  form <- if (atomic) is.numeric(x) else is.list(x)
+  nms <- if (form) names(x)
+  if (is.null(nms) || !any(nms %in% groups)) {
+    return(NULL)
+  }
+  if (length(x) != length(groups) || anyDuplicated(nms) || !setequal(nms, groups)) {
+    stop(arg, ": give one element per group: ", paste(groups, collapse = ", "),
+         call. = FALSE)
+  }
+  x[groups]
+}
+
+# The travel stacks of the groups must name the same facilities in the same
+# order and have one geometry (always checked).
+.fca_check_stacks <- function(stacks, arg) {
+  ids <- .fca_ids(stacks[[1L]], arg)
+  for (s in stacks[-1L]) {
+    if (!identical(.fca_ids(s, arg), ids) ||
+        !terra::compareGeom(stacks[[1L]], s, stopOnError = FALSE)) {
+      stop("travel layers of every group must name the same facilities in ",
+           "the same order; reorder with x[[names(first)]]", call. = FALSE)
+    }
+  }
+  invisible(TRUE)
+}
+
+# An argument for each group, a list named by `groups`: its per-group elements
+# or, when it is shared, the argument itself for every group (a shared raster
+# stays one object, so it is read once). `stacks`: the elements are raster
+# stacks of facilities (see .fca_check_stacks()).
+.fca_expand_groups <- function(x, groups, arg, stacks = FALSE) {
+  per <- .fca_per_group(x, groups, arg)
+  if (is.null(per)) {
+    return(stats::setNames(rep(list(x), length(groups)), groups))
+  }
+  if (stacks) {
+    .fca_check_stacks(per, arg)
+  }
+  per
+}
+
+# The raster that names the facilities of a call: the first group's stack when
+# the argument is given per group, else the argument.
+.fca_first_stack <- function(x, groups, arg) {
+  if (is.null(groups)) {
+    return(x)
+  }
+  .fca_expand_groups(x, groups, arg, stacks = TRUE)[[1L]]
+}
+
+# The per-group decay, selection and travel arguments of a grouped call.
+.fca_group_plan <- function(groups, distance, decay_params,
+                            selection_params = NULL) {
+  list(
+    distance = .fca_expand_groups(distance, groups, "distance", stacks = TRUE),
+    decay = .fca_expand_groups(decay_params, groups, "decay_params"),
+    selection = if (!is.null(selection_params)) {
+      .fca_expand_groups(selection_params, groups, "selection_params")
+    }
+  )
+}
+
+# The result of a grouped run in the form of a spax object: the layer table
+# goes into `parameters` (with the group IDs) and off the raster. An ungrouped
+# result is returned as it is.
+.fca_group_result <- function(result, parameters) {
+  layers <- attr(result, "layers")
+  if (!is.null(layers)) {
+    parameters$groups <- unique(layers$group[layers$group != "all"])
+    parameters$layers <- layers
+    attr(result, "layers") <- NULL
+  }
+  list(accessibility = result, parameters = parameters)
+}
+
 #' Validate inputs for compute_access
-#' @param demand SpatRaster representing spatial distribution of demand
+#' @param demand SpatRaster representing spatial distribution of demand, or a
+#'   named list of SpatRasters (demand groups)
 #' @param supply vector, matrix, or data.frame containing supply capacity values
-#' @param demand_weights Multi-layer SpatRaster of demand-side weights
-#' @param access_weights Multi-layer SpatRaster of accessibility-side weights
+#' @param demand_weights Multi-layer SpatRaster of demand-side weights, or with
+#'   groups a named list of them (one per group)
+#' @param access_weights Multi-layer SpatRaster of accessibility-side weights, or
+#'   with groups a named list of them (one per group)
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
@@ -43,53 +168,83 @@
 .chck_compute_access <- function(demand, supply, demand_weights, access_weights,
                                  id_col = NULL, supply_cols = NULL,
                                  indicator_names = NULL) {
-  # Input type validation
-  .chck_class(demand, "SpatRaster", "demand")
-  .chck_class(demand_weights, "SpatRaster", "demand_weights")
-  .chck_class(access_weights, "SpatRaster", "access_weights")
+  # Input type validation; with groups, each group's weights are checked
+  groups <- .fca_demand_groups(demand)
+  if (is.null(groups)) {
+    demands <- list(demand)
+    dw <- list(demand_weights)
+    aw <- list(access_weights)
+  } else {
+    demands <- demand
+    dw <- .fca_expand_groups(demand_weights, groups, "demand_weights", stacks = TRUE)
+    aw <- .fca_expand_groups(access_weights, groups, "access_weights", stacks = TRUE)
+  }
+  for (i in seq_along(dw)) {
+    .chck_class(dw[[i]], "SpatRaster", "demand_weights")
+    .chck_class(aw[[i]], "SpatRaster", "access_weights")
+  }
 
   # Validate supply and get facility count
   n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
 
-  # Validate raster alignments
-  .chck_raster_alignment(demand, demand_weights, "demand", "demand_weights")
-  .chck_raster_alignment(demand, access_weights, "demand", "access_weights")
+  for (i in seq_along(dw)) {
+    # Validate raster alignments
+    .chck_raster_alignment(demands[[i]], dw[[i]], "demand", "demand_weights")
+    .chck_raster_alignment(demands[[i]], aw[[i]], "demand", "access_weights")
 
-  # Validate weights match facility count
-  .chck_lengths_match(
-    nlyr(demand_weights), n_facilities,
-    "demand_weights layers", "facilities"
-  )
-  .chck_lengths_match(
-    nlyr(access_weights), n_facilities,
-    "access_weights layers", "facilities"
-  )
+    # Validate weights match facility count
+    .chck_lengths_match(
+      nlyr(dw[[i]]), n_facilities,
+      "demand_weights layers", "facilities"
+    )
+    .chck_lengths_match(
+      nlyr(aw[[i]]), n_facilities,
+      "access_weights layers", "facilities"
+    )
+  }
 
   invisible(TRUE)
 }
 
 #' Validate inputs for spax_e2sfca
-#' @param demand SpatRaster representing spatial distribution of demand
+#' @param demand SpatRaster representing spatial distribution of demand, or a
+#'   named list of SpatRasters (demand groups)
 #' @param supply vector, matrix, or data.frame containing supply capacity values
-#' @param distance SpatRaster stack of travel times/distances to facilities
-#' @param decay_params List of parameters for decay function
+#' @param distance SpatRaster stack of travel times/distances to facilities, or
+#'   with groups a named list of them (one per group)
+#' @param decay_params List of parameters for decay function, or with groups a
+#'   named list of them (one per group)
 #' @param demand_normalize Character specifying normalization method
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @keywords internal
 .chck_e2sfca <- function(demand, supply, distance, decay_params,
                          demand_normalize, id_col = NULL, supply_cols = NULL) {
-  # Check input types
-  .chck_class(demand, "SpatRaster", "demand")
-  .chck_class(distance, "SpatRaster", "distance")
+  # Check input types; with groups, each group's travel and decay are checked
+  groups <- .fca_demand_groups(demand)
+  if (is.null(groups)) {
+    demands <- list(demand)
+    dist <- list(distance)
+    decay <- list(decay_params)
+  } else {
+    demands <- demand
+    plan <- .fca_group_plan(groups, distance, decay_params)
+    dist <- plan$distance
+    decay <- plan$decay
+  }
+  for (d in dist) {
+    .chck_class(d, "SpatRaster", "distance")
+  }
 
   # Validate supply and get facility count
   n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
 
   # Validate decay_params
-  .chck_class(decay_params, "list", "decay_params")
-  if (is.null(decay_params$method)) {
-    stop("decay_params must include 'method'")
+  for (dp in decay) {
+    .chck_class(dp, "list", "decay_params")
+    if (is.null(dp$method)) {
+      stop("decay_params must include 'method'")
+    }
   }
 
   # Validate demand_normalize
@@ -101,14 +256,16 @@
     ))
   }
 
-  # Validate raster alignment
-  .chck_raster_alignment(demand, distance, "demand", "distance")
+  for (i in seq_along(dist)) {
+    # Validate raster alignment
+    .chck_raster_alignment(demands[[i]], dist[[i]], "demand", "distance")
 
-  # Validate facility counts match
-  .chck_lengths_match(
-    nlyr(distance), n_facilities,
-    "distance layers", "facilities"
-  )
+    # Validate facility counts match
+    .chck_lengths_match(
+      nlyr(dist[[i]]), n_facilities,
+      "distance layers", "facilities"
+    )
+  }
 
   invisible(TRUE)
 }
@@ -376,15 +533,33 @@
   list(rasters = rasters, kernels = kernels)
 }
 
-# The block-engine counterpart of the decay-based wrappers (one ungrouped
-# demand raster); see .fca_group_kernels().
+# The block-engine counterpart of the decay-based wrappers; see
+# .fca_group_kernels(). `demand` is one raster, or a named list of rasters, one
+# per demand group: then `distance`, `decay_params` and `selection_params` are
+# shared or per group (see .fca_per_group()), every group gets its own kernels
+# and raster keys, and the result has the layers of compute_fca() for groups,
+# with the layer table as its `layers` attribute.
 .fca_block_run <- function(type, demand, supply, distance, decay_params,
                            selection_params = NULL, attractiveness = NULL,
                            alpha = 1, demand_normalize = "identity",
                            id_col = NULL, supply_cols = NULL,
                            indicator_names = NULL, snap = FALSE) {
-  spec <- .fca_group_kernels(type, distance, decay_params, selection_params,
-                             attractiveness, alpha, snap)
+  groups <- .fca_demand_groups(demand)
+  if (is.null(groups)) {
+    spec <- .fca_group_kernels(type, distance, decay_params, selection_params,
+                               attractiveness, alpha, snap)
+  } else {
+    plan <- .fca_group_plan(groups, distance, decay_params, selection_params)
+    specs <- lapply(seq_along(groups), function(i) {
+      .fca_group_kernels(type, plan$distance[[i]], plan$decay[[i]],
+                         plan$selection[[i]], attractiveness, alpha, snap,
+                         suffix = paste0(".", groups[i]))
+    })
+    spec <- list(
+      rasters = do.call(c, lapply(specs, `[[`, "rasters")),
+      kernels = stats::setNames(lapply(specs, `[[`, "kernels"), groups)
+    )
+  }
   compute_fca(
     demand = demand, supply = supply, rasters = spec$rasters,
     kernels = spec$kernels, demand_normalize = demand_normalize,
@@ -418,10 +593,25 @@
   )
 }
 
+# With a named list of demand rasters (groups), `demand_weights` and
+# `access_weights` are shared or per group, as in .fca_block_run().
 .fca_access_block <- function(demand, supply, demand_weights, access_weights,
                               id_col = NULL, supply_cols = NULL,
                               indicator_names = NULL, snap = FALSE) {
-  spec <- .fca_access_kernels(demand_weights, access_weights)
+  groups <- .fca_demand_groups(demand)
+  if (is.null(groups)) {
+    spec <- .fca_access_kernels(demand_weights, access_weights)
+  } else {
+    dw <- .fca_expand_groups(demand_weights, groups, "demand_weights", stacks = TRUE)
+    aw <- .fca_expand_groups(access_weights, groups, "access_weights", stacks = TRUE)
+    specs <- lapply(seq_along(groups), function(i) {
+      .fca_access_kernels(dw[[i]], aw[[i]], suffix = paste0(".", groups[i]))
+    })
+    spec <- list(
+      rasters = do.call(c, lapply(specs, `[[`, "rasters")),
+      kernels = stats::setNames(lapply(specs, `[[`, "kernels"), groups)
+    )
+  }
   compute_fca(
     demand = demand, supply = supply, rasters = spec$rasters,
     kernels = spec$kernels,
@@ -439,11 +629,19 @@
   W
 }
 
-# selection_params has the form of decay_params: a list with a decay method.
-.chck_selection_params <- function(selection_params) {
-  .chck_class(selection_params, "list", "selection_params")
-  if (is.null(selection_params$method)) {
-    stop("selection_params must include 'method'")
+# selection_params has the form of decay_params: a list with a decay method
+# (with groups, shared or one such list per group).
+.chck_selection_params <- function(selection_params, groups = NULL) {
+  params <- if (is.null(groups)) {
+    list(selection_params)
+  } else {
+    .fca_expand_groups(selection_params, groups, "selection_params")
+  }
+  for (p in params) {
+    .chck_class(p, "list", "selection_params")
+    if (is.null(p$method)) {
+      stop("selection_params must include 'method'")
+    }
   }
   invisible(TRUE)
 }
@@ -494,20 +692,41 @@
 #' demand-side and supply-side weighted distributions. Supports multiple
 #' supply measures and flexible weight specifications.
 #'
-#' @param demand SpatRaster representing spatial distribution of demand. Demand
+#' @param demand SpatRaster representing spatial distribution of demand, or a
+#'        named list of single-layer SpatRasters, one per demand group (see
+#'        "Demand groups"). A multi-layer SpatRaster is refused. Demand
 #'        must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
 #'        which ignores other cells.
 #' @param supply vector, matrix, or data.frame containing supply capacity values.
 #'        If using an sf object, please use st_drop_geometry() first.
 #' @param demand_weights Multi-layer SpatRaster of demand-side weights; values
-#'        may be NA but not infinite
+#'        may be NA but not infinite. With demand groups, either one stack
+#'        shared by every group or a list of stacks named by the groups (one per
+#'        group); the stacks of all groups must name the same facilities in the
+#'        same order and have the same geometry.
 #' @param access_weights Multi-layer SpatRaster of accessibility-side weights;
-#'        values may be NA but not infinite
+#'        values may be NA but not infinite. Given per group in the same way as
+#'        `demand_weights`.
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
-#' @return SpatRaster of accessibility scores
+#' @return SpatRaster of accessibility scores. With demand groups, the layers
+#'        are named `<measure>.<group>` for every group and `<measure>.all`
+#'        for the overall layer, measure by measure.
+#'
+#' @section Demand groups:
+#' When `demand` is a named list of single-layer rasters, the groups compete
+#' for the same supply: the demand that reaches a facility is the sum over the
+#' groups, each with its own demand weights. Each group gets its own
+#' accessibility layer, and `<measure>.all` is the overall layer, the average
+#' of the group scores weighted by the demand of the cell. A group with demand
+#' in a cell that none of its weights reach counts with accessibility 0 there;
+#' the overall layer is NA where any group's demand is missing or the total
+#' demand is 0. Group names must be unique, non-empty, not `"all"` and without
+#' a `.`. `demand_weights` and `access_weights` are shared by the groups, or a
+#' list with one element per group, named by the groups. Shared weights should
+#' be passed as one object, so that they are read once.
 #' @export
 compute_access <- function(demand, supply, demand_weights, access_weights,
                            id_col = NULL, supply_cols = NULL,
@@ -521,10 +740,13 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
     )
   }
 
-  .fca_access_block(
+  result <- .fca_access_block(
     demand, supply, demand_weights, access_weights,
     id_col, supply_cols, indicator_names, snap
   )
+  # With groups the layer table is not kept: the layer names say it.
+  attr(result, "layers") <- NULL
+  result
 }
 
 #' Calculate Enhanced Two-Step Floating Catchment Area (E2SFCA) accessibility scores
@@ -535,12 +757,20 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' distance decay effects and allowing for variable catchment sizes, providing more
 #' realistic measures of spatial accessibility to services.
 #'
-#' @param demand SpatRaster representing spatial distribution of demand. Demand
+#' @param demand SpatRaster representing spatial distribution of demand, or a
+#'        named list of single-layer SpatRasters, one per demand group (see
+#'        "Demand groups"). A multi-layer SpatRaster is refused. Demand
 #'        must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
 #'        which ignores other cells.
 #' @param supply vector, matrix, or data.frame containing supply capacity values
-#' @param distance SpatRaster stack of travel times/distances to facilities
-#' @param decay_params List of parameters for decay function:
+#' @param distance SpatRaster stack of travel times/distances to facilities.
+#'        With demand groups, either one stack shared by every group or a list
+#'        of stacks named by the groups (for example one per travel mode); the
+#'        stacks of all groups must name the same facilities in the same order
+#'        and have the same geometry (reorder with `x[[names(first)]]`).
+#' @param decay_params List of parameters for decay function (with demand
+#'        groups, one list shared by every group, or a list of such lists named
+#'        by the groups):
 #'        \itemize{
 #'          \item method: "gaussian", "exponential", "power" or "binary", a
 #'            custom decay function, or a kernel declared with
@@ -562,12 +792,44 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
 #' @return A spax object containing:
 #'        \itemize{
-#'          \item accessibility: SpatRaster of accessibility scores
+#'          \item accessibility: SpatRaster of accessibility scores. With
+#'            demand groups, the layers are named `<measure>.<group>` for every
+#'            group and `<measure>.all` for the overall layer, measure by measure
 #'          \item type: Character string "E2SFCA"
-#'          \item parameters: List of model parameters used
+#'          \item parameters: List of model parameters used. With demand groups
+#'            it also holds `groups` (the group IDs) and `layers` (a data frame
+#'            of the columns `layer`, `measure` and `group`, the group being
+#'            `"all"` for the overall layer)
 #'          \item facilities: data.frame of facility-level information
 #'          \item call: The original function call
 #'        }
+#'
+#' @section Demand groups:
+#' Give `demand` as a named list of single-layer rasters (for example age
+#' bands) to let several groups compete for the same facilities. The names are
+#' the group IDs: unique, non-empty, not `"all"` and without a `.`; all rasters
+#' need the same geometry. A multi-layer raster is not taken as groups.
+#'
+#' Step 1 sums, over all groups, the demand that reaches each facility, with
+#' the demand weights of each group; step 2 gives each group its own
+#' accessibility from the shared ratios, with its own weights. The result has
+#' one layer per group, and an overall layer `<measure>.all`: the average of
+#' the group scores weighted by the demand of the cell. A group with demand in
+#' a cell that its travel cannot reach counts with accessibility 0 in the
+#' overall layer; the overall layer is NA where any group's demand is missing
+#' or the total demand is 0. With one group the group layer equals the
+#' ungrouped result.
+#'
+#' `decay_params` and `distance` (and `selection_params` of
+#' [spax_3sfca()] and [spax_huff2sfca()], `threshold` of [spax_2sfca()]) are
+#' each either shared by every group or given per group. An argument is per
+#' group when it is a list (for `threshold`, a named numeric vector) whose
+#' names are the group IDs, in any order; names that match only some of the
+#' groups are refused. Any other value is shared and checked as for one
+#' group. Pass a shared `distance` as one object, so that it is read once. A
+#' plain-function decay builds a whole in-memory weight raster for each group.
+#' `demand_normalize`, `indicator_names`, `id_col`, `supply_cols` and the
+#' attractiveness of [spax_huff2sfca()] are shared.
 #'
 #' @details
 #' The E2SFCA method enhances the original 2SFCA by introducing:
@@ -647,6 +909,24 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #'   main = c("Gaussian Decay", "Exponential Decay")
 #' )
 #'
+#' # Two demand groups that compete for the same practices, with a fixed
+#' # illustrative split of the population and a decay scale for each group
+#' groups <- list(younger = pop_rast * 0.6, older = pop_rast * 0.4)
+#' result_groups <- spax_e2sfca(
+#'   demand = groups,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(
+#'     younger = list(method = "gaussian", sigma = 8),
+#'     older = list(method = "gaussian", sigma = 15)
+#'   ),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' names(result_groups$accessibility)
+#' result_groups$parameters$groups
+#' plot(result_groups$accessibility)
+#'
 #' @seealso
 #' * [spax_2sfca()] for the original method without distance decay
 #' * [compute_access()] for more flexible accessibility calculations
@@ -677,13 +957,14 @@ spax_e2sfca <- function(demand, supply, distance,
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
 
   # Create spax object
+  out <- .fca_group_result(result, list(
+    decay_params = decay_params,
+    demand_normalize = demand_normalize
+  ))
   .create_spax(
-    accessibility = result,
+    accessibility = out$accessibility,
     type = "E2SFCA",
-    parameters = list(
-      decay_params = decay_params,
-      demand_normalize = demand_normalize
-    ),
+    parameters = out$parameters,
     facilities = facilities,
     call = match.call(),
     snap = snap
@@ -701,6 +982,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #' which standard 2SFCA/E2SFCA cannot distinguish.
 #'
 #' @inheritParams spax_e2sfca
+#' @inheritSection spax_e2sfca Demand groups
 #' @return A spax object (see [spax_e2sfca()]); `type` is "M2SFCA".
 #'
 #' @details
@@ -744,13 +1026,14 @@ spax_m2sfca <- function(demand, supply, distance,
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
 
   # Create spax object
+  out <- .fca_group_result(result, list(
+    decay_params = decay_params,
+    demand_normalize = demand_normalize
+  ))
   .create_spax(
-    accessibility = result,
+    accessibility = out$accessibility,
     type = "M2SFCA",
-    parameters = list(
-      decay_params = decay_params,
-      demand_normalize = demand_normalize
-    ),
+    parameters = out$parameters,
     facilities = facilities,
     call = match.call(),
     snap = snap
@@ -765,23 +1048,33 @@ spax_m2sfca <- function(demand, supply, distance,
 #' uses a single distance/time threshold to define service areas and computes
 #' accessibility as a ratio of supply to demand within these catchments.
 #'
-#' @param demand SpatRaster representing spatial distribution of demand. Demand
+#' @param demand SpatRaster representing spatial distribution of demand, or a
+#'        named list of single-layer SpatRasters, one per demand group (see
+#'        "Demand groups"). A multi-layer SpatRaster is refused. Demand
 #'        must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
 #'        which ignores other cells.
 #' @param supply vector, matrix, or data.frame containing supply capacity values
-#' @param distance SpatRaster stack of travel times/distances to facilities
-#' @param threshold Numeric value defining the catchment area cutoff (same units as distance)
+#' @param distance SpatRaster stack of travel times/distances to facilities.
+#'        With demand groups, one stack shared by every group or a list of
+#'        stacks named by the groups (see [spax_e2sfca()]).
+#' @param threshold Numeric value defining the catchment area cutoff (same units
+#'        as distance). With demand groups, one number shared by every group or
+#'        a numeric vector named by the groups, one positive finite number per
+#'        group.
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param snap Logical; if TRUE enable fast computation mode (default = FALSE)
 #' @return A spax object containing:
 #'        \itemize{
-#'          \item accessibility: SpatRaster of accessibility scores
+#'          \item accessibility: SpatRaster of accessibility scores (with demand
+#'            groups, named as in [spax_e2sfca()])
 #'          \item type: Character string "2SFCA"
-#'          \item parameters: List containing threshold and binary decay parameters
+#'          \item parameters: List containing threshold and binary decay
+#'            parameters (and `groups` and `layers` with demand groups)
 #'          \item facilities: data.frame of facility-level information
 #'          \item call: The original function call
 #'        }
+#' @inheritSection spax_e2sfca Demand groups
 #'
 #' @details
 #' The original Two-Step Floating Catchment Area (2SFCA) method operates in two steps:
@@ -861,15 +1154,24 @@ spax_m2sfca <- function(demand, supply, distance,
 spax_2sfca <- function(demand, supply, distance, threshold,
                        id_col = NULL, supply_cols = NULL,
                        snap = FALSE) {
-  if (!snap && (!is.numeric(threshold) || length(threshold) != 1 ||
-                !is.finite(threshold) || threshold <= 0)) {
-    stop("threshold must be a single positive number")
+  # With demand groups, the threshold is one number or one per group
+  groups <- if (is.list(demand)) .fca_demand_groups(demand)
+  thresholds <- if (!is.null(groups)) {
+    .fca_per_group(threshold, groups, "threshold", atomic = TRUE)
+  }
+  if (!snap) {
+    for (th in if (is.null(thresholds)) list(threshold) else thresholds) {
+      if (!is.numeric(th) || length(th) != 1 || !is.finite(th) || th <= 0) {
+        stop("threshold must be a single positive number")
+      }
+    }
   }
   # Create decay parameters for binary catchment
-  decay_params <- list(
-    method = "binary",
-    sigma = threshold
-  )
+  decay_params <- if (is.null(thresholds)) {
+    list(method = "binary", sigma = threshold)
+  } else {
+    lapply(thresholds, function(th) list(method = "binary", sigma = th))
+  }
 
   # Use spax_e2sfca with binary catchment and no demand normalization
   result <- spax_e2sfca(
@@ -901,7 +1203,8 @@ spax_2sfca <- function(demand, supply, distance, threshold,
 #'
 #' @inheritParams spax_e2sfca
 #' @param decay_params List of parameters for the decay weights used in both
-#'        steps:
+#'        steps (with demand groups, one list shared by every group, or a list
+#'        of such lists named by the groups):
 #'        \itemize{
 #'          \item method: "gaussian", "exponential", "power" or "binary", a
 #'            custom decay function, or a kernel declared with
@@ -916,10 +1219,14 @@ spax_2sfca <- function(demand, supply, distance, threshold,
 #'        are built from. The default is \code{decay_params}, so one decay both
 #'        weights distance and selects facilities; give a different list to
 #'        select with another decay. Its weights must also be finite where the
-#'        distance is finite.
+#'        distance is finite. With demand groups, shared or a list named by the
+#'        groups; a group whose selection list is identical to its decay list
+#'        reuses the decay weights.
+#' @inheritSection spax_e2sfca Demand groups
 #' @return A spax object (see \code{\link{spax_e2sfca}}) whose \code{type} is
 #'         "3SFCA". Its \code{parameters} are the named list
-#'         \code{decay_params}, \code{selection_params}.
+#'         \code{decay_params}, \code{selection_params} (and \code{groups}
+#'         and \code{layers} with demand groups).
 #'
 #' @details
 #' Write \eqn{D_i} for the demand at origin \eqn{i}, \eqn{S_j} for the supply of
@@ -1021,12 +1328,13 @@ spax_3sfca <- function(demand, supply, distance,
                        indicator_names = NULL,
                        snap = FALSE) {
   # Validation (3SFCA takes the inputs of E2SFCA, without normalization)
+  groups <- .fca_demand_groups(demand)
   if (!snap) {
     .chck_e2sfca(
       demand, supply, distance, decay_params,
       "identity", id_col, supply_cols
     )
-    .chck_selection_params(selection_params)
+    .chck_selection_params(selection_params, groups)
   }
 
   result <- .fca_block_run(
@@ -1039,13 +1347,14 @@ spax_3sfca <- function(demand, supply, distance,
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
 
   # Create spax object
+  out <- .fca_group_result(result, list(
+    decay_params = decay_params,
+    selection_params = selection_params
+  ))
   .create_spax(
-    accessibility = result,
+    accessibility = out$accessibility,
     type = "3SFCA",
-    parameters = list(
-      decay_params = decay_params,
-      selection_params = selection_params
-    ),
+    parameters = out$parameters,
     facilities = facilities,
     call = match.call(),
     snap = snap
@@ -1063,9 +1372,11 @@ spax_3sfca <- function(demand, supply, distance,
 #' demand at each origin.
 #'
 #' @inheritParams spax_3sfca
+#' @inheritSection spax_e2sfca Demand groups
 #' @param attractiveness Numeric vector of facility attractiveness with one
-#'        finite, nonnegative value per facility. A named vector is matched to
-#'        the layer names of \code{distance}; an unnamed vector follows the
+#'        finite, nonnegative value per facility, shared by the demand groups. A
+#'        named vector is matched to the layer names of \code{distance} (with
+#'        groups, of the first group's stack); an unnamed vector follows the
 #'        order of the layers. The default, \code{NULL}, uses the supply
 #'        measure, which requires \code{supply} to have exactly one measure;
 #'        give \code{attractiveness} when it has several.
@@ -1186,18 +1497,21 @@ spax_huff2sfca <- function(demand, supply, distance,
                            indicator_names = NULL,
                            snap = FALSE) {
   # Validation (Huff-2SFCA takes the inputs of E2SFCA, without normalization)
+  groups <- .fca_demand_groups(demand)
   if (!snap) {
     .chck_e2sfca(
       demand, supply, distance, decay_params,
       "identity", id_col, supply_cols
     )
-    .chck_selection_params(selection_params)
+    .chck_selection_params(selection_params, groups)
     .chck_nonnegative_scalar(alpha, "alpha")
   }
 
-  # Attractiveness in the order of the distance layers, named by facility ID
+  # Attractiveness in the order of the distance layers (with groups, those of
+  # the first group), named by facility ID
   attractiveness <- .fca_attractiveness(
-    attractiveness, supply, distance, id_col, supply_cols, snap
+    attractiveness, supply, .fca_first_stack(distance, groups, "distance"),
+    id_col, supply_cols, snap
   )
 
   result <- .fca_block_run(
@@ -1211,15 +1525,16 @@ spax_huff2sfca <- function(demand, supply, distance,
   facilities <- .fca_facility_table(supply, id_col, supply_cols)
 
   # Create spax object
+  out <- .fca_group_result(result, list(
+    decay_params = decay_params,
+    selection_params = selection_params,
+    attractiveness = attractiveness,
+    alpha = alpha
+  ))
   .create_spax(
-    accessibility = result,
+    accessibility = out$accessibility,
     type = "Huff-2SFCA",
-    parameters = list(
-      decay_params = decay_params,
-      selection_params = selection_params,
-      attractiveness = attractiveness,
-      alpha = alpha
-    ),
+    parameters = out$parameters,
     facilities = facilities,
     call = match.call(),
     snap = snap

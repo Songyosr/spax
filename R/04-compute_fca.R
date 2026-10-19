@@ -52,7 +52,7 @@ compute_fca <- function(demand, supply, rasters, kernels,
   } else {
     .chck_class(demand, "SpatRaster", "demand")
     if (terra::nlyr(demand) > 1L) {
-      stop("multi-layer raster fields must declare at least one non-I axis")
+      stop("give demand groups as a named list of single-layer rasters")
     }
     groups <- NULL
     demand_list <- list(demand = demand)

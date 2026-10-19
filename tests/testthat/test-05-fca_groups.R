@@ -416,3 +416,506 @@ test_that("grouped layer names, the layer table and the checks of the driver", {
                            c(k, list(b = k$a))),
                "same geometry")
 })
+
+# The public wrappers with demand groups (SPAX-056, T2) --------------------------
+
+# Selection weights by hand: the weights `Tw` of each cell (times a^alpha) divided
+# by their sum over the facilities; 0 where they sum to 0, NA where missing.
+group_choice <- function(Tw, a = NULL, alpha = 1) {
+  score <- if (is.null(a)) Tw else sweep(Tw, 2, a^alpha, "*")
+  rs <- rowSums(score, na.rm = TRUE)
+  score * ifelse(rs > 0, 1 / rs, 0)
+}
+
+wrap_demand <- function(f) list(a = f$demand_a, b = f$demand_b)
+wrap_travel <- function(f) list(a = f$travel_a, b = f$travel_b)
+wrap_names <- c("m1", "m2")
+wrap_layers <- c("m1.a", "m1.b", "m1.all", "m2.a", "m2.b", "m2.all")
+wrap_decay <- list(a = list(method = "gaussian", sigma = 2.5),
+                   b = list(method = "gaussian", sigma = 4))
+
+# A copy of group b's travel raster with other facility names, order or grid.
+renamed_stack <- function(x, names) {
+  names(x) <- names
+  x
+}
+
+test_that("every wrapper with demand groups matches the grouped oracle", {
+  f <- group_fixture()
+  D <- list(f$Da, f$Db)
+  Wg <- list(gauss_w(f$dist_a, 2.5), gauss_w(f$dist_b, 4))
+  layers <- data.frame(layer = wrap_layers, measure = rep(wrap_names, each = 3),
+                       group = rep(c("a", "b", "all"), 2))
+  check_result <- function(result, expected, type) {
+    expect_s3_class(result, "spax")
+    expect_identical(result$type, type)
+    expect_group_result(result$accessibility, expected, G = 2)
+    expect_identical(names(result$accessibility), wrap_layers)
+    expect_identical(result$parameters$groups, c("a", "b"))
+    expect_identical(result$parameters$layers, layers)
+    expect_null(attr(result$accessibility, "layers"))
+    expect_identical(result$facilities$id, f$ids)
+  }
+
+  for (norm in c("identity", "standard", "semi")) {
+    e2 <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                      demand_normalize = norm, indicator_names = wrap_names)
+    check_result(e2, fca_oracle(D, Wg, Wg, f$S, norm), "E2SFCA")
+    expect_identical(e2$parameters$decay_params, wrap_decay)
+    expect_identical(e2$parameters$demand_normalize, norm)
+  }
+
+  m2 <- spax_m2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                    demand_normalize = "standard", indicator_names = wrap_names)
+  check_result(m2, fca_oracle(D, Wg, lapply(Wg, function(w) w^2), f$S, "standard"),
+               "M2SFCA")
+
+  # 2SFCA: one threshold per group, in any order, or one shared number.
+  Bg <- list(1 * (f$dist_a <= 3), 1 * (f$dist_b <= 5))
+  two <- spax_2sfca(wrap_demand(f), f$S, wrap_travel(f), threshold = c(b = 5, a = 3))
+  expect_group_result(two$accessibility, fca_oracle(D, Bg, Bg, f$S), G = 2)
+  expect_identical(two$type, "2SFCA")
+  expect_identical(two$parameters$groups, c("a", "b"))
+  expect_identical(two$parameters$decay_params,
+                   list(a = list(method = "binary", sigma = 3),
+                        b = list(method = "binary", sigma = 5)))
+  Bs <- list(1 * (f$dist_a <= 4), 1 * (f$dist_b <= 4))
+  shared <- spax_2sfca(wrap_demand(f), f$S, wrap_travel(f), threshold = 4)
+  expect_group_result(shared$accessibility, fca_oracle(D, Bs, Bs, f$S), G = 2)
+  expect_identical(shared$parameters$decay_params, list(method = "binary", sigma = 4))
+  # Under snap too.
+  snapped <- spax_2sfca(wrap_demand(f), f$S, wrap_travel(f),
+                        threshold = c(a = 3, b = 5), snap = TRUE)
+  expect_group_result(snapped$accessibility, fca_oracle(D, Bg, Bg, f$S), G = 2)
+
+  # 3SFCA: the selection weights per group, and the shortcut of a selection
+  # identical to the decay applies per group.
+  selection <- list(a = wrap_decay$a, b = list(method = "exponential", sigma = 0.3))
+  Ta <- Wg[[1]]
+  Tb <- exp(-0.3 * f$dist_b)
+  K3 <- list(Wg[[1]] * group_choice(Ta), Wg[[2]] * group_choice(Tb))
+  r3 <- spax_3sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay, selection,
+                   indicator_names = wrap_names)
+  check_result(r3, fca_oracle(D, K3, K3, f$S), "3SFCA")
+  expect_identical(r3$parameters$selection_params, selection)
+  # The default selection is the decay of each group.
+  Kd <- lapply(Wg, function(w) w * group_choice(w))
+  r3d <- spax_3sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                    indicator_names = wrap_names)
+  check_result(r3d, fca_oracle(D, Kd, Kd, f$S), "3SFCA")
+  expect_identical(r3d$parameters$selection_params, wrap_decay)
+
+  # Huff-2SFCA: attractiveness and alpha shared, selection per group.
+  attract <- c(f1 = 1, f2 = 2, f3 = 4)
+  Kh <- list(Wg[[1]] * group_choice(Ta, attract, 1.5),
+             Wg[[2]] * group_choice(Tb, attract, 1.5))
+  rh <- spax_huff2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay, selection,
+                       attractiveness = attract, alpha = 1.5,
+                       indicator_names = wrap_names)
+  check_result(rh, fca_oracle(D, Kh, Kh, f$S), "Huff-2SFCA")
+  expect_identical(rh$parameters$attractiveness, attract)
+  expect_identical(rh$parameters$alpha, 1.5)
+  # Attractiveness named by the facilities of the first group's stack.
+  rh_named <- spax_huff2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                             selection, attractiveness = rev(attract), alpha = 1.5,
+                             indicator_names = wrap_names)
+  expect_equal(rh_named$parameters$attractiveness, attract)
+})
+
+test_that("compute_access takes weights per group", {
+  f <- group_fixture()
+  D <- list(f$Da, f$Db)
+  Wd <- list(gauss_w(f$dist_a, 2.5), gauss_w(f$dist_b, 4))
+  Wa <- list(1 * (f$dist_a <= 3), Wd[[2]]^2)
+  dw <- lapply(Wd, function(w) terra::setValues(f$distance, w))
+  aw <- lapply(Wa, function(w) terra::setValues(f$distance, w))
+  names(dw) <- names(aw) <- c("a", "b")
+  got <- compute_access(wrap_demand(f), f$S, dw, aw, indicator_names = wrap_names)
+  expect_s4_class(got, "SpatRaster")
+  expect_identical(names(got), wrap_layers)
+  expect_null(attr(got, "layers"))
+  expect_group_result(got, fca_oracle(D, Wd, Wa, f$S), G = 2)
+
+  # Group order of the list does not matter; shared weights serve every group.
+  rev_got <- compute_access(wrap_demand(f), f$S, dw[c("b", "a")], aw[c("b", "a")],
+                            indicator_names = wrap_names)
+  expect_equal(unname(terra::values(rev_got)), unname(terra::values(got)))
+  mixed <- compute_access(wrap_demand(f), f$S, dw$a, aw, indicator_names = wrap_names)
+  expect_group_result(mixed, fca_oracle(D, list(Wd[[1]], Wd[[1]]), Wa, f$S), G = 2)
+  # The access weights follow the facility IDs of the demand weights (the stacks
+  # of the groups still agree with each other).
+  perm <- lapply(aw, function(x) x[[c("f3", "f1", "f2")]])
+  expect_equal(unname(terra::values(
+    compute_access(wrap_demand(f), f$S, dw, perm, indicator_names = wrap_names)
+  )), unname(terra::values(got)))
+  # Under snap the same.
+  expect_equal(unname(terra::values(
+    compute_access(wrap_demand(f), f$S, dw, aw, indicator_names = wrap_names,
+                   snap = TRUE)
+  )), unname(terra::values(got)))
+})
+
+test_that("a one-element group list equals the ungrouped result", {
+  f <- group_fixture()
+  decay <- list(method = "gaussian", sigma = 2.5)
+  attract <- c(f1 = 1, f2 = 2, f3 = 4)
+  run <- function(fun, demand, ...) {
+    fun(demand, f$S, f$travel_a, ..., indicator_names = wrap_names)
+  }
+  values <- function(r) unname(terra::values(r$accessibility, mat = TRUE))
+  cases <- list(
+    e2sfca = function(d) run(spax_e2sfca, d, decay, "standard"),
+    m2sfca = function(d) run(spax_m2sfca, d, decay),
+    `3sfca` = function(d) run(spax_3sfca, d, decay),
+    huff = function(d) run(spax_huff2sfca, d, decay, attractiveness = attract)
+  )
+  for (nm in names(cases)) {
+    one <- cases[[nm]](list(g = f$demand_a))
+    ungrouped <- cases[[nm]](f$demand_a)
+    expect_identical(names(one$accessibility), c("m1.g", "m1.all", "m2.g", "m2.all"),
+                     info = nm)
+    expect_identical(one$parameters$groups, "g")
+    expect_equal(values(one)[, c(1, 3)], values(ungrouped), tolerance = 1e-12,
+                 info = nm)
+    expect_null(ungrouped$parameters$groups)
+    expect_null(ungrouped$parameters$layers)
+    expect_identical(names(ungrouped$accessibility), wrap_names)
+  }
+  two <- spax_2sfca(list(g = f$demand_a), f$S, f$travel_a, 3)
+  base <- spax_2sfca(f$demand_a, f$S, f$travel_a, 3)
+  expect_equal(values(two)[, c(1, 3)], values(base), tolerance = 1e-12)
+  W <- terra::setValues(f$distance, gauss_w(f$dist_a, 2.5))
+  ca <- compute_access(list(g = f$demand_a), f$S, W, W, indicator_names = wrap_names)
+  expect_equal(unname(terra::values(ca))[, c(1, 3)],
+               unname(terra::values(compute_access(f$demand_a, f$S, W, W,
+                                                   indicator_names = wrap_names))),
+               tolerance = 1e-12)
+})
+
+test_that("each group may use a declared kernel, a plain function or a raster sigma", {
+  f <- group_fixture()
+  D <- list(f$Da, f$Db)
+  pexp <- decay_kernel(function(distance, sigma) exp(-distance / sigma),
+                       name = "plain_exponential", parameter = "scale")
+  plain <- function(distance, sigma = 3) terra::ifel(distance < sigma, 1, 0)
+  sig <- terra::setValues(terra::rast(f$demand_a), seq(1.5, 4, length.out = 12))
+
+  # A declared kernel for a, a plain function for b.
+  d1 <- list(a = list(method = pexp, sigma = 2), b = list(method = plain, sigma = 4))
+  W1 <- list(exp(-f$dist_a / 2), decay_weights(f$travel_b, d1$b))
+  got <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), d1,
+                     indicator_names = wrap_names)
+  expect_group_result(got$accessibility, fca_oracle(D, W1, W1, f$S), G = 2)
+
+  # A raster sigma for a, a built-in for b; also in M2SFCA and 3SFCA.
+  d2 <- list(a = list(method = "gaussian", sigma = sig), b = wrap_decay$b)
+  W2 <- list(decay_weights(f$travel_a, d2$a), gauss_w(f$dist_b, 4))
+  got <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), d2,
+                     indicator_names = wrap_names)
+  expect_group_result(got$accessibility, fca_oracle(D, W2, W2, f$S), G = 2)
+  got <- spax_m2sfca(wrap_demand(f), f$S, wrap_travel(f), d2,
+                     indicator_names = wrap_names)
+  expect_group_result(got$accessibility,
+                      fca_oracle(D, W2, lapply(W2, function(w) w^2), f$S), G = 2)
+  K <- lapply(W2, function(w) w * group_choice(w))
+  got <- spax_3sfca(wrap_demand(f), f$S, wrap_travel(f), d2,
+                    indicator_names = wrap_names)
+  expect_group_result(got$accessibility, fca_oracle(D, K, K, f$S), G = 2)
+  # Under snap too.
+  got <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), d1,
+                     indicator_names = wrap_names, snap = TRUE)
+  expect_group_result(got$accessibility, fca_oracle(D, W1, W1, f$S), G = 2)
+})
+
+test_that("shared and per-group arguments mix, each independently", {
+  f <- group_fixture()
+  D <- list(f$Da, f$Db)
+  # Shared travel (one object) with per-group decay.
+  W <- lapply(wrap_decay, function(p) gauss_w(f$dist_a, p$sigma))
+  got <- spax_e2sfca(wrap_demand(f), f$S, f$travel_a, wrap_decay,
+                     indicator_names = wrap_names)
+  expect_group_result(got$accessibility, fca_oracle(D, W, W, f$S), G = 2)
+  plan <- .fca_group_plan(c("a", "b"), f$travel_a, wrap_decay)
+  expect_true(.same_raster(plan$distance$a, plan$distance$b))
+  # Per-group travel with a shared decay.
+  W <- list(gauss_w(f$dist_a, 3), gauss_w(f$dist_b, 3))
+  got <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f),
+                     list(method = "gaussian", sigma = 3),
+                     indicator_names = wrap_names)
+  expect_group_result(got$accessibility, fca_oracle(D, W, W, f$S), G = 2)
+  expect_identical(got$parameters$decay_params, list(method = "gaussian", sigma = 3))
+  # Shared selection with per-group decay and travel (Huff), the shortcut off.
+  attract <- c(f1 = 1, f2 = 2, f3 = 4)
+  Wg <- list(gauss_w(f$dist_a, 2.5), gauss_w(f$dist_b, 4))
+  K <- list(Wg[[1]] * group_choice(exp(-0.3 * f$dist_a), attract),
+            Wg[[2]] * group_choice(exp(-0.3 * f$dist_b), attract))
+  got <- spax_huff2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                        list(method = "exponential", sigma = 0.3),
+                        attractiveness = attract, indicator_names = wrap_names)
+  expect_group_result(got$accessibility, fca_oracle(D, K, K, f$S), G = 2)
+  # The shared travel object is read once: a file-backed raster, one-row blocks.
+  path <- withr::local_tempfile(fileext = ".tif")
+  terra::writeRaster(f$travel_a, path, datatype = "FLT8S")
+  travel <- terra::rast(path)
+  withr::local_options(list(spax.fca_block_values = 1))
+  expect_no_warning(
+    file_backed <- spax_e2sfca(wrap_demand(f), f$S, travel, wrap_decay,
+                               indicator_names = wrap_names)
+  )
+  expect_equal(unname(terra::values(file_backed$accessibility)),
+               unname(terra::values(
+                 spax_e2sfca(wrap_demand(f), f$S, f$travel_a, wrap_decay,
+                             indicator_names = wrap_names)$accessibility
+               )), tolerance = 1e-12)
+})
+
+test_that("results do not depend on the block size, with per-group stacks", {
+  f <- group_fixture()
+  attract <- c(f1 = 1, f2 = 2, f3 = 4)
+  dw <- lapply(wrap_travel(f), function(x) terra::setValues(x, exp(-terra::values(x)^2 / 8)))
+  runs <- list(
+    e2 = function() spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                                demand_normalize = "standard")$accessibility,
+    two = function() spax_2sfca(wrap_demand(f), f$S, wrap_travel(f),
+                                c(a = 3, b = 5))$accessibility,
+    huff = function() spax_huff2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                                     attractiveness = attract)$accessibility,
+    access = function() compute_access(wrap_demand(f), f$S, dw, dw)
+  )
+  for (nm in names(runs)) {
+    default <- unname(terra::values(runs[[nm]]()))
+    for (block_values in list(1, 10, 25)) {
+      withr::local_options(list(spax.fca_block_values = block_values))
+      got <- unname(terra::values(runs[[nm]]()))
+      expect_equal(got, default, tolerance = 1e-12,
+                   info = paste(nm, format(block_values)))
+      expect_identical(is.na(got), is.na(default), info = paste(nm, block_values))
+    }
+  }
+})
+
+test_that("a multi-layer demand raster is refused, with and without snap", {
+  f <- group_fixture()
+  multi <- c(f$demand_a, f$demand_b)
+  msg <- "give demand groups as a named list of single-layer rasters"
+  W <- terra::setValues(f$distance, gauss_w(f$dist_a, 2.5))
+  for (snap in c(FALSE, TRUE)) {
+    expect_error(spax_e2sfca(multi, f$S, f$travel_a, snap = snap), msg)
+    expect_error(spax_m2sfca(multi, f$S, f$travel_a, snap = snap), msg)
+    expect_error(spax_2sfca(multi, f$S, f$travel_a, 3, snap = snap), msg)
+    expect_error(spax_3sfca(multi, f$S, f$travel_a, snap = snap), msg)
+    expect_error(spax_huff2sfca(multi, f$S, f$travel_a, attractiveness = 1:3,
+                                snap = snap), msg)
+    expect_error(compute_access(multi, f$S, W, W, snap = snap), msg)
+    # Nor as an element of a group list.
+    expect_error(spax_e2sfca(list(a = multi), f$S, f$travel_a, snap = snap), msg)
+  }
+})
+
+test_that("bad group names and demand groups are refused, with and without snap", {
+  f <- group_fixture()
+  a <- f$demand_a
+  b <- f$demand_b
+  W <- terra::setValues(f$distance, gauss_w(f$dist_a, 2.5))
+  msg <- "demand group names must be unique, non-empty"
+  bad <- list(
+    duplicate = c(list(a = a), list(a = b)),
+    empty = stats::setNames(list(a, b), c("a", "")),
+    missing = stats::setNames(list(a, b), c("a", NA)),
+    unnamed = list(a, b),
+    all = list(a = a, all = b),
+    dot = list(a = a, `b.c` = b),
+    none = list()
+  )
+  for (snap in c(FALSE, TRUE)) {
+    for (nm in names(bad)) {
+      expect_error(spax_e2sfca(bad[[nm]], f$S, f$travel_a, snap = snap), msg,
+                   info = nm)
+      expect_error(spax_3sfca(bad[[nm]], f$S, f$travel_a, snap = snap), msg,
+                   info = nm)
+      expect_error(spax_2sfca(bad[[nm]], f$S, f$travel_a, 3, snap = snap), msg,
+                   info = nm)
+      expect_error(compute_access(bad[[nm]], f$S, W, W, snap = snap), msg,
+                   info = nm)
+    }
+    # Elements that are not rasters, or with another geometry.
+    expect_error(spax_e2sfca(list(a = a, b = 1), f$S, f$travel_a, snap = snap),
+                 "demand group 'b' must be one of the following classes")
+    other <- toy_rast(1:20, nrows = 4, ncols = 5)
+    expect_error(spax_e2sfca(list(a = a, b = other), f$S, f$travel_a, snap = snap),
+                 "same geometry")
+  }
+  # Valid names: dashes, spaces, digits and case are allowed.
+  ok <- spax_e2sfca(list(`under 16` = a, `65-plus` = b, All = a), f$S, f$travel_a,
+                    indicator_names = wrap_names)
+  expect_identical(ok$parameters$groups, c("under 16", "65-plus", "All"))
+})
+
+test_that("per-group arguments need one element per group", {
+  f <- group_fixture()
+  msg <- "give one element per group: a, b"
+  W <- terra::setValues(f$distance, gauss_w(f$dist_a, 2.5))
+  forms <- function(x) list(missing = x["a"], extra = c(x, list(c = x[[1]])),
+                            swapped = c(x["a"], list(c = x[[2]])))
+  for (snap in c(FALSE, TRUE)) {
+    for (nm in names(forms(wrap_decay))) {
+      expect_error(spax_e2sfca(wrap_demand(f), f$S, f$travel_a,
+                               forms(wrap_decay)[[nm]], snap = snap),
+                   msg, info = nm)
+      expect_error(spax_m2sfca(wrap_demand(f), f$S, f$travel_a,
+                               forms(wrap_decay)[[nm]], snap = snap),
+                   msg, info = nm)
+      expect_error(spax_3sfca(wrap_demand(f), f$S, f$travel_a, wrap_decay,
+                              forms(wrap_decay)[[nm]], snap = snap),
+                   msg, info = nm)
+      expect_error(spax_huff2sfca(wrap_demand(f), f$S, f$travel_a, wrap_decay,
+                                  forms(wrap_decay)[[nm]], attractiveness = 1:3,
+                                  snap = snap), msg, info = nm)
+      expect_error(spax_e2sfca(wrap_demand(f), f$S, forms(wrap_travel(f))[[nm]],
+                               wrap_decay, snap = snap), msg, info = nm)
+      expect_error(compute_access(wrap_demand(f), f$S,
+                                  forms(wrap_travel(f))[[nm]], W, snap = snap),
+                   msg, info = nm)
+      expect_error(compute_access(wrap_demand(f), f$S, W,
+                                  forms(wrap_travel(f))[[nm]], snap = snap),
+                   msg, info = nm)
+    }
+    expect_error(spax_2sfca(wrap_demand(f), f$S, f$travel_a, c(a = 3), snap = snap),
+                 msg)
+    expect_error(spax_2sfca(wrap_demand(f), f$S, f$travel_a, c(a = 3, c = 4),
+                            snap = snap), msg)
+    expect_error(spax_2sfca(wrap_demand(f), f$S, f$travel_a, c(a = 3, b = 4, c = 5),
+                            snap = snap), msg)
+  }
+  # A list that shares no name with the groups is a shared argument and is
+  # validated as before; so is an unnamed threshold vector.
+  expect_error(spax_e2sfca(wrap_demand(f), f$S, f$travel_a, list(sigma = 2)),
+               "decay_params must include 'method'")
+  expect_error(spax_3sfca(wrap_demand(f), f$S, f$travel_a, wrap_decay,
+                          list(sigma = 2)),
+               "selection_params must include 'method'")
+  expect_error(spax_2sfca(wrap_demand(f), f$S, f$travel_a, c(3, 4)),
+               "threshold must be a single positive number")
+  # The elements of a per-group argument are validated as before.
+  expect_error(spax_e2sfca(wrap_demand(f), f$S, f$travel_a,
+                           list(a = wrap_decay$a, b = list(sigma = 2))),
+               "decay_params must include 'method'")
+  expect_error(spax_2sfca(wrap_demand(f), f$S, f$travel_a, c(a = 3, b = -1)),
+               "threshold must be a single positive number")
+  expect_error(spax_2sfca(wrap_demand(f), f$S, f$travel_a, c(a = 3, b = NA_real_)),
+               "threshold must be a single positive number")
+})
+
+test_that("travel stacks of the groups must name the same facilities", {
+  f <- group_fixture()
+  msg <- "travel layers of every group must name the same facilities in the same order"
+  other_grid <- toy_rast(seq_len(60), nrows = 5, ncols = 4, nlyr = 3, names = f$ids)
+  bad_b <- list(
+    names = renamed_stack(f$travel_b, c("f1", "f2", "x")),
+    order = f$travel_b[[c("f3", "f2", "f1")]],
+    geometry = other_grid
+  )
+  W <- terra::setValues(f$distance, gauss_w(f$dist_a, 2.5))
+  for (snap in c(FALSE, TRUE)) {
+    for (nm in names(bad_b)) {
+      tr <- list(a = f$travel_a, b = bad_b[[nm]])
+      expect_error(spax_e2sfca(wrap_demand(f), f$S, tr, wrap_decay, snap = snap),
+                   msg, info = nm)
+      expect_error(spax_3sfca(wrap_demand(f), f$S, tr, wrap_decay, snap = snap),
+                   msg, info = nm)
+      expect_error(spax_huff2sfca(wrap_demand(f), f$S, tr, wrap_decay,
+                                  attractiveness = 1:3, snap = snap), msg, info = nm)
+      expect_error(spax_2sfca(wrap_demand(f), f$S, tr, 3, snap = snap), msg,
+                   info = nm)
+      weights <- list(a = W, b = terra::setValues(f$travel_b, 1))
+      weights$b <- if (nm == "geometry") other_grid else {
+        if (nm == "names") renamed_stack(weights$b, c("f1", "f2", "x")) else
+          weights$b[[c("f3", "f2", "f1")]]
+      }
+      expect_error(compute_access(wrap_demand(f), f$S, weights, W, snap = snap),
+                   msg, info = nm)
+      expect_error(compute_access(wrap_demand(f), f$S, W, weights, snap = snap),
+                   msg, info = nm)
+    }
+  }
+  # Reordering as the message suggests works.
+  fixed <- list(a = f$travel_a, b = bad_b$order[[names(f$travel_a)]])
+  got <- spax_e2sfca(wrap_demand(f), f$S, fixed, wrap_decay,
+                     indicator_names = wrap_names)
+  expect_identical(names(got$accessibility), wrap_layers)
+})
+
+test_that("negative demand in a group is refused unless snap", {
+  f <- group_fixture()
+  Db <- f$Db
+  Db[2] <- -1
+  d <- list(a = f$demand_a, b = toy_rast(Db, nrows = 3, ncols = 4))
+  expect_error(spax_e2sfca(d, f$S, wrap_travel(f), wrap_decay),
+               "demand must be finite and nonnegative")
+  expect_no_error(spax_e2sfca(d, f$S, wrap_travel(f), wrap_decay, snap = TRUE))
+})
+
+test_that("grouped spax objects print and summarise their groups", {
+  f <- group_fixture()
+  per <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                     demand_normalize = "standard", indicator_names = wrap_names)
+  expect_output(print(per), "Measures: 2", fixed = TRUE)
+  expect_output(print(per), "Demand groups: a, b", fixed = TRUE)
+  expect_output(print(per), "Decay function (group a): gaussian (sigma = 2.5)",
+                fixed = TRUE)
+  expect_output(print(per), "Decay function (group b): gaussian (sigma = 4)",
+                fixed = TRUE)
+  expect_output(print(per), "Demand normalization: standard", fixed = TRUE)
+  out <- paste(capture.output(print(per)), collapse = "\n")
+  expect_match(out, "- m1\n- m2", fixed = TRUE)
+  expect_false(grepl("- m1.a", out, fixed = TRUE))
+
+  # A shared decay is one line.
+  shared <- spax_e2sfca(wrap_demand(f), f$S, f$travel_a,
+                        list(method = "gaussian", sigma = 3),
+                        indicator_names = wrap_names)
+  out <- paste(capture.output(print(shared)), collapse = "\n")
+  expect_match(out, "Demand groups: a, b", fixed = TRUE)
+  expect_match(out, "- Decay function: gaussian (sigma = 3)", fixed = TRUE)
+  expect_false(grepl("(group a)", out, fixed = TRUE))
+
+  # 2SFCA with thresholds per group.
+  two <- spax_2sfca(wrap_demand(f), f$S, wrap_travel(f), c(a = 3, b = 5))
+  expect_output(print(two), "Decay function (group b): binary (sigma = 5)",
+                fixed = TRUE)
+
+  s <- summary(per)
+  expect_s3_class(s, "summary.spax")
+  expect_identical(names(s$accessibility), wrap_layers)
+  expect_identical(s$parameters$groups, c("a", "b"))
+  expect_output(print(s), "Demand groups: a, b", fixed = TRUE)
+  expect_output(print(s), "Decay function (group a): gaussian (sigma = 2.5)",
+                fixed = TRUE)
+  expect_output(print(s), "m1.all:", fixed = TRUE)
+  expect_no_error(plot(per, y = "m1.all"))
+
+  # Ungrouped printing has no group lines.
+  ungrouped <- spax_e2sfca(f$demand_a, f$S, f$travel_a, wrap_decay$a,
+                           indicator_names = wrap_names)
+  out <- paste(capture.output(print(ungrouped)), collapse = "\n")
+  expect_false(grepl("Demand groups", out, fixed = TRUE))
+  expect_match(out, "Measures: 2\n- m1\n- m2", fixed = TRUE)
+})
+
+test_that("grouped spax objects survive save_spax and read_spax", {
+  skip_if_no_proj()
+  f <- group_fixture()
+  result <- spax_e2sfca(wrap_demand(f), f$S, wrap_travel(f), wrap_decay,
+                        indicator_names = wrap_names)
+  tmp <- withr::local_tempdir()
+  file <- file.path(tmp, "grouped")
+  save_spax(result, file)
+  loaded <- read_spax(file)
+  expect_identical(names(loaded$accessibility), wrap_layers)
+  expect_identical(loaded$parameters$groups, c("a", "b"))
+  expect_identical(loaded$parameters$layers, result$parameters$layers)
+  expect_identical(loaded$parameters$decay_params, wrap_decay)
+  expect_equal(terra::values(loaded$accessibility),
+               terra::values(result$accessibility), tolerance = 1e-6)
+  expect_output(print(loaded), "Decay function (group a)", fixed = TRUE)
+})

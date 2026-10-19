@@ -241,7 +241,7 @@ test_that("compute_fca binds supply, names layers and checks its inputs", {
     expect_error(
       compute_fca(c(f$demand, f$demand), f$S, list(distance = f$distance),
                           kernels, snap = snap),
-      "multi-layer raster fields must declare at least one non-I axis"
+      "give demand groups as a named list of single-layer rasters"
     )
   }
   expect_error(run(supply = f$S, indicator_names = "only_one"),
@@ -319,7 +319,7 @@ test_that("the wrappers keep their errors and names under the block engine", {
     expect_error(spax_e2sfca(td$demand, c(1, 2), dup, snap = snap),
                  "duplicate coordinate tuples")
     expect_error(spax_e2sfca(multi, td$supply_vector, td$distance, snap = snap),
-                 "multi-layer raster fields must declare at least one non-I axis")
+                 "give demand groups as a named list of single-layer rasters")
   }
 
   # indicator_names of the wrong length.
