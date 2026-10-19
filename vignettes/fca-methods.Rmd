@@ -501,8 +501,7 @@ The average younger resident sees `r mean_young` GP FTE per 1,000 residents
 and the average older resident `r mean_old`; the overall value lies between
 them, nearer the younger group because that group is the larger one in every
 cell. With a shorter scale, practices beyond the nearest few get small weights
-for the older group, so its index is lower, and it is lowest on Bodmin Moor, where
-practices are far away. The gap reflects the assumed travel scales and the
+for the older group, so its index is lower. The gap reflects the assumed travel scales and the
 assumed split, not any observed difference between age groups.
 
 Transport modes are another use. Give `distance` as a named list with one
