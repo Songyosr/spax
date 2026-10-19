@@ -1339,3 +1339,155 @@ test_that("a family by group is labelled by group", {
   expect_identical(.fit_family_label(list(family = "soft", families = list(a = kernel))),
                    "soft (sigma = decay length)")
 })
+
+# compare_allocations() for grouped fits (SPAX-057 T4) --------------------------
+
+# One start and the same targets keep these fits cheap; they need not be good,
+# only comparable or not.
+.gcmp_fit <- function(case, model, observed = case$counts, output = "utilization_by_group") {
+  .gfit_fit(case, observed, model, case$starts[2L, , drop = FALSE], output)
+}
+
+.gcmp_models <- function(case, distance = case$base$distance, demand = NULL) {
+  D <- if (is.null(demand)) case$inputs$D_groups else demand
+  groups <- stats::setNames(lapply(colnames(D), function(g) D[, g]), colnames(D))
+  inputs <- prepare_allocation(groups, case$base$supply, distance)
+  clm_allocation(inputs, by_group = "sigma", fit_v0 = TRUE)
+}
+
+test_that("a shared and a by_group fit on the same labelled target are comparable", {
+  case <- .gfit_case()
+  by_group <- .gfit_fits()$gradient$fit
+  shared <- .gfit_fit(case, case$counts, case$shared, case$total_starts,
+                      "utilization_by_group", lower = case$total_lower,
+                      upper = case$total_upper)
+  fits <- list(shared = shared, by_group = by_group)
+  models <- list(shared = case$shared, by_group = case$model)
+  # without models the demand by group and the travel cannot be checked
+  none <- as.data.frame(compare_allocations(fits))
+  expect_false(any(none$comparable))
+  expect_match(none$not_comparable[2], "demand by group and travel not checked")
+  cmp <- compare_allocations(fits, models = models)
+  tab <- as.data.frame(cmp)
+  expect_true(all(tab$comparable))
+  expect_identical(tab$not_comparable, c("", ""))
+  expect_identical(tab$loss_difference[1], 0)
+  expect_equal(tab$loss_difference[2], by_group$best$loss - shared$best$loss)
+  expect_lt(tab$loss_difference[2], -10)
+  # the free parameters, named by group, and the pooled coverage
+  expect_match(tab$parameters[1], "^sigma=[0-9.]+, v0=")
+  expect_match(tab$parameters[2], "sigma.0-15=.*sigma.16-64=.*sigma.65\\+=.*v0=")
+  expect_equal(tab$contact[2], .ae_coverage(by_group$best)$regional$rho[1])
+  printed <- capture.output(print(cmp))
+  expect_match(printed[1], "reference: shared")
+  expect_true(any(grepl("by_group", printed)))
+  expect_false(any(grepl("like-for-like", printed)))
+  # the reference may be the by_group fit
+  rev <- as.data.frame(compare_allocations(fits, models = models, reference = "by_group"))
+  expect_equal(rev$loss_difference[1], shared$best$loss - by_group$best$loss)
+  expect_true(all(rev$comparable))
+  # a comparison with a withheld difference says so
+  expect_output(print(compare_allocations(fits)), "like-for-like")
+})
+
+test_that("grouped and ungrouped fits are not comparable", {
+  case <- .gfit_case()
+  by_group <- .gfit_fits()$gradient$fit
+  ungrouped_case <- alloc_generated_case()
+  ungrouped <- alloc_generated_fit()
+  cmp <- as.data.frame(compare_allocations(list(a = by_group, b = ungrouped),
+                                           models = list(a = case$model,
+                                                         b = ungrouped_case$model)))
+  expect_false(cmp$comparable[2])
+  expect_true(is.na(cmp$loss_difference[2]))
+  expect_match(cmp$not_comparable[2], "groups")
+  # the same with the ungrouped fit as the reference
+  cmp <- as.data.frame(compare_allocations(list(b = ungrouped, a = by_group),
+                                           models = list(b = ungrouped_case$model,
+                                                         a = case$model)))
+  expect_false(cmp$comparable[2])
+  expect_match(cmp$not_comparable[2], "groups")
+  # two ungrouped fits next to a grouped one still compare with each other
+  cmp <- as.data.frame(compare_allocations(
+    list(u1 = ungrouped, u2 = ungrouped, g = by_group),
+    models = list(u1 = ungrouped_case$model, u2 = ungrouped_case$model, g = case$model)))
+  expect_identical(cmp$comparable, c(TRUE, TRUE, FALSE))
+})
+
+test_that("a different split of the same totals is not comparable", {
+  case <- .gfit_case()
+  by_group <- .gfit_fits()$gradient$fit
+  D <- case$inputs$D_groups
+  # the groups' shares rotated: the same totals by origin, other demand by group
+  rotated <- D[, c(2L, 3L, 1L)]
+  colnames(rotated) <- colnames(D)
+  other_model <- .gcmp_models(case, demand = rotated)
+  expect_equal(other_model$substrate$D_active, case$model$substrate$D_active)
+  expect_false(identical(other_model$substrate$D_groups, case$model$substrate$D_groups))
+  other <- .gcmp_fit(case, other_model)
+  tab <- as.data.frame(compare_allocations(list(a = by_group, b = other),
+                                           models = list(a = case$model, b = other_model)))
+  expect_false(tab$comparable[2])
+  expect_true(is.na(tab$loss_difference[2]))
+  expect_match(tab$not_comparable[2], "demand_groups")
+})
+
+test_that("different travel by group is not comparable when models are given", {
+  case <- .gfit_case()
+  by_group <- .gfit_fits()$gradient$fit
+  d <- case$base$distance
+  per_group <- stats::setNames(list(d * 1.1, d, d), .gfit_ids)
+  inputs <- prepare_allocation(
+    stats::setNames(lapply(.gfit_ids, function(g) case$inputs$D_groups[, g]), .gfit_ids),
+    case$base$supply, per_group)
+  other_model <- clm_allocation(inputs, by_group = "sigma", fit_v0 = TRUE)
+  expect_null(other_model$substrate$distance_active)
+  other <- .gcmp_fit(case, other_model)
+  tab <- as.data.frame(compare_allocations(list(a = by_group, b = other),
+                                           models = list(a = case$model, b = other_model)))
+  expect_false(tab$comparable[2])
+  expect_match(tab$not_comparable[2], "travel")
+  # the same travel given for every group separately is the shared travel
+  same_inputs <- prepare_allocation(
+    stats::setNames(lapply(.gfit_ids, function(g) case$inputs$D_groups[, g]), .gfit_ids),
+    case$base$supply, stats::setNames(list(d, d, d), .gfit_ids))
+  same_model <- clm_allocation(same_inputs, by_group = "sigma", fit_v0 = TRUE)
+  same <- .gcmp_fit(case, same_model)
+  tab <- as.data.frame(compare_allocations(list(a = by_group, b = same),
+                                           models = list(a = case$model, b = same_model)))
+  expect_true(all(tab$comparable))
+})
+
+test_that("an aggregated and a group-labelled target are not comparable", {
+  case <- .gfit_case()
+  by_group <- .gfit_fits()$gradient$fit
+  totals <- rowSums(case$counts)
+  fixed_model <- clm_allocation(case$inputs, fit_v0 = TRUE)
+  aggregated <- fit_allocation(fixed_model, totals, case$total_starts[2, , drop = FALSE],
+                               case$total_lower, case$total_upper, output = "utilization",
+                               loss = "poisson", control = .gfit_control)
+  tab <- as.data.frame(compare_allocations(list(a = by_group, b = aggregated),
+                                           models = list(a = case$model, b = fixed_model)))
+  expect_false(tab$comparable[2])
+  expect_match(tab$not_comparable[2], "observed")
+  expect_match(tab$not_comparable[2], "loss")
+})
+
+test_that("a grouped fit must belong to its model when models are given", {
+  case <- .gfit_case()
+  by_group <- .gfit_fits()$gradient$fit
+  expect_error(compare_allocations(list(a = by_group, b = by_group),
+                                   models = list(a = case$model, b = case$shared)),
+               "does not belong")
+  expect_error(compare_allocations(list(a = by_group, b = by_group),
+                                   models = list(a = case$model,
+                                                 b = alloc_generated_case()$model)),
+               "does not belong")
+  # a model with another family per group does not reproduce the fit
+  other <- clm_allocation(case$inputs, by_group = "sigma", fit_v0 = TRUE,
+                          family = stats::setNames(list("exponential", "gaussian", "gaussian"),
+                                                   .gfit_ids))
+  expect_error(compare_allocations(list(a = by_group, b = by_group),
+                                   models = list(a = case$model, b = other)),
+               "does not belong")
+})

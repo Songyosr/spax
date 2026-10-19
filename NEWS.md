@@ -1,5 +1,15 @@
 # spax (development version)
 
+* The allocation model accepts demand groups (experimental): give `prepare_allocation()`
+  demand as a named list by group, and optionally travel as a named list by group.
+  `clm_allocation(by_group = )` lets the decay `sigma` (and the outside weight `v0`) differ
+  by group, with a family per group if needed, and `fixed = ` holds group values taken from
+  other evidence. Group-specific parameters are fitted only against group-labelled targets,
+  facility counts by group (`fit_allocation(output = "utilization_by_group")`); with
+  aggregated targets they are refused, because simulations and the Cornwall data show that
+  aggregated flows cannot tell group decays apart. Evaluation reports pooled outputs, as
+  before, and per-group outputs on request; `compare_allocations()` compares grouped fits.
+  Prediction, `check_allocation()` and the bootstrap do not yet accept grouped models.
 * FCA functions accept several demand groups (for example age bands or transport modes):
   give `demand` as a named list of single-layer rasters. Each group can have its own decay
   (`decay_params`, `selection_params`, `threshold`) and its own travel times (`distance`, as

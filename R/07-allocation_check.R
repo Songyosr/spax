@@ -219,10 +219,19 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
 # ID-aligned targets. Errors when the model did not produce the fit. A fit with
 # a prediction snapshot must also carry this model's decay kernel declaration
 # (none for a built-in kernel), which tells apart two declared kernels that share
-# a name. Other constants of the specification are not compared: the loss check
+# a name; a grouped fit carries the model's group markers instead. Other constants of the specification are not compared: the loss check
 # below catches those that change the fit.
 .allocation_fit_context <- function(model, best) {
   spec <- model$metadata$spec
+  # A grouped fit has no prediction snapshot: its group markers (groups, the
+  # parameters by group, the family of each group and the fixed values) are
+  # compared with the model's specification instead, and an ungrouped fit
+  # never belongs to a grouped model or the reverse.
+  grouped_spec <- !is.null(spec[["groups", exact = TRUE]])
+  if (grouped_spec != !is.null(best[["groups", exact = TRUE]]) ||
+      (grouped_spec && !identical(best[.group_marker_names], spec[.group_marker_names]))) {
+    stop("fit does not belong to this model")
+  }
   if (!identical(best$family, spec$family) || !identical(best$allocation_form, spec$allocation) ||
       !identical(as.character(best$coverage_meta$facility_ids),
                  as.character(model$substrate$facility_ids)) ||
