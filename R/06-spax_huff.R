@@ -67,3 +67,64 @@
     outside_share = outside_share
   )
 }
+
+#' Evaluate the grouped static CLM at exogenous a
+#'
+#' Per group g the inside choice probability `P_g` has its own kernel and outside
+#' weight `v0[g]`; the pooled allocation is the demand-weighted `P_bar = sum_g
+#' D_g P_g / D` with `D` the total demand, so the pooled outputs are the ungrouped
+#' ones on the total demand: `utilization = sum_g U_g = crossprod(P_bar, D)`,
+#' `access = rowSums(P_bar)` and `outside_share` the demand-weighted outside
+#' probability (`access + outside_share = 1`). The by-group outputs
+#' `utilization_by_group` (facility by group), `access_by_group` and
+#' `outside_share_by_group` (origin by group) are returned too; the group
+#' probability matrices are not kept.
+#' @param a Attractiveness, one value per facility.
+#' @param kernels A list with the weight matrix (origin by facility) of every
+#'   group, in the order of the columns of `D_groups`.
+#' @param D_groups Demand by origin (rows) and group (columns), nonnegative with
+#'   a positive total on every row.
+#' @param v0 Outside-option weight of each group.
+#' @keywords internal
+.clm_group_state <- function(a, kernels, D_groups, v0) {
+  groups <- colnames(D_groups)
+  G <- ncol(D_groups)
+  if (length(kernels) != G || length(v0) != G) {
+    stop("`kernels` and `v0` must have one element per group")
+  }
+  K1 <- kernels[[1L]]
+  if (length(a) != ncol(K1) || nrow(D_groups) != nrow(K1)) {
+    stop("`a` and `D_groups` must match the weights by facility and origin")
+  }
+  v0 <- as.numeric(v0)
+  if (anyNA(v0) || any(v0 < 0)) stop("`v0` must be nonnegative")
+  D <- rowSums(D_groups)
+  weight <- D_groups * ifelse(D > 0, 1 / D, 0)
+  pooled <- matrix(0, nrow(K1), ncol(K1), dimnames = dimnames(K1))
+  utilization_g <- matrix(0, ncol(K1), G, dimnames = list(colnames(K1), groups))
+  access_g <- outside_g <- matrix(0, nrow(K1), G, dimnames = list(rownames(K1), groups))
+  for (g in seq_len(G)) {
+    opportunity <- .scale(kernels[[g]], a, margin = "cols")
+    denom <- rowSums(opportunity) + v0[g]
+    share_factor <- ifelse(denom > 0, 1 / denom, 0)
+    P <- .scale(opportunity, share_factor, margin = "rows")
+    pooled <- pooled + .scale(P, weight[, g], margin = "rows")
+    utilization_g[, g] <- .contract(D_groups[, g], P, over = "rows")
+    access_g[, g] <- rowSums(P)
+    if (v0[g] > 0) outside_g[, g] <- v0[g] * share_factor
+  }
+  access <- rowSums(pooled)
+  outside_share <- if (any(v0 > 0)) rowSums(outside_g * weight) else rep(0, nrow(K1))
+  list(
+    target = a,
+    utilization = unname(rowSums(utilization_g)),
+    attractiveness = a,
+    access = access,
+    allocation = pooled,
+    huff_share = pooled,
+    outside_share = outside_share,
+    utilization_by_group = utilization_g,
+    access_by_group = access_g,
+    outside_share_by_group = outside_g
+  )
+}

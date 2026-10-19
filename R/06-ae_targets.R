@@ -6,8 +6,9 @@
 #' Older prepared raster problems use their explicit `demand_kept_index` as
 #' these cell keys when `origin_ids` is absent; this is not a length-based guess.
 #' Custom providers can declare `output_axes` in their spec and supply
-#' `origin_ids` / `facility_ids` in the substrate. No axis is inferred from
-#' an output name or a coincident vector length.
+#' `origin_ids` / `facility_ids` (and `group_ids` for demand groups) in the
+#' substrate. No axis is inferred from an output name or a coincident vector
+#' length.
 #' @keywords internal
 #' @md
 .problem_output_identity <- function(problem, output) {
@@ -23,10 +24,16 @@
     stop("provider output_axes must have unique output names")
   }
   axis <- declared[[output]]
-  if (is.na(axis) || !axis %in% c("origin", "facility", "origin_facility")) {
+  if (is.na(axis) || !axis %in% c("origin", "facility", "origin_facility",
+                                  "facility_group", "origin_group")) {
     stop("unsupported declared output axis for `", output, "`")
   }
-  axes <- if (axis == "origin_facility") c("origin", "facility") else axis
+  # The group axis (demand groups) takes its IDs from `substrate$group_ids`.
+  axes <- switch(axis,
+    origin_facility = c("origin", "facility"),
+    facility_group = c("facility", "group"),
+    origin_group = c("origin", "group"),
+    axis)
   ids <- lapply(axes, function(a) {
     value <- problem$substrate[[paste0(a, "_ids")]]
     if (a == "origin" && is.null(value) &&
@@ -86,7 +93,14 @@
     if (!is.null(ids) && length(ids) != dims[k]) {
       stop("observed ", axis, " dimension does not match the declared ID count")
     }
-    if (!named[k]) next
+    if (!named[k]) {
+      # Group-labelled targets are matched by IDs on both axes, never by position.
+      if ("group" %in% identity$axes) {
+        stop("observed ", axis, " axis must be named (group-labelled targets are ",
+             "matched by IDs)")
+      }
+      next
+    }
     labels_k <- labels[[k]]
     if (anyNA(labels_k) || any(!nzchar(trimws(labels_k))) || anyDuplicated(labels_k)) {
       stop("observed ", axis, " IDs must be nonmissing, unique and nonblank")

@@ -11,7 +11,8 @@ evaluate_allocation(model, theta, coverage_args = list(), ...)
 
 \item{theta}{A complete model parameter vector. Named parameters align to the
 model contract; unnamed values follow its declared order. This operation
-estimates no parameters and is not a causal intervention estimator.}
+estimates no parameters and is not a causal intervention estimator. For a
+model with demand groups, a parameter held fixed by \code{clm_allocation(fixed = )} may be given only with its fixed value, and unknown names are an error.}
 
 \item{coverage_args}{Named reporting controls for compact coverage, including
 optional \code{norm}, \code{units}, reporting floors and classification cuts. A norm
