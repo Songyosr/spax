@@ -33,6 +33,10 @@
                                 spatial = NULL, metadata = list()) {
   missing_demand <- match.arg(missing_demand)
   missing_travel <- match.arg(missing_travel)
+  if (is.data.frame(demand)) {
+    stop("give demand groups as a named list of numeric vectors (one per group), ",
+         "not a data frame")
+  }
   grouped <- is.list(demand)
   # Defaults: origin IDs are the names of the demand vector (of the first group
   # for grouped demand), facility IDs the travel column names, and every origin

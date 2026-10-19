@@ -513,10 +513,11 @@ test_that("groups with zero demand, missing travel and one group are handled", {
   expect_equal(e$outputs$utilization, oracle$utilization, tolerance = 1e-12)
   expect_equal(unname(e$outputs$utilization_by_group), unname(oracle$utilization_by_group),
                tolerance = 1e-12)
-  # group b has no edge left at o4: it contacts nothing and is all outside
-  expect_identical(unname(e$outputs$access_by_group["o4", "b"]), 0)
-  expect_equal(unname(e$outputs$outside_share_by_group["o4", "b"]), 1)
-  expect_true(all(is.finite(e$outputs$access_by_group)))
+  # group b has no demand and no usable travel at o4: its own access and outside
+  # share there are unknown (NA), not "no access"; everything else is finite
+  expect_true(is.na(e$outputs$access_by_group["o4", "b"]))
+  expect_true(is.na(e$outputs$outside_share_by_group["o4", "b"]))
+  expect_true(all(is.finite(e$outputs$access_by_group[-match("o4", rownames(e$outputs$access_by_group)), ])))
   # zero distances matter for the power kernel only where the group has demand
   Mz <- f$M
   Mz["o4", "f1"] <- 0
@@ -1490,4 +1491,34 @@ test_that("a grouped fit must belong to its model when models are given", {
   expect_error(compare_allocations(list(a = by_group, b = by_group),
                                    models = list(a = case$model, b = other)),
                "does not belong")
+})
+
+test_that("a group's own access is NA where it has no demand and unusable travel", {
+  f <- .group_prep_fixture()
+  Ma <- f$M
+  Ma["o3", "f1"] <- NA              # group a has no demand at o3; group b does
+  inputs <- prepare_allocation(f$demand, f$supply, list(a = Ma, b = f$M),
+                               missing_demand = "exclude")
+  model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+  ev <- evaluate_allocation(model, c(sigma = 3, v0 = 2), requested_outputs =
+                              c("access_by_group", "outside_share_by_group"))
+  acc <- ev$outputs$access_by_group
+  out <- ev$outputs$outside_share_by_group
+  expect_true(is.na(acc["o3", "a"]) && is.na(out["o3", "a"]))
+  expect_false(anyNA(acc[, "b"]) || anyNA(out[, "b"]))
+  expect_false(anyNA(acc[setdiff(rownames(acc), "o3"), "a"]))
+  # Pooled outputs are unaffected: o3's demand is all in group b.
+  expect_false(anyNA(ev$outputs$access))
+})
+
+test_that("printing an ungrouped multistart adds no blank line", {
+  out <- utils::capture.output(print(alloc_small_fit()))
+  at <- grep("^loss disagreement", out)
+  expect_false(identical(out[at + 1L], ""))
+})
+
+test_that("a data frame of demand is refused with a plain message", {
+  f <- .group_prep_fixture()
+  expect_error(prepare_allocation(as.data.frame(f$demand), f$supply, f$M),
+               "named list of numeric vectors")
 })

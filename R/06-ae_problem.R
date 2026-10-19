@@ -690,6 +690,9 @@
   if (!any(bad)) return(distance)
   sub[bad] <- Inf
   distance[rows, ] <- sub
+  # The rows whose travel was not usable: the group's own access and outside
+  # share there are unknown, not "no access" (reported NA by group).
+  attr(distance, "blanked_rows") <- rows[rowSums(bad) > 0]
   distance
 }
 
@@ -735,6 +738,11 @@
     }
     first
   }
+  blanked <- lapply(clean, function(d) attr(d, "blanked_rows"))
+  clean <- lapply(clean, function(d) {
+    attr(d, "blanked_rows") <- NULL
+    d
+  })
   dist_id <- first_same(function(h, i) identical(clean[[h]], clean[[i]]))
   family_id <- first_same(function(h, i) {
     identical(info[[h]]$family, info[[i]]$family) &&
@@ -785,6 +793,13 @@
     state <- .clm_group_state(a, kernels, D_groups, v0)
     by <- state[per_group]
     state[per_group] <- NULL
+    for (i in seq_len(G)) {
+      rows <- blanked[[i]]
+      if (length(rows)) {
+        by$access_by_group[rows, i] <- NA_real_
+        by$outside_share_by_group[rows, i] <- NA_real_
+      }
+    }
     plan <- substrate
     plan$S <- S
     plan$kappa_supply <- .allocation_supply(substrate, spec$kappa)

@@ -8,7 +8,7 @@
   facility counts by group (`fit_allocation(output = "utilization_by_group")`); with
   aggregated targets they are refused, because simulations and the Cornwall data show that
   aggregated flows cannot tell group decays apart. Evaluation reports pooled outputs, as
-  before, and per-group outputs on request; `compare_allocations()` compares grouped fits.
+  before, and per-group outputs on request (`evaluate_allocation(requested_outputs = )`); `compare_allocations()` compares grouped fits.
   Prediction, `check_allocation()` and the bootstrap do not yet accept grouped models.
 * FCA functions accept several demand groups (for example age bands or transport modes):
   give `demand` as a named list of single-layer rasters. Each group can have its own decay

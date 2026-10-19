@@ -369,8 +369,15 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' @param coverage_args Named reporting controls for compact coverage, including
 #'   optional `norm`, `units`, reporting floors and classification cuts. A norm
 #'   must have the same declared supply-per-demand scale as capacity attribution.
-#' @param ... Named controls passed to the existing fixed-parameter solver.
+#' @param ... Named controls passed to the existing fixed-parameter solver,
+#'   including `requested_outputs`. For a model with demand groups, request the
+#'   per-group outputs here, for example
+#'   `requested_outputs = c("utilization_by_group", "access_by_group",
+#'   "outside_share_by_group")`; the other outputs are pooled over the groups
+#'   (demand-weighted). A group's own access and outside share are `NA` on rows
+#'   where that group has no demand and its travel there is not usable.
 #' @return The existing `ae_equilibrium` with its portable prediction snapshot
+#'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
 #'   hard constraint on expected utilization.

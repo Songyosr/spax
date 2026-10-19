@@ -18,10 +18,16 @@ model with demand groups, a parameter held fixed by \code{clm_allocation(fixed =
 optional \code{norm}, \code{units}, reporting floors and classification cuts. A norm
 must have the same declared supply-per-demand scale as capacity attribution.}
 
-\item{...}{Named controls passed to the existing fixed-parameter solver.}
+\item{...}{Named controls passed to the existing fixed-parameter solver,
+including \code{requested_outputs}. For a model with demand groups, request the
+per-group outputs here, for example
+\code{requested_outputs = c("utilization_by_group", "access_by_group", "outside_share_by_group")}; the other outputs are pooled over the groups
+(demand-weighted). A group's own access and outside share are \code{NA} on rows
+where that group has no demand and its travel there is not usable.}
 }
 \value{
 The existing \code{ae_equilibrium} with its portable prediction snapshot
+(none for a model with demand groups, which cannot be predicted yet)
 and compact \code{coverage}. Coverage uses raw supply units without kappa;
 proportional attributed capacity is not a delivered-service measure or a
 hard constraint on expected utilization.
