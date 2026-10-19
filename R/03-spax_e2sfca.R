@@ -33,6 +33,19 @@
 
 # Demand groups (SPAX-056) ----------------------------------------------------
 
+# The naming rule for group IDs, shared by the FCA wrappers and the allocation
+# workflow: unique, non-empty, not NA, not "all" and without "." (so that
+# "sigma.<group>" names split unambiguously). `what` names the IDs in the error.
+.check_group_ids <- function(ids, what) {
+  if (!length(ids) || is.null(ids) || anyNA(ids) || any(ids == "") ||
+      anyDuplicated(ids) || any(ids == "all") ||
+      any(grepl(".", ids, fixed = TRUE))) {
+    stop(what, " must be unique, non-empty, not NA, not \"all\" ",
+         "and without \".\"", call. = FALSE)
+  }
+  invisible(ids)
+}
+
 # The group IDs of a `demand` argument: NULL for one single-layer SpatRaster
 # (ungrouped), the names of the list for a named list of single-layer
 # SpatRasters (grouped, also a list of one). A multi-layer SpatRaster is not
@@ -51,12 +64,7 @@
     .chck_class(demand, "SpatRaster", "demand")
   }
   groups <- names(demand)
-  if (!length(demand) || is.null(groups) || anyNA(groups) || any(groups == "") ||
-      anyDuplicated(groups) || any(groups == "all") ||
-      any(grepl(".", groups, fixed = TRUE))) {
-    stop("demand group names must be unique, non-empty, not NA, not \"all\" ",
-         "and without \".\"", call. = FALSE)
-  }
+  .check_group_ids(groups, "demand group names")
   for (g in groups) {
     .chck_class(demand[[g]], "SpatRaster", paste0("demand group '", g, "'"))
     if (terra::nlyr(demand[[g]]) > 1L) {

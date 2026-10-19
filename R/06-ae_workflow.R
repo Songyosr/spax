@@ -6,18 +6,34 @@
 #' included demand enters facility-load support. Zero, unknown and explicitly
 #' excluded origins retain separate support statuses. This experimental entry
 #' point delegates to the existing compact preparation boundary.
+#'
+#' Demand groups (age bands, insurance types) are given as a named list of
+#' demand vectors, one per group, with the same origin IDs. An origin is active
+#' when it is included, every group demand is known and the total is positive;
+#' an origin with a group demand missing is unknown as a whole under
+#' `missing_demand = "exclude"`. The prepared object then also carries the
+#' group IDs and the demand and travel by group (`D_groups`, `distance_groups`).
 #' @param demand Numeric origin vector, finite and nonnegative or explicitly
 #'   permitted missing values. Negative or infinite demand is rejected even on
-#'   excluded origins. Named demand matches canonical origin IDs.
+#'   excluded origins. Named demand matches canonical origin IDs. For demand
+#'   groups, a named list by group of such named vectors with identical name
+#'   sets (any order); the group names must be unique, non-empty, not `NA`, not
+#'   `"all"` and without `"."`. A matrix is refused.
 #' @param supply Finite nonnegative facility vector. Known zero supply is
 #'   retained; unknown supply is rejected. Names match canonical facility IDs.
 #' @param distance Numeric origin-by-facility travel matrix. Complete named
-#'   rows and columns match IDs independently; unnamed axes are positional.
+#'   rows and columns match IDs independently; unnamed axes are positional. With
+#'   demand groups, one matrix shared by the groups or a named list of matrices
+#'   with one element per group, each aligned by origin and facility IDs. Missing
+#'   travel for a group with zero demand at an origin is ignored.
 #' @param origin_ids,facility_ids Complete unique nonblank canonical IDs. Their
-#'   order determines prepared order. Defaults require named demand and travel
-#'   columns; identities are never inferred from equal axis lengths.
-#' @param included Nonmissing logical origin mask. Names align independently;
-#'   an unnamed mask follows supplied demand order and is reordered with demand.
+#'   order determines prepared order. The default (`NULL`) takes the names of
+#'   the demand vector (of the first group for grouped demand) and the column
+#'   names of the travel matrix; identities are never inferred from equal axis
+#'   lengths.
+#' @param included Nonmissing logical origin mask (default: all `TRUE`). Names
+#'   align independently; an unnamed mask follows supplied demand order (that of
+#'   the first group for grouped demand) and is reordered with demand.
 #' @param missing_demand Default `"error"` rejects included missing demand.
 #'   `"exclude"` omits it from loads while recording unknown demand, separately
 #'   from known zero or explicit exclusion. Positive included demand remains
@@ -40,14 +56,17 @@
 #'   distinct support statuses plus compact active load arrays. No duplicate
 #'   full travel matrix is retained. Pass it to [clm_allocation()] rather than
 #'   editing its internal fields. Expected counts use demand units/period;
-#'   proportional capacity attribution uses supply per unit of demand.
+#'   proportional capacity attribution uses supply per unit of demand. With
+#'   demand groups the total demand is `D_active`, and `group_ids`, `D_groups`
+#'   and `distance_groups` are added (`distance_active` is `NULL` when travel is
+#'   given per group).
 #' @family experimental allocation workflow
 #' @export
 #' @md
 prepare_allocation <- function(demand, supply, distance,
-                               origin_ids = names(demand),
-                               facility_ids = colnames(distance),
-                               included = rep(TRUE, length(demand)),
+                               origin_ids = NULL,
+                               facility_ids = NULL,
+                               included = NULL,
                                missing_demand = c("error", "exclude"),
                                missing_travel = c("error", "legacy_zero"),
                                spatial = NULL, metadata = list()) {

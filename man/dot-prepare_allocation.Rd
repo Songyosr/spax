@@ -8,9 +8,9 @@
   demand,
   supply,
   distance,
-  origin_ids = names(demand),
-  facility_ids = colnames(distance),
-  included = rep(TRUE, length(demand)),
+  origin_ids = NULL,
+  facility_ids = NULL,
+  included = NULL,
   missing_demand = c("error", "exclude"),
   missing_travel = c("error", "legacy_zero"),
   spatial = NULL,
@@ -19,8 +19,10 @@
 }
 \description{
 Demand is a numeric vector, supply a nonnegative finite vector, and distance
-an origin-by-facility numeric matrix. Canonical IDs must be complete, unique
-and nonblank. Named axes match independently; unnamed axes are positional.
+an origin-by-facility numeric matrix. Demand may also be a named list of
+named numeric vectors (demand groups, SPAX-057), and distance a named list of
+matrices by group; see \code{.prepare_allocation_groups()}. Canonical IDs must be
+complete, unique and nonblank. Named axes match independently; unnamed axes are positional.
 An unnamed \code{included} mask follows the supplied demand order and is reordered
 with demand. A named mask instead matches canonical origin IDs independently.
 }
