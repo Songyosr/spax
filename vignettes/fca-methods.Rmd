@@ -457,7 +457,7 @@ weighted by the demand of each cell. A group whose travel reaches no practice
 from a cell counts with an index of 0 there, so the overall layer shows it as
 no access.
 
-```{r groups-map, fig.width = 9, fig.height = 3.4, fig.alt = "Three raster maps of mainland Cornwall on one colour scale in GP FTE per 1,000 residents: the younger group, the older group with a shorter travel scale, which is lower and more patchy away from the practices, and the overall surface between the two."}
+```{r groups-map, fig.width = 9, fig.height = 3.4, fig.alt = "Three raster maps of mainland Cornwall on one colour scale in GP FTE per 1,000 residents: the younger group, the older group with a shorter travel scale, which is lower everywhere, and the overall surface between the two."}
 group_maps <- 1000 * by_group$accessibility
 names(group_maps) <- c(
   "Younger, Gaussian 12 min",
@@ -500,8 +500,8 @@ mean_old <- round(mean_index("gp_fte_extg.older", groups$older), 2)
 The average younger resident sees `r mean_young` GP FTE per 1,000 residents
 and the average older resident `r mean_old`; the overall value lies between
 them, nearer the younger group because that group is the larger one in every
-cell. With a shorter scale, practices beyond the nearest few get small weights
-for the older group, so its index is lower. The gap reflects the assumed travel scales and the
+cell. With a shorter scale, every practice at a positive travel time gets a smaller
+weight for the older group, so its index is lower. The gap reflects the assumed travel scales and the
 assumed split, not any observed difference between age groups.
 
 Transport modes are another use. Give `distance` as a named list with one

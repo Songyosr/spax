@@ -77,10 +77,15 @@
 # when `atomic`) whose names equal the group IDs as a set; the result is the
 # elements reordered to `groups`. Names that overlap the group IDs only partly
 # are an error. Otherwise the argument is shared and NULL is returned.
-.fca_per_group <- function(x, groups, arg, atomic = FALSE) {
+.fca_per_group <- function(x, groups, arg, atomic = FALSE, element = is.list) {
   form <- if (atomic) is.numeric(x) else is.list(x)
   nms <- if (form) names(x)
   if (is.null(nms) || !any(nms %in% groups)) {
+    return(NULL)
+  }
+  # A shared argument whose own names match group names (groups called "sigma"
+  # or "method", say) is not per group: its elements are not per-group values.
+  if (!atomic && !all(vapply(x, element, logical(1)))) {
     return(NULL)
   }
   if (length(x) != length(groups) || anyDuplicated(nms) || !setequal(nms, groups)) {
@@ -97,7 +102,8 @@
   for (s in stacks[-1L]) {
     if (!identical(.fca_ids(s, arg), ids) ||
         !terra::compareGeom(stacks[[1L]], s, stopOnError = FALSE)) {
-      stop("travel layers of every group must name the same facilities in ",
+      stop(if (grepl("weights", arg)) "weight" else "travel",
+           " layers of every group must name the same facilities in ",
            "the same order; reorder with x[[names(first)]]", call. = FALSE)
     }
   }
@@ -109,7 +115,11 @@
 # stays one object, so it is read once). `stacks`: the elements are raster
 # stacks of facilities (see .fca_check_stacks()).
 .fca_expand_groups <- function(x, groups, arg, stacks = FALSE) {
-  per <- .fca_per_group(x, groups, arg)
+  per <- .fca_per_group(x, groups, arg, element = if (stacks) {
+    function(e) inherits(e, "SpatRaster")
+  } else {
+    is.list
+  })
   if (is.null(per)) {
     return(stats::setNames(rep(list(x), length(groups)), groups))
   }

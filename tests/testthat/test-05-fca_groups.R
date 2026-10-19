@@ -1,8 +1,8 @@
 # Demand groups in the block engine and the internal driver (SPAX-056, T1):
 # per-group kernels with suffixed raster keys, several groups competing for the
 # same supply, and the overall layer (decision D1: a group with demand in a cell
-# its travel cannot reach counts with access 0). The driver is called directly
-# with per-group kernels; the wrappers are not grouped yet.
+# its travel cannot reach counts with access 0). The first tests call the driver
+# directly with per-group kernels; later tests use the grouped wrappers.
 
 # A Gaussian kernel (decay `sigma`) on the travel raster stored under `key`.
 group_gauss <- function(key, sigma) {
@@ -81,7 +81,7 @@ test_that("the overall layer follows the rule of decision D1 (hand-computed)", {
     terra::values(r) <- v
     r
   }
-  wa <- mk(c(1, 0.5, 0.25, 0.5, 0.5))
+  wa <- mk(c(1, 0.5, NA, 0.5, 0.5))   # a cannot reach the facility from cell 3
   wb <- mk(c(0.5, NA, 1, 0.5, 0.5))
   names(wa) <- "f"
   names(wb) <- "f"
@@ -101,12 +101,12 @@ test_that("the overall layer follows the rule of decision D1 (hand-computed)", {
   expect_identical(names(out), c("supply.a", "supply.b", "supply.all"))
   v <- unname(terra::values(out, mat = TRUE))
   R <- 0.16
-  expect_equal(v[, 1], R * c(1, 0.5, 0.25, 0.5, 0.5))
+  expect_equal(v[, 1], R * c(1, 0.5, NA, 0.5, 0.5))
   expect_equal(v[, 2], R * c(0.5, NA, 1, 0.5, 0.5))
   expect_equal(v[, 3], c(
     (10 * 0.16 + 20 * 0.08) / 30,  # both groups reach the cell
     (20 * 0.08 + 30 * 0) / 50,     # b cannot reach it: counts with access 0
-    0.16,                          # a has no demand: skipped, not 0 * something
+    0.16,                          # a has no demand and no access: skipped, not 0 * NA
     NA,                            # the demand of a is missing
     NA                             # no demand at all
   ))
@@ -832,10 +832,11 @@ test_that("travel stacks of the groups must name the same facilities", {
         if (nm == "names") renamed_stack(weights$b, c("f1", "f2", "x")) else
           weights$b[[c("f3", "f2", "f1")]]
       }
+      wmsg <- sub("^travel", "weight", msg)
       expect_error(compute_access(wrap_demand(f), f$S, weights, W, snap = snap),
-                   msg, info = nm)
+                   wmsg, info = nm)
       expect_error(compute_access(wrap_demand(f), f$S, W, weights, snap = snap),
-                   msg, info = nm)
+                   wmsg, info = nm)
     }
   }
   # Reordering as the message suggests works.
@@ -918,4 +919,22 @@ test_that("grouped spax objects survive save_spax and read_spax", {
   expect_equal(terra::values(loaded$accessibility),
                terra::values(result$accessibility), tolerance = 1e-6)
   expect_output(print(loaded), "Decay function (group a)", fixed = TRUE)
+})
+
+test_that("groups named like elements of a shared decay list keep the shared decay", {
+  f <- fca_toy()
+  dp <- list(method = "gaussian", sigma = 2)
+  ref <- spax_e2sfca(list(x = f$demand * 0.4, y = f$demand * 0.6), f$supply_vector,
+                     f$distance, decay_params = dp)
+  for (groups in list(c("sigma", "young"), c("method", "sigma"))) {
+    demand <- stats::setNames(list(f$demand * 0.4, f$demand * 0.6), groups)
+    out <- expect_no_error(spax_e2sfca(demand, f$supply_vector, f$distance,
+                                       decay_params = dp))
+    expect_equal(unname(terra::values(out$accessibility)),
+                 unname(terra::values(ref$accessibility)), tolerance = 1e-12)
+    out_snap <- expect_no_error(spax_e2sfca(demand, f$supply_vector, f$distance,
+                                            decay_params = dp, snap = TRUE))
+    expect_equal(unname(terra::values(out_snap$accessibility)),
+                 unname(terra::values(ref$accessibility)), tolerance = 1e-12)
+  }
 })
