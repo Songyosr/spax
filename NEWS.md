@@ -1,5 +1,14 @@
 # spax (development version)
 
+* FCA functions accept several demand groups (for example age bands or transport modes):
+  give `demand` as a named list of single-layer rasters. Each group can have its own decay
+  (`decay_params`, `selection_params`, `threshold`) and its own travel times (`distance`, as
+  a named list with the same facilities in the same order); all groups compete for the same
+  supply. The result has one layer per group and an overall layer, the demand-weighted
+  average across groups, in which a group that reaches no facility counts as no access. This
+  follows the multi-modal 2SFCA of Tao et al. (2018) and allows group-specific decay. A
+  multi-layer demand raster is still refused, now with a message that points to the group
+  form.
 * FCA functions (`spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`,
   `spax_huff2sfca()` and `compute_access()`) now compute on the same numeric engine as the
   allocation workflow, reading rasters in row blocks. Results are unchanged up to rounding;

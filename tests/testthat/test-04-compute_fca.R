@@ -112,7 +112,7 @@ test_that("compute_fca refuses multi-layer demand and wrong supply", {
   for (snap in c(FALSE, TRUE)) {
     expect_error(run_fca(f, f$supply_vector, demand = c(f$demand_na, f$demand_na),
                          snap = snap),
-                 "multi-layer raster fields must declare at least one non-I axis")
+                 "give demand groups as a named list of single-layer rasters")
   }
   expect_error(run_fca(f, f$supply_vector, indicator_names = c("a", "b")),
                "indicator_names must have one name")
