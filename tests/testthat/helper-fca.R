@@ -38,7 +38,17 @@ fca_toy <- function() {
 #   Wd normalized per cell ("standard": divide by the row sum; "semi": only
 #   where the row sum exceeds 1), U = colSums(D * Wd), R = S / U (0 where U
 #   is 0), A = Wa %*% R, NA where a cell reaches no facility.
+# Demand groups (SPAX-056): when `D` is a list of demand vectors, `Wd` and `Wa`
+# are lists of weight matrices (one per group; one matrix is shared by all).
+# The groups compete for the same supply: U sums over the groups. The result is
+# `list(groups = list of cell-by-measure matrices, all = matrix)`, where `all`
+# is the demand-weighted access of the cell over the groups with positive
+# demand, a group that cannot reach the cell counting as 0, and NA where any
+# group's demand is missing or the total demand is 0.
 fca_oracle <- function(D, Wd, Wa = Wd, S, normalize = "identity") {
+  if (is.list(D)) {
+    return(fca_oracle_groups(D, Wd, Wa, S, normalize))
+  }
   S <- as.matrix(S)
   rs <- rowSums(Wd, na.rm = TRUE)
   Wd <- switch(normalize,
@@ -54,6 +64,48 @@ fca_oracle <- function(D, Wd, Wa = Wd, S, normalize = "identity") {
   A <- Wa0 %*% R
   A[rowSums(!is.na(Wa)) == 0, ] <- NA
   unname(A)
+}
+
+fca_oracle_groups <- function(D, Wd, Wa, S, normalize) {
+  S <- as.matrix(S)
+  G <- length(D)
+  if (is.matrix(Wd)) Wd <- rep(list(Wd), G)
+  if (is.matrix(Wa)) Wa <- rep(list(Wa), G)
+  norm <- function(W) {
+    rs <- rowSums(W, na.rm = TRUE)
+    switch(normalize,
+      identity = W,
+      standard = W * ifelse(rs > 0, 1 / rs, 0),
+      semi = W / ifelse(rs > 1, rs, 1)
+    )
+  }
+  U <- 0
+  for (g in seq_len(G)) {
+    U <- U + colSums(D[[g]] * norm(Wd[[g]]), na.rm = TRUE)
+  }
+  R <- S / U
+  R[!is.finite(R)] <- 0
+  A <- lapply(seq_len(G), function(g) {
+    W0 <- Wa[[g]]
+    W0[is.na(W0)] <- 0
+    a <- W0 %*% R
+    a[rowSums(!is.na(Wa[[g]])) == 0, ] <- NA
+    unname(a)
+  })
+  n <- length(D[[1L]])
+  all <- matrix(NA_real_, n, ncol(S))
+  for (i in seq_len(n)) {
+    d <- vapply(D, function(x) x[i], numeric(1))
+    if (anyNA(d) || sum(d) == 0) next
+    num <- numeric(ncol(S))
+    for (g in which(d > 0)) {
+      a <- A[[g]][i, ]
+      a[is.na(a)] <- 0
+      num <- num + d[g] * a
+    }
+    all[i, ] <- num / sum(d)
+  }
+  list(groups = A, all = all)
 }
 
 # A 3 x 4 grid with `nlyr` facilities for the block engine. Demand is missing

@@ -221,12 +221,15 @@
 # read in blocks. A built-in method or declared kernel is evaluated on block
 # matrices with calc_decay(snap = TRUE); a SpatRaster in `params` (sigma, or an
 # extra argument) is read in blocks and given to it as a vector (one layer)
-# or matrix (one layer per facility). `key` names the rasters. When `snap` is
-# FALSE, .chck_decay() runs here, before anything is opened.
-.fca_decay_spec <- function(distance, params, key, snap) {
+# or matrix (one layer per facility). `key` names the rasters and `suffix` ends
+# every raster key (`""`, or `".<group>"` for a demand group, so that no key is
+# shared between groups by name). When `snap` is FALSE, .chck_decay() runs here,
+# before anything is opened.
+.fca_decay_spec <- function(distance, params, key, snap, suffix = "") {
   method <- params$method
+  dist_key <- paste0("distance", suffix)
   if (is.function(method)) {
-    nm <- paste0("weights_", key)
+    nm <- paste0("weights_", key, suffix)
     weights <- .fca_decay_weights(distance, params, snap)
     # The weight layers belong to facilities by their names, as before; layers
     # with terra's default names (or none) are taken in distance-layer order.
@@ -241,12 +244,13 @@
     }
     order <- if (positional) seq_along(ids) else match(ids, weight_ids)
     # The distance is read as well, for the finite-travel mask of decision D1.
-    rasters <- c(list(distance = distance), stats::setNames(list(weights), nm))
+    rasters <- c(stats::setNames(list(distance), dist_key),
+                 stats::setNames(list(weights), nm))
     return(list(
       rasters = rasters,
       weights = function(b, rows) {
         W <- b[[nm]][rows, order, drop = FALSE]
-        .check_finite_weights(b$distance[rows, , drop = FALSE], W)
+        .check_finite_weights(b[[dist_key]][rows, , drop = FALSE], W)
         W
       }
     ))
@@ -277,9 +281,9 @@
   raster_args <- names(others)[is_raster]
   keys <- character()
   if (length(raster_args)) {
-    keys <- stats::setNames(paste0(raster_args, "_", key), raster_args)
+    keys <- stats::setNames(paste0(raster_args, "_", key, suffix), raster_args)
   }
-  rasters <- c(list(distance = distance),
+  rasters <- c(stats::setNames(list(distance), dist_key),
                stats::setNames(others[is_raster], unname(keys)))
   fixed <- others[!is_raster]
 
@@ -287,13 +291,13 @@
     rasters = rasters,
     weights = function(b, rows) {
       # Pass 2 asks for every row of the block: use the block as read, without a copy.
-      all_rows <- length(rows) == nrow(b$distance)
-      d <- if (all_rows) b$distance else b$distance[rows, , drop = FALSE]
+      all_rows <- length(rows) == nrow(b[[dist_key]])
+      d <- if (all_rows) b[[dist_key]] else b[[dist_key]][rows, , drop = FALSE]
       args <- fixed
       for (arg in names(keys)) {
         x <- b[[keys[[arg]]]]
         if (!all_rows) x <- x[rows, , drop = FALSE]
-        if (ncol(x) > 1L && ncol(x) != ncol(b$distance)) {
+        if (ncol(x) > 1L && ncol(x) != ncol(b[[dist_key]])) {
           stop("`", arg, "` raster must have 1 layer or one layer per `distance` layer")
         }
         args[arg] <- list(if (ncol(x) == 1L) x[, 1L] else x)
@@ -333,24 +337,24 @@
   out
 }
 
-# The block-engine counterpart of the decay-based wrappers. `type` is "e2sfca",
+# The kernels of one demand group for the block engine. `type` is "e2sfca",
 # "m2sfca", "3sfca" or "huff"; it builds the kernel specification of the
-# wrapper and runs the engine. `attractiveness` is the vector from
-# .fca_attractiveness() for "huff".
-.fca_block_run <- function(type, demand, supply, distance, decay_params,
-                           selection_params = NULL, attractiveness = NULL,
-                           alpha = 1, demand_normalize = "identity",
-                           id_col = NULL, supply_cols = NULL,
-                           indicator_names = NULL, snap = FALSE) {
+# wrapper. `attractiveness` is the vector from .fca_attractiveness() for
+# "huff". `suffix` ends every raster key of the group (see .fca_decay_spec()).
+# Returns `rasters`, the named SpatRasters the kernels read (the group's
+# distance first), and `kernels`, `list(demand, access)`.
+.fca_group_kernels <- function(type, distance, decay_params,
+                               selection_params = NULL, attractiveness = NULL,
+                               alpha = 1, snap = FALSE, suffix = "") {
   .chck_class(distance, "SpatRaster", "distance")
-  decay <- .fca_decay_spec(distance, decay_params, "decay", snap)
+  decay <- .fca_decay_spec(distance, decay_params, "decay", snap, suffix)
   selection <- NULL
   if (type %in% c("3sfca", "huff") && !identical(selection_params, decay_params)) {
-    selection <- .fca_decay_spec(distance, selection_params, "selection", snap)
+    selection <- .fca_decay_spec(distance, selection_params, "selection", snap,
+                                 suffix)
   }
   # The first raster names the facilities and gives the grid of the result.
-  rasters <- c(decay$rasters, selection$rasters)
-  rasters <- rasters[!duplicated(names(rasters))]
+  rasters <- .fca_merge_rasters(c(decay$rasters, selection$rasters))
 
   attract <- if (is.null(attractiveness)) NULL else unname(attractiveness)
   choice_kernel <- function(b, rows) {
@@ -369,37 +373,58 @@
     ),
     list(demand = choice_kernel, access = choice_kernel)
   )
+  list(rasters = rasters, kernels = kernels)
+}
 
+# The block-engine counterpart of the decay-based wrappers (one ungrouped
+# demand raster); see .fca_group_kernels().
+.fca_block_run <- function(type, demand, supply, distance, decay_params,
+                           selection_params = NULL, attractiveness = NULL,
+                           alpha = 1, demand_normalize = "identity",
+                           id_col = NULL, supply_cols = NULL,
+                           indicator_names = NULL, snap = FALSE) {
+  spec <- .fca_group_kernels(type, distance, decay_params, selection_params,
+                             attractiveness, alpha, snap)
   compute_fca(
-    demand = demand, supply = supply, rasters = rasters, kernels = kernels,
-    demand_normalize = demand_normalize, id_col = id_col,
-    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
+    demand = demand, supply = supply, rasters = spec$rasters,
+    kernels = spec$kernels, demand_normalize = demand_normalize,
+    id_col = id_col, supply_cols = supply_cols,
+    indicator_names = indicator_names, snap = snap
   )
 }
 
 # The block-engine counterpart of compute_access(). The access weights are
-# reordered to the facility IDs of the demand weights.
-.fca_access_block <- function(demand, supply, demand_weights, access_weights,
-                              id_col = NULL, supply_cols = NULL,
-                              indicator_names = NULL, snap = FALSE) {
+# reordered to the facility IDs of the demand weights. `suffix` ends the raster
+# keys, as in .fca_decay_spec().
+.fca_access_kernels <- function(demand_weights, access_weights, suffix = "") {
   demand_ids <- .fca_ids(demand_weights, "demand_weights")
   access_ids <- .fca_ids(access_weights, "access_weights")
   if (!setequal(demand_ids, access_ids)) {
     stop("demand and access kernels must span the same facility ids")
   }
   pos <- match(demand_ids, access_ids)
-  compute_fca(
-    demand = demand, supply = supply,
-    rasters = list(demand_weights = demand_weights,
-                   access_weights = access_weights),
+  dkey <- paste0("demand_weights", suffix)
+  akey <- paste0("access_weights", suffix)
+  list(
+    rasters = stats::setNames(list(demand_weights, access_weights), c(dkey, akey)),
     kernels = list(
       demand = function(b, rows) {
-        .check_user_weights(b$demand_weights[rows, , drop = FALSE])
+        .check_user_weights(b[[dkey]][rows, , drop = FALSE])
       },
       access = function(b, rows) {
-        .check_user_weights(b$access_weights[rows, pos, drop = FALSE])
+        .check_user_weights(b[[akey]][rows, pos, drop = FALSE])
       }
-    ),
+    )
+  )
+}
+
+.fca_access_block <- function(demand, supply, demand_weights, access_weights,
+                              id_col = NULL, supply_cols = NULL,
+                              indicator_names = NULL, snap = FALSE) {
+  spec <- .fca_access_kernels(demand_weights, access_weights)
+  compute_fca(
+    demand = demand, supply = supply, rasters = spec$rasters,
+    kernels = spec$kernels,
     demand_normalize = "identity", id_col = id_col, supply_cols = supply_cols,
     indicator_names = indicator_names, snap = snap
   )
