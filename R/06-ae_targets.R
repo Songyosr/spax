@@ -76,6 +76,7 @@
     if (!identical(observed$identity, identity)) {
       stop("bound target identity does not match the problem output")
     }
+    .check_group_targets(problem, observed)
     return(observed)
   }
   target <- .fit_target_meta(observed, "observed")
@@ -131,7 +132,66 @@
     input_to_canonical = lapply(indices, function(x) match(seq_along(x), x))
   )
   class(target) <- "ae_bound_target"
+  .check_group_targets(problem, target)
   target
+}
+
+#' Refuse group-specific parameters that the target cannot identify
+#'
+#' A model with demand groups fitted with free group-specific parameters
+#' (`sigma.<g>`, `v0.<g>`) needs group-labelled targets: `utilization_by_group`
+#' with observed counts for every group that has such a parameter, and positive
+#' demand in that group. Aggregated targets leave the group parameters
+#' multimodal and weakly identified (SPAX-057, D2). Fixed group parameters and
+#' shared parameters are allowed with any target; ungrouped problems return at
+#' once. The check runs inside `.bind_problem_target()`, in both its branches,
+#' so every fitting path (multistart, profile, nfxp, ladder, bootstrap and
+#' inference refits) refuses once, before any start. Group-specific free
+#' parameters are read from the names of the theta contract (a profile
+#' subproblem rebuilds the contract from its names alone).
+#' @param problem An `ae_problem`.
+#' @param target A bound target (`ae_bound_target`).
+#' @keywords internal
+#' @md
+.check_group_targets <- function(problem, target) {
+  spec <- problem$metadata$spec
+  groups <- spec[["groups", exact = TRUE]]
+  if (is.null(groups)) return(invisible(TRUE))
+  by <- spec[["by_group", exact = TRUE]]
+  candidates <- c(if ("sigma" %in% by) paste0("sigma.", groups),
+                  if ("v0" %in% by) paste0("v0.", groups))
+  specific <- intersect(problem$theta$names, candidates)
+  if (!length(specific)) return(invisible(TRUE))
+  # The group of every free group-specific parameter (IDs contain no ".").
+  owners <- unique(sub("^[^.]*\\.", "", specific))
+  fail <- function(names, extra = NULL) {
+    stop("group-specific parameters (", paste(names, collapse = ", "), ") ",
+         "need group-labelled targets: fit output = \"utilization_by_group\" with ",
+         "observed counts for every group, or fix them with clm_allocation(fixed = )",
+         extra, call. = FALSE)
+  }
+  identity <- target$identity
+  if (!identical(identity$output, "utilization_by_group") ||
+      !setequal(identity$ids$group, groups)) {
+    fail(specific)
+  }
+  observed <- target$observed
+  unobserved <- owners[vapply(owners, function(g) {
+    all(is.na(observed[, match(g, identity$ids$group)]))
+  }, logical(1))]
+  if (length(unobserved)) {
+    fail(specific, paste0(" (group(s) with no observed cell: ",
+                              paste(unobserved, collapse = ", "), ")"))
+  }
+  D <- problem$substrate$D_groups
+  no_demand <- owners[vapply(owners, function(g) {
+    is.null(D) || !any(D[, g] > 0)
+  }, logical(1))]
+  if (length(no_demand)) {
+    fail(specific, paste0(" (group(s) with no positive active demand: ",
+                              paste(no_demand, collapse = ", "), ")"))
+  }
+  invisible(TRUE)
 }
 
 #' Apply target-axis names without changing raw model outputs

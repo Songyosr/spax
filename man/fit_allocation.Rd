@@ -24,9 +24,12 @@ declared \code{smooth = FALSE} cannot be fitted.}
 
 \item{observed}{Numeric vector or origin-by-facility matrix. Named axes match
 declared IDs independently; unnamed axes are positional. Keep all IDs and
-use NA for unobserved entries. The count-valued \code{utilization} and \code{flow}
-targets reject negative nonmissing observations; fractional counts are
-allowed. Other output domains pass through to the existing fitter.}
+use NA for unobserved entries. The count-valued \code{utilization}, \code{flow} and
+\code{utilization_by_group} targets reject negative nonmissing observations;
+fractional counts are allowed. Other output domains pass through to the
+existing fitter. For \code{utilization_by_group} (a model with demand groups) a
+facility-by-group matrix of observed counts with both axes named (group
+columns by group ID, facility rows by facility ID, any order).}
 
 \item{starts}{A finite positive matrix, one explicit independent start per
 row, with exactly the named model parameter columns. No random starts are
@@ -38,7 +41,15 @@ bounds of the declaration.}
 
 \item{output}{Exact model output to calibrate; default facility utilization.
 \code{flow} is expected origin-facility counts, while \code{allocation} is an inside
-probability operator. Requesting counts does not select a likelihood.}
+probability operator. Requesting counts does not select a likelihood.
+\code{utilization_by_group} is the expected count of each group at each facility
+(a model with demand groups, see \code{\link[=clm_allocation]{clm_allocation()}}). The group-specific
+parameters of such a model (\verb{sigma.<group>}, \verb{v0.<group>}, from
+\code{by_group}) can be fitted only to this output, with observed counts for
+every group that has one and positive demand in that group; aggregated
+targets leave them multimodal and weakly identified, so the fit is refused
+(before any start) with a message naming the parameters. Fix them with
+\code{clm_allocation(fixed = )}, or fit shared parameters to any target.}
 
 \item{loss}{\code{"weighted_sse"}, \code{"poisson"}, or a function accepting predicted
 and observed values. Weighted SSE divides squared residuals by observed+eta,

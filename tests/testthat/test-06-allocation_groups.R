@@ -884,3 +884,458 @@ test_that("grouped evaluation reuses kernels of equal groups without changing re
   .expect_group_oracle(m, theta, oracle)
   expect_identical(p$group_ids, c("a", "b", "c"))
 })
+
+# Fitting grouped models to group-labelled targets (SPAX-057, T3) ---------------
+# The generated case (18 origins, 24 facilities) split into three age bands whose
+# shares vary across the origins (the first band is concentrated at one end, the
+# last at the other), with group-specific true sigma 5 / 8 / 12 and a shared v0 of
+# 25. Group demand is 20 times the generated demand so that the Poisson
+# fluctuation is small: over 30 seeds the standard deviation of the fitted sigma
+# was 0.11 / 0.28 / 0.51 and of v0 0.92 (about 2 / 3.5 / 4 / 3.7 % of the truth),
+# so a 15% tolerance is 3.5 to 7 standard deviations.
+
+.gfit_ids <- c("0-15", "16-64", "65+")
+.gfit_truth <- c("sigma.0-15" = 5, "sigma.16-64" = 8, "sigma.65+" = 12, v0 = 25)
+
+.gfit_case <- function() {
+  alloc_memo("group_fit_case", {
+    base <- alloc_generated_case()
+    ids <- rownames(base$distance)
+    t <- seq(0, 1, length.out = length(ids))
+    share <- cbind(0.15 + 0.5 * t, 0.5 - 0.3 * t, 0.35 - 0.2 * t)
+    share <- share / rowSums(share)
+    demand <- stats::setNames(lapply(seq_along(.gfit_ids), function(k) {
+      stats::setNames(20 * base$demand * share[, k], ids)
+    }), .gfit_ids)
+    inputs <- prepare_allocation(demand, base$supply, base$distance)
+    model <- clm_allocation(inputs, by_group = "sigma", fit_v0 = TRUE)
+    truth_eval <- evaluate_allocation(model, .gfit_truth,
+      requested_outputs = "utilization_by_group")$outputs$utilization_by_group
+    poisson <- function(x, seed) {
+      withr::with_seed(seed, {
+        x[] <- stats::rpois(length(x), x)
+        x
+      })
+    }
+    sigma_cols <- names(.gfit_truth)[1:3]
+    list(base = base, inputs = inputs, model = model, expected = truth_eval,
+         counts = poisson(truth_eval, 11), poisson = poisson,
+         starts = rbind(centre = c(rep(7, 3), 20), spread = c(4, 12, 20, 50)) |>
+           `colnames<-`(names(.gfit_truth)),
+         lower = stats::setNames(rep(1, 4), names(.gfit_truth)),
+         upper = stats::setNames(c(rep(40, 3), 200), names(.gfit_truth)),
+         shared = clm_allocation(inputs, fit_v0 = TRUE),
+         total_starts = rbind(centre = c(sigma = 7, v0 = 20), spread = c(sigma = 15, v0 = 60)),
+         total_lower = c(sigma = 1, v0 = 1), total_upper = c(sigma = 40, v0 = 200))
+  })
+}
+
+.gfit_control <- list(maxit = 300, factr = 10, pgtol = 1e-8)
+
+.gfit_fit <- function(case, observed = case$counts, model = case$model,
+                      starts = case$starts, output = "utilization_by_group",
+                      gradient = TRUE, lower = case$lower, upper = case$upper,
+                      loss = "poisson") {
+  fit_allocation(model, observed, starts, lower, upper, output = output, loss = loss,
+                 gradient = gradient, control = .gfit_control)
+}
+
+.gfit_fits <- function() {
+  alloc_memo("group_fit_fits", {
+    case <- .gfit_case()
+    seconds <- function(expr) {
+      started <- proc.time()[["elapsed"]]
+      value <- expr
+      list(fit = value, seconds = proc.time()[["elapsed"]] - started)
+    }
+    list(gradient = seconds(.gfit_fit(case)), finite = seconds(.gfit_fit(case, gradient = FALSE)),
+         expected = seconds(.gfit_fit(case, case$expected)))
+  })
+}
+
+.gfit_msg <- function(names) {
+  paste0("group-specific parameters (", paste(names, collapse = ", "), ") need ",
+         "group-labelled targets: fit output = \"utilization_by_group\" with observed ",
+         "counts for every group, or fix them with clm_allocation(fixed = )")
+}
+
+.gfit_error <- function(expr) {
+  tryCatch({ expr; NULL }, error = function(e) conditionMessage(e))
+}
+
+test_that("per-group totals recover the group sigma from a spread start", {
+  case <- .gfit_case()
+  fits <- .gfit_fits()
+  expect_identical(dim(case$counts), c(24L, 3L))
+  expect_identical(dimnames(case$counts), list(case$inputs$facility_ids, .gfit_ids))
+  # expected totals: exact recovery from every start, one optimum
+  e <- fits$expected$fit
+  expect_s3_class(e, "ae_multistart_fit")
+  expect_true(all(e$table$eligible))
+  expect_false(isTRUE(e$parameter_disagreement))
+  for (i in 1:2) {
+    expect_equal(e$theta[i, ], .gfit_truth, tolerance = 1e-3)
+  }
+  expect_lt(abs(e$best$loss - .poisson_loss(as.numeric(case$expected),
+                                            as.numeric(case$expected))), 1e-6)
+  # Poisson draw: both starts reach the same optimum, near the truth
+  for (key in c("gradient", "finite")) {
+    f <- fits[[key]]$fit
+    expect_true(all(f$table$eligible))
+    expect_false(isTRUE(f$loss_disagreement))
+    expect_false(isTRUE(f$parameter_disagreement))
+    expect_false(any(f$boundary))
+    est <- f$best$theta
+    expect_identical(names(est), names(.gfit_truth))
+    expect_true(all(abs(est / .gfit_truth - 1) < 0.15))
+  }
+  # the sigma are ordered like the truth: the groups differ
+  est <- fits$gradient$fit$best$theta
+  expect_true(est[["sigma.0-15"]] < est[["sigma.16-64"]] && est[["sigma.16-64"]] < est[["sigma.65+"]])
+  # a fixed seed gives the same fit again (deterministic)
+  expect_equal(.gfit_fit(case, starts = case$starts[2, , drop = FALSE])$best$theta, est,
+               tolerance = 1e-4)
+})
+
+test_that("gradient = TRUE and FALSE agree on a group-labelled target", {
+  fits <- .gfit_fits()
+  a <- fits$gradient$fit$best
+  b <- fits$finite$fit$best
+  expect_equal(a$theta, b$theta, tolerance = 1e-4)
+  expect_equal(a$loss, b$loss, tolerance = 1e-8)
+  expect_true(a$gradient)
+  expect_false(b$gradient)
+  # the J x G target is bound, masked and predicted on the flattened matrix
+  expect_identical(a$output, "utilization_by_group")
+  expect_identical(dim(a$observed), c(24L, 3L))
+  expect_identical(dim(a$predicted), c(24L, 3L))
+  expect_identical(dimnames(a$predicted), list(.gfit_case()$inputs$facility_ids, .gfit_ids))
+  expect_identical(a$target_alignment$axes, c("facility", "group"))
+  expect_identical(a$target_alignment$ids$group, .gfit_ids)
+  expect_identical(a$n_observed, 72L)
+  expect_null(a$target_mask)
+  # the analytic loss gradient and the finite differences give the same sensitivity
+  case <- .gfit_case()
+  th <- a$theta
+  sens <- .problem_output_sensitivity(case$model, th,
+    rep(1, 24), "utilization_by_group")
+  expect_identical(dim(sens), c(72L, 4L))
+  fd <- vapply(seq_along(th), function(k) {
+    h <- 1e-5 * th[[k]]
+    up <- down <- th
+    up[[k]] <- th[[k]] + h
+    down[[k]] <- th[[k]] - h
+    f <- function(x) as.numeric(evaluate_allocation(case$model, x,
+      requested_outputs = "utilization_by_group")$outputs$utilization_by_group)
+    (f(up) - f(down)) / (2 * h)
+  }, numeric(72))
+  expect_equal(unname(sens), unname(fd), tolerance = 1e-4)
+})
+
+test_that("the fitted multistart exposes group-labelled results", {
+  case <- .gfit_case()
+  f <- .gfit_fits()$gradient$fit
+  expect_identical(coef(f), f$best$theta)
+  expect_identical(dim(fitted(f)), c(24L, 3L))
+  # the Poisson floor and the residual summary read the flattened matrix
+  floor <- .poisson_floor(f$best)
+  expect_identical(floor[["positive_below"]], 0)
+  s <- summary(f$best)
+  expect_identical(s$groups, .gfit_ids)
+  expect_identical(s$by_group, "sigma")
+  expect_s3_class(s$residual, "data.frame")
+  # the parameter table keeps the names of group parameters
+  tab <- as.data.frame(f)
+  expect_identical(tab$parameter, names(.gfit_truth))
+  expect_identical(names(tab), c("parameter", "estimate"))
+  # plot of observed against fitted counts runs on the J x G matrix
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(plot(f))
+  # the profile of the shared v0 runs on the group-labelled target
+  p <- .profile_problem(case$model, case$counts, "v0", c(20, 30),
+    init = f$best$theta, lower = case$lower, upper = case$upper,
+    output = "utilization_by_group", loss = .poisson_loss, loss_grad = .poisson_gradient,
+    loss_args = list(eps = 1e-250), gradient = TRUE, control = .gfit_control)
+  expect_true(all(p$table$eligible))
+  expect_true("sigma.65+" %in% names(p$table))
+})
+
+test_that("a grouped model with shared parameters fits aggregated targets like the ungrouped model", {
+  case <- .gfit_case()
+  totals <- stats::setNames(rowSums(case$expected), case$inputs$facility_ids)
+  grouped <- .gfit_fit(case, totals, case$shared, case$total_starts, "utilization",
+                       lower = case$total_lower, upper = case$total_upper)
+  expect_true(all(grouped$table$eligible))
+  ungrouped_inputs <- prepare_allocation(case$inputs$D_active |>
+    stats::setNames(case$inputs$origin_ids), case$base$supply, case$base$distance)
+  ungrouped <- .gfit_fit(case, totals, clm_allocation(ungrouped_inputs, fit_v0 = TRUE),
+                         case$total_starts, "utilization", lower = case$total_lower,
+                         upper = case$total_upper)
+  expect_equal(grouped$best$theta, ungrouped$best$theta, tolerance = 1e-5)
+  expect_equal(grouped$best$loss, ungrouped$best$loss, tolerance = 1e-8)
+  expect_equal(unname(grouped$best$predicted), unname(ungrouped$best$predicted),
+               tolerance = 1e-6)
+  expect_identical(grouped$best$groups, .gfit_ids)
+  expect_identical(grouped$best$by_group, character())
+  # a flow target is aggregated as well
+  flow <- evaluate_allocation(case$shared, c(sigma = 8, v0 = 25),
+                              requested_outputs = "flow")$outputs$flow
+  flow_fit <- .gfit_fit(case, round(flow), case$shared, case$total_starts, "flow",
+                        lower = case$total_lower, upper = case$total_upper)
+  expect_true(all(flow_fit$table$eligible))
+  expect_equal(unname(flow_fit$best$theta[["sigma"]]), 8, tolerance = 0.02)
+})
+
+test_that("equal true sigma: a by_group fit gains little over the shared fit", {
+  case <- .gfit_case()
+  equal <- c(rep(8, 3), 25)
+  names(equal) <- names(.gfit_truth)
+  expected <- evaluate_allocation(case$model, equal,
+    requested_outputs = "utilization_by_group")$outputs$utilization_by_group
+  counts <- case$poisson(expected, 3)
+  by_group <- .gfit_fit(case, counts)$best
+  shared_start <- case$total_starts
+  shared <- .gfit_fit(case, counts, case$shared, shared_start, "utilization_by_group",
+                      lower = case$total_lower, upper = case$total_upper)$best
+  # two extra free parameters: a gain of 3 in the Poisson loss would be the 5% chi-square_2 point
+  expect_gte(shared$loss - by_group$loss, -1e-6)
+  expect_lt(shared$loss - by_group$loss, 3)
+  expect_true(all(abs(by_group$theta[1:3] / 8 - 1) < 0.1))
+  # with the truth sigma unequal the shared fit loses much
+  unequal <- .gfit_fit(case, case$counts, case$shared, shared_start, "utilization_by_group",
+                       lower = case$total_lower, upper = case$total_upper)$best
+  expect_gt(unequal$loss - .gfit_fits()$gradient$fit$best$loss, 10)
+})
+
+test_that("group-specific free parameters need group-labelled targets (D2)", {
+  case <- .gfit_case()
+  fits <- .gfit_fits()
+  agg <- rowSums(case$counts)
+  names(agg) <- case$inputs$facility_ids
+  msg <- .gfit_msg(c("sigma.0-15", "sigma.16-64", "sigma.65+"))
+  expect_identical(.gfit_error(fit_allocation(case$model, agg, case$starts, case$lower,
+    case$upper, loss = "poisson")), msg)
+  # the aggregated flow target as well
+  flow <- evaluate_allocation(case$model, .gfit_truth, requested_outputs = "flow")$outputs$flow
+  expect_identical(.gfit_error(fit_allocation(case$model, round(flow), case$starts,
+    case$lower, case$upper, output = "flow", loss = "poisson")), msg)
+  # profile, nfxp and the already-bound branch refuse as well, before any start
+  expect_identical(.gfit_error(.profile_problem(case$model, agg, "v0", c(20, 30),
+    init = case$starts[1, ], lower = case$lower, upper = case$upper)), msg)
+  expect_identical(.gfit_error(.fit_problem_nfxp(case$model, agg, case$starts[1, ],
+    case$lower, case$upper)), msg)
+  bound <- .bind_problem_target(case$shared, agg, "utilization")
+  expect_identical(.gfit_error(.bind_problem_target(case$model, bound, "utilization")), msg)
+  expect_s3_class(.bind_problem_target(case$shared, bound, "utilization"), "ae_bound_target")
+  # another per-group output is not a group-labelled count target either
+  access <- matrix(0.5, 18, 3, dimnames = list(case$inputs$origin_ids, .gfit_ids))
+  expect_identical(.gfit_error(.bind_problem_target(case$model, access, "access_by_group")), msg)
+  # an unnamed group axis and an incomplete one are refused by the binder
+  expect_match(.gfit_error(fit_allocation(case$model, unname(case$counts), case$starts,
+    case$lower, case$upper, output = "utilization_by_group")), "must be named")
+  expect_match(.gfit_error(fit_allocation(case$model, case$counts[, 1:2], case$starts,
+    case$lower, case$upper, output = "utilization_by_group")), "group dimension")
+  # the refusal is raised, not captured as a failed start: no result is returned
+  expect_null(tryCatch(fit_allocation(case$model, agg, case$starts, case$lower, case$upper),
+                       error = function(e) NULL))
+  # a v0 for each group needs labelled targets as well; a shared sigma alone does not
+  by_v0 <- clm_allocation(case$inputs, by_group = "v0", fit_v0 = TRUE)
+  expect_identical(.gfit_error(.bind_problem_target(by_v0, agg, "utilization")),
+                   .gfit_msg(c("v0.0-15", "v0.16-64", "v0.65+")))
+  expect_s3_class(.bind_problem_target(case$shared, agg, "utilization"), "ae_bound_target")
+  # a group column without observed cells, or a group without demand, is refused
+  half <- case$counts
+  half[, "16-64"] <- NA
+  err <- .gfit_error(fit_allocation(case$model, half, case$starts, case$lower, case$upper,
+    output = "utilization_by_group", loss = "poisson"))
+  expect_match(err, .gfit_msg(names(.gfit_truth)[1:3]), fixed = TRUE)
+  expect_match(err, "no observed cell: 16-64", fixed = TRUE)
+  # an NA in some cells only is allowed
+  some <- case$counts
+  some[c(1, 5, 30)] <- NA
+  expect_s3_class(.bind_problem_target(case$model, some, "utilization_by_group"),
+                  "ae_bound_target")
+  # every group with a free group parameter needs an observed cell, not the fixed ones
+  fixed_b <- clm_allocation(case$inputs, by_group = "sigma", fit_v0 = TRUE,
+                            fixed = c("sigma.16-64" = 8))
+  expect_s3_class(.bind_problem_target(fixed_b, half, "utilization_by_group"), "ae_bound_target")
+  demand <- lapply(stats::setNames(.gfit_ids, .gfit_ids), function(g) {
+    d <- case$inputs$D_groups[, g]
+    if (g == "65+") d[] <- 0
+    d
+  })
+  empty <- clm_allocation(prepare_allocation(demand, case$base$supply, case$base$distance),
+                          by_group = "sigma", fit_v0 = TRUE)
+  err <- .gfit_error(.bind_problem_target(empty, case$counts, "utilization_by_group"))
+  expect_match(err, .gfit_msg(names(.gfit_truth)[1:3]), fixed = TRUE)
+  expect_match(err, "no positive active demand: 65+", fixed = TRUE)
+  # ungrouped problems return at once
+  ungrouped <- clm_allocation(prepare_allocation(case$base$demand, case$base$supply,
+    case$base$distance), fit_v0 = TRUE)
+  expect_identical(.check_group_targets(ungrouped, NULL), TRUE)
+})
+
+test_that("fixed group parameters and shared parameters take aggregated targets", {
+  case <- .gfit_case()
+  agg <- stats::setNames(rowSums(case$expected), case$inputs$facility_ids)
+  fixed <- clm_allocation(case$inputs, by_group = "sigma", fit_v0 = TRUE,
+                          fixed = .gfit_truth[1:3])
+  expect_identical(fixed$theta$names, "v0")
+  f <- fit_allocation(fixed, agg, matrix(c(15, 40), ncol = 1, dimnames = list(NULL, "v0")),
+                      c(v0 = 1), c(v0 = 200), loss = "poisson", gradient = TRUE,
+                      control = .gfit_control)
+  expect_true(all(f$table$eligible))
+  expect_equal(f$best$theta[["v0"]], 25, tolerance = 1e-3)
+  # the grouped markers say what was held fixed
+  expect_identical(f$best$fixed, .gfit_truth[1:3])
+  # group-labelled targets are allowed with fixed parameters as well
+  g <- fit_allocation(fixed, case$expected, matrix(c(15, 40), ncol = 1, dimnames = list(NULL, "v0")),
+                      c(v0 = 1), c(v0 = 200), output = "utilization_by_group", loss = "poisson",
+                      gradient = TRUE, control = .gfit_control)
+  expect_equal(g$best$theta[["v0"]], 25, tolerance = 1e-3)
+  # one free group parameter among fixed ones still needs the labelled target
+  one <- clm_allocation(case$inputs, by_group = "sigma", fit_v0 = TRUE,
+                        fixed = .gfit_truth[1:2])
+  expect_identical(.gfit_error(.bind_problem_target(one, agg, "utilization")),
+                   .gfit_msg("sigma.65+"))
+})
+
+test_that("grouped fits and equilibria carry the group markers and no snapshot", {
+  case <- .gfit_case()
+  f <- .gfit_fits()$gradient$fit$best
+  markers <- c("groups", "by_group", "families", "fixed")
+  expect_identical(utils::tail(names(f), 4L), markers)
+  expect_identical(f$groups, .gfit_ids)
+  expect_identical(f$by_group, "sigma")
+  expect_identical(names(f$families), .gfit_ids)
+  expect_identical(f$families[[1]], "gaussian")
+  expect_identical(f$fixed, stats::setNames(numeric(), character()))
+  expect_true("prediction_snapshot" %in% names(f))
+  expect_null(f$prediction_snapshot)
+  expect_true(all(c(markers, "prediction_snapshot") %in% names(f$equilibrium)))
+  expect_null(f$equilibrium$prediction_snapshot)
+  e <- evaluate_allocation(case$model, .gfit_truth)
+  expect_true(all(c(markers, "prediction_snapshot") %in% names(e)))
+  expect_null(e$prediction_snapshot)
+  expect_identical(e$groups, .gfit_ids)
+  # ungrouped objects have none of them
+  u <- alloc_generated_fit()$best
+  expect_false(any(markers %in% names(u)))
+  expect_false(any(markers %in% names(u$equilibrium)))
+  ue <- evaluate_allocation(alloc_generated_case()$model, c(sigma = 8, v0 = 25))
+  expect_false(any(c(markers, "prediction_snapshot") %in% names(ue)[
+    vapply(ue, is.null, logical(1))]))
+  expect_false(any(markers %in% names(ue)))
+  expect_identical(ue$prediction_snapshot$schema, "spax_clm_prediction_v1")
+})
+
+test_that("predict, check, bootstrap and inference refuse grouped models", {
+  case <- .gfit_case()
+  fit <- .gfit_fits()$gradient$fit
+  e <- evaluate_allocation(case$model, .gfit_truth)
+  yet <- function(fn) paste0(fn, " is not available for grouped models yet")
+  distance <- case$base$distance
+  expect_error(predict_allocation(fit, distance), yet("predict_allocation()"), fixed = TRUE)
+  expect_error(predict_allocation(fit$best, distance), yet("predict_allocation()"), fixed = TRUE)
+  expect_error(predict_allocation(e, distance), yet("predict_allocation()"), fixed = TRUE)
+  expect_error(check_allocation(case$model, fit), yet("check_allocation()"), fixed = TRUE)
+  expect_error(bootstrap_allocation(case$model, fit, alloc_bootstrap_observation(), seed = 1),
+               yet("bootstrap_allocation()"), fixed = TRUE)
+  expect_error(.allocation_observation(case$model, case$counts, event = "visits",
+    exposure_units = "people", period = "year", exposure = "poisson_mean"),
+    yet(".allocation_observation()"), fixed = TRUE)
+  expect_error(.allocation_inference(case$model, fit,
+    structure(list(), class = "allocation_observation")),
+    yet(".allocation_inference()"), fixed = TRUE)
+  # the legacy and raster routes refuse grouped prepared inputs
+  expect_error(.sae_problem(case$inputs), yet("SAE"), fixed = TRUE)
+  expect_error(.haae_problem(case$inputs), yet("HAAE"), fixed = TRUE)
+  expect_error(.huff_problem(case$inputs, allocation = "huff_decay"),
+               yet("the huff_decay allocation"), fixed = TRUE)
+  expect_error(.ratio_problem(case$inputs), yet("the ratio response"), fixed = TRUE)
+  # a model whose objects are not grouped is not refused
+  expect_false(.is_grouped_object(alloc_generated_fit()))
+  expect_false(.is_grouped_object(alloc_generated_case()$model))
+  expect_true(.is_grouped_object(case$model))
+  expect_true(.is_grouped_object(case$inputs))
+})
+
+test_that("grouped fits, summaries and evaluations print their groups and parameters", {
+  case <- .gfit_case()
+  fit <- .gfit_fits()$gradient$fit
+  out <- capture.output(print(fit$best))
+  expect_true(any(out == "groups: 0-15, 16-64, 65+"))
+  expect_true(any(out == "by_group: sigma"))
+  expect_true(any(startsWith(out, "  sigma.0-15: ")))
+  expect_true(any(startsWith(out, "  sigma.65+: ")))
+  expect_true(any(startsWith(out, "  v0: ")))
+  expect_true(any(out == "family: gaussian (sigma = travel scale)"))
+  expect_false(any(startsWith(out, "fixed:")))
+  out <- capture.output(print(fit))
+  expect_true(any(out == "groups: 0-15, 16-64, 65+"))
+  out <- capture.output(print(summary(fit$best)))
+  expect_true(any(out == "groups: 0-15, 16-64, 65+"))
+  expect_true(any(grepl("sigma.16-64", out, fixed = TRUE)))
+  out <- capture.output(print(summary(fit)))
+  expect_true(any(out == "by_group: sigma"))
+  # fixed values are listed after theta
+  fixed <- clm_allocation(case$inputs, by_group = "sigma", fit_v0 = TRUE,
+                          fixed = c("sigma.0-15" = 5, "sigma.65+" = 12))
+  free <- fixed$theta$names
+  expect_identical(free, c("sigma.16-64", "v0"))
+  f <- fit_allocation(fixed, case$expected, matrix(c(8, 25, 9, 40), 2, byrow = TRUE,
+        dimnames = list(NULL, free)), stats::setNames(c(1, 1), free),
+        stats::setNames(c(40, 200), free), output = "utilization_by_group",
+        loss = "poisson", gradient = TRUE, control = .gfit_control)
+  expect_equal(f$best$theta[["sigma.16-64"]], 8, tolerance = 1e-3)
+  out <- capture.output(print(f$best))
+  at <- which(out == "fixed:")
+  expect_length(at, 1L)
+  expect_identical(out[at + 1:2], c("  sigma.0-15: 5", "  sigma.65+: 12"))
+  expect_gt(at, which(out == "theta:"))
+  expect_true(any(capture.output(print(summary(f$best))) == "fixed:"))
+  expect_identical(summary(f$best)$fixed$parameter, c("sigma.0-15", "sigma.65+"))
+  expect_identical(as.data.frame(f)$parameter, c("sigma.16-64", "v0"))
+  # evaluations show them through the coverage format
+  e <- evaluate_allocation(fixed, c("sigma.16-64" = 8, v0 = 25))
+  expect_match(format(e$coverage),
+    "[groups 0-15, 16-64, 65+] (sigma.16-64=8, v0=25; fixed sigma.0-15=5, sigma.65+=12)",
+    fixed = TRUE)
+  expect_true(any(grepl("[groups 0-15, 16-64, 65+]", capture.output(print(e$coverage)),
+                        fixed = TRUE)))
+  # ungrouped printing is unchanged: no group lines
+  u <- capture.output(print(alloc_generated_fit()$best))
+  expect_false(any(grepl("^(groups|by_group|fixed)", u)))
+  expect_match(format(evaluate_allocation(alloc_generated_case()$model,
+    c(sigma = 8, v0 = 25))$coverage), "^<ae_coverage> huff/gaussian \\(sigma=8, v0=25\\)")
+})
+
+test_that("a family by group is labelled by group", {
+  case <- .gfit_case()
+  fam <- clm_allocation(case$inputs, fit_v0 = TRUE,
+    family = list("0-15" = "gaussian", "16-64" = "exponential", "65+" = "gaussian"))
+  expect_identical(fam$metadata$spec$family, "grouped")
+  truth <- c("sigma.0-15" = 5, "sigma.16-64" = 0.15, "sigma.65+" = 12, v0 = 25)
+  expected <- evaluate_allocation(fam, truth,
+    requested_outputs = "utilization_by_group")$outputs$utilization_by_group
+  starts <- matrix(c(6, 0.2, 10, 30), 1, dimnames = list(NULL, names(truth)))
+  f <- fit_allocation(fam, expected, starts, c(1, 0.01, 1, 1) |> stats::setNames(names(truth)),
+    c(40, 5, 40, 200) |> stats::setNames(names(truth)), output = "utilization_by_group",
+    loss = "poisson", gradient = TRUE, control = .gfit_control)
+  expect_equal(f$best$theta, truth, tolerance = 1e-2)
+  label <- paste0("by group (0-15: gaussian (sigma = travel scale); ",
+                  "16-64: exponential (sigma = rate); 65+: gaussian (sigma = travel scale))")
+  expect_identical(.fit_family_label(f$best), label)
+  out <- capture.output(print(f$best))
+  expect_true(any(out == paste0("family: ", label)))
+  expect_identical(summary(f$best)$family_label, label)
+  expect_true(any(capture.output(print(summary(f$best))) == paste0("family: ", label)))
+  # a declared kernel of a group gives its own meaning of sigma
+  kernel <- decay_kernel(function(distance, sigma) exp(-distance / sigma), name = "soft",
+                         parameter = "decay length")
+  expect_identical(.group_family_label(kernel), "soft (sigma = decay length)")
+  expect_identical(.group_family_label("power"), "power (sigma = exponent)")
+  expect_identical(.fit_family_label(list(family = "soft", families = list(a = kernel))),
+                   "soft (sigma = decay length)")
+})

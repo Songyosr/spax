@@ -173,6 +173,7 @@ print.ae_multistart_fit <- function(x, ...) {
   cat("selected start: ", if (is.null(x$best_start)) "none" else x$best_start, "\n", sep = "")
   cat("loss disagreement: ", x$loss_disagreement,
       "; parameter disagreement: ", x$parameter_disagreement, "\n", sep = "")
+  if (!is.null(x$best)) cat(.group_lines(x$best), sep = "\n")
   print(x$table, row.names = FALSE)
   if (any(lengths(x$warnings)) || any(lengths(x$errors))) {
     cat("Per-start messages are available in $warnings and $errors.\n")

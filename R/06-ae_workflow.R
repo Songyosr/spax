@@ -156,6 +156,29 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
   invisible(model)
 }
 
+# Whether an object belongs to a model with demand groups: a model, prepared
+# inputs, an equilibrium or a fit (a multistart result by its selected fit). The
+# grouped fit and equilibrium objects carry a `groups` marker.
+.is_grouped_object <- function(x) {
+  if (inherits(x, "ae_multistart_fit")) x <- x$best
+  if (is.null(x)) return(FALSE)
+  if (inherits(x, "ae_prepared_inputs")) return(!is.null(x$group_ids))
+  if (inherits(x, "ae_problem")) {
+    return(!is.null(x$metadata$spec[["groups", exact = TRUE]]) ||
+             !is.null(x$substrate$group_ids))
+  }
+  is.list(x) && !is.null(x[["groups", exact = TRUE]])
+}
+
+# Stop when any object belongs to a grouped model: the function has no grouped
+# form yet (SPAX-057, Phase B1).
+.refuse_grouped <- function(fn, ...) {
+  if (any(vapply(list(...), .is_grouped_object, logical(1)))) {
+    stop(fn, " is not available for grouped models yet", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 #' Calibrate a declared allocation model from explicit starting points
 #'
 #' Count targets and loss choice are separate. Weighted SSE retains the existing
@@ -172,9 +195,12 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
-#'   use NA for unobserved entries. The count-valued `utilization` and `flow`
-#'   targets reject negative nonmissing observations; fractional counts are
-#'   allowed. Other output domains pass through to the existing fitter.
+#'   use NA for unobserved entries. The count-valued `utilization`, `flow` and
+#'   `utilization_by_group` targets reject negative nonmissing observations;
+#'   fractional counts are allowed. Other output domains pass through to the
+#'   existing fitter. For `utilization_by_group` (a model with demand groups) a
+#'   facility-by-group matrix of observed counts with both axes named (group
+#'   columns by group ID, facility rows by facility ID, any order).
 #' @param starts A finite positive matrix, one explicit independent start per
 #'   row, with exactly the named model parameter columns. No random starts are
 #'   added. Each start must lie inside the supplied positive bounds.
@@ -184,6 +210,14 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' @param output Exact model output to calibrate; default facility utilization.
 #'   `flow` is expected origin-facility counts, while `allocation` is an inside
 #'   probability operator. Requesting counts does not select a likelihood.
+#'   `utilization_by_group` is the expected count of each group at each facility
+#'   (a model with demand groups, see [clm_allocation()]). The group-specific
+#'   parameters of such a model (`sigma.<group>`, `v0.<group>`, from
+#'   `by_group`) can be fitted only to this output, with observed counts for
+#'   every group that has one and positive demand in that group; aggregated
+#'   targets leave them multimodal and weakly identified, so the fit is refused
+#'   (before any start) with a message naming the parameters. Fix them with
+#'   `clm_allocation(fixed = )`, or fit shared parameters to any target.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
 #'   with eta=1 by default. Poisson omits the data-only log-factorial constant.
@@ -222,7 +256,7 @@ fit_allocation <- function(model, observed, starts, lower, upper,
     }
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
-      output %in% c("utilization", "flow") && is.numeric(observed) &&
+      output %in% c("utilization", "flow", "utilization_by_group") && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {
     stop("observed expected counts must be nonnegative for output '", output, "'")
   }
@@ -411,6 +445,7 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
                                 missing_travel = c("unknown", "legacy_zero"),
                                 spatial = NULL, type = c("numeric", "raster")) {
   type <- match.arg(type)
+  .refuse_grouped("predict_allocation()", source)
   if (type == "raster" && (length(outputs) != 1L ||
       !is.character(outputs) || is.na(outputs) || outputs %in% c("allocation", "flow"))) {
     stop("raster prediction requires exactly one requested vector output")

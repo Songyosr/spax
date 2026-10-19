@@ -53,6 +53,7 @@
 check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
+  .refuse_grouped("check_allocation()", model, fit)
   best <- .selected_allocation_fit(fit)
   if (!is.numeric(trip_breaks) || !length(trip_breaks) || anyNA(trip_breaks) ||
       any(!is.finite(trip_breaks)) || any(trip_breaks <= 0)) {

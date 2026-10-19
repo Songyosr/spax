@@ -259,6 +259,15 @@
 
 # Grouped CLM models (SPAX-057) ------------------------------------------------
 
+# The legacy routes (SAE, HAAE, huff_decay, the ratio response) have no grouped
+# form: refuse a prepared substrate with demand groups.
+.refuse_grouped_substrate <- function(what, substrate) {
+  if (!is.null(substrate$group_ids)) {
+    stop(what, " is not available for grouped models yet", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 # The grouped part of a spec, appended after today's fields (and `kernel`):
 # groups, by_group, families, fixed, v0_groups. Outputs: the pooled
 # `opportunity` is not consistent with the pooled allocation and is omitted; the
@@ -432,6 +441,13 @@
   kernels
 }
 
+# The fields that mark a grouped fit or equilibrium (appended only when grouped).
+.group_marker_names <- c("groups", "by_group", "families", "fixed")
+.group_markers <- function(spec) {
+  list(groups = spec$groups, by_group = spec$by_group, families = spec$families,
+       fixed = spec$fixed)
+}
+
 #' Create an AE inner problem object
 #' @keywords internal
 #' @md
@@ -483,6 +499,7 @@
   if (ncol(substrate$S) != 1L) {
     stop("SAE currently supports one supply measure")
   }
+  .refuse_grouped_substrate("SAE", substrate)
   spec <- .sae_spec(family = family, kappa = kappa, beta = beta, eps = eps)
   compiled <- .compile_ae_map(spec, substrate)
   .new_problem(
@@ -518,6 +535,7 @@
   if (ncol(substrate$S) != 1L) {
     stop("HAAE currently supports one supply measure")
   }
+  .refuse_grouped_substrate("HAAE", substrate)
   spec <- .haae_spec(family = family, kappa = kappa, eps = eps,
                      a_min = a_min, a_max = a_max)
   compiled <- .compile_ae_map(spec, substrate)
@@ -563,6 +581,9 @@
   )
   if (ncol(substrate$S) != 1L) {
     stop("static Huff currently supports one supply measure")
+  }
+  if (identical(match.arg(allocation), "huff_decay")) {
+    .refuse_grouped_substrate("the huff_decay allocation", substrate)
   }
   if (is.null(grouped) && !is.null(substrate$group_ids)) {
     stop("prepared inputs with demand groups need clm_allocation()")
@@ -976,6 +997,12 @@
   if (!is.null(fit$prediction_snapshot)) {
     fit$evaluated_clm <- fit$prediction_snapshot[c("spec", "theta", "facility_ids", "supply")]
   }
+  if (!is.null(problem$metadata$spec[["groups", exact = TRUE]])) {
+    # A grouped equilibrium has no prediction snapshot; the markers make the
+    # objects that need one refuse it.
+    fit[c(.group_marker_names, "prediction_snapshot")] <- c(
+      .group_markers(problem$metadata$spec), list(NULL))
+  }
   if (isTRUE(diagnostics) && is.function(step$jac_state)) {
     rho <- tryCatch({
       jac <- step$jac_state(fit$x_star)
@@ -1239,7 +1266,7 @@
   state_name <- problem$state$name
   state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
 
-  structure(
+  fit <- structure(
     list(
       model = problem$model,
       family = problem$metadata$spec$family,
@@ -1281,6 +1308,11 @@
     ),
     class = c("ae_problem_nfxp_fit", paste0(problem$model, "_problem_nfxp_fit"))
   )
+  if (!is.null(problem$metadata$spec[["groups", exact = TRUE]])) {
+    # prediction_snapshot is already NULL: a grouped evaluation has none.
+    fit[.group_marker_names] <- .group_markers(problem$metadata$spec)
+  }
+  fit
 }
 
 #' Compare calibrated AE problem fits on an identical target and loss
