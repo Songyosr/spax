@@ -9,6 +9,7 @@
                                     sampling = c("independent_poisson", "independent_groups"),
                                     groups = NULL) {
   .check_allocation_model(model)
+  .refuse_grouped(".allocation_observation()", model)
   output <- match.arg(output)
   sampling <- match.arg(sampling)
   exposure <- match.arg(exposure, c("poisson_mean", "working_count_mean"))
@@ -78,6 +79,7 @@
                                   group_adjustment = c("HC3", "none")) {
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
+  .refuse_grouped(".allocation_inference()", model, fit)
   .chck_class(observation, "allocation_observation", "observation")
   group_adjustment <- match.arg(group_adjustment)
   for (z in list(fd_eps, rank_tol)) {

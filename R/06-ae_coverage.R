@@ -161,7 +161,13 @@
                                              input_policy = problem$substrate$input_policy),
                         surface_meta = .problem_surface_meta(problem)),
                    class = "ae_problem_nfxp_fit")
-  .ae_coverage(fit, ...)
+  out <- .ae_coverage(fit, ...)
+  spec <- problem$metadata$spec
+  if (!is.null(spec[["groups", exact = TRUE]])) {
+    # Appended only for a model with demand groups, so that the format shows them.
+    out[c("groups", "by_group", "fixed")] <- list(spec$groups, spec$by_group, spec$fixed)
+  }
+  out
 }
 
 .coverage_reporting <- function(tab, settings, aggregate) {
@@ -258,8 +264,13 @@
 #' @md
 format.ae_coverage <- function(x, digits = 4, ...) {
   h <- x$regional
-  paste0("<ae_coverage> ", x$model, "/", x$family, " (",
-         paste(names(x$theta), signif(x$theta, digits), sep = "=", collapse = ", "),
+  groups <- x[["groups", exact = TRUE]]
+  fixed <- x[["fixed", exact = TRUE]]
+  paste0("<ae_coverage> ", x$model, "/", x$family,
+         if (!is.null(groups)) paste0(" [groups ", paste(groups, collapse = ", "), "]"),
+         " (", paste(names(x$theta), signif(x$theta, digits), sep = "=", collapse = ", "),
+         if (length(fixed)) paste0("; fixed ", paste(names(fixed), signif(fixed, digits),
+                                                    sep = "=", collapse = ", ")),
          "): A=", .ae_format_number(h$A, digits),
          if (!is.null(x$settings$units)) paste0(" ", x$settings$units),
          "; rho=", .ae_format_number(h$rho, digits),

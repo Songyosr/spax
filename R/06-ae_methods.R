@@ -32,10 +32,49 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
   family <- x$family
   if (!is.character(family) || length(family) != 1L || is.na(family)) return(family)
   builtin <- c(gaussian = "travel scale", exponential = "rate", power = "exponent")
+  # Demand groups: a family given by group is listed by group; a shared one is
+  # labelled like an ungrouped family (a declared kernel gives its own meaning).
+  families <- x[["families", exact = TRUE]]
+  if (!is.null(families) && length(families)) {
+    labels <- vapply(families, .group_family_label, character(1))
+    if (identical(family, "grouped")) {
+      return(paste0("by group (", paste0(names(families), ": ", labels, collapse = "; "), ")"))
+    }
+    return(labels[[1L]])
+  }
   parameter <- if (family %in% names(builtin)) builtin[[family]] else
     x$prediction_snapshot$spec$kernel$parameter
   if (!is.character(parameter) || length(parameter) != 1L || is.na(parameter)) return(family)
   paste0(family, " (sigma = ", parameter, ")")
+}
+
+# "gaussian (sigma = travel scale)" for one family of a grouped model: a built-in
+# name or a declared kernel.
+.group_family_label <- function(f) {
+  builtin <- c(gaussian = "travel scale", exponential = "rate", power = "exponent")
+  if (inherits(f, "spax_decay_kernel")) {
+    name <- f$name
+    parameter <- f$parameter
+  } else {
+    name <- f
+    parameter <- if (name %in% names(builtin)) builtin[[name]]
+  }
+  if (!is.character(parameter) || length(parameter) != 1L || is.na(parameter)) return(name)
+  paste0(name, " (sigma = ", parameter, ")")
+}
+
+# The group lines of a grouped fit or summary (none for an ungrouped one): the
+# group IDs, the parameters that differ by group, the parameters held fixed.
+.group_lines <- function(x, digits = 4) {
+  groups <- x[["groups", exact = TRUE]]
+  if (is.null(groups)) return(character())
+  by_group <- x[["by_group", exact = TRUE]]
+  fixed <- x[["fixed", exact = TRUE]]
+  if (is.data.frame(fixed)) fixed <- stats::setNames(fixed$value, fixed$parameter)
+  c(paste0("groups: ", paste(groups, collapse = ", ")),
+    paste0("by_group: ", if (length(by_group)) paste(by_group, collapse = ", ") else "none"),
+    if (length(fixed)) c("fixed:", paste0("  ", names(fixed), ": ",
+      vapply(fixed, .ae_format_number, character(1), digits = digits))))
 }
 
 #' Print an AE problem calibration fit
@@ -49,6 +88,11 @@ print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")
   }
+  group_lines <- .group_lines(x, digits = digits)
+  if (length(group_lines)) {
+    # groups and by_group, then the fixed values after theta
+    cat(group_lines[1:2], sep = "\n")
+  }
   cat("theta:\n")
   theta <- x$theta
   if (is.null(names(theta))) {
@@ -58,6 +102,7 @@ print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
     cat("  ", nm, ": ", .ae_format_number(theta[[nm]], digits = digits),
         "\n", sep = "")
   }
+  if (length(group_lines) > 2L) cat(group_lines[-(1:2)], sep = "\n")
   cat("loss: ", .ae_format_number(x$loss, digits = digits), "\n", sep = "")
   cat("optim_convergence: ", x$convergence, "\n", sep = "")
   cat("seconds: ", .ae_format_number(x$seconds, digits = digits), "\n", sep = "")
@@ -80,7 +125,7 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
   theta_table <- data.frame(
     parameter = names(theta),
     estimate = as.numeric(theta),
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE, check.names = FALSE
   )
 
   residual_summary <- NULL
@@ -90,7 +135,7 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
     )
   }
 
-  structure(
+  out <- structure(
     list(
       model = object$model,
       family = object$family,
@@ -111,6 +156,16 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
     ),
     class = "summary.ae_problem_nfxp_fit"
   )
+  groups <- object[["groups", exact = TRUE]]
+  if (!is.null(groups)) {
+    # Appended only for a model with demand groups.
+    fixed <- object[["fixed", exact = TRUE]]
+    out$groups <- groups
+    out$by_group <- object[["by_group", exact = TRUE]]
+    out$fixed <- data.frame(parameter = names(fixed), value = as.numeric(fixed),
+                            stringsAsFactors = FALSE, check.names = FALSE)
+  }
+  out
 }
 
 #' Print an AE problem calibration summary
@@ -125,10 +180,16 @@ print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")
   }
+  group_lines <- .group_lines(x, digits = digits)
+  if (length(group_lines)) cat(group_lines[1:2], sep = "\n")
   cat("\n")
   cat("theta:\n")
   print.data.frame(.ae_round_data_frame(x$theta, digits = digits),
                    row.names = FALSE)
+  if (length(group_lines) > 2L) {
+    cat("\n")
+    cat(group_lines[-(1:2)], sep = "\n")
+  }
   cat("\nfit:\n")
   print.data.frame(.ae_round_data_frame(x$fit, digits = digits),
                    row.names = FALSE)

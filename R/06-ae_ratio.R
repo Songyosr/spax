@@ -9,6 +9,7 @@
   if (!is.logical(fit_b) || length(fit_b) != 1L || is.na(fit_b)) {
     stop("fit_b must be TRUE or FALSE")
   }
+  .refuse_grouped_substrate("the ratio response", substrate)
   S <- substrate$S
   D <- substrate$D_active
   distance <- substrate$distance_active

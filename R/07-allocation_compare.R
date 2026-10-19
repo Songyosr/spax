@@ -12,7 +12,13 @@
 #' that change neither loss), demand, supply, origin and facility IDs and
 #' prepared travel times. Travel times are checked only when `models` are
 #' supplied, and each model must reproduce its own fit; otherwise loss
-#' differences are left missing. Contact and capacity values remain comparable
+#' differences are left missing. Fits of models with demand groups
+#' ([prepare_allocation()]) are comparable only with each other, with the same
+#' group IDs and, once `models` are supplied, the same demand and the same
+#' travel times for every group; a shared-parameter fit and a `by_group` fit on
+#' the same group-labelled target answer whether the group decays differ. The
+#' table then shows the free parameters, such as `sigma.<group>`, and coverage
+#' comes from the pooled outputs. Contact and capacity values remain comparable
 #' across specifications, but they are conditional on each specification's
 #' inputs.
 #'
@@ -79,8 +85,33 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
     as.numeric(b[[what]])[mask]
   }
   ref <- best[[reference]]
+  # Fits of models with demand groups are compared only with each other: the
+  # same group IDs and, once models are supplied, the same demand and travel by
+  # group (the fits keep only the total demand). Without any grouped fit the
+  # checks and the reasons are exactly those of an ungrouped comparison.
+  any_grouped <- any(vapply(best, function(b) !is.null(b[["groups", exact = TRUE]]), logical(1)))
   same <- function(nm) {
     b <- best[[nm]]
+    s <- same_ungrouped(nm, b)
+    if (!any_grouped) return(s)
+    # NULL for both ungrouped fits, a grouped and an ungrouped fit never match
+    groups_match <- identical(b[["groups", exact = TRUE]], ref[["groups", exact = TRUE]])
+    sub <- if (!is.null(models)) models[[nm]]$substrate
+    ref_sub <- if (!is.null(models)) models[[reference]]$substrate
+    c(s[c("observed", "ids", "loss")], groups = groups_match,
+      s["demand"],
+      demand_groups = if (is.null(models)) NA else groups_match &&
+        identical(sub$D_groups, ref_sub$D_groups),
+      s["supply"],
+      travel = if (is.null(models)) NA else groups_match &&
+        # per-group matrices; distance_active is NULL when travel is given by group
+        if (is.null(b[["groups", exact = TRUE]])) {
+          identical(sub$distance_active, ref_sub$distance_active)
+        } else {
+          identical(sub$distance_groups, ref_sub$distance_groups)
+        })
+  }
+  same_ungrouped <- function(nm, b) {
     c(observed = identical(masked_values(b, "observed"), masked_values(ref, "observed")) &&
         identical(b$target_mask, ref$target_mask) &&
         # canonical IDs and axes only; the caller's input order may differ
@@ -101,7 +132,9 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
     reg <- coverage[[nm]]$regional
     cells <- coverage[[nm]]$cells
     s <- same(nm)
-    comparable <- all(s[c("observed", "ids", "loss", "demand", "supply")]) && isTRUE(s[["travel"]])
+    checked <- intersect(c("observed", "ids", "loss", "groups", "demand", "supply"), names(s))
+    comparable <- all(s[checked]) && isTRUE(s[["travel"]]) &&
+      (!"demand_groups" %in% names(s) || isTRUE(s[["demand_groups"]]))
     pred <- masked_values(b, "predicted")
     obs <- masked_values(b, "observed")
     data.frame(
@@ -114,7 +147,9 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
       loss_difference = if (comparable) b$loss - ref$loss else NA_real_,
       comparable = comparable,
       not_comparable = if (comparable) "" else paste(c(names(s)[!is.na(s) & !s],
-        if (is.na(s[["travel"]])) "travel not checked (supply models)"), collapse = ", "),
+        if (is.na(s[["travel"]])) {
+          paste0(if (any_grouped) "demand by group and ", "travel not checked (supply models)")
+        }), collapse = ", "),
       stringsAsFactors = FALSE)
   })
   table <- do.call(rbind, rows)

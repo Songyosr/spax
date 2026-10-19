@@ -42,7 +42,7 @@ as.data.frame.ae_problem_nfxp_fit <- function(x, row.names = NULL, optional = FA
   parameters <- names(theta)
   if (is.null(parameters)) parameters <- paste0("theta", seq_along(theta))
   .allocation_saved_table(data.frame(parameter = parameters, estimate = as.numeric(theta),
-    stringsAsFactors = FALSE), row.names, optional, ...)
+    stringsAsFactors = FALSE, check.names = FALSE), row.names, optional, ...)
 }
 
 #' @rdname allocation-result-tables

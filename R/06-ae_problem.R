@@ -203,12 +203,21 @@
                        kappa = 1, beta = 1, v0 = 0,
                        fit_v0 = FALSE, fit_beta = FALSE,
                        allocation = c("clm", "huff_decay"),
-                       kernel = NULL) {
-  if (is.null(kernel)) family <- match.arg(family) else family <- kernel$name
+                       kernel = NULL, grouped = NULL) {
+  if (!is.null(grouped) && isTRUE(grouped$per_group_family)) {
+    family <- "grouped"
+  } else if (is.null(kernel)) {
+    family <- match.arg(family)
+  } else {
+    family <- kernel$name
+  }
   allocation <- match.arg(allocation)
   .chck_positive_scalar(kappa, "kappa")
   .chck_positive_scalar(beta, "beta")
-  .chck_nonnegative_scalar(v0, "v0")
+  # Constants per group replace the scalar v0 of a grouped model.
+  if (is.null(grouped) || is.null(grouped$v0_groups)) {
+    .chck_nonnegative_scalar(v0, "v0")
+  }
   if (!is.logical(fit_v0) || length(fit_v0) != 1L || is.na(fit_v0) ||
       !is.logical(fit_beta) || length(fit_beta) != 1L || is.na(fit_beta)) {
     stop("`fit_v0` and `fit_beta` must be TRUE or FALSE")
@@ -235,16 +244,208 @@
     v0 = as.numeric(v0),
     fit_v0 = isTRUE(fit_v0),
     fit_beta = isTRUE(fit_beta),
-    theta = .huff_theta_contract(
+    theta = if (is.null(grouped)) .huff_theta_contract(
       fit_v0, fit_beta,
       sigma_lower = if (is.null(kernel)) 0 else kernel$lower,
       sigma_upper = if (is.null(kernel)) Inf else kernel$upper
-    )
+    ) else list()
   )
   # Appended only for a declared kernel: a NULL element inside list() would
   # change the built-in specs.
   if (!is.null(kernel)) spec$kernel <- kernel
+  if (!is.null(grouped)) spec <- .huff_group_spec(spec, grouped)
   spec
+}
+
+# Grouped CLM models (SPAX-057) ------------------------------------------------
+
+# The legacy routes (SAE, HAAE, huff_decay, the ratio response) have no grouped
+# form: refuse a prepared substrate with demand groups.
+.refuse_grouped_substrate <- function(what, substrate) {
+  if (!is.null(substrate$group_ids)) {
+    stop(what, " is not available for grouped models yet", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+# The grouped part of a spec, appended after today's fields (and `kernel`):
+# groups, by_group, families, fixed, v0_groups. Outputs: the pooled
+# `opportunity` is not consistent with the pooled allocation and is omitted; the
+# per-group outputs are added with their own axes. `grouped` is the list built
+# by .clm_group_args().
+.huff_group_spec <- function(spec, grouped) {
+  axes <- spec$output_axes[names(spec$output_axes) != "opportunity"]
+  spec$output_axes <- c(axes, utilization_by_group = "facility_group",
+                        access_by_group = "origin_group",
+                        outside_share_by_group = "origin_group")
+  if (!is.null(spec$output_meanings)) {
+    keep <- names(spec$output_meanings) != "opportunity"
+    spec$output_meanings <- c(spec$output_meanings[keep],
+      utilization_by_group = "expected_count",
+      access_by_group = "inside_probability_mass",
+      outside_share_by_group = "outside_choice_probability")
+  }
+  # c() keeps a NULL `v0_groups`, which `$<-` would drop.
+  spec <- c(spec, list(groups = grouped$groups, by_group = grouped$by_group,
+                       families = grouped$families, fixed = grouped$fixed,
+                       v0_groups = grouped$v0_groups))
+  spec$theta <- .huff_group_theta_contract(spec)
+  spec
+}
+
+#' Theta contract of a grouped static CLM spec
+#'
+#' Names in order: `sigma` or `sigma.<g>` for every group (when `"sigma"` is in
+#' `by_group`), then `v0` or `v0.<g>` when `v0` is fitted, then `beta` when it is
+#' fitted; the parameters in `spec$fixed` are removed. The bounds of a sigma are
+#' those of the declared kernel of its group (`[0, Inf)` for a built-in one); the
+#' extra `group` field gives the group of each parameter (`NA` when shared).
+#' @param spec A grouped spec with `groups`, `by_group`, `families`, `fixed`,
+#'   `fit_v0` and `fit_beta`.
+#' @keywords internal
+#' @md
+.huff_group_theta_contract <- function(spec) {
+  groups <- spec$groups
+  bounds <- function(f) {
+    if (inherits(f, "spax_decay_kernel")) c(f$lower, f$upper) else c(0, Inf)
+  }
+  nms <- character()
+  lower <- upper <- numeric()
+  group <- character()
+  add <- function(nm, lo, up, g) {
+    nms <<- c(nms, nm)
+    lower <<- c(lower, lo)
+    upper <<- c(upper, up)
+    group <<- c(group, g)
+  }
+  if ("sigma" %in% spec$by_group) {
+    for (g in groups) {
+      b <- bounds(spec$families[[g]])
+      add(paste0("sigma.", g), b[1L], b[2L], g)
+    }
+  } else {
+    b <- bounds(spec$families[[1L]])
+    add("sigma", b[1L], b[2L], NA_character_)
+  }
+  if (isTRUE(spec$fit_v0)) {
+    if ("v0" %in% spec$by_group) {
+      for (g in groups) add(paste0("v0.", g), 0, Inf, g)
+    } else {
+      add("v0", 0, Inf, NA_character_)
+    }
+  }
+  if (isTRUE(spec$fit_beta)) add("beta", 0, Inf, NA_character_)
+  free <- !nms %in% names(spec$fixed)
+  list(names = nms[free], lower = lower[free], upper = upper[free],
+       group = group[free])
+}
+
+# The grouped arguments of clm_allocation(), checked once. `groups` are the
+# group IDs of the prepared inputs. Returns the family string and declared
+# kernel as for an ungrouped model (the family is "grouped" when it is given by
+# group), `v0` for the spec and the `grouped` list for .huff_spec().
+.clm_group_args <- function(groups, family, v0, fit_v0, fit_beta, by_group, fixed) {
+  if (!is.character(by_group) || anyNA(by_group) || anyDuplicated(by_group) ||
+      !all(by_group %in% c("sigma", "v0"))) {
+    stop("`by_group` must be a subset of \"sigma\" and \"v0\"", call. = FALSE)
+  }
+  if ("v0" %in% by_group && !isTRUE(fit_v0)) {
+    stop("by_group = \"v0\" requires fit_v0 = TRUE; with fit_v0 = FALSE give `v0` ",
+         "as a named vector by group", call. = FALSE)
+  }
+  is_family <- function(e) {
+    (is.character(e) && length(e) == 1L && !is.na(e)) || inherits(e, "spax_decay_kernel")
+  }
+  per <- .fca_per_group(family, groups, "family", element = is_family)
+  if (is.null(per) && is.list(family) && !inherits(family, "spax_decay_kernel")) {
+    stop("family: give one element per group: ", paste(groups, collapse = ", "),
+         call. = FALSE)
+  }
+  kernel <- NULL
+  if (is.null(per)) {
+    decay <- .resolve_decay_family(family)
+    kernel <- decay$kernel
+    one <- if (is.null(kernel)) decay$family else kernel
+    families <- stats::setNames(rep(list(one), length(groups)), groups)
+    family_out <- decay$family
+  } else {
+    families <- lapply(per, function(e) {
+      decay <- .resolve_decay_family(e)
+      if (is.null(decay$kernel)) decay$family else decay$kernel
+    })
+    by_group <- union("sigma", by_group)
+    family_out <- "grouped"
+  }
+  by_group <- c("sigma", "v0")[c("sigma", "v0") %in% by_group]
+  v0_groups <- NULL
+  per_v0 <- .fca_per_group(v0, groups, "v0", atomic = TRUE)
+  if (!is.null(per_v0)) {
+    if (isTRUE(fit_v0)) {
+      stop("`v0` given by group are constants: use fit_v0 = FALSE, or ",
+           "by_group = \"v0\" to fit a v0 for each group", call. = FALSE)
+    }
+    for (g in groups) {
+      .chck_nonnegative_scalar(per_v0[[g]], paste0("v0 (group '", g, "')"))
+    }
+    v0_groups <- stats::setNames(as.numeric(per_v0), groups)
+    v0 <- NA_real_
+  }
+  grouped <- list(groups = groups, by_group = by_group, families = families,
+                  fixed = stats::setNames(numeric(), character()),
+                  v0_groups = v0_groups,
+                  per_group_family = !is.null(per))
+  if (!is.null(fixed)) {
+    grouped$fixed <- .clm_group_fixed(fixed, grouped, fit_v0, fit_beta)
+  }
+  list(family = family_out, kernel = kernel, v0 = v0, grouped = grouped)
+}
+
+# The `fixed` values of a grouped model, checked against the parameters it would
+# otherwise fit, in the order of the theta contract.
+.clm_group_fixed <- function(fixed, grouped, fit_v0, fit_beta) {
+  if (!is.numeric(fixed) || !length(fixed) || is.null(names(fixed)) ||
+      anyNA(names(fixed)) || any(!nzchar(names(fixed))) ||
+      anyDuplicated(names(fixed)) || any(!is.finite(fixed))) {
+    stop("`fixed` must be a named finite numeric vector with unique names", call. = FALSE)
+  }
+  all_params <- .huff_group_theta_contract(c(grouped, list(
+    fit_v0 = fit_v0, fit_beta = fit_beta)))
+  unknown <- setdiff(names(fixed), all_params$names)
+  if (length(unknown)) {
+    stop("`fixed` names must be among the parameters of the model (",
+         paste(all_params$names, collapse = ", "), "); not: ",
+         paste(unknown, collapse = ", "), call. = FALSE)
+  }
+  at <- match(names(fixed), all_params$names)
+  positive <- startsWith(names(fixed), "sigma") | names(fixed) == "beta"
+  if (any(fixed < all_params$lower[at] | fixed > all_params$upper[at]) ||
+      any(positive & fixed <= 0)) {
+    stop("`fixed` values are outside the parameter bounds (sigma and beta must be ",
+         "positive, v0 nonnegative)", call. = FALSE)
+  }
+  if (length(fixed) == length(all_params$names)) {
+    stop("`fixed` leaves no free parameter", call. = FALSE)
+  }
+  stats::setNames(as.numeric(fixed)[order(at)], all_params$names[sort(at)])
+}
+
+# Every declared (custom) kernel of a spec: the shared one, or those of the
+# per-group families. Built-in kernels are strings and are not listed.
+.allocation_kernels <- function(spec) {
+  kernels <- list()
+  shared <- spec[["kernel", exact = TRUE]]
+  if (!is.null(shared)) kernels <- list(shared)
+  for (f in spec[["families", exact = TRUE]]) {
+    if (inherits(f, "spax_decay_kernel")) kernels[[length(kernels) + 1L]] <- f
+  }
+  kernels
+}
+
+# The fields that mark a grouped fit or equilibrium (appended only when grouped).
+.group_marker_names <- c("groups", "by_group", "families", "fixed")
+.group_markers <- function(spec) {
+  list(groups = spec$groups, by_group = spec$by_group, families = spec$families,
+       fixed = spec$fixed)
 }
 
 #' Create an AE inner problem object
@@ -298,6 +499,7 @@
   if (ncol(substrate$S) != 1L) {
     stop("SAE currently supports one supply measure")
   }
+  .refuse_grouped_substrate("SAE", substrate)
   spec <- .sae_spec(family = family, kappa = kappa, beta = beta, eps = eps)
   compiled <- .compile_ae_map(spec, substrate)
   .new_problem(
@@ -333,6 +535,7 @@
   if (ncol(substrate$S) != 1L) {
     stop("HAAE currently supports one supply measure")
   }
+  .refuse_grouped_substrate("HAAE", substrate)
   spec <- .haae_spec(family = family, kappa = kappa, eps = eps,
                      a_min = a_min, a_max = a_max)
   compiled <- .compile_ae_map(spec, substrate)
@@ -362,6 +565,8 @@
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
 #' @param kernel `NULL` for a built-in `family`, or a custom `spax_decay_kernel`
 #'   declaration passed on to `.huff_spec()`.
+#' @param grouped `NULL`, or the grouped arguments of `.clm_group_args()` for
+#'   prepared inputs with demand groups.
 #' @keywords internal
 #' @md
 .huff_problem <- function(demand, supply = NULL, distance = NULL,
@@ -370,16 +575,23 @@
                           fit_v0 = FALSE, fit_beta = FALSE,
                           id_col = NULL, supply_cols = NULL,
                           allocation = c("clm", "huff_decay"),
-                          kernel = NULL) {
+                          kernel = NULL, grouped = NULL) {
   substrate <- .resolve_allocation(
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
     stop("static Huff currently supports one supply measure")
   }
+  if (identical(match.arg(allocation), "huff_decay")) {
+    .refuse_grouped_substrate("the huff_decay allocation", substrate)
+  }
+  if (is.null(grouped) && !is.null(substrate$group_ids)) {
+    stop("prepared inputs with demand groups need clm_allocation()")
+  }
   spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0,
                      fit_v0 = fit_v0, fit_beta = fit_beta,
-                     allocation = match.arg(allocation), kernel = kernel)
+                     allocation = match.arg(allocation), kernel = kernel,
+                     grouped = grouped)
   compiled <- .compile_ae_map(spec, substrate)
   a_init <- .allocation_supply(substrate, kappa, beta)
   .new_problem(
@@ -466,7 +678,165 @@
   list(bind = bind)
 }
 
+# The travel matrix of a group for the kernel: on rows where the group has no
+# demand, cells that would fail the domain checks (missing, negative, and zero
+# where the kernel is undefined at zero) carry no flow and become absent edges
+# (Inf). Rows with positive group demand are left to the strict checks.
+.group_clean_distance <- function(distance, positive, zero_ok) {
+  rows <- which(!positive)
+  if (!length(rows)) return(distance)
+  sub <- distance[rows, , drop = FALSE]
+  bad <- is.na(sub) | (!is.na(sub) & sub < 0) | (!zero_ok & !is.na(sub) & sub == 0)
+  if (!any(bad)) return(distance)
+  sub[bad] <- Inf
+  distance[rows, ] <- sub
+  # The rows whose travel was not usable: the group's own access and outside
+  # share there are unknown, not "no access" (reported NA by group).
+  attr(distance, "blanked_rows") <- rows[rowSums(bad) > 0]
+  distance
+}
+
+# Grouped static CLM (SPAX-057): one kernel per group (its own family, sigma and
+# travel), pooled outputs as the ungrouped ones on the total demand, per-group
+# outputs on request. Everything that does not depend on theta is prepared here,
+# once per model: the travel matrices cleaned for zero-demand rows, one kernel
+# plan per distinct matrix, the rebuilt kernel functions.
+.compile_huff_group_map <- function(spec, substrate) {
+  S <- as.vector(substrate$S[, 1])
+  n <- length(S)
+  n_theta <- length(spec$theta$names)
+  zero_state <- matrix(0, n, n)
+  groups <- spec$groups
+  G <- length(groups)
+  D_groups <- substrate$D_groups
+  if (is.null(D_groups) || !identical(colnames(D_groups), groups) ||
+      !identical(names(substrate$distance_groups), groups)) {
+    stop("a grouped model needs prepared inputs with the same demand groups")
+  }
+  info <- lapply(groups, function(g) {
+    f <- spec$families[[g]]
+    kernel <- if (inherits(f, "spax_decay_kernel")) f
+    list(family = if (is.null(kernel)) f else kernel$name, kernel = kernel,
+         fun = if (!is.null(kernel)) .decay_kernel_function(kernel))
+  })
+  clean <- lapply(seq_len(G), function(i) {
+    zero_ok <- !(identical(info[[i]]$family, "power") ||
+                   (!is.null(info[[i]]$kernel) && !isTRUE(info[[i]]$kernel$zero_distance)))
+    .group_clean_distance(substrate$distance_groups[[i]], D_groups[, i] > 0, zero_ok)
+  })
+  # The group of the first travel matrix equal to the matrix of each group (a
+  # shared matrix stays one object), and likewise for family and kernel.
+  first_same <- function(same) {
+    first <- seq_len(G)
+    for (i in seq_len(G)[-1L]) {
+      for (h in seq_len(i - 1L)) {
+        if (first[h] == h && same(h, i)) {
+          first[i] <- h
+          break
+        }
+      }
+    }
+    first
+  }
+  blanked <- lapply(clean, function(d) attr(d, "blanked_rows"))
+  clean <- lapply(clean, function(d) {
+    attr(d, "blanked_rows") <- NULL
+    d
+  })
+  dist_id <- first_same(function(h, i) identical(clean[[h]], clean[[i]]))
+  family_id <- first_same(function(h, i) {
+    identical(info[[h]]$family, info[[i]]$family) &&
+      identical(info[[h]]$kernel, info[[i]]$kernel)
+  })
+  plans <- list()
+  for (i in seq_len(G)) {
+    if (!is.null(info[[i]]$kernel) && is.null(plans[[as.character(dist_id[i])]])) {
+      plans[[as.character(dist_id[i])]] <- .decay_kernel_plan(clean[[i]])
+    }
+  }
+  inputs <- lapply(seq_len(G), function(i) {
+    list(distance_active = clean[[i]], input_policy = substrate$input_policy)
+  })
+  sigma_by <- "sigma" %in% spec$by_group
+  v0_by <- "v0" %in% spec$by_group
+  per_group <- c("utilization_by_group", "access_by_group", "outside_share_by_group")
+  bind <- function(theta) {
+    theta <- .coerce_problem_theta(theta, spec$theta)
+    full <- c(theta, spec$fixed)
+    pick <- function(base, by) {
+      vapply(groups, function(g) {
+        if (by) full[[paste0(base, ".", g)]] else full[[base]]
+      }, numeric(1))
+    }
+    sigma <- pick("sigma", sigma_by)
+    v0 <- if (isTRUE(spec$fit_v0)) {
+      pick("v0", v0_by)
+    } else if (!is.null(spec$v0_groups)) {
+      spec$v0_groups[groups]
+    } else {
+      rep(spec$v0, G)
+    }
+    beta <- if (isTRUE(spec$fit_beta)) full[["beta"]] else spec$beta
+    a <- .allocation_supply(substrate, spec$kappa, beta)
+    kernels <- vector("list", G)
+    for (i in seq_len(G)) {
+      # An earlier group with the same travel, family and sigma has the same kernel.
+      same <- which(dist_id[seq_len(i - 1L)] == dist_id[i] &
+                      family_id[seq_len(i - 1L)] == family_id[i] &
+                      sigma[seq_len(i - 1L)] == sigma[i])
+      kernels[[i]] <- if (length(same)) kernels[[same[1L]]] else {
+        .allocation_kernel(inputs[[i]], info[[i]]$family, sigma[[i]],
+          kernel = info[[i]]$kernel, fun = info[[i]]$fun,
+          plan = plans[[as.character(dist_id[i])]])
+      }
+    }
+    state <- .clm_group_state(a, kernels, D_groups, v0)
+    by <- state[per_group]
+    state[per_group] <- NULL
+    for (i in seq_len(G)) {
+      rows <- blanked[[i]]
+      if (length(rows)) {
+        by$access_by_group[rows, i] <- NA_real_
+        by$outside_share_by_group[rows, i] <- NA_real_
+      }
+    }
+    plan <- substrate
+    plan$S <- S
+    plan$kappa_supply <- .allocation_supply(substrate, spec$kappa)
+    class(plan) <- c("huff_compact_plan", "fca_compact_plan")
+    list(
+      map = function(x) state$target,
+      outputs = function(x) state,
+      outputs_requested = function(x, requested_outputs) {
+        out <- state
+        if ("flow" %in% requested_outputs) {
+          out$flow <- .clm_flow(state$allocation, substrate$D_active)
+        }
+        for (name in intersect(per_group, requested_outputs)) out[[name]] <- by[[name]]
+        out
+      },
+      state_independent_outputs = c("flow", per_group),
+      clm_prediction = NULL,
+      jac_state = function(x) {
+        list(
+          jac_state = zero_state,
+          jac_utilization = zero_state,
+          utilization = state$utilization,
+          target = state$target
+        )
+      },
+      jac_param = function(x) matrix(0, n, n_theta),
+      theta = theta,
+      plan = plan
+    )
+  }
+  list(bind = bind)
+}
+
 .compile_huff_map <- function(spec, substrate) {
+  if (!is.null(spec[["groups", exact = TRUE]])) {
+    return(.compile_huff_group_map(spec, substrate))
+  }
   S <- as.vector(substrate$S[, 1])
   n <- length(S)
   n_theta <- length(spec$theta$names)
@@ -641,6 +1011,12 @@
   fit$prediction_snapshot <- .new_clm_prediction_snapshot(problem, step, fit)
   if (!is.null(fit$prediction_snapshot)) {
     fit$evaluated_clm <- fit$prediction_snapshot[c("spec", "theta", "facility_ids", "supply")]
+  }
+  if (!is.null(problem$metadata$spec[["groups", exact = TRUE]])) {
+    # A grouped equilibrium has no prediction snapshot; the markers make the
+    # objects that need one refuse it.
+    fit[c(.group_marker_names, "prediction_snapshot")] <- c(
+      .group_markers(problem$metadata$spec), list(NULL))
   }
   if (isTRUE(diagnostics) && is.function(step$jac_state)) {
     rho <- tryCatch({
@@ -905,7 +1281,7 @@
   state_name <- problem$state$name
   state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
 
-  structure(
+  fit <- structure(
     list(
       model = problem$model,
       family = problem$metadata$spec$family,
@@ -947,6 +1323,11 @@
     ),
     class = c("ae_problem_nfxp_fit", paste0(problem$model, "_problem_nfxp_fit"))
   )
+  if (!is.null(problem$metadata$spec[["groups", exact = TRUE]])) {
+    # prediction_snapshot is already NULL: a grouped evaluation has none.
+    fit[.group_marker_names] <- .group_markers(problem$metadata$spec)
+  }
+  fit
 }
 
 #' Compare calibrated AE problem fits on an identical target and loss

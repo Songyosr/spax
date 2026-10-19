@@ -11,7 +11,8 @@ Raster origin IDs are retained cell numbers within the prepared template.
 Older prepared raster problems use their explicit \code{demand_kept_index} as
 these cell keys when \code{origin_ids} is absent; this is not a length-based guess.
 Custom providers can declare \code{output_axes} in their spec and supply
-\code{origin_ids} / \code{facility_ids} in the substrate. No axis is inferred from
-an output name or a coincident vector length.
+\code{origin_ids} / \code{facility_ids} (and \code{group_ids} for demand groups) in the
+substrate. No axis is inferred from an output name or a coincident vector
+length.
 }
 \keyword{internal}

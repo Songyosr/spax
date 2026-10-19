@@ -3,8 +3,10 @@
 #' Prepare named numeric allocation inputs for existing AE providers
 #'
 #' Demand is a numeric vector, supply a nonnegative finite vector, and distance
-#' an origin-by-facility numeric matrix. Canonical IDs must be complete, unique
-#' and nonblank. Named axes match independently; unnamed axes are positional.
+#' an origin-by-facility numeric matrix. Demand may also be a named list of
+#' named numeric vectors (demand groups, SPAX-057), and distance a named list of
+#' matrices by group; see `.prepare_allocation_groups()`. Canonical IDs must be
+#' complete, unique and nonblank. Named axes match independently; unnamed axes are positional.
 #' An unnamed `included` mask follows the supplied demand order and is reordered
 #' with demand. A named mask instead matches canonical origin IDs independently.
 #'
@@ -23,16 +25,39 @@
 #' @keywords internal
 #' @md
 .prepare_allocation <- function(demand, supply, distance,
-                                origin_ids = names(demand),
-                                facility_ids = colnames(distance),
-                                included = rep(TRUE, length(demand)),
+                                origin_ids = NULL,
+                                facility_ids = NULL,
+                                included = NULL,
                                 missing_demand = c("error", "exclude"),
                                 missing_travel = c("error", "legacy_zero"),
                                 spatial = NULL, metadata = list()) {
   missing_demand <- match.arg(missing_demand)
   missing_travel <- match.arg(missing_travel)
+  if (is.data.frame(demand)) {
+    stop("give demand groups as a named list of numeric vectors (one per group), ",
+         "not a data frame")
+  }
+  grouped <- is.list(demand)
+  # Defaults: origin IDs are the names of the demand vector (of the first group
+  # for grouped demand), facility IDs the travel column names, and every origin
+  # is included.
+  if (is.null(origin_ids)) {
+    origin_ids <- if (grouped) {
+      if (length(demand)) names(demand[[1L]]) else NULL
+    } else names(demand)
+  }
+  if (is.null(facility_ids)) {
+    facility_ids <- if (is.list(distance) && length(distance) &&
+                        is.matrix(distance[[1L]])) colnames(distance[[1L]]) else
+                          colnames(distance)
+  }
   origins <- .allocation_ids(origin_ids, "origin_ids")
   facilities <- .allocation_ids(facility_ids, "facility_ids")
+  if (is.null(included)) included <- rep(TRUE, length(origins))
+  if (grouped) {
+    return(.prepare_allocation_groups(demand, supply, distance, origins, facilities,
+      included, missing_demand, missing_travel, spatial, metadata))
+  }
   if (!is.numeric(demand) || !is.null(dim(demand)) || length(demand) != length(origins)) {
     stop("demand must be a numeric vector matching origin_ids")
   }
@@ -71,6 +96,86 @@
     active, keep, list(source = "numeric", missing_demand = missing_demand,
                       missing_travel = missing_travel, kernel_domain = "strict"),
     spatial, metadata)
+}
+
+# Grouped numeric preparation (SPAX-057). `demand` is a named list by group of
+# named numeric vectors with one name set (the origin IDs, any order); `distance`
+# is one matrix shared by the groups or a named list of matrices by group, each
+# aligned by origin and facility IDs as the ungrouped matrix is. An origin is
+# active when it is included, every group demand is known (finite, nonnegative)
+# and the total is positive; with missing_demand = "exclude" an origin with any
+# group demand missing is unknown as a whole. A group with zero demand at an
+# active origin carries no flow, so its travel is not checked there. Unnamed
+# `included` follows the order of the first group. The ungrouped fields keep their
+# meaning (D_active is the total demand; distance_active the shared matrix, NULL
+# for per-group travel); the group fields are appended.
+.prepare_allocation_groups <- function(demand, supply, distance, origins, facilities,
+                                       included, missing_demand, missing_travel,
+                                       spatial, metadata) {
+  groups <- names(demand)
+  .check_group_ids(groups, "demand group names")
+  n <- length(origins)
+  if (!is.numeric(supply) || !is.null(dim(supply)) || length(supply) != length(facilities)) {
+    stop("supply must be a numeric vector matching facility_ids")
+  }
+  Dm <- matrix(NA_real_, n, length(groups), dimnames = list(origins, groups))
+  for (g in groups) {
+    d <- demand[[g]]
+    if (!is.numeric(d) || !is.null(dim(d)) || is.null(names(d))) {
+      stop("demand group '", g, "' must be a named numeric vector of origin demand")
+    }
+    order_g <- .allocation_order(names(d), origins, paste0("demand group '", g, "'"))
+    if (g == groups[1L]) order_d <- order_g
+    Dm[, g] <- unname(d[order_g])
+  }
+  if (!is.logical(included) || !is.null(dim(included)) ||
+      length(included) != n || anyNA(included)) {
+    stop("included must be a nonmissing logical vector matching demand")
+  }
+  order_i <- if (is.null(names(included))) order_d else
+    .allocation_order(names(included), origins, "included")
+  included <- unname(included[order_i])
+  if (any(!is.na(Dm) & (!is.finite(Dm) | Dm < 0))) {
+    stop("demand must be finite and nonnegative, or missing")
+  }
+  unknown_group <- is.na(Dm)
+  if (missing_demand == "error" && any(included & rowSums(unknown_group) > 0)) {
+    bad <- groups[colSums(unknown_group & included) > 0]
+    stop("included missing demand requires missing_demand = 'exclude' (missing in group: ",
+         paste(bad, collapse = ", "), ")")
+  }
+  # rowSums() is NA when any group demand is missing: the origin is unknown.
+  total <- unname(rowSums(Dm))
+  keep <- which(included & is.finite(total) & total > 0)
+  per_group <- .fca_per_group(distance, groups, "distance", element = is.matrix)
+  shared <- is.null(per_group)
+  travel <- if (shared) stats::setNames(rep(list(distance), length(groups)), groups) else
+    per_group
+  active_g <- vector("list", length(groups))
+  names(active_g) <- groups
+  for (g in groups) {
+    M <- travel[[g]]
+    label <- if (shared) "distance" else paste0("distance[['", g, "']]")
+    if (!is.matrix(M) || !is.numeric(M) || !identical(dim(M), c(n, length(facilities)))) {
+      stop(if (shared) "distance must be an origin-by-facility numeric matrix" else
+        paste0("distance for group '", g, "' must be an origin-by-facility numeric matrix"))
+    }
+    if (shared && g != groups[1L]) {
+      active_g[[g]] <- active_g[[1L]]
+      next
+    }
+    rows <- .allocation_order(rownames(M), origins, paste(label, "origin"))
+    cols <- .allocation_order(colnames(M), facilities, paste(label, "facility"))
+    a <- M[rows[keep], cols, drop = FALSE]
+    dimnames(a) <- list(origins[keep], facilities)
+    active_g[[g]] <- a
+  }
+  supply <- supply[.allocation_order(names(supply), facilities, "supply")]
+  S <- matrix(unname(supply), ncol = 1L)
+  policy <- list(source = "numeric", missing_demand = missing_demand,
+                 missing_travel = missing_travel, kernel_domain = "strict")
+  .finalize_allocation_groups(Dm, total, included, origins, S, facilities, active_g,
+    shared, keep, policy, spatial, metadata)
 }
 
 .allocation_ids <- function(ids, label) {
@@ -151,13 +256,52 @@
 # Do not rescan generated all-cell strings or repeat user-ID validation here.
 .finalize_allocation <- function(demand, included, origins, S, facilities, supply_cols,
                                  active, keep, policy, spatial = NULL, metadata = list()) {
-  if (!is.matrix(S) || !is.numeric(S) || nrow(S) != length(facilities) ||
-      any(!is.finite(S) | S < 0)) stop("supply must be finite and nonnegative")
+  .allocation_check_supply(S, facilities)
   expected <- which(included & is.finite(demand) & demand > 0)
   if (!identical(keep, expected) || !is.matrix(active) || !is.numeric(active) ||
       !identical(dim(active), c(length(keep), length(facilities)))) {
     stop("active inputs do not match the declared demand support")
   }
+  travel <- .allocation_travel_state(active)
+  if (policy$kernel_domain == "strict") {
+    if (any(travel$invalid)) stop("travel must be nonnegative or positive infinity")
+    if (policy$missing_travel == "error" && any(travel$unknown)) {
+      stop("active travel is missing; declare missing_travel = 'legacy_zero' to omit unknown edges")
+    }
+  }
+  status <- .allocation_origin_status(demand, included, keep)
+  geometry <- .allocation_spatial(spatial, origins)
+  structure(list(D_active = demand[keep], distance_active = active, S = S,
+                 facility_ids = facilities, origin_ids = origins[keep],
+                 supply_cols = supply_cols, demand_kept_index = keep,
+                 template = geometry$template, cell_index = geometry$cell_index,
+                 all_origin_ids = origins, origin_status = status,
+                 active_unknown_travel = travel$unknown,
+                 active_travel_status = travel$status,
+                 input_policy = policy, input_metadata = .allocation_metadata(metadata)),
+            class = "ae_prepared_inputs")
+}
+
+.allocation_check_supply <- function(S, facilities) {
+  if (!is.matrix(S) || !is.numeric(S) || nrow(S) != length(facilities) ||
+      any(!is.finite(S) | S < 0)) stop("supply must be finite and nonnegative")
+  invisible(TRUE)
+}
+
+# Registry status of every origin; `demand` is NA for unknown demand.
+.allocation_origin_status <- function(demand, included, keep) {
+  status <- rep("excluded", length(demand))
+  status[included & is.na(demand)] <- "unknown"
+  status[included & !is.na(demand) & (!is.finite(demand) | demand < 0)] <- "invalid_omitted"
+  status[included & is.finite(demand) & demand == 0] <- "zero"
+  status[keep] <- "active"
+  status
+}
+
+# Per-row travel flags and status of the active matrix. `relevant` (grouped
+# preparation) restricts the unknown and invalid flags to the rows where the
+# group has positive demand; NULL keeps every row.
+.allocation_travel_state <- function(active, relevant = NULL) {
   unknown_travel <- invalid_travel <- rep(FALSE, nrow(active))
   names(unknown_travel) <- names(invalid_travel) <- rownames(active)
   if (anyNA(active)) unknown_travel <- rowSums(is.na(active)) > 0
@@ -165,18 +309,11 @@
   if (min(active, Inf, na.rm = TRUE) < 0) {
     invalid_travel <- rowSums(active < 0, na.rm = TRUE) > 0
   }
-  if (policy$kernel_domain == "strict") {
-    if (any(invalid_travel)) stop("travel must be nonnegative or positive infinity")
-    if (policy$missing_travel == "error" && any(unknown_travel)) {
-      stop("active travel is missing; declare missing_travel = 'legacy_zero' to omit unknown edges")
-    }
+  if (!is.null(relevant)) {
+    unknown_travel <- unknown_travel & relevant
+    invalid_travel <- invalid_travel & relevant
   }
-  status <- rep("excluded", length(origins))
-  status[included & is.na(demand)] <- "unknown"
-  status[included & !is.na(demand) & (!is.finite(demand) | demand < 0)] <- "invalid_omitted"
-  status[included & is.finite(demand) & demand == 0] <- "zero"
-  status[keep] <- "active"
-  travel_status <- rep("known", length(keep))
+  travel_status <- rep("known", nrow(active))
   # A row can be all absent only if each successive column is +Inf. Narrow
   # the candidate indices without constructing an origin-by-facility mask.
   absent <- which(active[, 1L] == Inf)
@@ -187,15 +324,58 @@
   travel_status[absent] <- "all_absent"
   travel_status[unknown_travel] <- "unknown"
   travel_status[invalid_travel] <- "invalid_legacy"
+  list(unknown = unknown_travel, invalid = invalid_travel, status = travel_status)
+}
+
+# Grouped finalizer (numeric route only). `Dm` is the full origin-by-group
+# demand matrix in canonical order, `total` its row sums (NA for unknown
+# origins), `active_g` the named list of n_act x J travel matrices by group
+# (the same matrix repeated when travel is `shared`).
+.finalize_allocation_groups <- function(Dm, total, included, origins, S, facilities,
+                                        active_g, shared, keep, policy,
+                                        spatial = NULL, metadata = list()) {
+  .allocation_check_supply(S, facilities)
+  groups <- colnames(Dm)
+  Dg <- Dm[keep, , drop = FALSE]
+  rownames(Dg) <- origins[keep]
+  state <- stats::setNames(vector("list", length(groups)), groups)
+  for (g in groups) {
+    state[[g]] <- .allocation_travel_state(active_g[[g]], relevant = Dg[, g] > 0)
+    if (any(state[[g]]$invalid)) {
+      stop("travel must be nonnegative or positive infinity (group '", g, "')")
+    }
+    if (policy$missing_travel == "error" && any(state[[g]]$unknown)) {
+      stop("active travel is missing; declare missing_travel = 'legacy_zero' to omit ",
+           "unknown edges (group '", g, "')")
+    }
+  }
+  pick <- function(field) lapply(state, `[[`, field)
+  unknown_g <- pick("unknown")
+  status_g <- pick("status")
+  union_or <- function(x) Reduce(`|`, x)
+  unknown <- union_or(unknown_g)
+  invalid <- union_or(pick("invalid"))
+  # All absent: every group with positive demand at the row has no edge.
+  all_absent <- Reduce(`&`, Map(function(st, g) st == "all_absent" | !(Dg[, g] > 0),
+                                status_g, groups))
+  travel_status <- rep("known", length(keep))
+  travel_status[all_absent] <- "all_absent"
+  travel_status[unknown] <- "unknown"
+  travel_status[invalid] <- "invalid_legacy"
   geometry <- .allocation_spatial(spatial, origins)
-  structure(list(D_active = demand[keep], distance_active = active, S = S,
+  structure(list(D_active = unname(total[keep]),
+                 distance_active = if (shared) active_g[[1L]] else NULL, S = S,
                  facility_ids = facilities, origin_ids = origins[keep],
-                 supply_cols = supply_cols, demand_kept_index = keep,
+                 supply_cols = "supply", demand_kept_index = keep,
                  template = geometry$template, cell_index = geometry$cell_index,
-                 all_origin_ids = origins, origin_status = status,
-                 active_unknown_travel = unknown_travel,
+                 all_origin_ids = origins,
+                 origin_status = .allocation_origin_status(total, included, keep),
+                 active_unknown_travel = unknown,
                  active_travel_status = travel_status,
-                 input_policy = policy, input_metadata = .allocation_metadata(metadata)),
+                 input_policy = policy, input_metadata = .allocation_metadata(metadata),
+                 group_ids = groups, D_groups = Dg, distance_groups = active_g,
+                 active_travel_status_groups = status_g,
+                 active_unknown_travel_groups = unknown_g),
             class = "ae_prepared_inputs")
 }
 
