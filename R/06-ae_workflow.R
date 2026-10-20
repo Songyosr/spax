@@ -147,6 +147,108 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
                  allocation = "clm", kernel = args$kernel, grouped = args$grouped)
 }
 
+#' Declare the Huff model over checked allocation inputs
+#'
+#' Declare the Huff model, a conditional logit allocation without an outside
+#' option, over checked allocation inputs.
+#'
+#' The Huff model (Huff, 1963) gives each facility a share of each origin's
+#' demand in proportion to its attractiveness times a decay in travel time:
+#' `P_ij = a_j W(d_ij) / sum_k a_k W(d_ik)`, where `a_j = (kappa * S_j)^beta`
+#' for facility supply `S_j`. Every origin's demand is shared among the
+#' facilities, so the shares at an origin add up to 1.
+#'
+#' This is the conditional logit model of [clm_allocation()] without an outside
+#' option: `huff_allocation()` calls `clm_allocation()` with `v0 = 0` and returns
+#' the same kind of model, so [fit_allocation()], [evaluate_allocation()],
+#' [predict_allocation()], [check_allocation()] and [compare_allocations()] work
+#' on it unchanged. Use `clm_allocation(fit_v0 = TRUE)` when part of the demand
+#' goes to facilities that are not in the data.
+#'
+#' With the default power decay, `W(d) = d^(-sigma)`, so spax's `sigma` is
+#' Huff's distance exponent and `beta` is his exponent on attractiveness. Both
+#' are fitted by default (`fit_beta = TRUE`); with `beta = 1` and
+#' `fit_beta = FALSE`, attractiveness is proportional to supply. Power decay is
+#' undefined at a travel time of 0, so use a positive minimum travel time or
+#' another kernel (`family`).
+#'
+#' The facility bootstrap [bootstrap_allocation()] needs a fitted outside weight
+#' and so does not apply to a Huff model.
+#'
+#' @inheritParams clm_allocation
+#' @param family Travel kernel, as in [clm_allocation()]: `"power"` (the
+#'   default, Huff's form), `"gaussian"`, `"exponential"`, a declaration from
+#'   [decay_kernel()], or for inputs with demand groups a named list with one
+#'   of these per group.
+#' @param beta Positive exponent on attractiveness in `(kappa * supply)^beta`:
+#'   the value held fixed when `fit_beta = FALSE`.
+#' @param fit_beta `TRUE` (the default) fits `beta` as a parameter; `FALSE`
+#'   holds it at the given value.
+#' @param by_group For inputs with demand groups: `"sigma"` lets the decay
+#'   differ by group (default none). `"v0"` is refused, since the Huff model has
+#'   no outside option.
+#' @param fixed For inputs with demand groups: a named numeric vector of
+#'   parameters held fixed, as in [clm_allocation()]. Names of outside weights
+#'   (`v0`) are refused.
+#' @return The existing private `ae_problem` for corrected static CLM with no
+#'   outside option. Parameter order is sigma, then beta when it is fitted. With
+#'   demand groups sigma is `sigma.<group>` for the groups in `by_group`.
+#' @references
+#' Huff DL (1963). A probabilistic analysis of shopping center trade areas.
+#' *Land Economics* 39(1):81-90. \doi{10.2307/3144521}
+#' @seealso [clm_allocation()] for the general model with an outside option.
+#' @family experimental allocation workflow
+#' @examples
+#' # Mainland Cornwall: small areas share their registered residents among the
+#' # practices in proportion to attractiveness times travel-time decay.
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#'
+#' # Without an outside option, demand is the residents registered at the
+#' # mainland practices
+#' demand <- stats::setNames(areas$registered_in, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' inputs <- prepare_allocation(demand, supply, travel)
+#'
+#' # Power decay with a fitted attractiveness exponent
+#' model <- huff_allocation(inputs)
+#'
+#' # Evaluate at given parameters: distance exponent 2, attractiveness
+#' # exponent 1
+#' evaluate_allocation(model, c(sigma = 2, beta = 1))
+#'
+#' # Fit practice totals of registrations from two starts
+#' totals <- tapply(cornwall_flows$patients, cornwall_flows$practice, sum)
+#' observed <- stats::setNames(numeric(ncol(travel)), colnames(travel))
+#' observed[intersect(names(totals), names(observed))] <-
+#'   totals[intersect(names(totals), names(observed))]
+#' fit <- fit_allocation(
+#'   model, observed,
+#'   starts = rbind(a = c(sigma = 1, beta = 0.5), b = c(sigma = 3, beta = 1.5)),
+#'   lower = c(sigma = 0.1, beta = 0.05), upper = c(sigma = 10, beta = 5),
+#'   loss = "poisson"
+#' )
+#' fit$best$theta
+#' @export
+#' @md
+huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
+                            fit_beta = TRUE, by_group = character(),
+                            fixed = NULL) {
+  no_outside <- paste0("the Huff model has no outside option; use ",
+                       "clm_allocation(fit_v0 = TRUE) for one")
+  if (is.character(by_group) && "v0" %in% by_group) {
+    stop(no_outside, call. = FALSE)
+  }
+  if (!is.null(fixed) && !is.null(names(fixed)) &&
+      any(grepl("^v0(\\.|$)", names(fixed)))) {
+    stop(no_outside, call. = FALSE)
+  }
+  clm_allocation(inputs, family = family, kappa = kappa, beta = beta, v0 = 0,
+                 fit_v0 = FALSE, fit_beta = fit_beta, by_group = by_group,
+                 fixed = fixed)
+}
+
 .check_allocation_model <- function(model) {
   .chck_class(model, "ae_problem", "model")
   if (!identical(model$model, "huff") ||
