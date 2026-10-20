@@ -163,7 +163,8 @@
 .bind_check_zero_travel <- function(data, decays) {
   refuse <- function(kernel, n) {
     stop(kernel$name, " decay needs positive travel times, and ", n,
-         " origin-facility pairs have travel 0; use decay_exponential() or ",
+         if (n == 1) " origin-facility pair has" else " origin-facility pairs have",
+         " travel 0; use decay_exponential() or ",
          "decay_gaussian(), or set a minimum travel time (for example ",
          "pmax(travel, 1))", call. = FALSE)
   }

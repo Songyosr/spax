@@ -42,11 +42,12 @@ reference:
       - compute_access
 
   - title: "Allocation Interface (experimental)"
-    desc: "Prepare data, and specify an allocation model without data, with decay kernels and fitted or held parameters"
+    desc: "Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters) and declare observed counts"
     contents:
       - prep_data
       - decay_gaussian
       - spec_clm
+      - obs_flows
 
   - title: "Experimental Allocation Workflow"
     desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"

@@ -113,6 +113,7 @@ spec_clm(
 \seealso{
 Other allocation interface: 
 \code{\link{decay_gaussian}()},
+\code{\link{obs_flows}()},
 \code{\link{prep_data}()}
 }
 \concept{allocation interface}

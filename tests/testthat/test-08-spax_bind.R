@@ -390,8 +390,9 @@ test_that("D8 ungrouped: power decay refuses a zero travel time, gaussian accept
   travel["o2", "facility1"] <- 0
   data <- prepare_allocation(f$demand, f$supply, travel)
   msg <- function(n, name = "power") {
-    paste0(name, " decay needs positive travel times, and ", n, " origin-facility pairs ",
-           "have travel 0; use decay_exponential() or decay_gaussian(), or set a minimum ",
+    paste0(name, " decay needs positive travel times, and ", n,
+           if (n == 1) " origin-facility pair has " else " origin-facility pairs have ",
+           "travel 0; use decay_exponential() or decay_gaussian(), or set a minimum ",
            "travel time (for example pmax(travel, 1))")
   }
   expect_identical(bind_error(.bind_spax_spec(spec_huff(), data)), msg(1))
@@ -450,7 +451,7 @@ test_that("D8 grouped: a zero only on a row where the power group has no demand 
     old_power <- list(young = decay_gaussian(), mid = decay_gaussian(), old = decay_power())
     msg <- bind_error(.bind_spax_spec(spec_clm(old_power), data))
     expect_identical(msg, paste0("power decay needs positive travel times, and 1 ",
-      "origin-facility pairs have travel 0; use decay_exponential() or decay_gaussian(), ",
+      "origin-facility pair has travel 0; use decay_exponential() or decay_gaussian(), ",
       "or set a minimum travel time (for example pmax(travel, 1))"))
     # a shared power decay applies to every group, so it is refused too
     expect_match(bind_error(.bind_spax_spec(spec_huff(), data)),

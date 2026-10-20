@@ -108,6 +108,7 @@ prep_data(demand, supply, travel,
 \seealso{
 Other allocation interface: 
 \code{\link{decay_gaussian}()},
+\code{\link{obs_flows}()},
 \code{\link{spec_clm}()}
 }
 \concept{allocation interface}
