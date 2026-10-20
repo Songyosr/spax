@@ -178,17 +178,17 @@ status: selected; selected start: near
 loss disagreement: FALSE; parameter disagreement: FALSE
 Supplied-start diagnostics (not a global-optimum or identification guarantee):
   start     loss eligible optim_convergence solver_converged residual seconds
-   near -3168000     TRUE                 0             TRUE        0   0.813
- middle -3168000     TRUE                 0             TRUE        0   0.213
-    far -3168000     TRUE                 0             TRUE        0   0.343
+   near -3168000     TRUE                 0             TRUE        0   0.650
+ middle -3168000     TRUE                 0             TRUE        0   0.236
+    far -3168000     TRUE                 0             TRUE        0   0.361
  boundary   status                                   optim_message
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
  solver_message log_parameter_gap loss_gap
       converged         0.000e+00        0
-      converged         1.759e-07        0
-      converged         2.755e-07        0
+      converged         1.762e-07        0
+      converged         2.760e-07        0
 
 Selected fit:
 <summary.ae_problem_nfxp_fit>
@@ -203,7 +203,7 @@ theta:
 
 fit:
      loss convergence seconds spectral_radius gradient
- -3168000           0   0.805               0     TRUE
+ -3168000           0   0.641               0     TRUE
 
 predicted:
         min       q25   median  mean      q75  max
