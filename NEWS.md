@@ -1,5 +1,12 @@
 # spax (development version)
 
+* New experimental `huff_allocation()` declares the Huff model, the allocation model
+  of `clm_allocation()` without an outside option, with power distance decay and a
+  fitted attractiveness exponent by default. Package descriptions now present spax as a
+  modular engine for floating catchment methods and allocation models.
+* `check_allocation()` no longer stops when the no-decay comparator searches a fitted
+  attractiveness exponent `beta` into a range where attractiveness is not finite, which
+  can happen for a model without an outside weight.
 * The allocation model accepts demand groups (experimental): give `prepare_allocation()`
   demand as a named list by group, and optionally travel as a named list by group.
   `clm_allocation(by_group = )` lets the decay `sigma` (and the outside weight `v0`) differ

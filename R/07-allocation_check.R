@@ -92,10 +92,14 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   }
   if (has_beta) {
     free <- intersect(c("v0", "beta"), names(theta))
+    # A search step can leave the range where attractiveness is finite (for
+    # example a large beta without an outside option): count it as a very poor
+    # fit rather than stopping the check.
     joint <- function(par) {
       th <- flat_theta
       th[free] <- exp(par)
-      flat_loss_at(th)
+      value <- tryCatch(flat_loss_at(th), error = function(e) NA_real_)
+      if (is.finite(value)) value else .Machine$double.xmax^0.25
     }
     opt <- stats::optim(log(flat_theta[free]), joint, method = if (length(free) > 1L)
       "Nelder-Mead" else "BFGS", control = list(reltol = 1e-12, maxit = 2000))

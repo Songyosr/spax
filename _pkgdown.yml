@@ -46,6 +46,7 @@ reference:
     contents:
       - prepare_allocation
       - clm_allocation
+      - huff_allocation
       - fit_allocation
       - evaluate_allocation
       - predict_allocation

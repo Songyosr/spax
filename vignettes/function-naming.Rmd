@@ -25,7 +25,9 @@ library(spax)
 spax retains its public FCA functions alongside the experimental static
 allocation workflow. Names describe the interface they belong to; there is no
 rule that every complete workflow must start with `spax_`. Existing FCA calls
-and result types remain supported.
+and result types remain supported. Within the allocation workflow, model
+declarations are named `<model>_allocation()` (`clm_allocation()`,
+`huff_allocation()`) and workflow steps `<verb>_allocation()`.
 
 ## Choose the level of operation
 
@@ -39,7 +41,7 @@ and result types remain supported.
 | Decay, normalization or choice weights | `calc_decay()`, `decay_kernel()`, `calc_normalize()`, `calc_choice()` | See the individual input/output contracts |
 | Weighted reduction to facilities | `gather_weighted()`, `gather_demand()` | Facility vector/table |
 | Weighted distribution to origins | `spread_weighted()`, `spread_access()` | Raster result |
-| Checked allocation preparation and declaration | `prepare_allocation()`, `clm_allocation()` | Prepared inputs and experimental model |
+| Checked allocation preparation and declaration | `prepare_allocation()`, `clm_allocation()`, `huff_allocation()` | Prepared inputs and experimental model |
 | Fit, evaluate, predict and bootstrap | `fit_allocation()`, `evaluate_allocation()`, `predict_allocation()`, `bootstrap_allocation()` | Model-specific saved results |
 | Check and compare fitted allocations | `check_allocation()`, `compare_allocations()` | Comparison tables; the fits are not changed |
 | Travel times and demand inputs | `calc_travel_time()`, `calc_demand()` | Travel matrix or raster; demand raster or vector |
@@ -56,7 +58,7 @@ functions <- c(
   "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
   "compute_access",
   # Experimental allocation workflow
-  "prepare_allocation", "clm_allocation", "fit_allocation",
+  "prepare_allocation", "clm_allocation", "huff_allocation", "fit_allocation",
   "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
   "check_allocation", "compare_allocations",
   # Input helpers
