@@ -281,18 +281,62 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
   invisible(TRUE)
 }
 
-#' Calibrate a declared allocation model from explicit starting points
+#' Calibrate a declared allocation model, by default from starts found in the data
 #'
 #' Count targets and loss choice are separate. Weighted SSE retains the existing
-#' default; Poisson is explicit. Custom loss/gradient functions pass through.
-#' Observation-indexed loss arguments must be in canonical order. Starts,
-#' boundaries, failed runs and disagreement retain the existing multistart
-#' result; a selected fit is not a claim of identification or global optimality.
+#' default when `starts` are given; Poisson is explicit. Custom loss/gradient
+#' functions pass through. Observation-indexed loss arguments must be in
+#' canonical order. Starts, boundaries, failed runs and disagreement retain the
+#' existing multistart result; a selected fit is not a claim of identification or
+#' global optimality.
 #'
 #' A model whose decay kernel was declared with `smooth = FALSE` (see
 #' [decay_kernel()]) is refused, because fitting needs a kernel that is smooth in
 #' sigma. Evaluate such a kernel at fixed parameters with [evaluate_allocation()],
 #' for example over a grid of sigma and v0.
+#'
+#' **Default search.** For the count outputs `starts`, `lower` and `upper` are
+#' optional. When `starts` is `NULL` they come from the data (`loss` must then be
+#' named, because the estimator is not chosen silently):
+#' 1. the decay kernel is probed at the nearest, a far and the largest travel
+#'    time of the data for the range of sigma over which it still decays over the
+#'    travel times, whatever the unit of the travel times;
+#' 2. sigma takes 15 log-spaced values over that range, from the steepest to the
+#'    flattest kernel (group-specific sigmas walk together);
+#' 3. a fitted outside weight `v0` is seeded from the observed outside share,
+#'    times 0.1, 1 and 10, and a fitted `beta` starts at 1;
+#' 4. the loss is evaluated at every point, by the code the fit itself uses;
+#' 5. the fit starts from the best point of up to three sigma values (local
+#'    minima along the grid first), named `scan1`, `scan2`, ...
+#'
+#' The default bounds are the probed range for sigma; for `v0`, from a thousandth
+#' of the smallest to a thousand times the largest of the best values on the grid;
+#' and 0.05 to 5 for `beta`. Bounds you give replace the default ones one by one,
+#' and starts you give widen the default bounds to include them (the scan then
+#' runs only to find a default bound of `v0`). The search is recorded in the
+#' `default_search` element of the result.
+#'
+#' When the starts come from the search, `gradient` and `control` default (each
+#' unless you give it) to analytic gradients, when the loss has one, and strict
+#' optimizer settings, `control = list(maxit = 300, factr = 10, pgtol = 1e-8)`,
+#' because the optimizer defaults can stop early at a different outside weight.
+#' Given `starts` keep the earlier defaults.
+#'
+#' A model in which every sigma is held (demand groups with `fixed`) has no sigma to
+#' probe or scan: the starts are the three `v0` seeds at the held values, or, with
+#' only `beta` free, `beta` = 0.5, 1 and 2.
+#'
+#' A fully observed target whose counts reach the total demand has no outside
+#' share for `v0` to explain: the search stops with an error (use `v0 = 0`), and
+#' warns when the counts are within 0.1% of the total demand. Starts and bounds
+#' remain required for any output other than `utilization`, `flow` and
+#' `utilization_by_group`, and calls that give `starts`, `lower` and `upper` run
+#' exactly as before.
+#'
+#' The cost is about one solve of the model per grid point, 15 to 45 solves: about
+#' a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins
+#' and 400 facilities, which is roughly the cost of one strict start. Give your own
+#' starts to skip it.
 #' @param model A corrected CLM declared over checked prepared inputs. A kernel
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
@@ -303,12 +347,15 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   existing fitter. For `utilization_by_group` (a model with demand groups) a
 #'   facility-by-group matrix of observed counts with both axes named (group
 #'   columns by group ID, facility rows by facility ID, any order).
-#' @param starts A finite positive matrix, one explicit independent start per
-#'   row, with exactly the named model parameter columns. No random starts are
-#'   added. Each start must lie inside the supplied positive bounds.
-#' @param lower,upper Complete named positive parameter bounds with lower < upper.
-#'   For a declared kernel, the starts and bounds of sigma must lie within the
-#'   bounds of the declaration.
+#' @param starts `NULL` (default) for the default search, or a finite positive
+#'   matrix, one explicit independent start per row, with exactly the named model
+#'   parameter columns. No random starts are added. Each start must lie inside the
+#'   bounds. Given starts with `lower` or `upper` missing or partial use default
+#'   bounds for the missing entries, widened to include every start.
+#' @param lower,upper `NULL` (default), or named positive parameter bounds with
+#'   lower < upper: complete, or for some of the parameters only (the default
+#'   bounds replace the missing entries). For a declared kernel, the starts and
+#'   bounds of sigma must lie within the bounds of the declaration.
 #' @param output Exact model output to calibrate; default facility utilization.
 #'   `flow` is expected origin-facility counts, while `allocation` is an inside
 #'   probability operator. Requesting counts does not select a likelihood.
@@ -328,7 +375,8 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   below the floor are reported with a warning, because the loss is capped
 #'   there. Fits made before this default used 1e-9; pass
 #'   `loss_args = list(eps = 1e-9)` to reproduce them. Joint fitting does not
-#'   force total matching.
+#'   force total matching. The default is `"weighted_sse"` when `starts` are
+#'   given; without `starts` the loss must be named.
 #' @param loss_args Named auxiliary arguments passed to loss callbacks. For
 #'   `loss = "poisson"` an `eps` of 1e-250 is added when none is given; other
 #'   arguments pass unchanged. Any observation-indexed values must already
@@ -337,19 +385,29 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   choices supply their existing analytic loss-gradient adapters. A custom
 #'   loss requires its own loss_grad when gradient=TRUE; none is invented.
 #' @param gradient Logical; use the existing implicit sensitivity route when
-#'   TRUE. FALSE retains the underlying fitter's default behavior.
+#'   TRUE. FALSE retains the underlying fitter's default behavior. When `starts`
+#'   is `NULL` and `gradient` is not given, it is `TRUE` if the loss has a gradient
+#'   (the built-in losses, or a custom loss with `loss_grad`).
 #' @param ... Named multistart or fitting controls, including solver tolerances,
 #'   optimizer `control`, `keep_fits` and descriptive disagreement tolerances.
+#'   When `starts` is `NULL` and `control` is not given it is
+#'   `list(maxit = 300, factr = 10, pgtol = 1e-8)`.
 #' @return The existing `ae_multistart_fit`, retaining selected fit, all per-start
-#'   diagnostics, boundaries, warnings/errors and descriptive disagreement.
+#'   diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
+#'   whose starts came from the default search also has a `default_search`
+#'   element: the rule, the sigma range, the number of grid points and of finite
+#'   ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
+#'   the loss.
 #' @seealso [allocation-fit-methods] for methods on saved fits.
 #' @family experimental allocation workflow
 #' @export
 #' @md
-fit_allocation <- function(model, observed, starts, lower, upper,
+fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper = NULL,
                             output = "utilization", loss = "weighted_sse",
                             loss_args = list(), loss_grad = NULL,
                             gradient = FALSE, ...) {
+  loss_missing <- missing(loss)
+  gradient_missing <- missing(gradient)
   .check_allocation_model(model)
   for (kernel in .allocation_kernels(model$metadata$spec)) {
     if (isFALSE(kernel$smooth)) {
@@ -362,6 +420,21 @@ fit_allocation <- function(model, observed, starts, lower, upper,
       any(observed < 0, na.rm = TRUE)) {
     stop("observed expected counts must be nonnegative for output '", output, "'")
   }
+  # Starts and bounds that are not given come from the default search (SPAX-058).
+  expected <- model$theta$names
+  searching <- is.null(starts) || !.default_bounds_cover(lower, expected) ||
+    !.default_bounds_cover(upper, expected)
+  if (searching) {
+    counts <- is.character(output) && length(output) == 1L && !is.na(output) &&
+      output %in% .default_count_outputs &&
+      output %in% names(model$metadata$spec$output_axes)
+    if (!counts) {
+      stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
+           "'")
+    }
+    if (is.null(starts) && loss_missing) stop(.default_search_message$loss)
+  }
+  loss_name <- if (is.character(loss)) match.arg(loss, c("weighted_sse", "poisson")) else "custom"
   if (is.character(loss)) {
     loss <- match.arg(loss, c("weighted_sse", "poisson"))
     if (loss == "poisson" && is.list(loss_args) && !"eps" %in% names(loss_args)) {
@@ -373,9 +446,36 @@ fit_allocation <- function(model, observed, starts, lower, upper,
   } else if (!is.function(loss)) {
     stop("loss must be 'weighted_sse', 'poisson' or a function")
   }
-  result <- .fit_problem_multistart(model, observed, starts, lower, upper,
-    output = output, loss = loss, loss_args = loss_args, loss_grad = loss_grad,
-    gradient = gradient, ...)
+  if (!searching) {
+    result <- .fit_problem_multistart(model, observed, starts, lower, upper,
+      output = output, loss = loss, loss_args = loss_args, loss_grad = loss_grad,
+      gradient = gradient, ...)
+  } else {
+    dots <- list(...)
+    target <- .bind_problem_target(model, observed, output)
+    search <- .allocation_default_search(model, target, output, loss, loss_args,
+      lower = lower, upper = upper, starts = starts,
+      solver_args = dots[names(dots) %in% .default_solver_args])
+    starts_searched <- is.null(starts)
+    # The gradient and strict optimizer controls come with the searched starts only,
+    # and only where the caller gave none; given starts keep today's defaults.
+    control_given <- "control" %in% names(dots)
+    if (starts_searched) {
+      if (gradient_missing) gradient <- is.function(loss_grad)
+      if (!control_given) dots$control <- .default_search_control
+    }
+    if (starts_searched) starts <- search$starts
+    result <- do.call(.fit_problem_multistart, c(list(model, observed, starts,
+      search$lower, search$upper, output = output, loss = loss, loss_args = loss_args,
+      loss_grad = loss_grad, gradient = gradient), dots))
+    if (starts_searched && inherits(result, "ae_multistart_fit")) {
+      record <- search$record
+      record$loss <- loss_name
+      record$controls <- list(gradient = isTRUE(gradient), gradient_default = gradient_missing,
+                              control = dots$control, control_default = !control_given)
+      result$default_search <- record
+    }
+  }
   # A binding floor caps the loss: report it rather than return a capped fit silently.
   if (inherits(result, "ae_multistart_fit") && !is.null(result$best)) {
     floor_info <- .poisson_floor(result$best)

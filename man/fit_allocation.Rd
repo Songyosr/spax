@@ -2,14 +2,14 @@
 % Please edit documentation in R/06-ae_workflow.R
 \name{fit_allocation}
 \alias{fit_allocation}
-\title{Calibrate a declared allocation model from explicit starting points}
+\title{Calibrate a declared allocation model, by default from starts found in the data}
 \usage{
 fit_allocation(
   model,
   observed,
-  starts,
-  lower,
-  upper,
+  starts = NULL,
+  lower = NULL,
+  upper = NULL,
   output = "utilization",
   loss = "weighted_sse",
   loss_args = list(),
@@ -31,13 +31,16 @@ existing fitter. For \code{utilization_by_group} (a model with demand groups) a
 facility-by-group matrix of observed counts with both axes named (group
 columns by group ID, facility rows by facility ID, any order).}
 
-\item{starts}{A finite positive matrix, one explicit independent start per
-row, with exactly the named model parameter columns. No random starts are
-added. Each start must lie inside the supplied positive bounds.}
+\item{starts}{\code{NULL} (default) for the default search, or a finite positive
+matrix, one explicit independent start per row, with exactly the named model
+parameter columns. No random starts are added. Each start must lie inside the
+bounds. Given starts with \code{lower} or \code{upper} missing or partial use default
+bounds for the missing entries, widened to include every start.}
 
-\item{lower, upper}{Complete named positive parameter bounds with lower < upper.
-For a declared kernel, the starts and bounds of sigma must lie within the
-bounds of the declaration.}
+\item{lower, upper}{\code{NULL} (default), or named positive parameter bounds with
+lower < upper: complete, or for some of the parameters only (the default
+bounds replace the missing entries). For a declared kernel, the starts and
+bounds of sigma must lie within the bounds of the declaration.}
 
 \item{output}{Exact model output to calibrate; default facility utilization.
 \code{flow} is expected origin-facility counts, while \code{allocation} is an inside
@@ -59,7 +62,8 @@ to avoid the log of zero; cells with positive observed counts modelled
 below the floor are reported with a warning, because the loss is capped
 there. Fits made before this default used 1e-9; pass
 \code{loss_args = list(eps = 1e-9)} to reproduce them. Joint fitting does not
-force total matching.}
+force total matching. The default is \code{"weighted_sse"} when \code{starts} are
+given; without \code{starts} the loss must be named.}
 
 \item{loss_args}{Named auxiliary arguments passed to loss callbacks. For
 \code{loss = "poisson"} an \code{eps} of 1e-250 is added when none is given; other
@@ -71,27 +75,81 @@ choices supply their existing analytic loss-gradient adapters. A custom
 loss requires its own loss_grad when gradient=TRUE; none is invented.}
 
 \item{gradient}{Logical; use the existing implicit sensitivity route when
-TRUE. FALSE retains the underlying fitter's default behavior.}
+TRUE. FALSE retains the underlying fitter's default behavior. When \code{starts}
+is \code{NULL} and \code{gradient} is not given, it is \code{TRUE} if the loss has a gradient
+(the built-in losses, or a custom loss with \code{loss_grad}).}
 
 \item{...}{Named multistart or fitting controls, including solver tolerances,
-optimizer \code{control}, \code{keep_fits} and descriptive disagreement tolerances.}
+optimizer \code{control}, \code{keep_fits} and descriptive disagreement tolerances.
+When \code{starts} is \code{NULL} and \code{control} is not given it is
+\code{list(maxit = 300, factr = 10, pgtol = 1e-8)}.}
 }
 \value{
 The existing \code{ae_multistart_fit}, retaining selected fit, all per-start
-diagnostics, boundaries, warnings/errors and descriptive disagreement.
+diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
+whose starts came from the default search also has a \code{default_search}
+element: the rule, the sigma range, the number of grid points and of finite
+ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
+the loss.
 }
 \description{
 Count targets and loss choice are separate. Weighted SSE retains the existing
-default; Poisson is explicit. Custom loss/gradient functions pass through.
-Observation-indexed loss arguments must be in canonical order. Starts,
-boundaries, failed runs and disagreement retain the existing multistart
-result; a selected fit is not a claim of identification or global optimality.
+default when \code{starts} are given; Poisson is explicit. Custom loss/gradient
+functions pass through. Observation-indexed loss arguments must be in
+canonical order. Starts, boundaries, failed runs and disagreement retain the
+existing multistart result; a selected fit is not a claim of identification or
+global optimality.
 }
 \details{
 A model whose decay kernel was declared with \code{smooth = FALSE} (see
 \code{\link[=decay_kernel]{decay_kernel()}}) is refused, because fitting needs a kernel that is smooth in
 sigma. Evaluate such a kernel at fixed parameters with \code{\link[=evaluate_allocation]{evaluate_allocation()}},
 for example over a grid of sigma and v0.
+
+\strong{Default search.} For the count outputs \code{starts}, \code{lower} and \code{upper} are
+optional. When \code{starts} is \code{NULL} they come from the data (\code{loss} must then be
+named, because the estimator is not chosen silently):
+\enumerate{
+\item the decay kernel is probed at the nearest, a far and the largest travel
+time of the data for the range of sigma over which it still decays over the
+travel times, whatever the unit of the travel times;
+\item sigma takes 15 log-spaced values over that range, from the steepest to the
+flattest kernel (group-specific sigmas walk together);
+\item a fitted outside weight \code{v0} is seeded from the observed outside share,
+times 0.1, 1 and 10, and a fitted \code{beta} starts at 1;
+\item the loss is evaluated at every point, by the code the fit itself uses;
+\item the fit starts from the best point of up to three sigma values (local
+minima along the grid first), named \code{scan1}, \code{scan2}, ...
+}
+
+The default bounds are the probed range for sigma; for \code{v0}, from a thousandth
+of the smallest to a thousand times the largest of the best values on the grid;
+and 0.05 to 5 for \code{beta}. Bounds you give replace the default ones one by one,
+and starts you give widen the default bounds to include them (the scan then
+runs only to find a default bound of \code{v0}). The search is recorded in the
+\code{default_search} element of the result.
+
+When the starts come from the search, \code{gradient} and \code{control} default (each
+unless you give it) to analytic gradients, when the loss has one, and strict
+optimizer settings, \code{control = list(maxit = 300, factr = 10, pgtol = 1e-8)},
+because the optimizer defaults can stop early at a different outside weight.
+Given \code{starts} keep the earlier defaults.
+
+A model in which every sigma is held (demand groups with \code{fixed}) has no sigma to
+probe or scan: the starts are the three \code{v0} seeds at the held values, or, with
+only \code{beta} free, \code{beta} = 0.5, 1 and 2.
+
+A fully observed target whose counts reach the total demand has no outside
+share for \code{v0} to explain: the search stops with an error (use \code{v0 = 0}), and
+warns when the counts are within 0.1\% of the total demand. Starts and bounds
+remain required for any output other than \code{utilization}, \code{flow} and
+\code{utilization_by_group}, and calls that give \code{starts}, \code{lower} and \code{upper} run
+exactly as before.
+
+The cost is about one solve of the model per grid point, 15 to 45 solves: about
+a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins
+and 400 facilities, which is roughly the cost of one strict start. Give your own
+starts to skip it.
 }
 \seealso{
 \link{allocation-fit-methods} for methods on saved fits.
