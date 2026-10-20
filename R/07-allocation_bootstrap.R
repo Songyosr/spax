@@ -57,7 +57,8 @@
   # fitted, beta may be fixed or fitted, and any fixed kappa/beta is allowed (the
   # model declaration already requires both to be positive).
   if (!isTRUE(spec$fit_v0)) {
-    stop("bootstrap requires a fitted outside mass (fit_v0 = TRUE)")
+    stop("bootstrap requires a fitted outside weight (outside = \"fit\"; ",
+         "fit_v0 = TRUE in clm_allocation())")
   }
   kernel <- spec[["kernel", exact = TRUE]]
   smooth_kernel <- if (is.null(kernel)) spec$family %in% .decay_builtin_families else
@@ -539,14 +540,16 @@
 #' in the allocation network. Need, travel, capacity and included-network inputs
 #' remain fixed. Facility independence is a caller-declared working assumption.
 #'
-#' The model is a static CLM with a fitted outside mass (`fit_v0 = TRUE`) and a
+#' The model is a static CLM with a fitted outside mass (`outside = "fit"` in
+#' [spec_clm()], or `fit_v0 = TRUE` in [clm_allocation()]) and a
 #' decay kernel that is smooth in sigma: the Gaussian, exponential or power
 #' kernel, or a kernel declared with [decay_kernel()] (not with
 #' `smooth = FALSE`). The supply elasticity beta may be fixed or fitted. Every
 #' fitted parameter gets its own interval.
 #'
-#' Exactly 399 attempts use the original explicit starts and positive bounds,
-#' with fixed numerical controls. Failed attempts are retained without replacement.
+#' Exactly 399 attempts use the starts and positive bounds of the original fit
+#' (given, or found by the default search of [fit_allocation()]), with fixed
+#' numerical controls. Failed attempts are retained without replacement.
 #' Successful inner boundary estimates remain in the distribution. Original mean
 #' boundaries, local rank deficiency (fewer identified directions than fitted
 #' parameters) or insufficient fit precision, including a score that cannot be
@@ -571,10 +574,15 @@
 #'   outside mass (`fit_v0 = TRUE`), a decay kernel that is smooth in sigma (built
 #'   in, or declared with [decay_kernel()] and `smooth = TRUE`), and known travel
 #'   on its retained demand support. The supply elasticity beta may be fixed or
-#'   fitted; `kappa` and a fixed `beta` may be any positive values.
+#'   fitted; `kappa` and a fixed `beta` may be any positive values. It can instead
+#'   be a result of [spax()] that fitted such a model to facility totals: the
+#'   result supplies its bound model and its fit, so leave `fit` out and give
+#'   `observation` by name. A Huff model, a fit to flows and an evaluated result
+#'   are refused as for the model and fit given separately.
 #' @param fit A matching multistart fit of complete whole facility counts using
 #'   the unweighted built-in Poisson objective. Fractional or partial observations,
-#'   flow targets and custom objectives are outside this method.
+#'   flow targets and custom objectives are outside this method. Not given when
+#'   `model` is a result of [spax()].
 #' @param observation Named list declaring nonblank `event`, `period` (including
 #'   an explicit unresolved reference date), and `sampling="independent_facilities"`.
 #'   Non-overlapping registration alone does not establish independence.
@@ -598,10 +606,16 @@
 #'   that coverage was evaluated for that case and not studied separately for the
 #'   model; it is printed with the result.
 #'   Scientific refusals are inspectable results; invalid inputs error.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
+  if (.is_allocation_result(model)) {
+    parts <- .allocation_unbundle(model, "model_fit", "bootstrap_allocation()",
+                                  fit_given = !missing(fit))
+    model <- parts$model
+    fit <- parts$fit
+  }
   .refuse_grouped("bootstrap_allocation()", model, fit)
   .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint, attempts = 399L)
 }

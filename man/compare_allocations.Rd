@@ -26,11 +26,16 @@ compare_allocations(
 }
 \arguments{
 \item{fits}{A named list of \code{ae_multistart_fit} results from
-\code{\link[=fit_allocation]{fit_allocation()}}, each with a selected fit.}
+\code{\link[=fit_allocation]{fit_allocation()}}, each with a selected fit. An element can instead be a
+result of \code{\link[=spax]{spax()}} that fitted a model; it supplies its fit and its model.
+A result that was evaluated at given values has no fit and is refused.}
 
 \item{models}{Optional named list of the corresponding models from
 \code{\link[=clm_allocation]{clm_allocation()}}, with the same names, used to verify that travel times
-are identical before reporting loss differences.}
+are identical before reporting loss differences. The elements of \code{fits}
+that are results of \code{\link[=spax]{spax()}} bring their own models and must not be named
+here. When \code{fits} mixes results with plain fits, give \code{models} for the
+plain ones.}
 
 \item{reference}{Name or position of the reference fit.}
 
@@ -86,7 +91,7 @@ are listed. Classes require an adequacy cut in \code{coverage_args}; each fit us
 its own regional contact as the contact cut unless \code{contact_cut} is given.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -99,4 +104,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

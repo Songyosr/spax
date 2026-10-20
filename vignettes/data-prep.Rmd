@@ -342,6 +342,8 @@ inputs <- prepare_allocation(
 class(inputs)
 ```
 
+`prep_data()` is the same preparation with `travel` in place of `distance`, the
+first step of `spax()` (see the [allocation workflow](allocation-workflow.html)).
 The unit declarations are recorded, not converted. See the [allocation
 workflow](allocation-workflow.html) for what the prepared inputs feed into.
 

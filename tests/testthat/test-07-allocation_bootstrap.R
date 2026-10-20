@@ -961,7 +961,7 @@ test_that("the gate admits built-in and smooth declared kernels with a fitted ou
   })
   refused <- list(
     "smooth in sigma" = declare(family = rough, fit_v0 = TRUE),
-    "fitted outside mass" = declare(v0 = 25),
+    "fitted outside weight" = declare(v0 = 25),
     "fit_v0 = TRUE" = declare(family = "exponential", v0 = 25, fit_beta = TRUE))
   for (reason in names(refused)) {
     expect_error(.run_allocation_bootstrap(refused[[reason]], fit, observation, seed = 1L,

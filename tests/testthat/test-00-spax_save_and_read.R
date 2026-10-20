@@ -57,3 +57,18 @@ test_that("save_spax and read_spax refuse invalid objects and missing files", {
   expect_error(read_spax(file.path(tmp, "orphan")),
                "Accessibility raster file not found")
 })
+
+test_that("save_spax() refuses an allocation result and names the way to save one", {
+  tr <- matrix(c(1, 2, 3, 2, 1, 2), 3, 2, dimnames = list(c("a", "b", "c"), c("f1", "f2")))
+  d <- prep_data(c(a = 100, b = 100, c = 100), c(f1 = 5, f2 = 5), tr)
+  e <- spax(d, spec_clm(decay_gaussian(2), outside = 0.1))
+  file <- file.path(withr::local_tempdir(), "allocation")
+  expect_error(save_spax(e, file),
+               "save_spax() saves FCA results; save an allocation result with saveRDS()",
+               fixed = TRUE)
+  expect_length(list.files(dirname(file)), 0L)
+  # the way it names works
+  path <- paste0(file, ".rds")
+  saveRDS(e, path)
+  expect_identical(coef(readRDS(path)), coef(e))
+})

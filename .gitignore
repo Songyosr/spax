@@ -19,6 +19,8 @@ tests/.DS_Store
 # testthat failure snapshots
 tests/testthat/_problems/
 tests/testthat/testthat-problems.rds
+# plots made by the test suite
+tests/testthat/Rplots.pdf
 
 # Local Obsidian / LLM wiki vault
 .local-wiki/

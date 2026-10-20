@@ -166,9 +166,9 @@
   owners <- unique(sub("^[^.]*\\.", "", specific))
   fail <- function(names, extra = NULL) {
     stop("group-specific parameters (", paste(names, collapse = ", "), ") ",
-         "need group-labelled targets: fit output = \"utilization_by_group\" with ",
-         "observed counts for every group, or fix them with clm_allocation(fixed = )",
-         extra, call. = FALSE)
+         "need group-labelled targets: fit them to counts recorded by group ",
+         "(obs_totals() by group, or output = \"utilization_by_group\" in ",
+         "fit_allocation()), or hold them", extra, call. = FALSE)
   }
   identity <- target$identity
   if (!identical(identity$output, "utilization_by_group") ||

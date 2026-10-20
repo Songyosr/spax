@@ -65,7 +65,7 @@ demand <- calc_demand(groups, c(age_0_14 = 0, age_15_plus = 0.005),
 attr(demand, "implied_rate")
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_travel_time}()},
 \code{\link{check_allocation}()},
@@ -78,4 +78,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

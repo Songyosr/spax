@@ -1,5 +1,62 @@
 # spax (development version)
 
+* New experimental interface for allocation models. `prep_data()` prepares the demand,
+  supply and travel inputs. `spec_huff()` and `spec_clm()` specify a model without data,
+  with its decay kernel from `decay_gaussian()`, `decay_exponential()`, `decay_power()` or
+  `decay_custom()`. `obs_flows()` and `obs_totals()` declare observed counts and the loss
+  that fits them, Poisson by default. `spax(data, model, observed)` fits the model, and
+  `spax_huff()` and `spax_clm()` do the same from raw inputs in one call. The step
+  functions stay as they are, and `spax()` builds the same objects with them.
+* In a specification, a parameter is a number, which holds it, or `"fit"`, which estimates
+  it: the decay's `sigma`, the outside weight (`outside`, conditional logit only) and the
+  attractiveness exponent `beta`. With demand groups, a named list gives each group its own
+  decay or outside weight. When every parameter is a number, `spax()` evaluates the model
+  and needs no observations.
+* `spax()` returns a `spax_allocation` with `print()`, `summary()`, `coef()`, `fitted()`,
+  `as.data.frame()` (parameters, facilities, origins, flows or starts) and `predict()`
+  methods. `predict_allocation()`, `check_allocation()`, `compare_allocations()` and
+  `bootstrap_allocation()` accept the result in place of the model and its fit. Prepared
+  inputs and models declared with `clm_allocation()` or `huff_allocation()` now print a
+  short description.
+* `fit_allocation()` no longer needs `starts`, `lower` and `upper` for the count outputs.
+  Without `starts`, it finds starts and bounds from the data: it probes the decay kernel
+  for the range of `sigma` over which it decays across the travel times, scans a grid over
+  that range with outside weights seeded from the observed outside share, and fits from the
+  best points. `loss` must then be named. Unless you give them, the fit uses analytic
+  gradients, when the loss has them, and strict optimizer settings,
+  `control = list(maxit = 300, factr = 1e3, pgtol = 1e-2)`: the fit stops when the gradient
+  of the loss is below 0.01 per unit of log parameter, which is negligible in likelihood
+  terms, or when the loss stops changing at a relative 2e-13. Looser `factr` values (1e5,
+  or the optimizer default 1e7) stop early where the loss is nearly flat in the outside
+  weight; tighter settings without `pgtol` end starts that reached the optimum with
+  line-search failures. The search is stored with the fit and shown when it is printed.
+  `spax()` always uses the strict settings. Calls that give `starts`, `lower` and `upper`
+  run as before.
+* The default lower bound of the outside weight is not below the weight that leaves the
+  outside option a millionth of the demand (the seed for an outside share of 1e-6, at the
+  best grid point). A fit that wants no outside option now ends on that bound, flagged, and
+  the printed result says "v0 at its lower bound: the outside option adds almost nothing
+  (compare spec_huff())"; before, the weight drifted to a negligible value without touching
+  a bound. Bounds you give are used as given.
+* The default search stops with an error when a fitted outside weight has nothing to
+  explain, because the counts of a fully observed target reach the total demand, and warns
+  when they are within 0.1% of it.
+* `spax()` aligns the observations with the data. Counts from origins outside the data,
+  excluded from it or with unknown demand are dropped with a message. Flow counts at
+  facilities outside the data go to the outside option, or are dropped for the Huff model;
+  facility totals at facilities outside the data never enter the fit and are left out, with
+  a message. Positive counts that the model cannot produce, from origins with zero demand, at
+  facilities with zero supply, on pairs with unknown or infinite travel, or (totals) at
+  facilities that no origin can reach, are errors. IDs are matched as text and, when that
+  fails, by numeric value, so that `"1e+05"` matches `"100000"`; two observed IDs that
+  match one ID of the data are an error.
+* The print of `prep_data()` says why origins are not active: with zero demand, unknown
+  demand, invalid demand or excluded. `spax_huff()` and `spax_clm()` refuse an argument of
+  `prep_data()` given in `...` and name `data_args`. `save_spax()` refuses a `spax()` result
+  and names `saveRDS()`.
+* Messages about the outside weight, group-specific parameters and the bootstrap now name
+  the arguments of the new interface (for example `outside = "fit"` and `obs_totals()` by
+  group) beside those of `clm_allocation()`.
 * Version 0.4.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23495125.
   doi:10.5281/zenodo.23438611 refers to all versions.
 
