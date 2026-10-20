@@ -223,7 +223,7 @@ clm
       beta       1        held
       kappa      1        held
 
-      selected    scan3 (start 3 of 3); 3 of 3 starts converged
+      selected    scan1 (start 1 of 3); 3 of 3 starts converged
       boundary    none
       starts      default search, 45 of 45 grid points, loss poisson
 
@@ -243,7 +243,7 @@ coef(clm)
 ```
 
          sigma         v0 
-    4.59099464 0.02733396 
+    4.59099725 0.02733454 
 
 ``` r
 # The observed counts as aligned with the data (small areas x practices)
@@ -369,7 +369,7 @@ as.data.frame(comparison)[
 
       specification              parameters loss_difference count_correlation
     1          huff              sigma=4.59         0.00000         0.8838864
-    2           clm sigma=4.591, v0=0.02733       -72.51419         0.8846534
+    2           clm sigma=4.591, v0=0.02733       -72.51419         0.8846533
 
 The outside option moves the travel scale very little (from 4.590 to
 4.591 minutes) and lowers the Poisson loss by 72.5. It lets the model
