@@ -34,9 +34,13 @@
 #' share is reported separately. To see how the fit depends on a catchment limit, prepare the inputs
 #' again with travel beyond the limit set to `Inf`, refit, and check each fit.
 #'
-#' @param model The corrected CLM from [clm_allocation()] that was fitted.
+#' @param model The corrected CLM from [clm_allocation()] that was fitted, or a
+#'   result of [spax()] that fitted a model; the result supplies its bound model
+#'   and its fit, so leave `fit` out. A result that was evaluated at given values
+#'   has no fit and is refused.
 #' @param fit The `ae_multistart_fit` returned by [fit_allocation()] for
-#'   `model`. A search with no selected fit cannot be checked.
+#'   `model`. A search with no selected fit cannot be checked. Not given when
+#'   `model` is a result of [spax()].
 #' @param trip_breaks Positive travel times (in the prepared travel units) for
 #'   which the share of expected trips longer than each value is reported.
 #' @return An `ae_allocation_check` with a `comparators` table (loss, loss
@@ -51,6 +55,12 @@
 #' @export
 #' @md
 check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
+  if (.is_allocation_result(model)) {
+    parts <- .allocation_unbundle(model, "model_fit", "check_allocation()",
+                                  fit_given = !missing(fit))
+    model <- parts$model
+    fit <- parts$fit
+  }
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
   .refuse_grouped("check_allocation()", model, fit)

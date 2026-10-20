@@ -572,10 +572,15 @@
 #'   outside mass (`fit_v0 = TRUE`), a decay kernel that is smooth in sigma (built
 #'   in, or declared with [decay_kernel()] and `smooth = TRUE`), and known travel
 #'   on its retained demand support. The supply elasticity beta may be fixed or
-#'   fitted; `kappa` and a fixed `beta` may be any positive values.
+#'   fitted; `kappa` and a fixed `beta` may be any positive values. It can instead
+#'   be a result of [spax()] that fitted such a model to facility totals: the
+#'   result supplies its bound model and its fit, so leave `fit` out and give
+#'   `observation` by name. A Huff model, a fit to flows and an evaluated result
+#'   are refused as for the model and fit given separately.
 #' @param fit A matching multistart fit of complete whole facility counts using
 #'   the unweighted built-in Poisson objective. Fractional or partial observations,
-#'   flow targets and custom objectives are outside this method.
+#'   flow targets and custom objectives are outside this method. Not given when
+#'   `model` is a result of [spax()].
 #' @param observation Named list declaring nonblank `event`, `period` (including
 #'   an explicit unresolved reference date), and `sampling="independent_facilities"`.
 #'   Non-overlapping registration alone does not establish independence.
@@ -603,6 +608,12 @@
 #' @export
 #' @md
 bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
+  if (.is_allocation_result(model)) {
+    parts <- .allocation_unbundle(model, "model_fit", "bootstrap_allocation()",
+                                  fit_given = !missing(fit))
+    model <- parts$model
+    fit <- parts$fit
+  }
   .refuse_grouped("bootstrap_allocation()", model, fit)
   .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint, attempts = 399L)
 }

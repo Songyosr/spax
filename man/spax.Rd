@@ -83,8 +83,9 @@ held values are in \verb{$held} and in \code{as.data.frame(x)}. Outputs that the
 did not compute, for instance the flows of a fit to facility totals, are
 computed when asked for and not stored. The step functions
 (\code{\link[=predict_allocation]{predict_allocation()}}, \code{\link[=check_allocation]{check_allocation()}}, \code{\link[=compare_allocations]{compare_allocations()}},
-\code{\link[=bootstrap_allocation]{bootstrap_allocation()}}) work on the bound model and the fit, which are
-elements of the result. Use \code{\link[=saveRDS]{saveRDS()}} to save a result.
+\code{\link[=bootstrap_allocation]{bootstrap_allocation()}}) accept the result itself: each takes the bound model
+and the fit (or, for prediction, the evaluation) from it. Use \code{\link[=saveRDS]{saveRDS()}} to
+save a result.
 }
 \examples{
 # Mainland Cornwall: registered residents, GP FTE and travel minutes

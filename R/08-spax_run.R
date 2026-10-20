@@ -40,8 +40,9 @@
 #' did not compute, for instance the flows of a fit to facility totals, are
 #' computed when asked for and not stored. The step functions
 #' ([predict_allocation()], [check_allocation()], [compare_allocations()],
-#' [bootstrap_allocation()]) work on the bound model and the fit, which are
-#' elements of the result. Use [saveRDS()] to save a result.
+#' [bootstrap_allocation()]) accept the result itself: each takes the bound model
+#' and the fit (or, for prediction, the evaluation) from it. Use [saveRDS()] to
+#' save a result.
 #'
 #' @param data Prepared inputs: the result of [prep_data()].
 #' @param model A model specification: [spec_huff()] or [spec_clm()].
@@ -268,6 +269,74 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
     saved[missing] <- computed[missing]
   }
   saved[names]
+}
+
+# Step functions that accept results (SPAX-058, T6) ----------------------------------
+
+.is_allocation_result <- function(x) inherits(x, "spax_allocation")
+
+# What a step function takes from one result of spax(). The step function calls this
+# first, before its class and group checks, so that it then checks the parts of the
+# result as it would the same objects given one by one.
+# * `use = "source"` (predict_allocation()): the saved fit in fit mode, the saved
+#   evaluation in evaluate mode. A fit with no selected start has nothing to predict
+#   from.
+# * `use = "model_fit"` (check_allocation(), bootstrap_allocation()): the bound model
+#   and the fit, as list(model, fit). `fit_given` says the caller gave `fit` as well,
+#   which is refused; an evaluation has no fit.
+.allocation_unbundle <- function(x, use = c("source", "model_fit"), fn = NULL,
+                                 fit_given = FALSE) {
+  use <- match.arg(use)
+  if (identical(use, "source")) {
+    if (is.null(x$theta)) stop(.result_no_fit, call. = FALSE)
+    return(if (identical(x$mode, "fit")) x$fit else x$evaluation)
+  }
+  if (isTRUE(fit_given)) stop("give a result from spax() alone, without fit", call. = FALSE)
+  if (!identical(x$mode, "fit")) stop(fn, " needs a fitted model", call. = FALSE)
+  list(model = x$model, fit = x$fit)
+}
+
+# The `fits` and `models` of compare_allocations() when some element of `fits` is a
+# result of spax(): each result supplies its fit and its model. The merged models are
+# the models of the results and the caller's `models` (naming a result in both is an
+# error); they are used when they cover every fit, and otherwise the caller is asked
+# for the missing ones. Anything that is not a list of fits with results in it is
+# returned as it came, for the checks of compare_allocations().
+.allocation_unbundle_fits <- function(fits, models) {
+  unchanged <- list(fits = fits, models = models)
+  if (!is.list(fits) || inherits(fits, c("ae_multistart_fit", "spax_allocation"))) {
+    return(unchanged)
+  }
+  is_result <- vapply(fits, .is_allocation_result, logical(1))
+  nms <- names(fits)
+  if (!any(is_result) || is.null(nms) || anyNA(nms) || any(!nzchar(nms)) ||
+      anyDuplicated(nms) || !(is.null(models) || is.list(models))) {
+    return(unchanged)
+  }
+  evaluated <- nms[is_result][vapply(fits[is_result], function(x) !identical(x$mode, "fit"),
+                                     logical(1))]
+  if (length(evaluated)) {
+    stop(evaluated[1L], " was evaluated, not fitted; compare_allocations() needs fits",
+         call. = FALSE)
+  }
+  doubled <- intersect(nms[is_result], names(models))
+  if (length(doubled)) {
+    stop(doubled[1L], " is a result and carries its own model", call. = FALSE)
+  }
+  own <- lapply(fits[is_result], function(x) x$model)
+  fits[is_result] <- lapply(fits[is_result], function(x) x$fit)
+  # In the order of the fits; names that match no fit stay at the end, for the checks
+  # that follow.
+  merged <- c(own, models)
+  merged_names <- names(merged)
+  if (!anyNA(merged_names) && all(nzchar(merged_names))) {
+    merged <- merged[c(intersect(nms, merged_names), setdiff(merged_names, nms))]
+  }
+  lacking <- setdiff(nms, merged_names)
+  if (length(lacking)) {
+    stop("give models for ", paste(lacking, collapse = ", "), call. = FALSE)
+  }
+  list(fits = fits, models = merged)
 }
 
 # Methods ----------------------------------------------------------------------------

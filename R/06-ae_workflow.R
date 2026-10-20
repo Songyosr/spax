@@ -709,8 +709,10 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' overrides are deliberately absent. A changed system requires reevaluation.
 #' @param source A selected multistart result, NFXP fit or fixed evaluation with
 #'   a valid CLM prediction snapshot, for a built-in decay kernel or one declared
-#'   with [decay_kernel()]. Older objects need regeneration. The snapshot of a
-#'   declared kernel carries its code and predicting runs it, so use saved
+#'   with [decay_kernel()]; or a result of [spax()], which supplies its fit (or
+#'   its evaluation when every parameter had a value). A result whose search
+#'   selected no fit is refused. Older objects need regeneration. The snapshot of
+#'   a declared kernel carries its code and predicting runs it, so use saved
 #'   results only from sources you trust.
 #' @param distance Numeric requested-origin-by-facility travel matrix with
 #'   complete facility column IDs. Named axes align independently; requested
@@ -749,6 +751,7 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
                                 demand = NULL, outputs = c("rho", "A", "abar"),
                                 missing_travel = c("unknown", "legacy_zero"),
                                 spatial = NULL, type = c("numeric", "raster")) {
+  if (.is_allocation_result(source)) source <- .allocation_unbundle(source, "source")
   type <- match.arg(type)
   .refuse_grouped("predict_allocation()", source)
   if (type == "raster" && (length(outputs) != 1L ||

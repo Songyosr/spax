@@ -18,11 +18,16 @@ bootstrap_allocation(
 outside mass (\code{fit_v0 = TRUE}), a decay kernel that is smooth in sigma (built
 in, or declared with \code{\link[=decay_kernel]{decay_kernel()}} and \code{smooth = TRUE}), and known travel
 on its retained demand support. The supply elasticity beta may be fixed or
-fitted; \code{kappa} and a fixed \code{beta} may be any positive values.}
+fitted; \code{kappa} and a fixed \code{beta} may be any positive values. It can instead
+be a result of \code{\link[=spax]{spax()}} that fitted such a model to facility totals: the
+result supplies its bound model and its fit, so leave \code{fit} out and give
+\code{observation} by name. A Huff model, a fit to flows and an evaluated result
+are refused as for the model and fit given separately.}
 
 \item{fit}{A matching multistart fit of complete whole facility counts using
 the unweighted built-in Poisson objective. Fractional or partial observations,
-flow targets and custom objectives are outside this method.}
+flow targets and custom objectives are outside this method. Not given when
+\code{model} is a result of \code{\link[=spax]{spax()}}.}
 
 \item{observation}{Named list declaring nonblank \code{event}, \code{period} (including
 an explicit unresolved reference date), and \code{sampling="independent_facilities"}.

@@ -28,10 +28,15 @@
 #' its own regional contact as the contact cut unless `contact_cut` is given.
 #'
 #' @param fits A named list of `ae_multistart_fit` results from
-#'   [fit_allocation()], each with a selected fit.
+#'   [fit_allocation()], each with a selected fit. An element can instead be a
+#'   result of [spax()] that fitted a model; it supplies its fit and its model.
+#'   A result that was evaluated at given values has no fit and is refused.
 #' @param models Optional named list of the corresponding models from
 #'   [clm_allocation()], with the same names, used to verify that travel times
-#'   are identical before reporting loss differences.
+#'   are identical before reporting loss differences. The elements of `fits`
+#'   that are results of [spax()] bring their own models and must not be named
+#'   here. When `fits` mixes results with plain fits, give `models` for the
+#'   plain ones.
 #' @param reference Name or position of the reference fit.
 #' @param zones Optional data frame with `origin_id` and `zone` columns
 #'   covering every fitted origin.
@@ -46,7 +51,11 @@
 #' @md
 compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NULL,
                                 coverage_args = list()) {
-  if (!is.list(fits) || inherits(fits, "ae_multistart_fit") || length(fits) < 2L ||
+  unbundled <- .allocation_unbundle_fits(fits, models)
+  fits <- unbundled$fits
+  models <- unbundled$models
+  if (!is.list(fits) || inherits(fits, c("ae_multistart_fit", "spax_allocation")) ||
+      length(fits) < 2L ||
       is.null(names(fits)) || anyNA(names(fits)) || any(!nzchar(names(fits))) ||
       anyDuplicated(names(fits))) {
     stop("fits must be a named list of at least two allocation fits with unique names")

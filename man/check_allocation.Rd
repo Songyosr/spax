@@ -13,10 +13,14 @@ check_allocation(model, fit, trip_breaks = c(30, 60, 120))
 \method{as.data.frame}{ae_allocation_check}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{model}{The corrected CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted.}
+\item{model}{The corrected CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
+result of \code{\link[=spax]{spax()}} that fitted a model; the result supplies its bound model
+and its fit, so leave \code{fit} out. A result that was evaluated at given values
+has no fit and is refused.}
 
 \item{fit}{The \code{ae_multistart_fit} returned by \code{\link[=fit_allocation]{fit_allocation()}} for
-\code{model}. A search with no selected fit cannot be checked.}
+\code{model}. A search with no selected fit cannot be checked. Not given when
+\code{model} is a result of \code{\link[=spax]{spax()}}.}
 
 \item{trip_breaks}{Positive travel times (in the prepared travel units) for
 which the share of expected trips longer than each value is reported.}
