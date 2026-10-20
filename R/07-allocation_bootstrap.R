@@ -540,14 +540,16 @@
 #' in the allocation network. Need, travel, capacity and included-network inputs
 #' remain fixed. Facility independence is a caller-declared working assumption.
 #'
-#' The model is a static CLM with a fitted outside mass (`fit_v0 = TRUE`) and a
+#' The model is a static CLM with a fitted outside mass (`outside = "fit"` in
+#' [spec_clm()], or `fit_v0 = TRUE` in [clm_allocation()]) and a
 #' decay kernel that is smooth in sigma: the Gaussian, exponential or power
 #' kernel, or a kernel declared with [decay_kernel()] (not with
 #' `smooth = FALSE`). The supply elasticity beta may be fixed or fitted. Every
 #' fitted parameter gets its own interval.
 #'
-#' Exactly 399 attempts use the original explicit starts and positive bounds,
-#' with fixed numerical controls. Failed attempts are retained without replacement.
+#' Exactly 399 attempts use the starts and positive bounds of the original fit
+#' (given, or found by the default search of [fit_allocation()]), with fixed
+#' numerical controls. Failed attempts are retained without replacement.
 #' Successful inner boundary estimates remain in the distribution. Original mean
 #' boundaries, local rank deficiency (fewer identified directions than fitted
 #' parameters) or insufficient fit precision, including a score that cannot be

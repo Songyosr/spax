@@ -19,17 +19,28 @@
 #' raster demand and facility travel layers. Multiple supply columns produce
 #' independent accessibility indicators, not interacting resource constraints.
 #'
-#' The six experimental allocation operations are
+#' The experimental allocation interface runs a model in one call:
+#' \code{\link{spax}} binds a model specification (\code{\link{spec_clm}} or
+#' \code{\link{spec_huff}}, with a decay such as \code{\link{decay_gaussian}})
+#' to data from \code{\link{prep_data}}, and fits it to counts declared with
+#' \code{\link{obs_flows}} or \code{\link{obs_totals}}, or evaluates it when
+#' every parameter has a value. \code{\link{spax_clm}} and
+#' \code{\link{spax_huff}} do the same from raw inputs.
+#'
+#' Underneath, the six experimental allocation steps are
 #' \code{\link{prepare_allocation}}, \code{\link{clm_allocation}},
 #' \code{\link{fit_allocation}}, \code{\link{evaluate_allocation}},
-#' \code{\link{predict_allocation}} and \code{\link{bootstrap_allocation}}.
-#' They describe one static CLM system with one supply vector and an outside
-#' option; \code{\link{huff_allocation}} declares the same system without the
-#' outside option, the classic Huff model. The first five support Gaussian, exponential and power decay and
-#' kernels declared with \code{\link{decay_kernel}} (fitting needs a kernel that
-#' is smooth in \code{sigma}); bootstrap has the narrower scope below. Broader
-#' feedback-model declarations and general-purpose inference are not part of
-#' this experimental interface.
+#' \code{\link{predict_allocation}} and \code{\link{bootstrap_allocation}};
+#' use them for full control. They describe one static CLM system with one
+#' supply vector and an outside option; \code{\link{huff_allocation}} declares
+#' the same system without the outside option, the classic Huff model. The
+#' first five support Gaussian, exponential and power decay and kernels
+#' declared with \code{\link{decay_kernel}} (fitting needs a kernel that is
+#' smooth in \code{sigma}); bootstrap has the narrower scope below. Prediction,
+#' the bootstrap, \code{\link{check_allocation}} and
+#' \code{\link{compare_allocations}} accept a result of \code{spax()} in place
+#' of the model and its fit. Broader feedback-model declarations and
+#' general-purpose inference are not part of this experimental interface.
 #'
 #' @section Inputs, observations and support:
 #' Preserve facility and origin IDs on numeric inputs. Named axes align
@@ -43,8 +54,10 @@
 #' The interface records declarations without converting units. Specify whether
 #' observations are event counts over a period or a stock such as registered
 #' caseload at a reference date; a model output does not determine that meaning.
-#' The fitting default is weighted SSE. Choose the Poisson objective explicitly
-#' when appropriate; choosing it is not evidence for an observation law.
+#' \code{\link{obs_flows}} and \code{\link{obs_totals}} fit with the Poisson
+#' loss by default; \code{\link{fit_allocation}} with given starts defaults to
+#' weighted SSE. Choosing the Poisson objective is not evidence for an
+#' observation law.
 #'
 #' @section Allocation outputs and scenarios:
 #' For a valid choice denominator, \code{allocation} contains inside

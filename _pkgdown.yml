@@ -52,8 +52,8 @@ reference:
       - spax_huff
       - spax_allocation-methods
 
-  - title: "Experimental Allocation Workflow"
-    desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"
+  - title: "Allocation Steps (experimental)"
+    desc: "The step functions under spax(), for full control: prepare inputs, declare the model, fit, evaluate, predict, check, compare and bootstrap. Prediction, check, compare and bootstrap also accept a result of spax()"
     contents:
       - prepare_allocation
       - clm_allocation
