@@ -16,14 +16,24 @@ compute_access(
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand, or a
+named list of single-layer SpatRasters, one per demand group (see
+"Demand groups"). A multi-layer SpatRaster is refused. Demand
+must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values.
 If using an sf object, please use st_drop_geometry() first.}
 
-\item{demand_weights}{Multi-layer SpatRaster of demand-side weights}
+\item{demand_weights}{Multi-layer SpatRaster of demand-side weights; values
+may be NA but not infinite. With demand groups, either one stack
+shared by every group or a list of stacks named by the groups (one per
+group); the stacks of all groups must name the same facilities in the
+same order and have the same geometry.}
 
-\item{access_weights}{Multi-layer SpatRaster of accessibility-side weights}
+\item{access_weights}{Multi-layer SpatRaster of accessibility-side weights;
+values may be NA but not infinite. Given per group in the same way as
+`demand_weights`.}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 
@@ -34,10 +44,27 @@ If using an sf object, please use st_drop_geometry() first.}
 \item{snap}{Logical; if TRUE enable fast computation mode (default = FALSE)}
 }
 \value{
-SpatRaster of accessibility scores
+SpatRaster of accessibility scores. With demand groups, the layers
+       are named `<measure>.<group>` for every group and `<measure>.all`
+       for the overall layer, measure by measure.
 }
 \description{
 General-purpose function to calculate spatial accessibility by combining
 demand-side and supply-side weighted distributions. Supports multiple
 supply measures and flexible weight specifications.
 }
+\section{Demand groups}{
+
+When `demand` is a named list of single-layer rasters, the groups compete
+for the same supply: the demand that reaches a facility is the sum over the
+groups, each with its own demand weights. Each group gets its own
+accessibility layer, and `<measure>.all` is the overall layer, the average
+of the group scores weighted by the demand of the cell. A group with demand
+in a cell that none of its weights reach counts with accessibility 0 there;
+the overall layer is NA where any group's demand is missing or the total
+demand is 0. Group names must be unique, non-empty, not `"all"` and without
+a `.`. `demand_weights` and `access_weights` are shared by the groups, or a
+list with one element per group, named by the groups. Shared weights should
+be passed as one object, so that they are read once.
+}
+

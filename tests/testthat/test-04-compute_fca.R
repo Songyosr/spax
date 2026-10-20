@@ -1,5 +1,6 @@
-# compute_fca(): the typed FCA engine behind the public wrappers, and the
-# supply processing that binds supply values to kernel facility IDs.
+# compute_fca(): the internal driver behind the public FCA wrappers (SPAX-055).
+# The two-pass engine, facility IDs and the kept errors are covered in
+# test-05-fca_blocks.R; here the driver is checked against direct algebra.
 
 # Gaussian kernel (sigma = 2.4) whose cell sums fall on both sides of 1 (cell
 # 1 sums to 1.031, so "semi" differs from "identity"), with cell 9 reaching no
@@ -11,20 +12,37 @@ compute_fca_inputs <- function() {
   K[3, 1] <- NA
   D <- terra::values(td$demand)[, 1]
   D[5] <- NA
+  distance <- terra::setValues(td$distance, K)
+  # `distance` holds the kernel values themselves; the kernels read them.
+  kernels <- list(
+    demand = function(b, rows) b$distance[rows, , drop = FALSE],
+    access = function(b, rows) b$distance[rows, , drop = FALSE]
+  )
   c(td, list(D = D, K = K, demand_na = terra::setValues(td$demand, D),
-             kernel = terra::setValues(td$distance, K)))
+             kernel_raster = distance, kernels = kernels))
 }
 
-kernel_field <- function(kernel, axis = "facility") {
-  .spax_raster_field(kernel, domain = c("I", axis),
-                     frame = data.frame(layer = names(kernel),
-                                        setNames(list(names(kernel)), axis)),
-                     role = "kernel")
+run_fca <- function(f, supply, ..., demand = f$demand_na, kernels = f$kernels) {
+  compute_fca(demand, supply, list(distance = f$kernel_raster), kernels, ...)
 }
 
-fca_values <- function(field) unname(terra::values(.fca_result_raster(field)))
+test_that("compute_fca gives the hand-computed access of one measure", {
+  # One facility, three cells in a row: U = 10 * 1 + 20 * 0.5 + 30 * 0.25 = 27.5,
+  # R = 7 / 27.5 and A = R * (1, 0.5, 0.25).
+  demand <- terra::rast(nrows = 1, ncols = 3)
+  terra::values(demand) <- c(10, 20, 30)
+  w <- terra::rast(demand)
+  terra::values(w) <- c(1, 0.5, 0.25)
+  names(w) <- "f"
+  kernel <- function(b, rows) b$w[rows, , drop = FALSE]
+  out <- compute_fca(demand, c(f = 7), list(w = w),
+                     list(demand = kernel, access = kernel))
+  expect_s4_class(out, "SpatRaster")
+  expect_equal(names(out), "supply")
+  expect_equal(unname(terra::values(out)[, 1]), 7 / 27.5 * c(1, 0.5, 0.25))
+})
 
-test_that("compute_fca matches the FCA oracle for every normalization and supply", {
+test_that("compute_fca matches direct algebra for every normalization and supply", {
   f <- compute_fca_inputs()
   supplies <- list(
     vector = list(supply = f$supply_vector),
@@ -38,12 +56,9 @@ test_that("compute_fca matches the FCA oracle for every normalization and supply
   results <- list()
   for (norm in c("identity", "standard", "semi")) {
     for (shape in names(supplies)) {
-      result <- do.call(compute_fca, c(
-        list(demand = f$demand_na, demand_kernel = f$kernel,
-             access_kernel = f$kernel, demand_normalize = norm),
-        supplies[[shape]]
-      ))
-      results[[norm]] <- fca_values(result)
+      result <- do.call(run_fca, c(list(f), supplies[[shape]],
+                                   list(demand_normalize = norm)))
+      results[[norm]] <- unname(terra::values(result))
       expect_equal(results[[norm]],
                    fca_oracle(f$D, f$K, f$K, expected_S[[shape]], norm),
                    info = paste(norm, shape))
@@ -57,75 +72,52 @@ test_that("compute_fca matches the FCA oracle for every normalization and supply
   # though the access step still reaches it.
   Kd <- f$K
   Kd[, 2] <- 0
+  kernels <- list(
+    demand = function(b, rows) {
+      matrix(Kd[rows, ], nrow = length(rows))
+    },
+    access = f$kernels$access
+  )
   expect_equal(
-    fca_values(compute_fca(f$demand_na, f$supply_vector,
-                           terra::setValues(f$kernel, Kd), f$kernel)),
+    unname(terra::values(run_fca(f, f$supply_vector, kernels = kernels))),
     fca_oracle(f$D, Kd, f$K, f$supply_vector)
   )
 })
 
-test_that("compute_fca returns a named realization field through either door", {
+test_that("compute_fca names the layers and keeps the grid of the first raster", {
   f <- compute_fca_inputs()
-  raw <- compute_fca(f$demand_na, f$supply_matrix, f$kernel, f$kernel,
-                     demand_normalize = "semi")
-  expect_s3_class(raw, "spax_raster_field")
-  expect_equal(.field_domain(raw), c("I", "measure"))
-  expect_equal(names(.fca_result_raster(raw)), c("doctors", "nurses"))
+  two <- run_fca(f, f$supply_matrix, demand_normalize = "semi")
+  expect_equal(names(two), c("doctors", "nurses"))
+  expect_true(terra::compareGeom(two, f$kernel_raster, stopOnError = FALSE))
+  one <- run_fca(f, f$supply_vector)
+  expect_equal(names(one), "supply")
+  expect_equal(terra::nlyr(one), 1)
 
-  single <- compute_fca(f$demand_na, f$supply_vector, f$kernel, f$kernel)
-  expect_equal(.field_domain(single), "I")
-  expect_equal(names(.fca_result_raster(single)), "supply")
+  named <- run_fca(f, f$supply_matrix,
+                   indicator_names = c("doc_access", "nurse_access"), snap = TRUE)
+  expect_equal(names(named), c("doc_access", "nurse_access"))
+  expect_equal(terra::values(named), terra::values(run_fca(f, f$supply_matrix)),
+               ignore_attr = TRUE)
 
-  # Prepared fields give the same result as raw rasters.
-  fields <- compute_fca(.spax_raster_field(f$demand_na, domain = "I"),
-                        f$supply_matrix, kernel_field(f$kernel),
-                        kernel_field(f$kernel), demand_normalize = "semi")
-  expect_equal(fca_values(fields), fca_values(raw))
-
-  named <- compute_fca(f$demand_na, f$supply_matrix, f$kernel, f$kernel,
-                       indicator_names = c("doc_access", "nurse_access"),
-                       snap = TRUE)
-  expect_equal(names(.fca_result_raster(named)), c("doc_access", "nurse_access"))
-  expect_equal(fca_values(named), fca_values(compute_fca(
-    f$demand_na, f$supply_matrix, f$kernel, f$kernel)))
+  # A supply table in another row order binds by facility ID.
+  reversed <- run_fca(f, f$supply_df[2:1, ], id_col = "id",
+                      supply_cols = "doctors", indicator_names = "gp_access")
+  expect_equal(names(reversed), "gp_access")
+  expect_equal(unname(terra::values(reversed)),
+               fca_oracle(f$D, f$K, f$K, c(10, 15)))
 })
 
-test_that("a supply field binds to kernel facilities by ID", {
+test_that("compute_fca refuses multi-layer demand and wrong supply", {
   f <- compute_fca_inputs()
-  reversed <- .spax_vector_field(c(facility2 = 15, facility1 = 10),
-                                 domain = "facility", role = "supply")
-
-  result <- compute_fca(f$demand_na, reversed, f$kernel, f$kernel,
-                        indicator_names = "gp_access")
-  expect_equal(names(.fca_result_raster(result)), "gp_access")
-  expect_equal(fca_values(result), fca_oracle(f$D, f$K, f$K, c(10, 15)))
-
-  expect_error(
-    compute_fca(f$demand_na, .spax_vector_field(c(facility1 = 10, facility2 = 15),
-                                                domain = "site"),
-                f$kernel, f$kernel),
-    "same axis as the kernels"
-  )
-  expect_error(
-    compute_fca(f$demand_na, .spax_vector_field(c(facility1 = 10, facility3 = 15),
-                                                domain = "facility"),
-                f$kernel, f$kernel),
-    "same facility ids as the kernels"
-  )
-})
-
-test_that("compute_fca refuses kernels on different facilities or axes", {
-  f <- compute_fca_inputs()
-  other_ids <- f$kernel
-  names(other_ids) <- c("facility1", "facility3")
-
-  expect_error(compute_fca(f$demand_na, f$supply_vector, f$kernel, other_ids),
-               "same facility ids")
-  # compute_fca coerces both kernels to the facility axis, so the axis check
-  # is reached through the pair validator.
-  expect_error(.fca_check_kernel_pair(kernel_field(f$kernel),
-                                      kernel_field(f$kernel, axis = "site")),
-               "same non-I axis")
+  for (snap in c(FALSE, TRUE)) {
+    expect_error(run_fca(f, f$supply_vector, demand = c(f$demand_na, f$demand_na),
+                         snap = snap),
+                 "give demand groups as a named list of single-layer rasters")
+  }
+  expect_error(run_fca(f, f$supply_vector, indicator_names = c("a", "b")),
+               "indicator_names must have one name")
+  expect_error(run_fca(f, c(facility1 = 10, facility3 = 15)),
+               "Some weight layer IDs not found")
 })
 
 test_that(".help_process_supply binds supply values to facility IDs", {

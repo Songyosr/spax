@@ -12,7 +12,8 @@
   fit_v0 = FALSE,
   fit_beta = FALSE,
   allocation = c("clm", "huff_decay"),
-  kernel = NULL
+  kernel = NULL,
+  grouped = NULL
 )
 }
 \arguments{

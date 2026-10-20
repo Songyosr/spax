@@ -17,12 +17,16 @@
   id_col = NULL,
   supply_cols = NULL,
   allocation = c("clm", "huff_decay"),
-  kernel = NULL
+  kernel = NULL,
+  grouped = NULL
 )
 }
 \arguments{
 \item{kernel}{\code{NULL} for a built-in \code{family}, or a custom \code{spax_decay_kernel}
 declaration passed on to \code{.huff_spec()}.}
+
+\item{grouped}{\code{NULL}, or the grouped arguments of \code{.clm_group_args()} for
+prepared inputs with demand groups.}
 }
 \description{
 The \code{dT/dstate = 0} member of the ladder: the map is constant, the

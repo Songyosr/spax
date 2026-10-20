@@ -42,7 +42,7 @@ none is given:
   \item \code{"exponential"}: \eqn{\exp(-\sigma d)}{exp(-sigma d)}; default
     \eqn{\sigma = 0.1}{sigma = 0.1}.
   \item \code{"power"}: \eqn{d^{-\sigma}}{d^(-sigma)}; default
-    \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0.
+    \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0, which the FCA functions refuse.
   \item \code{"inverse"}: \eqn{1 / (d + c)}{1 / (d + c)}, with \code{c = 1}
     unless \code{c} is passed in \code{...}; \code{sigma} does not enter
     the weights (a given value is still validated).

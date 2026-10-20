@@ -11,7 +11,9 @@ clm_allocation(
   beta = 1,
   v0 = 0,
   fit_v0 = FALSE,
-  fit_beta = FALSE
+  fit_beta = FALSE,
+  by_group = character(),
+  fixed = NULL
 )
 }
 \arguments{
@@ -39,13 +41,39 @@ returns zero mass; that row is not a normalized choice distribution.}
 
 \item{fit_v0, fit_beta}{\code{TRUE} or \code{FALSE}: whether to promote these constants
 to fitted parameters.}
+
+\item{by_group}{For inputs with demand groups: the parameters that differ
+between the groups, a subset of \code{"sigma"} and \code{"v0"} (default none: one
+sigma and one v0 for all groups). \code{"v0"} requires \code{fit_v0 = TRUE}. The
+parameters are then named \verb{sigma.<group>} and \verb{v0.<group>}.}
+
+\item{fixed}{For inputs with demand groups: a named numeric vector of
+parameters held fixed at the given values, named like the parameters of the
+model (for example \code{sigma.a} or \code{v0.b = 0}). They are not fitted and not
+part of \code{theta}.}
 }
 \value{
 The existing private \code{ae_problem} for corrected static CLM.
-Parameter order is sigma, then v0 and beta when their flags are true.
+Parameter order is sigma, then v0 and beta when their flags are true. With
+demand groups sigma and v0 are \verb{sigma.<group>} and \verb{v0.<group>} for the
+parameters in \code{by_group}.
 }
 \description{
 Declare corrected static CLM over checked allocation inputs.
+}
+\details{
+With demand groups (see \code{\link[=prepare_allocation]{prepare_allocation()}}), group \code{g} chooses
+among the facilities with its own kernel and outside weight, from its own
+travel times: \verb{P_ijg = a_j W_g(d_ijg) / (v0_g + sum_k a_k W_g(d_ikg))}. The
+allocation, contact (\code{access}) and outside share of the model are the
+demand-weighted pooled values, so facility load, coverage and flows are the
+ordinary computations on the total demand. Per-group outputs
+(\code{utilization_by_group}, \code{access_by_group}, \code{outside_share_by_group}) are
+materialized when requested. With every parameter and the travel shared by
+the groups, the model equals the ungrouped model on the total demand.
+\code{family} may be given by group, a named list of kernel names or
+declarations with one element per group (sigma is then group specific);
+\code{v0} may be a named numeric vector by group when \code{fit_v0 = FALSE}.
 }
 \seealso{
 Other experimental allocation workflow: 
@@ -57,6 +85,7 @@ Other experimental allocation workflow:
 \code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
+\code{\link{huff_allocation}()},
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }

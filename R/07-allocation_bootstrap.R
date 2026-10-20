@@ -602,5 +602,6 @@
 #' @export
 #' @md
 bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
+  .refuse_grouped("bootstrap_allocation()", model, fit)
   .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint, attempts = 399L)
 }

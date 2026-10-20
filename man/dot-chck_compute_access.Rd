@@ -15,13 +15,16 @@
 )
 }
 \arguments{
-\item{demand}{SpatRaster representing spatial distribution of demand}
+\item{demand}{SpatRaster representing spatial distribution of demand, or a
+named list of SpatRasters (demand groups)}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 
-\item{demand_weights}{Multi-layer SpatRaster of demand-side weights}
+\item{demand_weights}{Multi-layer SpatRaster of demand-side weights, or with
+groups a named list of them (one per group)}
 
-\item{access_weights}{Multi-layer SpatRaster of accessibility-side weights}
+\item{access_weights}{Multi-layer SpatRaster of accessibility-side weights, or
+with groups a named list of them (one per group)}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 

@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "spax: Spatial Accessibility and Allocation Modeling"
-version: 0.3.1
-date-released: 2026-10-18
+version: 0.4.0
+date-released: 2026-10-20
 authors:
   - family-names: Rajborirug
     given-names: Songyos
@@ -17,15 +17,17 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.23438612
     description: spax version 0.3.0
+  - type: doi
+    value: 10.5281/zenodo.23446335
+    description: spax version 0.3.1
 repository-code: "https://github.com/Songyosr/spax"
 url: "https://songyosr.github.io/spax/"
 abstract: >-
-  Spatial accessibility analysis using floating catchment area (FCA) methods,
-  including E2SFCA, 2SFCA, M2SFCA, 3SFCA and Huff-2SFCA, and experimental static
-  conditional-logit allocation models with an outside option: checked numeric
-  preparation, calibration to observed counts, declared decay kernels,
-  requested-location prediction, fixed-parameter supply scenarios and a
-  conditional facility-case bootstrap.
+  A modular engine for spatial access and allocation models. Floating
+  catchment area (FCA) methods and an experimental static conditional logit
+  allocation model with an outside option share the same demand, supply and
+  travel-time inputs, decay kernels and numeric engine, which reads rasters in
+  blocks and works on compact matrices.
 keywords:
   - spatial accessibility
   - floating catchment area

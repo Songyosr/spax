@@ -1,3 +1,28 @@
+# The decay lines of a spax object: one line, or one line per demand group when
+# the decay is given per group (method and sigma).
+.spax_decay_lines <- function(parameters) {
+  line <- function(params, label) {
+    out <- paste0("- Decay function", label, ": ",
+                  .decay_kernel_label(params$method))
+    sigma <- params$sigma
+    if (inherits(sigma, "SpatRaster")) {
+      out <- paste0(out, " (sigma = variable (raster))")
+    } else if (!is.null(sigma)) {
+      out <- paste0(out, sprintf(" (sigma = %g)", sigma))
+    }
+    out
+  }
+  decay <- parameters$decay_params
+  per <- if (!is.null(parameters$groups)) {
+    .fca_per_group(decay, parameters$groups, "decay_params")
+  }
+  if (is.null(per)) {
+    return(line(decay, ""))
+  }
+  vapply(names(per), function(g) line(per[[g]], paste0(" (group ", g, ")")),
+         character(1), USE.NAMES = FALSE)
+}
+
 #------------------------------------------------------------------------------#
 # Print Methods
 #------------------------------------------------------------------------------#
@@ -28,9 +53,19 @@ print.spax <- function(x, ...) {
               dim(x$accessibility)[1],
               dim(x$accessibility)[2]))
 
-  # Accessibility measures
-  cat(sprintf("\nMeasures: %d\n", nlyr(x$accessibility)))
-  cat("- ", paste(names(x$accessibility), collapse = "\n- "), "\n", sep = "")
+  # Accessibility measures; with demand groups, the measures and the groups
+  grouped <- !is.null(x$parameters$groups)
+  if (grouped) {
+    measures <- unique(x$parameters$layers$measure)
+    cat(sprintf("\nMeasures: %d\n", length(measures)))
+    cat("- ", paste(measures, collapse = "\n- "), "\n", sep = "")
+    cat(sprintf("\nDemand groups: %s (layers: %s)\n",
+                paste(x$parameters$groups, collapse = ", "),
+                paste(names(x$accessibility), collapse = ", ")))
+  } else {
+    cat(sprintf("\nMeasures: %d\n", nlyr(x$accessibility)))
+    cat("- ", paste(names(x$accessibility), collapse = "\n- "), "\n", sep = "")
+  }
 
   # Facility information if available
   if (!is.null(x$facilities)) {
@@ -40,14 +75,9 @@ print.spax <- function(x, ...) {
   # Core parameters
   cat("\nParameters:\n")
   if (!is.null(x$parameters$decay_params)) {
-    cat("- Decay function:", .decay_kernel_label(x$parameters$decay_params$method))
-    sigma <- x$parameters$decay_params$sigma
-    if (inherits(sigma, "SpatRaster")) {
-      cat(" (sigma = variable (raster))")
-    } else if (!is.null(sigma)) {
-      cat(sprintf(" (sigma = %g)", sigma))
+    for (line in .spax_decay_lines(x$parameters)) {
+      cat(line, "\n", sep = "")
     }
-    cat("\n")
   }
   if (!is.null(x$parameters$demand_normalize)) {
     cat("- Demand normalization:", x$parameters$demand_normalize, "\n")
@@ -172,6 +202,18 @@ print.summary.spax <- function(x, digits = 4, ...) {
   # Title and type
   cat("\nSummary of Spatial Accessibility Analysis (", x$type, ")\n", sep = "")
   cat(paste(rep("-", 45), collapse = ""), "\n\n")
+
+  # Demand groups: the groups and, for per-group decay, one line per group
+  if (!is.null(x$parameters$groups)) {
+    cat(sprintf("Demand groups: %s (the overall layer is \"all\")\n",
+                paste(x$parameters$groups, collapse = ", ")))
+    if (!is.null(x$parameters$decay_params)) {
+      for (line in .spax_decay_lines(x$parameters)) {
+        cat(line, "\n", sep = "")
+      }
+    }
+    cat("\n")
+  }
 
   # Accessibility Statistics
   cat("Accessibility Measures:\n")

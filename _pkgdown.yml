@@ -46,6 +46,7 @@ reference:
     contents:
       - prepare_allocation
       - clm_allocation
+      - huff_allocation
       - fit_allocation
       - evaluate_allocation
       - predict_allocation
@@ -93,7 +94,6 @@ reference:
       - summary.spax
       - print.summary.spax
       - plot.spax
-      - print.spax_field
 
   - title: "Utility Functions"
     desc: "Helper functions and data access"

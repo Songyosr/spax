@@ -6,18 +6,34 @@
 #' included demand enters facility-load support. Zero, unknown and explicitly
 #' excluded origins retain separate support statuses. This experimental entry
 #' point delegates to the existing compact preparation boundary.
+#'
+#' Demand groups (age bands, insurance types) are given as a named list of
+#' demand vectors, one per group, with the same origin IDs. An origin is active
+#' when it is included, every group demand is known and the total is positive;
+#' an origin with a group demand missing is unknown as a whole under
+#' `missing_demand = "exclude"`. The prepared object then also carries the
+#' group IDs and the demand and travel by group (`D_groups`, `distance_groups`).
 #' @param demand Numeric origin vector, finite and nonnegative or explicitly
 #'   permitted missing values. Negative or infinite demand is rejected even on
-#'   excluded origins. Named demand matches canonical origin IDs.
+#'   excluded origins. Named demand matches canonical origin IDs. For demand
+#'   groups, a named list by group of such named vectors with identical name
+#'   sets (any order); the group names must be unique, non-empty, not `NA`, not
+#'   `"all"` and without `"."`. A matrix is refused.
 #' @param supply Finite nonnegative facility vector. Known zero supply is
 #'   retained; unknown supply is rejected. Names match canonical facility IDs.
 #' @param distance Numeric origin-by-facility travel matrix. Complete named
-#'   rows and columns match IDs independently; unnamed axes are positional.
+#'   rows and columns match IDs independently; unnamed axes are positional. With
+#'   demand groups, one matrix shared by the groups or a named list of matrices
+#'   with one element per group, each aligned by origin and facility IDs. Missing
+#'   travel for a group with zero demand at an origin is ignored.
 #' @param origin_ids,facility_ids Complete unique nonblank canonical IDs. Their
-#'   order determines prepared order. Defaults require named demand and travel
-#'   columns; identities are never inferred from equal axis lengths.
-#' @param included Nonmissing logical origin mask. Names align independently;
-#'   an unnamed mask follows supplied demand order and is reordered with demand.
+#'   order determines prepared order. The default (`NULL`) takes the names of
+#'   the demand vector (of the first group for grouped demand) and the column
+#'   names of the travel matrix; identities are never inferred from equal axis
+#'   lengths.
+#' @param included Nonmissing logical origin mask (default: all `TRUE`). Names
+#'   align independently; an unnamed mask follows supplied demand order (that of
+#'   the first group for grouped demand) and is reordered with demand.
 #' @param missing_demand Default `"error"` rejects included missing demand.
 #'   `"exclude"` omits it from loads while recording unknown demand, separately
 #'   from known zero or explicit exclusion. Positive included demand remains
@@ -40,14 +56,17 @@
 #'   distinct support statuses plus compact active load arrays. No duplicate
 #'   full travel matrix is retained. Pass it to [clm_allocation()] rather than
 #'   editing its internal fields. Expected counts use demand units/period;
-#'   proportional capacity attribution uses supply per unit of demand.
+#'   proportional capacity attribution uses supply per unit of demand. With
+#'   demand groups the total demand is `D_active`, and `group_ids`, `D_groups`
+#'   and `distance_groups` are added (`distance_active` is `NULL` when travel is
+#'   given per group).
 #' @family experimental allocation workflow
 #' @export
 #' @md
 prepare_allocation <- function(demand, supply, distance,
-                               origin_ids = names(demand),
-                               facility_ids = colnames(distance),
-                               included = rep(TRUE, length(demand)),
+                               origin_ids = NULL,
+                               facility_ids = NULL,
+                               included = NULL,
                                missing_demand = c("error", "exclude"),
                                missing_travel = c("error", "legacy_zero"),
                                spatial = NULL, metadata = list()) {
@@ -79,19 +98,155 @@ prepare_allocation <- function(demand, supply, distance,
 #'   returns zero mass; that row is not a normalized choice distribution.
 #' @param fit_v0,fit_beta `TRUE` or `FALSE`: whether to promote these constants
 #'   to fitted parameters.
+#' @param by_group For inputs with demand groups: the parameters that differ
+#'   between the groups, a subset of `"sigma"` and `"v0"` (default none: one
+#'   sigma and one v0 for all groups). `"v0"` requires `fit_v0 = TRUE`. The
+#'   parameters are then named `sigma.<group>` and `v0.<group>`.
+#' @param fixed For inputs with demand groups: a named numeric vector of
+#'   parameters held fixed at the given values, named like the parameters of the
+#'   model (for example `sigma.a` or `v0.b = 0`). They are not fitted and not
+#'   part of `theta`.
+#' @details With demand groups (see [prepare_allocation()]), group `g` chooses
+#'   among the facilities with its own kernel and outside weight, from its own
+#'   travel times: `P_ijg = a_j W_g(d_ijg) / (v0_g + sum_k a_k W_g(d_ikg))`. The
+#'   allocation, contact (`access`) and outside share of the model are the
+#'   demand-weighted pooled values, so facility load, coverage and flows are the
+#'   ordinary computations on the total demand. Per-group outputs
+#'   (`utilization_by_group`, `access_by_group`, `outside_share_by_group`) are
+#'   materialized when requested. With every parameter and the travel shared by
+#'   the groups, the model equals the ungrouped model on the total demand.
+#'   `family` may be given by group, a named list of kernel names or
+#'   declarations with one element per group (sigma is then group specific);
+#'   `v0` may be a named numeric vector by group when `fit_v0 = FALSE`.
 #' @return The existing private `ae_problem` for corrected static CLM.
-#'   Parameter order is sigma, then v0 and beta when their flags are true.
+#'   Parameter order is sigma, then v0 and beta when their flags are true. With
+#'   demand groups sigma and v0 are `sigma.<group>` and `v0.<group>` for the
+#'   parameters in `by_group`.
 #' @family experimental allocation workflow
 #' @export
 #' @md
 clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"),
                             kappa = 1, beta = 1, v0 = 0,
-                            fit_v0 = FALSE, fit_beta = FALSE) {
+                            fit_v0 = FALSE, fit_beta = FALSE,
+                            by_group = character(), fixed = NULL) {
   .chck_class(inputs, "ae_prepared_inputs", "inputs")
-  decay <- .resolve_decay_family(family)
-  .huff_problem(inputs, family = decay$family, kappa = kappa, beta = beta,
-                 v0 = v0, fit_v0 = fit_v0, fit_beta = fit_beta, allocation = "clm",
-                 kernel = decay$kernel)
+  if (is.null(inputs$group_ids)) {
+    if (length(by_group) || !is.null(fixed)) {
+      stop("`by_group` and `fixed` need prepared inputs with demand groups ",
+           "(demand given as a named list by group)")
+    }
+    decay <- .resolve_decay_family(family)
+    return(.huff_problem(inputs, family = decay$family, kappa = kappa, beta = beta,
+                          v0 = v0, fit_v0 = fit_v0, fit_beta = fit_beta,
+                          allocation = "clm", kernel = decay$kernel))
+  }
+  args <- .clm_group_args(inputs$group_ids, family, v0, fit_v0, fit_beta,
+                          by_group, fixed)
+  .huff_problem(inputs, family = args$family, kappa = kappa, beta = beta,
+                 v0 = args$v0, fit_v0 = fit_v0, fit_beta = fit_beta,
+                 allocation = "clm", kernel = args$kernel, grouped = args$grouped)
+}
+
+#' Declare the Huff model over checked allocation inputs
+#'
+#' Declare the Huff model, a conditional logit allocation without an outside
+#' option, over checked allocation inputs.
+#'
+#' The Huff model (Huff, 1963) gives each facility a share of each origin's
+#' demand in proportion to its attractiveness times a decay in travel time:
+#' `P_ij = a_j W(d_ij) / sum_k a_k W(d_ik)`, where `a_j = (kappa * S_j)^beta`
+#' for facility supply `S_j`. Every origin's demand is shared among the
+#' facilities, so the shares at an origin add up to 1.
+#'
+#' This is the conditional logit model of [clm_allocation()] without an outside
+#' option: `huff_allocation()` calls `clm_allocation()` with `v0 = 0` and returns
+#' the same kind of model, so [fit_allocation()], [evaluate_allocation()],
+#' [predict_allocation()], [check_allocation()] and [compare_allocations()] work
+#' on it unchanged. Use `clm_allocation(fit_v0 = TRUE)` when part of the demand
+#' goes to facilities that are not in the data.
+#'
+#' With the default power decay, `W(d) = d^(-sigma)`, so spax's `sigma` is
+#' Huff's distance exponent and `beta` is his exponent on attractiveness. Both
+#' are fitted by default (`fit_beta = TRUE`); with `beta = 1` and
+#' `fit_beta = FALSE`, attractiveness is proportional to supply. Power decay is
+#' undefined at a travel time of 0, so use a positive minimum travel time or
+#' another kernel (`family`).
+#'
+#' The facility bootstrap [bootstrap_allocation()] needs a fitted outside weight
+#' and so does not apply to a Huff model.
+#'
+#' @inheritParams clm_allocation
+#' @param family Travel kernel, as in [clm_allocation()]: `"power"` (the
+#'   default, Huff's form), `"gaussian"`, `"exponential"`, a declaration from
+#'   [decay_kernel()], or for inputs with demand groups a named list with one
+#'   of these per group.
+#' @param beta Positive exponent on attractiveness in `(kappa * supply)^beta`:
+#'   the value held fixed when `fit_beta = FALSE`.
+#' @param fit_beta `TRUE` (the default) fits `beta` as a parameter; `FALSE`
+#'   holds it at the given value.
+#' @param by_group For inputs with demand groups: `"sigma"` lets the decay
+#'   differ by group (default none). `"v0"` is refused, since the Huff model has
+#'   no outside option.
+#' @param fixed For inputs with demand groups: a named numeric vector of
+#'   parameters held fixed, as in [clm_allocation()]. Names of outside weights
+#'   (`v0`) are refused.
+#' @return The existing private `ae_problem` for corrected static CLM with no
+#'   outside option. Parameter order is sigma, then beta when it is fitted. With
+#'   demand groups sigma is `sigma.<group>` for the groups in `by_group`.
+#' @references
+#' Huff DL (1963). A probabilistic analysis of shopping center trade areas.
+#' *Land Economics* 39(1):81-90. \doi{10.2307/3144521}
+#' @seealso [clm_allocation()] for the general model with an outside option.
+#' @family experimental allocation workflow
+#' @examples
+#' # Mainland Cornwall: small areas share their registered residents among the
+#' # practices in proportion to attractiveness times travel-time decay.
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#'
+#' # Without an outside option, demand is the residents registered at the
+#' # mainland practices
+#' demand <- stats::setNames(areas$registered_in, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' inputs <- prepare_allocation(demand, supply, travel)
+#'
+#' # Power decay with a fitted attractiveness exponent
+#' model <- huff_allocation(inputs)
+#'
+#' # Evaluate at given parameters: distance exponent 2, attractiveness
+#' # exponent 1
+#' evaluate_allocation(model, c(sigma = 2, beta = 1))
+#'
+#' # Fit practice totals of registrations from two starts
+#' totals <- tapply(cornwall_flows$patients, cornwall_flows$practice, sum)
+#' observed <- stats::setNames(numeric(ncol(travel)), colnames(travel))
+#' observed[intersect(names(totals), names(observed))] <-
+#'   totals[intersect(names(totals), names(observed))]
+#' fit <- fit_allocation(
+#'   model, observed,
+#'   starts = rbind(a = c(sigma = 1, beta = 0.5), b = c(sigma = 3, beta = 1.5)),
+#'   lower = c(sigma = 0.1, beta = 0.05), upper = c(sigma = 10, beta = 5),
+#'   loss = "poisson"
+#' )
+#' fit$best$theta
+#' @export
+#' @md
+huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
+                            fit_beta = TRUE, by_group = character(),
+                            fixed = NULL) {
+  no_outside <- paste0("the Huff model has no outside option; use ",
+                       "clm_allocation(fit_v0 = TRUE) for one")
+  if (is.character(by_group) && "v0" %in% by_group) {
+    stop(no_outside, call. = FALSE)
+  }
+  if (!is.null(fixed) && !is.null(names(fixed)) &&
+      any(grepl("^v0(\\.|$)", names(fixed)))) {
+    stop(no_outside, call. = FALSE)
+  }
+  clm_allocation(inputs, family = family, kappa = kappa, beta = beta, v0 = 0,
+                 fit_v0 = FALSE, fit_beta = fit_beta, by_group = by_group,
+                 fixed = fixed)
 }
 
 .check_allocation_model <- function(model) {
@@ -101,6 +256,29 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
     stop("the allocation workflow requires a corrected static CLM")
   }
   invisible(model)
+}
+
+# Whether an object belongs to a model with demand groups: a model, prepared
+# inputs, an equilibrium or a fit (a multistart result by its selected fit). The
+# grouped fit and equilibrium objects carry a `groups` marker.
+.is_grouped_object <- function(x) {
+  if (inherits(x, "ae_multistart_fit")) x <- x$best
+  if (is.null(x)) return(FALSE)
+  if (inherits(x, "ae_prepared_inputs")) return(!is.null(x$group_ids))
+  if (inherits(x, "ae_problem")) {
+    return(!is.null(x$metadata$spec[["groups", exact = TRUE]]) ||
+             !is.null(x$substrate$group_ids))
+  }
+  is.list(x) && !is.null(x[["groups", exact = TRUE]])
+}
+
+# Stop when any object belongs to a grouped model: the function has no grouped
+# form yet (SPAX-057, Phase B1).
+.refuse_grouped <- function(fn, ...) {
+  if (any(vapply(list(...), .is_grouped_object, logical(1)))) {
+    stop(fn, " is not available for grouped models yet", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 #' Calibrate a declared allocation model from explicit starting points
@@ -119,9 +297,12 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
-#'   use NA for unobserved entries. The count-valued `utilization` and `flow`
-#'   targets reject negative nonmissing observations; fractional counts are
-#'   allowed. Other output domains pass through to the existing fitter.
+#'   use NA for unobserved entries. The count-valued `utilization`, `flow` and
+#'   `utilization_by_group` targets reject negative nonmissing observations;
+#'   fractional counts are allowed. Other output domains pass through to the
+#'   existing fitter. For `utilization_by_group` (a model with demand groups) a
+#'   facility-by-group matrix of observed counts with both axes named (group
+#'   columns by group ID, facility rows by facility ID, any order).
 #' @param starts A finite positive matrix, one explicit independent start per
 #'   row, with exactly the named model parameter columns. No random starts are
 #'   added. Each start must lie inside the supplied positive bounds.
@@ -131,6 +312,14 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' @param output Exact model output to calibrate; default facility utilization.
 #'   `flow` is expected origin-facility counts, while `allocation` is an inside
 #'   probability operator. Requesting counts does not select a likelihood.
+#'   `utilization_by_group` is the expected count of each group at each facility
+#'   (a model with demand groups, see [clm_allocation()]). The group-specific
+#'   parameters of such a model (`sigma.<group>`, `v0.<group>`, from
+#'   `by_group`) can be fitted only to this output, with observed counts for
+#'   every group that has one and positive demand in that group; aggregated
+#'   targets leave them multimodal and weakly identified, so the fit is refused
+#'   (before any start) with a message naming the parameters. Fix them with
+#'   `clm_allocation(fixed = )`, or fit shared parameters to any target.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
 #'   with eta=1 by default. Poisson omits the data-only log-factorial constant.
@@ -162,13 +351,14 @@ fit_allocation <- function(model, observed, starts, lower, upper,
                             loss_args = list(), loss_grad = NULL,
                             gradient = FALSE, ...) {
   .check_allocation_model(model)
-  kernel <- model$metadata$spec[["kernel", exact = TRUE]]
-  if (!is.null(kernel) && isFALSE(kernel$smooth)) {
-    stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
-         "parameters, for example over a grid of sigma and v0")
+  for (kernel in .allocation_kernels(model$metadata$spec)) {
+    if (isFALSE(kernel$smooth)) {
+      stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
+           "parameters, for example over a grid of sigma and v0")
+    }
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
-      output %in% c("utilization", "flow") && is.numeric(observed) &&
+      output %in% c("utilization", "flow", "utilization_by_group") && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {
     stop("observed expected counts must be nonnegative for output '", output, "'")
   }
@@ -275,12 +465,21 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' @param model A corrected CLM declared over checked prepared inputs.
 #' @param theta A complete model parameter vector. Named parameters align to the
 #'   model contract; unnamed values follow its declared order. This operation
-#'   estimates no parameters and is not a causal intervention estimator.
+#'   estimates no parameters and is not a causal intervention estimator. For a
+#'   model with demand groups, a parameter held fixed by `clm_allocation(fixed
+#'   = )` may be given only with its fixed value, and unknown names are an error.
 #' @param coverage_args Named reporting controls for compact coverage, including
 #'   optional `norm`, `units`, reporting floors and classification cuts. A norm
 #'   must have the same declared supply-per-demand scale as capacity attribution.
-#' @param ... Named controls passed to the existing fixed-parameter solver.
+#' @param ... Named controls passed to the existing fixed-parameter solver,
+#'   including `requested_outputs`. For a model with demand groups, request the
+#'   per-group outputs here, for example
+#'   `requested_outputs = c("utilization_by_group", "access_by_group",
+#'   "outside_share_by_group")`; the other outputs are pooled over the groups
+#'   (demand-weighted). A group's own access and outside share are `NA` on rows
+#'   where that group has no demand and its travel there is not usable.
 #' @return The existing `ae_equilibrium` with its portable prediction snapshot
+#'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
 #'   hard constraint on expected utilization.
@@ -294,6 +493,9 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
        any(!nzchar(names(coverage_args))) || anyDuplicated(names(coverage_args)) ||
        any(!names(coverage_args) %in% setdiff(names(formals(.ae_coverage)), "fit"))))) {
     stop("coverage_args must contain unique named coverage controls")
+  }
+  if (!is.null(model$metadata$spec[["groups", exact = TRUE]])) {
+    theta <- .group_evaluation_theta(model, theta)
   }
   theta <- .coerce_problem_theta(theta, model$theta)
   result <- .solve_problem(model, theta, ...)
@@ -352,6 +554,7 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
                                 missing_travel = c("unknown", "legacy_zero"),
                                 spatial = NULL, type = c("numeric", "raster")) {
   type <- match.arg(type)
+  .refuse_grouped("predict_allocation()", source)
   if (type == "raster" && (length(outputs) != 1L ||
       !is.character(outputs) || is.na(outputs) || outputs %in% c("allocation", "flow"))) {
     stop("raster prediction requires exactly one requested vector output")
@@ -360,4 +563,31 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
   result <- .predict_clm(source, distance, origin_ids = origin_ids, demand = demand,
     outputs = outputs, missing_travel = match.arg(missing_travel), spatial = spatial)
   if (type == "raster") .prediction_surface(result, outputs) else result
+}
+
+# The theta of evaluate_allocation() for a grouped model: the free parameters,
+# plus fixed parameters only at their fixed value; any other name is an error.
+# An unnamed vector follows the free parameters and is left to the contract.
+.group_evaluation_theta <- function(model, theta) {
+  spec <- model$metadata$spec
+  .chck_numeric_vector(theta, "theta")
+  nms <- names(theta)
+  if (is.null(nms) || all(nms == "")) return(theta)
+  if (anyNA(nms) || any(nms == "") || anyDuplicated(nms)) {
+    stop("`theta` names must be unique and nonempty")
+  }
+  fixed <- spec$fixed
+  unknown <- setdiff(nms, c(model$theta$names, names(fixed)))
+  if (length(unknown)) {
+    stop("unknown parameter(s) in `theta`: ", paste(unknown, collapse = ", "),
+         "; the parameters are ", paste(model$theta$names, collapse = ", "),
+         call. = FALSE)
+  }
+  for (name in intersect(nms, names(fixed))) {
+    value <- as.numeric(theta[[name]])
+    if (!isTRUE(abs(value - fixed[[name]]) <= 1e-12 * max(1, abs(fixed[[name]])))) {
+      stop("parameter ", name, " is fixed at ", format(fixed[[name]]), call. = FALSE)
+    }
+  }
+  theta[nms %in% model$theta$names]
 }

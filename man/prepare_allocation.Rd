@@ -8,9 +8,9 @@ prepare_allocation(
   demand,
   supply,
   distance,
-  origin_ids = names(demand),
-  facility_ids = colnames(distance),
-  included = rep(TRUE, length(demand)),
+  origin_ids = NULL,
+  facility_ids = NULL,
+  included = NULL,
   missing_demand = c("error", "exclude"),
   missing_travel = c("error", "legacy_zero"),
   spatial = NULL,
@@ -20,20 +20,29 @@ prepare_allocation(
 \arguments{
 \item{demand}{Numeric origin vector, finite and nonnegative or explicitly
 permitted missing values. Negative or infinite demand is rejected even on
-excluded origins. Named demand matches canonical origin IDs.}
+excluded origins. Named demand matches canonical origin IDs. For demand
+groups, a named list by group of such named vectors with identical name
+sets (any order); the group names must be unique, non-empty, not \code{NA}, not
+\code{"all"} and without \code{"."}. A matrix is refused.}
 
 \item{supply}{Finite nonnegative facility vector. Known zero supply is
 retained; unknown supply is rejected. Names match canonical facility IDs.}
 
 \item{distance}{Numeric origin-by-facility travel matrix. Complete named
-rows and columns match IDs independently; unnamed axes are positional.}
+rows and columns match IDs independently; unnamed axes are positional. With
+demand groups, one matrix shared by the groups or a named list of matrices
+with one element per group, each aligned by origin and facility IDs. Missing
+travel for a group with zero demand at an origin is ignored.}
 
 \item{origin_ids, facility_ids}{Complete unique nonblank canonical IDs. Their
-order determines prepared order. Defaults require named demand and travel
-columns; identities are never inferred from equal axis lengths.}
+order determines prepared order. The default (\code{NULL}) takes the names of
+the demand vector (of the first group for grouped demand) and the column
+names of the travel matrix; identities are never inferred from equal axis
+lengths.}
 
-\item{included}{Nonmissing logical origin mask. Names align independently;
-an unnamed mask follows supplied demand order and is reordered with demand.}
+\item{included}{Nonmissing logical origin mask (default: all \code{TRUE}). Names
+align independently; an unnamed mask follows supplied demand order (that of
+the first group for grouped demand) and is reordered with demand.}
 
 \item{missing_demand}{Default \code{"error"} rejects included missing demand.
 \code{"exclude"} omits it from loads while recording unknown demand, separately
@@ -62,13 +71,24 @@ The existing \code{ae_prepared_inputs}, with a full origin registry and
 distinct support statuses plus compact active load arrays. No duplicate
 full travel matrix is retained. Pass it to \code{\link[=clm_allocation]{clm_allocation()}} rather than
 editing its internal fields. Expected counts use demand units/period;
-proportional capacity attribution uses supply per unit of demand.
+proportional capacity attribution uses supply per unit of demand. With
+demand groups the total demand is \code{D_active}, and \code{group_ids}, \code{D_groups}
+and \code{distance_groups} are added (\code{distance_active} is \code{NULL} when travel is
+given per group).
 }
 \description{
 Named axes align independently; unnamed axes are positional. Positive
 included demand enters facility-load support. Zero, unknown and explicitly
 excluded origins retain separate support statuses. This experimental entry
 point delegates to the existing compact preparation boundary.
+}
+\details{
+Demand groups (age bands, insurance types) are given as a named list of
+demand vectors, one per group, with the same origin IDs. An origin is active
+when it is included, every group demand is known and the total is positive;
+an origin with a group demand missing is unknown as a whole under
+\code{missing_demand = "exclude"}. The prepared object then also carries the
+group IDs and the demand and travel by group (\code{D_groups}, \code{distance_groups}).
 }
 \seealso{
 Other experimental allocation workflow: 
@@ -81,6 +101,7 @@ Other experimental allocation workflow:
 \code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
+\code{\link{huff_allocation}()},
 \code{\link{predict_allocation}()}
 }
 \concept{experimental allocation workflow}

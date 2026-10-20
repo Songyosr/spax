@@ -70,7 +70,13 @@ like for like: the same observed targets, loss function and arguments
 that change neither loss), demand, supply, origin and facility IDs and
 prepared travel times. Travel times are checked only when \code{models} are
 supplied, and each model must reproduce its own fit; otherwise loss
-differences are left missing. Contact and capacity values remain comparable
+differences are left missing. Fits of models with demand groups
+(\code{\link[=prepare_allocation]{prepare_allocation()}}) are comparable only with each other, with the same
+group IDs and, once \code{models} are supplied, the same demand and the same
+travel times for every group; a shared-parameter fit and a \code{by_group} fit on
+the same group-labelled target answer whether the group decays differ. The
+table then shows the free parameters, such as \verb{sigma.<group>}, and coverage
+comes from the pooled outputs. Contact and capacity values remain comparable
 across specifications, but they are conditional on each specification's
 inputs.
 
@@ -89,6 +95,7 @@ Other experimental allocation workflow:
 \code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},
+\code{\link{huff_allocation}()},
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }

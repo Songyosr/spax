@@ -53,6 +53,7 @@
 check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
+  .refuse_grouped("check_allocation()", model, fit)
   best <- .selected_allocation_fit(fit)
   if (!is.numeric(trip_breaks) || !length(trip_breaks) || anyNA(trip_breaks) ||
       any(!is.finite(trip_breaks)) || any(trip_breaks <= 0)) {
@@ -91,10 +92,14 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   }
   if (has_beta) {
     free <- intersect(c("v0", "beta"), names(theta))
+    # A search step can leave the range where attractiveness is finite (for
+    # example a large beta without an outside option): count it as a very poor
+    # fit rather than stopping the check.
     joint <- function(par) {
       th <- flat_theta
       th[free] <- exp(par)
-      flat_loss_at(th)
+      value <- tryCatch(flat_loss_at(th), error = function(e) NA_real_)
+      if (is.finite(value)) value else .Machine$double.xmax^0.25
     }
     opt <- stats::optim(log(flat_theta[free]), joint, method = if (length(free) > 1L)
       "Nelder-Mead" else "BFGS", control = list(reltol = 1e-12, maxit = 2000))
@@ -218,10 +223,19 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
 # ID-aligned targets. Errors when the model did not produce the fit. A fit with
 # a prediction snapshot must also carry this model's decay kernel declaration
 # (none for a built-in kernel), which tells apart two declared kernels that share
-# a name. Other constants of the specification are not compared: the loss check
+# a name; a grouped fit carries the model's group markers instead. Other constants of the specification are not compared: the loss check
 # below catches those that change the fit.
 .allocation_fit_context <- function(model, best) {
   spec <- model$metadata$spec
+  # A grouped fit has no prediction snapshot: its group markers (groups, the
+  # parameters by group, the family of each group and the fixed values) are
+  # compared with the model's specification instead, and an ungrouped fit
+  # never belongs to a grouped model or the reverse.
+  grouped_spec <- !is.null(spec[["groups", exact = TRUE]])
+  if (grouped_spec != !is.null(best[["groups", exact = TRUE]]) ||
+      (grouped_spec && !identical(best[.group_marker_names], spec[.group_marker_names]))) {
+    stop("fit does not belong to this model")
+  }
   if (!identical(best$family, spec$family) || !identical(best$allocation_form, spec$allocation) ||
       !identical(as.character(best$coverage_meta$facility_ids),
                  as.character(model$substrate$facility_ids)) ||

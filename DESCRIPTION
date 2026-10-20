@@ -1,23 +1,30 @@
 Package: spax
 Type: Package
 Title: Spatial Accessibility and Allocation Modeling
-Version: 0.3.1
+Version: 0.4.0
 Authors@R:
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
-Description: Spatial accessibility analysis using floating catchment area (FCA)
-    methods and experimental static conditional-logit allocation models with an
-    outside option.
-    FCA functions produce accessibility surfaces for independent supply indicators.
-    The allocation workflow provides checked numeric preparation, observation-based
-    calibration, requested-location prediction and fixed-parameter supply scenarios.
-    Saved results retain input declarations, support information and fit diagnostics.
-    A conditional facility-case bootstrap is available for static allocation
-    models with a fitted outside mass and a decay kernel that is smooth in sigma,
-    built in or declared, with an optional fitted supply elasticity beta, and an
-    explicitly declared observation process. Its coverage was evaluated for
-    Gaussian decay with fitted sigma and v0; other kernels and a fitted beta use
-    the same procedure without a separate coverage study.
+Description: A modular engine for spatial access and allocation models. Floating
+    catchment area (FCA) methods and an experimental static conditional logit
+    allocation model with an outside option share the same demand, supply and
+    travel-time inputs, decay kernels and numeric engine, which reads rasters in
+    blocks and works on compact matrices. FCA methods include two-step (2SFCA;
+    Luo and Wang (2003) <doi:10.1068/b29120>), enhanced (E2SFCA; Luo and Qi
+    (2009) <doi:10.1016/j.healthplace.2009.06.002>), modified (M2SFCA;
+    Delamater (2013) <doi:10.1016/j.healthplace.2013.07.012>), three-step
+    (3SFCA; Wan, Zou and Sternberg (2012) <doi:10.1080/13658816.2011.624987>)
+    and Huff-weighted variants, also for several demand groups that compete for
+    the same facilities, such as age bands or transport modes (Tao et al. (2018)
+    <doi:10.1186/s12913-018-3132-8>). The allocation model includes the Huff
+    model (Huff (1963) <doi:10.2307/3144521>), declared with huff_allocation(),
+    and extends it with an outside option for demand that goes elsewhere. It
+    can be evaluated at given parameters, fitted to observed facility counts or
+    origin-facility flows, compared with simpler allocations and across decay
+    kernels, used to predict for new locations and supply scenarios, and given
+    facility-case bootstrap intervals; group-specific parameters are fitted
+    only to counts recorded by group. Decay kernels, fitting losses, weights and
+    spatially varying catchments can be supplied by the user.
 License: MIT + file LICENSE
 Copyright: See file inst/COPYRIGHTS for third-party example data.
 Encoding: UTF-8

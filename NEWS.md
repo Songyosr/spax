@@ -1,3 +1,53 @@
+# spax 0.4.0
+
+FCA methods and the allocation model now run on one numeric engine, and both
+accept demand groups that compete for the same facilities. `huff_allocation()`
+declares the Huff model. Package descriptions now present spax as a modular
+engine for floating catchment methods and allocation models. FCA calls and
+saved allocation fits from 0.3.x keep working, except for the FCA inputs that
+are now refused (first item below).
+
+* FCA functions (`spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`,
+  `spax_huff2sfca()` and `compute_access()`) now compute on the same numeric engine as the
+  allocation workflow, reading rasters in row blocks. Results are unchanged up to rounding;
+  on large grids they are faster (about 4 times on a 600 x 600 grid with 250 facilities) and
+  no longer rounded to single precision in temporary files. Decay weights that are infinite
+  where travel is finite, such as power decay at distance 0, and negative or infinite demand
+  are now refused; they produced meaningless surfaces before. Smaller changes:
+  `compute_access()` refuses infinite weights, also with `snap = TRUE`; with `snap = TRUE`,
+  negative or infinite demand counts as no demand and a `sigma` vector longer than one is
+  refused; facility IDs now always come from the distance layers, so a one-layer `sigma`
+  raster or a decay function whose layers keep terra's default names no longer fails with
+  "Some weight layer IDs not found"; cells whose weights are all NaN give NA, not NaN.
+* FCA functions accept several demand groups (for example age bands or transport modes):
+  give `demand` as a named list of single-layer rasters. Each group can have its own decay
+  (`decay_params`, `selection_params`, `threshold`) and its own travel times (`distance`, as
+  a named list with the same facilities in the same order); all groups compete for the same
+  supply. The result has one layer per group and an overall layer, the demand-weighted
+  average across groups, in which a group that reaches no facility counts as no access. This
+  follows the multi-modal 2SFCA of Tao et al. (2018) and allows group-specific decay. A
+  multi-layer demand raster is still refused, now with a message that points to the group
+  form.
+* The allocation model accepts demand groups (experimental): give `prepare_allocation()`
+  demand as a named list by group, and optionally travel as a named list by group.
+  `clm_allocation(by_group = )` lets the decay `sigma` (and the outside weight `v0`) differ
+  by group, with a family per group if needed, and `fixed = ` holds group values taken from
+  other evidence. Group-specific parameters are fitted only against group-labelled targets,
+  facility counts by group (`fit_allocation(output = "utilization_by_group")`); with
+  aggregated targets they are refused, because simulations and the Cornwall data show that
+  aggregated flows cannot tell group decays apart. Evaluation reports pooled outputs, as
+  before, and per-group outputs on request (`evaluate_allocation(requested_outputs = )`);
+  `compare_allocations()` compares grouped fits. Prediction, `check_allocation()` and the
+  bootstrap do not yet accept grouped models.
+* New experimental `huff_allocation()` declares the Huff model, the allocation model
+  of `clm_allocation()` without an outside option, with power distance decay and a
+  fitted attractiveness exponent by default.
+* `check_allocation()` no longer stops when the no-decay comparator searches a fitted
+  attractiveness exponent `beta` into a range where attractiveness is not finite, which
+  can happen for a model without an outside weight.
+* Version 0.3.1 is archived on Zenodo: cite it as doi:10.5281/zenodo.23446335.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 # spax 0.3.1
 
 Patch release. Poisson flow fits are now maximum likelihood estimates; saved
