@@ -412,7 +412,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'
 #' When the starts come from the search, `gradient` and `control` default (each
 #' unless you give it) to analytic gradients, when the loss has one, and strict
-#' optimizer settings, `control = list(maxit = 300, factr = 10, pgtol = 1e-8)`,
+#' optimizer settings, `control = list(maxit = 300, factr = 1e3, pgtol = 1e-8)`,
 #' because the optimizer defaults can stop early at a different outside weight.
 #' Given `starts` keep the earlier defaults.
 #'
@@ -487,7 +487,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' @param ... Named multistart or fitting controls, including solver tolerances,
 #'   optimizer `control`, `keep_fits` and descriptive disagreement tolerances.
 #'   When `starts` is `NULL` and `control` is not given it is
-#'   `list(maxit = 300, factr = 10, pgtol = 1e-8)`.
+#'   `list(maxit = 300, factr = 1e3, pgtol = 1e-8)`.
 #' @return The existing `ae_multistart_fit`, retaining selected fit, all per-start
 #'   diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
 #'   whose starts came from the default search also has a `default_search`

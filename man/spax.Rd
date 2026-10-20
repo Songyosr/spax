@@ -59,7 +59,7 @@ the output it is compared with by its kind, so \code{output}, \code{loss} and
 from the data when they are not given: \code{starts}, \code{lower} and \code{upper} are
 optional (see the default search in \code{\link[=fit_allocation]{fit_allocation()}}). \code{spax()} always
 passes analytic gradients and the strict optimizer settings
-\code{control = list(maxit = 300, factr = 10, pgtol = 1e-8)}, also when you give
+\code{control = list(maxit = 300, factr = 1e3, pgtol = 1e-8)}, also when you give
 \code{starts}, unless \code{...} gives \code{gradient} or \code{control} itself. The result does
 not solve the model again: it reads the selected fit. A search in which no
 start converged gives a warning and a result with no estimates;

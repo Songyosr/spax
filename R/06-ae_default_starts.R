@@ -15,7 +15,10 @@
 .default_grid_points <- 15L
 .default_v0_multipliers <- c(0.1, 1, 10)
 .default_beta_bounds <- c(0.05, 5)
-.default_search_control <- list(maxit = 300, factr = 10, pgtol = 1e-8)
+# factr = 1e3 stops at a relative loss change of about 2e-13: tighter (10) ends starts that
+# reached the optimum with line-search failures, looser (the default 1e7) moves a weakly
+# identified v0 (Cornwall gaussian + beta totals: 0.0078 against 0.0109).
+.default_search_control <- list(maxit = 300, factr = 1e3, pgtol = 1e-8)
 .default_solver_args <- c("lambda", "tol", "max_iter", "norm", "check")
 
 .default_search_message <- list(

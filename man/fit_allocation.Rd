@@ -83,7 +83,7 @@ is \code{NULL} and \code{gradient} is not given, it is \code{TRUE} if the loss h
 \item{...}{Named multistart or fitting controls, including solver tolerances,
 optimizer \code{control}, \code{keep_fits} and descriptive disagreement tolerances.
 When \code{starts} is \code{NULL} and \code{control} is not given it is
-\code{list(maxit = 300, factr = 10, pgtol = 1e-8)}.}
+\code{list(maxit = 300, factr = 1e3, pgtol = 1e-8)}.}
 }
 \value{
 The existing \code{ae_multistart_fit}, retaining selected fit, all per-start
@@ -132,7 +132,7 @@ runs only to find a default bound of \code{v0}). The search is recorded in the
 
 When the starts come from the search, \code{gradient} and \code{control} default (each
 unless you give it) to analytic gradients, when the loss has one, and strict
-optimizer settings, \code{control = list(maxit = 300, factr = 10, pgtol = 1e-8)},
+optimizer settings, \code{control = list(maxit = 300, factr = 1e3, pgtol = 1e-8)},
 because the optimizer defaults can stop early at a different outside weight.
 Given \code{starts} keep the earlier defaults.
 

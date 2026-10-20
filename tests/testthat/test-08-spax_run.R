@@ -6,7 +6,7 @@
 
 # Fixtures -------------------------------------------------------------------------
 
-.run_strict <- list(maxit = 300, factr = 10, pgtol = 1e-8)
+.run_strict <- list(maxit = 300, factr = 1e3, pgtol = 1e-8)
 .run_no_fit <- "no fit was selected; see summary(x)"
 
 # A small memo for fits: each is computed once per run of this file.
@@ -917,8 +917,8 @@ test_that("print() shows the specification, the data, the parameters and the fit
   expect_identical(lines[12], "")
   n <- nrow(x$fit$table)
   expect_identical(lines[13:15], c(
-    sprintf("  selected    %s (start %d of %d), converged", x$fit$best_start,
-            match(x$fit$best_start, x$fit$table$start), n),
+    sprintf("  selected    %s (start %d of %d); %d of %d starts converged", x$fit$best_start,
+            match(x$fit$best_start, x$fit$table$start), n, sum(x$fit$table$eligible), n),
     "  boundary    none",
     sprintf("  starts      default search, %d of %d grid points, loss poisson",
             x$fit$default_search$n_finite, x$fit$default_search$n_points)))
@@ -928,8 +928,8 @@ test_that("print() shows the specification, the data, the parameters and the fit
             lower = case$lower, upper = case$upper)
   glines <- capture.output(print(g))
   expect_identical(glines[length(glines) - 1L:0L], c(
-    sprintf("  selected    %s (start %d of 2), converged", g$fit$best_start,
-            match(g$fit$best_start, c("short", "wide"))),
+    sprintf("  selected    %s (start %d of 2); %d of 2 starts converged", g$fit$best_start,
+            match(g$fit$best_start, c("short", "wide")), sum(g$fit$table$eligible)),
     "  boundary    none"))
   b <- spax(case$data, spec_clm(), observed = obs_totals(case$y),
             starts = rbind(a = c(sigma = 9, v0 = 20), b = c(sigma = 12, v0 = 50)),
