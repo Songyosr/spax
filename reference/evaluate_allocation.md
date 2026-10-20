@@ -23,6 +23,9 @@ evaluate_allocation(model, theta, coverage_args = list(), ...)
   A complete model parameter vector. Named parameters align to the model
   contract; unnamed values follow its declared order. This operation
   estimates no parameters and is not a causal intervention estimator.
+  For a model with demand groups, a parameter held fixed by
+  `clm_allocation(fixed = )` may be given only with its fixed value, and
+  unknown names are an error.
 
 - coverage_args:
 
@@ -33,11 +36,18 @@ evaluate_allocation(model, theta, coverage_args = list(), ...)
 
 - ...:
 
-  Named controls passed to the existing fixed-parameter solver.
+  Named controls passed to the existing fixed-parameter solver,
+  including `requested_outputs`. For a model with demand groups, request
+  the per-group outputs here, for example
+  `requested_outputs = c("utilization_by_group", "access_by_group", "outside_share_by_group")`;
+  the other outputs are pooled over the groups (demand-weighted). A
+  group's own access and outside share are `NA` on rows where that group
+  has no demand and its travel there is not usable.
 
 ## Value
 
-The existing `ae_equilibrium` with its portable prediction snapshot and
+The existing `ae_equilibrium` with its portable prediction snapshot
+(none for a model with demand groups, which cannot be predicted yet) and
 compact `coverage`. Coverage uses raw supply units without kappa;
 proportional attributed capacity is not a delivered-service measure or a
 hard constraint on expected utilization.
@@ -53,5 +63,6 @@ Other experimental allocation workflow:
 [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md),
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)

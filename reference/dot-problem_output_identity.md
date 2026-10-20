@@ -4,8 +4,9 @@ Raster origin IDs are retained cell numbers within the prepared
 template. Older prepared raster problems use their explicit
 `demand_kept_index` as these cell keys when `origin_ids` is absent; this
 is not a length-based guess. Custom providers can declare `output_axes`
-in their spec and supply `origin_ids` / `facility_ids` in the substrate.
-No axis is inferred from an output name or a coincident vector length.
+in their spec and supply `origin_ids` / `facility_ids` (and `group_ids`
+for demand groups) in the substrate. No axis is inferred from an output
+name or a coincident vector length.
 
 ## Usage
 

@@ -1,11 +1,15 @@
 # Spatial accessibility and allocation modeling
 
-Public floating catchment area (FCA) methods and an experimental
-corrected static conditional-logit model (CLM) workflow share demand,
-facility supply and travel inputs. Their normalization and output
-meanings remain model-specific. Internal feedback models are private; a
-shared execution engine does not establish universal mathematical
-nesting among the models.
+A modular engine for spatial access and allocation models. Floating
+catchment area (FCA) methods and an experimental static conditional
+logit allocation model with an outside option share the same demand,
+facility supply and travel inputs, optionally split into demand groups,
+the same decay kernels and one numeric engine. The allocation model
+includes the Huff model, declared with
+[`huff_allocation`](https://songyosr.github.io/spax/reference/huff_allocation.md),
+and extends it with an outside option for demand that goes elsewhere. It
+can be evaluated, fitted to observed use, compared and used for
+prediction and scenarios. Output meanings remain model-specific.
 
 ## Choose a workflow
 
@@ -33,8 +37,11 @@ The six experimental allocation operations are
 and
 [`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md).
 They describe one static CLM system with one supply vector and an
-outside option. The first five support Gaussian, exponential and power
-decay and kernels declared with
+outside option;
+[`huff_allocation`](https://songyosr.github.io/spax/reference/huff_allocation.md)
+declares the same system without the outside option, the classic Huff
+model. The first five support Gaussian, exponential and power decay and
+kernels declared with
 [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 (fitting needs a kernel that is smooth in `sigma`); bootstrap has the
 narrower scope below. Broader feedback-model declarations and
@@ -112,7 +119,9 @@ for the full restrictions.
 Existing public FCA calls remain supported. Their independent supply
 columns and accessibility scores do not become CLM probabilities by
 changing function names. Normalization choices remain part of the FCA
-model specification.
+model specification. Internal feedback models are private, and a shared
+execution engine does not establish universal mathematical nesting among
+the models.
 
 Corrected static CLM and the older private `huff_decay` route have
 different equations and output meanings. Do not reinterpret saved legacy

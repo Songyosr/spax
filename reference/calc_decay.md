@@ -57,7 +57,7 @@ given:
 - `"exponential"`: \\\exp(-\sigma d)\\; default \\\sigma = 0.1\\.
 
 - `"power"`: \\d^{-\sigma}\\; default \\\sigma = 2\\. The weight is
-  `Inf` at distance 0.
+  `Inf` at distance 0, which the FCA functions refuse.
 
 - `"inverse"`: \\1 / (d + c)\\, with `c = 1` unless `c` is passed in
   `...`; `sigma` does not enter the weights (a given value is still

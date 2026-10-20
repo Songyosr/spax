@@ -19,8 +19,9 @@ compares the results: the enhanced two-step FCA (E2SFCA) from [Getting
 started](https://songyosr.github.io/spax/articles/spax.md), the original
 2SFCA and the modified 2SFCA (M2SFCA). A last section adds two variants
 that first share each cell’s demand among practices, 3SFCA and
-Huff-2SFCA. For a fitted allocation model with an outside option, see
-[Choosing an FCA index or an allocation
+Huff-2SFCA, and a final one lets several demand groups, such as age
+bands, have their own decay. For a fitted allocation model with an
+outside option, see [Choosing an FCA index or an allocation
 model](https://songyosr.github.io/spax/articles/model-choice.md).
 
 ## The inputs
@@ -264,6 +265,11 @@ shares already divide each cell’s demand. This differs from
 `demand_normalize = "standard"` in
 [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md),
 which divides the weights that gather demand only.
+[`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
+uses Huff shares inside an FCA score;
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
+fits the Huff model itself to observed use (see
+[`vignette("allocation-workflow", package = "spax")`](https://songyosr.github.io/spax/articles/allocation-workflow.md)).
 
 ``` r
 
@@ -468,6 +474,129 @@ and
 [`?spax_huff2sfca`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
 describe `selection_params`, which gives the selection weights another
 decay or a catchment limit, and cite the methods.
+
+## Several demand groups
+
+Residents can differ in how far they travel, for example by age or by
+the transport they have. Give `demand` as a named list of single-layer
+rasters, one per group, and each group gets its own surface. The
+Cornwall data have no age split, so this section builds one for
+illustration. It is not data: it assumes that the share of residents in
+an older group rises in a straight line from 15% at the western edge of
+the grid to 35% at the eastern edge, and that the older group travels
+less far to a practice, with a Gaussian scale of 8 minutes against 12
+for the younger group. All of these numbers are illustrative choices.
+
+``` r
+
+# An illustrative older share that rises from west to east, not data
+older_share <- mask(init(pop, "x"), pop)
+rng <- unlist(global(older_share, range, na.rm = TRUE))
+older_share <- 0.15 + 0.20 * (older_share - rng[1]) / (rng[2] - rng[1])
+
+groups <- list(
+  younger = pop * (1 - older_share),
+  older = pop * older_share
+)
+
+# One decay per group, named by the group IDs
+by_group <- spax_e2sfca(
+  demand = groups,
+  supply = gp,
+  distance = travel,
+  decay_params = list(
+    younger = list(method = "gaussian", sigma = 12),
+    older = list(method = "gaussian", sigma = 8)
+  ),
+  demand_normalize = "identity",
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+names(by_group$accessibility)
+```
+
+``` spax-output
+[1] "gp_fte_extg.younger" "gp_fte_extg.older"   "gp_fte_extg.all"    
+```
+
+All groups compete for the same GP time: step 1 adds up the demand of
+the groups that reaches each practice, each with its own weights, so a
+practice has one demand total and one supply-to-demand ratio. Step 2
+then gives each group its own surface from those shared ratios, using
+its own weights. The layer ending in `.all` is the overall surface, the
+average of the group surfaces weighted by the demand of each cell. A
+group whose travel reaches no practice from a cell counts with an index
+of 0 there, so the overall layer shows it as no access.
+
+``` r
+
+group_maps <- 1000 * by_group$accessibility
+names(group_maps) <- c(
+  "Younger, Gaussian 12 min",
+  "Older, Gaussian 8 min",
+  "Overall, demand-weighted"
+)
+plot(
+  group_maps,
+  nc = 3,
+  axes = FALSE,
+  col = hcl.colors(50, "viridis"),
+  range = range(values(group_maps), na.rm = TRUE),
+  mar = c(1, 1, 2, 5),
+  plg = list(title = "GP FTE\nper 1,000")
+)
+```
+
+![Three raster maps of mainland Cornwall on one colour scale in GP FTE
+per 1,000 residents: the younger group, the older group with a shorter
+travel scale, which is lower everywhere, and the overall surface between
+the two.](fca-methods_files/figure-html/groups-map-1.png)
+
+``` r
+
+# Demand-weighted mean index per 1,000 residents of each group, and overall
+mean_index <- function(layer, weight) {
+  x <- 1000 * values(by_group$accessibility[[layer]], mat = FALSE)
+  w <- values(weight, mat = FALSE)
+  weighted.mean(x, w, na.rm = TRUE)
+}
+round(
+  c(
+    younger = mean_index("gp_fte_extg.younger", groups$younger),
+    older = mean_index("gp_fte_extg.older", groups$older),
+    overall = mean_index("gp_fte_extg.all", pop)
+  ),
+  2
+)
+```
+
+``` spax-output
+younger   older overall 
+   0.65    0.36    0.58 
+```
+
+The average younger resident sees 0.65 GP FTE per 1,000 residents and
+the average older resident 0.36; the overall value lies between them,
+nearer the younger group because that group is the larger one in every
+cell. With a shorter scale, every practice at a positive travel time
+gets a smaller weight for the older group, so its index is lower. The
+gap reflects the assumed travel scales and the assumed split, not any
+observed difference between age groups.
+
+Transport modes are another use. Give `distance` as a named list with
+one travel stack per group, for example one for car and one for public
+transport; the stacks must name the same practices in the same order,
+and `decay_params` can be given per group in the same way. This follows
+the structure of the multi-modal 2SFCA of [Tao et al.
+(2018)](https://doi.org/10.1186/s12913-018-3132-8) (their equations
+3-5), in which the modes share the supply and the travel times differ by
+mode, and generalizes it to a decay that differs by group. Earlier
+multi-modal 2SFCA work includes [Mao and Nekorchuk
+(2013)](https://doi.org/10.1016/j.healthplace.2013.08.008) and
+[Langford, Higgs and Fry
+(2016)](https://doi.org/10.1016/j.healthplace.2015.11.007).
+[`?spax_e2sfca`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
+lists which arguments can be given per group.
 
 ## Continue
 

@@ -42,6 +42,8 @@ supply scenarios and restricted conditional bootstrap
   workflow
 - [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
   : Declare corrected static CLM over checked allocation inputs
+- [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
+  : Declare the Huff model over checked allocation inputs
 - [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
   : Calibrate a declared allocation model from explicit starting points
 - [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md)
@@ -140,8 +142,6 @@ Print, summary, and plot methods for public FCA spax objects
   : Print function for spax summary objects
 - [`plot(`*`<spax>`*`)`](https://songyosr.github.io/spax/reference/plot.spax.md)
   : Plot Spatial Accessibility Results
-- [`print(`*`<spax_field>`*`)`](https://songyosr.github.io/spax/reference/print.spax_field.md)
-  : Print a spax_field
 
 ## Utility Functions
 

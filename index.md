@@ -1,39 +1,48 @@
 # spax: spatial accessibility and allocation modeling
 
-`spax` supports two user workflows: public floating catchment area (FCA)
-methods for accessibility surfaces, and an experimental static
-conditional-logit model (CLM) workflow for fitting allocation to
-observations, inspecting results, and evaluating supply scenarios. Both
-use explicit demand, facility supply and travel inputs. Their
-normalization and output meanings remain model-specific.
+`spax` is a modular engine for spatial access and allocation models.
+Floating catchment area (FCA) methods and an allocation model share the
+same inputs (demand, facility supply and travel times), decay kernels
+and numeric engine, so you can:
 
-Existing
-[`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md),
-[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md),
-[`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md)
-and
-[`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md)
-workflows remain supported, and the experimental
-[`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md)
-and
-[`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
-add selection-weighted variants. The allocation functions are an
-additional route; they do not replace the FCA functions. Internal
-feedback-model machinery is private and is not part of the experimental
-CLM interface.
+- compute accessibility surfaces with the FCA family: 2SFCA, E2SFCA,
+  M2SFCA, 3SFCA and Huff-2SFCA;
+- model where people go with a static conditional logit allocation
+  ([`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md))
+  that includes the Huff model
+  ([`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md))
+  and extends it with an outside option for demand that goes elsewhere:
+  evaluate it at chosen parameters, fit it to observed use (facility
+  totals or origin-to-facility flows), predict for new areas and test
+  supply scenarios;
+- compare models, including FCA scores and fitted allocations on the
+  same inputs;
+- work with several demand groups that compete for the same facilities,
+  such as age bands, or people who drive and people who take the bus; a
+  group-specific allocation parameter is fitted only from counts
+  recorded by group;
+- plug in your own decay kernels, fitting losses, weights and spatially
+  varying catchments.
+
+The pieces are built to be combined and extended: a new component uses
+the same engine rather than a separate code path. Large rasters are read
+in blocks, so the FCA functions run in modest memory. The FCA functions
+are stable; the allocation functions are experimental and may change in
+later versions.
 
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.3.1. Existing public FCA calling semantics are unchanged.
+for spax 0.4.0. FCA calls from earlier versions keep working; a few
+inputs that gave meaningless surfaces are now refused (see the NEWS).
 
-Install version 0.3.1 by its release tag rather than from the
+Install version 0.4.0 by its release tag rather than from the
 repository’s default branch:
 
 ``` r
 
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.3.1")
+pak::pak("Songyosr/spax@v0.4.0")
 ```
 
 The allocation interface is experimental and may change in later
@@ -43,7 +52,7 @@ Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
 
 Each release is archived on Zenodo; <doi:10.5281/zenodo.23438611> refers
-to all versions (version 0.3.0 is <doi:10.5281/zenodo.23438612>). Cite
+to all versions (version 0.3.1 is <doi:10.5281/zenodo.23446335>). Cite
 the version you used with `citation("spax")`.
 
 Package and function help are available from an installed package.
@@ -325,6 +334,7 @@ and dates. Data sources and licences are listed in
 |:---|:---|
 | [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md) | Align IDs, validate inputs, record units and support, and prepare compact numeric inputs. |
 | [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Declare corrected static CLM with Gaussian, exponential or power travel decay, or a kernel declared with [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md). |
+| [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md) | Declare the Huff model: the same allocation model without an outside option, with power decay and a fitted attractiveness exponent by default. |
 | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md) | Fit a selected output from explicit starts and retain diagnostics. |
 | [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md) | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md) | Predict requested origins against saved facility loads; maps are explicit. |

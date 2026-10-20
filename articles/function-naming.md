@@ -13,7 +13,11 @@ library(spax)
 spax retains its public FCA functions alongside the experimental static
 allocation workflow. Names describe the interface they belong to; there
 is no rule that every complete workflow must start with `spax_`.
-Existing FCA calls and result types remain supported.
+Existing FCA calls and result types remain supported. Within the
+allocation workflow, model declarations are named `<model>_allocation()`
+([`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md))
+and workflow steps `<verb>_allocation()`.
 
 ## Choose the level of operation
 
@@ -27,7 +31,7 @@ Existing FCA calls and result types remain supported.
 | Decay, normalization or choice weights | [`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md), [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md), [`calc_normalize()`](https://songyosr.github.io/spax/reference/calc_normalize.md), [`calc_choice()`](https://songyosr.github.io/spax/reference/calc_choice.md) | See the individual input/output contracts |
 | Weighted reduction to facilities | [`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md), [`gather_demand()`](https://songyosr.github.io/spax/reference/gather_demand.md) | Facility vector/table |
 | Weighted distribution to origins | [`spread_weighted()`](https://songyosr.github.io/spax/reference/spread_weighted.md), [`spread_access()`](https://songyosr.github.io/spax/reference/spread_access.md) | Raster result |
-| Checked allocation preparation and declaration | [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md), [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Prepared inputs and experimental model |
+| Checked allocation preparation and declaration | [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md), [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md), [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md) | Prepared inputs and experimental model |
 | Fit, evaluate, predict and bootstrap | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md), [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md), [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md), [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md) | Model-specific saved results |
 | Check and compare fitted allocations | [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md) | Comparison tables; the fits are not changed |
 | Travel times and demand inputs | [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md), [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md) | Travel matrix or raster; demand raster or vector |
@@ -48,7 +52,7 @@ functions <- c(
   "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
   "compute_access",
   # Experimental allocation workflow
-  "prepare_allocation", "clm_allocation", "fit_allocation",
+  "prepare_allocation", "clm_allocation", "huff_allocation", "fit_allocation",
   "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
   "check_allocation", "compare_allocations",
   # Input helpers
@@ -70,15 +74,16 @@ data.frame(function_name = functions)
 6        compute_access
 7    prepare_allocation
 8        clm_allocation
-9        fit_allocation
-10  evaluate_allocation
-11   predict_allocation
-12 bootstrap_allocation
-13     check_allocation
-14  compare_allocations
-15     calc_travel_time
-16          calc_demand
-17         decay_kernel
+9       huff_allocation
+10       fit_allocation
+11  evaluate_allocation
+12   predict_allocation
+13 bootstrap_allocation
+14     check_allocation
+15  compare_allocations
+16     calc_travel_time
+17          calc_demand
+18         decay_kernel
 ```
 
 The former iterative-FCA interface is no longer available. It is not an

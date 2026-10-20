@@ -64,8 +64,11 @@ populated  6912        54           2.8
 The rectangular grid is about three times larger than its populated
 part, because it also covers sea and land outside Cornwall. That is
 small here, but the same arithmetic at 100 metres, or with hundreds of
-facilities, reaches gigabytes. A calculation may hold travel, weights,
-temporary products and outputs at the same time.
+facilities, reaches gigabytes. A calculation that works on whole rasters
+may hold travel, weights, temporary products and outputs at the same
+time. The FCA functions of spax read the rasters in blocks of rows, so
+they need less memory than these arrays; a decay given as a plain R
+function is still evaluated on the whole raster.
 [`object.size()`](https://rdrr.io/r/utils/object.size.html) of a
 `SpatRaster` measures a pointer or file reference, not these arrays, so
 measure memory and elapsed time on the whole workflow.
@@ -184,10 +187,10 @@ comparison
 
 ``` spax-output
   factor cell_km2 populated_cells residents seconds mean_per_1000
-1    0.5     0.14           27648    541184   0.245         0.575
-2    1.0     0.55            6912    541184   0.084         0.575
-3    2.0     2.20            1829    541184   0.044         0.575
-4    4.0     8.79             506    541184   0.036         0.575
+1    0.5     0.14           27648    541184   0.765         0.575
+2    1.0     0.55            6912    541184   0.060         0.575
+3    2.0     2.20            1829    541184   0.015         0.575
+4    4.0     8.79             506    541184   0.010         0.575
   median_abs_change_pct weighted_abs_change_pct
 1                   0.0                     0.0
 2                   0.0                     0.0

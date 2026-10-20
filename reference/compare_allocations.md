@@ -97,9 +97,17 @@ and arguments (Poisson fits: the same floor, a fit that stored none used
 1e-9, or floors that change neither loss), demand, supply, origin and
 facility IDs and prepared travel times. Travel times are checked only
 when `models` are supplied, and each model must reproduce its own fit;
-otherwise loss differences are left missing. Contact and capacity values
-remain comparable across specifications, but they are conditional on
-each specification's inputs.
+otherwise loss differences are left missing. Fits of models with demand
+groups
+([`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md))
+are comparable only with each other, with the same group IDs and, once
+`models` are supplied, the same demand and the same travel times for
+every group; a shared-parameter fit and a `by_group` fit on the same
+group-labelled target answer whether the group decays differ. The table
+then shows the free parameters, such as `sigma.<group>`, and coverage
+comes from the pooled outputs. Contact and capacity values remain
+comparable across specifications, but they are conditional on each
+specification's inputs.
 
 With `zones`, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the
@@ -118,5 +126,6 @@ Other experimental allocation workflow:
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)

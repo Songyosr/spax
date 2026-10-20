@@ -112,6 +112,7 @@ Other experimental allocation workflow:
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
 
@@ -119,7 +120,7 @@ Other experimental allocation workflow:
 
 ``` r
 library(sf)
-#> Linking to GEOS 3.12.1, GDAL 3.8.4, PROJ 9.4.0; sf_use_s2() is TRUE
+#> Linking to GEOS 3.14.1, GDAL 3.12.2, PROJ 9.7.1; sf_use_s2() is TRUE
 library(terra)
 
 # Cornwall population grid in British National Grid (metres)

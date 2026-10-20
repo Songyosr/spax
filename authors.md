@@ -8,16 +8,16 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/Songyosr/spax/blob/v0.3.1/inst/CITATION)
+[`inst/CITATION`](https://github.com/Songyosr/spax/blob/main/inst/CITATION)
 
 Rajborirug S (2026). spax: Spatial Accessibility and Allocation
-Modeling. R package version 0.3.1. doi:10.5281/zenodo.23438611
+Modeling. R package version 0.4.0. doi:10.5281/zenodo.23438611
 
     @Manual{,
       title = {spax: Spatial Accessibility and Allocation Modeling},
       author = {Songyos Rajborirug},
       year = {2026},
-      note = {R package version 0.3.1},
+      note = {R package version 0.4.0},
       doi = {10.5281/zenodo.23438611},
       url = {https://github.com/Songyosr/spax},
     }

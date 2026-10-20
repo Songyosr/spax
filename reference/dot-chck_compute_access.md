@@ -20,7 +20,8 @@ Validate inputs for compute_access
 
 - demand:
 
-  SpatRaster representing spatial distribution of demand
+  SpatRaster representing spatial distribution of demand, or a named
+  list of SpatRasters (demand groups)
 
 - supply:
 
@@ -28,11 +29,13 @@ Validate inputs for compute_access
 
 - demand_weights:
 
-  Multi-layer SpatRaster of demand-side weights
+  Multi-layer SpatRaster of demand-side weights, or with groups a named
+  list of them (one per group)
 
 - access_weights:
 
-  Multi-layer SpatRaster of accessibility-side weights
+  Multi-layer SpatRaster of accessibility-side weights, or with groups a
+  named list of them (one per group)
 
 - id_col:
 

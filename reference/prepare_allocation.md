@@ -13,9 +13,9 @@ prepare_allocation(
   demand,
   supply,
   distance,
-  origin_ids = names(demand),
-  facility_ids = colnames(distance),
-  included = rep(TRUE, length(demand)),
+  origin_ids = NULL,
+  facility_ids = NULL,
+  included = NULL,
   missing_demand = c("error", "exclude"),
   missing_travel = c("error", "legacy_zero"),
   spatial = NULL,
@@ -29,7 +29,11 @@ prepare_allocation(
 
   Numeric origin vector, finite and nonnegative or explicitly permitted
   missing values. Negative or infinite demand is rejected even on
-  excluded origins. Named demand matches canonical origin IDs.
+  excluded origins. Named demand matches canonical origin IDs. For
+  demand groups, a named list by group of such named vectors with
+  identical name sets (any order); the group names must be unique,
+  non-empty, not `NA`, not `"all"` and without `"."`. A matrix is
+  refused.
 
 - supply:
 
@@ -39,18 +43,25 @@ prepare_allocation(
 - distance:
 
   Numeric origin-by-facility travel matrix. Complete named rows and
-  columns match IDs independently; unnamed axes are positional.
+  columns match IDs independently; unnamed axes are positional. With
+  demand groups, one matrix shared by the groups or a named list of
+  matrices with one element per group, each aligned by origin and
+  facility IDs. Missing travel for a group with zero demand at an origin
+  is ignored.
 
 - origin_ids, facility_ids:
 
   Complete unique nonblank canonical IDs. Their order determines
-  prepared order. Defaults require named demand and travel columns;
-  identities are never inferred from equal axis lengths.
+  prepared order. The default (`NULL`) takes the names of the demand
+  vector (of the first group for grouped demand) and the column names of
+  the travel matrix; identities are never inferred from equal axis
+  lengths.
 
 - included:
 
-  Nonmissing logical origin mask. Names align independently; an unnamed
-  mask follows supplied demand order and is reordered with demand.
+  Nonmissing logical origin mask (default: all `TRUE`). Names align
+  independently; an unnamed mask follows supplied demand order (that of
+  the first group for grouped demand) and is reordered with demand.
 
 - missing_demand:
 
@@ -93,7 +104,19 @@ full travel matrix is retained. Pass it to
 [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
 rather than editing its internal fields. Expected counts use demand
 units/period; proportional capacity attribution uses supply per unit of
-demand.
+demand. With demand groups the total demand is `D_active`, and
+`group_ids`, `D_groups` and `distance_groups` are added
+(`distance_active` is `NULL` when travel is given per group).
+
+## Details
+
+Demand groups (age bands, insurance types) are given as a named list of
+demand vectors, one per group, with the same origin IDs. An origin is
+active when it is included, every group demand is known and the total is
+positive; an origin with a group demand missing is unknown as a whole
+under `missing_demand = "exclude"`. The prepared object then also
+carries the group IDs and the demand and travel by group (`D_groups`,
+`distance_groups`).
 
 ## See also
 
@@ -107,4 +130,5 @@ Other experimental allocation workflow:
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)

@@ -26,7 +26,11 @@ spax_e2sfca(
 
 - demand:
 
-  SpatRaster representing spatial distribution of demand
+  SpatRaster representing spatial distribution of demand, or a named
+  list of single-layer SpatRasters, one per demand group (see "Demand
+  groups"). A multi-layer SpatRaster is refused. Demand must be finite
+  and nonnegative (use NA for unknown) unless \`snap = TRUE\`, which
+  ignores other cells.
 
 - supply:
 
@@ -34,15 +38,22 @@ spax_e2sfca(
 
 - distance:
 
-  SpatRaster stack of travel times/distances to facilities
+  SpatRaster stack of travel times/distances to facilities. With demand
+  groups, either one stack shared by every group or a list of stacks
+  named by the groups (for example one per travel mode); the stacks of
+  all groups must name the same facilities in the same order and have
+  the same geometry (reorder with \`x\[\[names(first)\]\]\`).
 
 - decay_params:
 
-  List of parameters for decay function:
+  List of parameters for decay function (with demand groups, one list
+  shared by every group, or a list of such lists named by the groups):
 
   - method: "gaussian", "exponential", "power" or "binary", a custom
     decay function, or a kernel declared with
-    [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
+    [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md).
+    Weights must be finite where the distance is finite, so power decay
+    needs a positive minimum distance
 
   - sigma: decay parameter controlling the rate of distance decay
 
@@ -78,11 +89,16 @@ spax_e2sfca(
 
 A spax object containing:
 
-- accessibility: SpatRaster of accessibility scores
+- accessibility: SpatRaster of accessibility scores. With demand groups,
+  the layers are named \`\<measure\>.\<group\>\` for every group and
+  \`\<measure\>.all\` for the overall layer, measure by measure
 
 - type: Character string "E2SFCA"
 
-- parameters: List of model parameters used
+- parameters: List of model parameters used. With demand groups it also
+  holds \`groups\` (the group IDs) and \`layers\` (a data frame of the
+  columns \`layer\`, \`measure\` and \`group\`, the group being
+  \`"all"\` for the overall layer)
 
 - facilities: data.frame of facility-level information
 
@@ -107,6 +123,36 @@ access barriers
 The method supports various distance decay functions and normalization
 approaches to handle different accessibility scenarios and prevent
 demand overestimation in overlapping service areas.
+
+## Demand groups
+
+Give \`demand\` as a named list of single-layer rasters (for example age
+bands) to let several groups compete for the same facilities. The names
+are the group IDs: unique, non-empty, not \`"all"\` and without a \`.\`;
+all rasters need the same geometry. A multi-layer raster is not taken as
+groups.
+
+Step 1 sums, over all groups, the demand that reaches each facility,
+with the demand weights of each group; step 2 gives each group its own
+accessibility from the shared ratios, with its own weights. The result
+has one layer per group, and an overall layer \`\<measure\>.all\`: the
+average of the group scores weighted by the demand of the cell. A group
+with demand in a cell that its travel cannot reach counts with
+accessibility 0 in the overall layer; the overall layer is NA where any
+group's demand is missing or the total demand is 0. With one group the
+group layer equals the ungrouped result.
+
+\`decay_params\` and \`distance\` (and \`selection_params\` of
+\[spax_3sfca()\] and \[spax_huff2sfca()\], \`threshold\` of
+\[spax_2sfca()\]) are each either shared by every group or given per
+group. An argument is per group when it is a list (for \`threshold\`, a
+named numeric vector) whose names are the group IDs, in any order; names
+that match only some of the groups are refused. Any other value is
+shared and checked as for one group. Pass a shared \`distance\` as one
+object, so that it is read once. A plain-function decay builds a whole
+in-memory weight raster for each group. \`demand_normalize\`,
+\`indicator_names\`, \`id_col\`, \`supply_cols\` and the attractiveness
+of \[spax_huff2sfca()\] are shared.
 
 ## References
 
@@ -181,5 +227,26 @@ result_exp <- spax_e2sfca(
 plot(c(result$accessibility, result_exp$accessibility),
   main = c("Gaussian Decay", "Exponential Decay")
 )
+
+
+# Two demand groups that compete for the same practices, with a fixed
+# illustrative split of the population and a decay scale for each group
+groups <- list(younger = pop_rast * 0.6, older = pop_rast * 0.4)
+result_groups <- spax_e2sfca(
+  demand = groups,
+  supply = gp,
+  distance = travel,
+  decay_params = list(
+    younger = list(method = "gaussian", sigma = 8),
+    older = list(method = "gaussian", sigma = 15)
+  ),
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+names(result_groups$accessibility)
+#> [1] "gp_fte_extg.younger" "gp_fte_extg.older"   "gp_fte_extg.all"    
+result_groups$parameters$groups
+#> [1] "younger" "older"  
+plot(result_groups$accessibility)
 
 ```

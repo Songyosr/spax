@@ -207,7 +207,7 @@ c(
 
 ``` spax-output
          status       attempted      successful built_with_spax    running_spax 
-     "complete"           "399"           "399"    "0.3.0.9000"         "0.3.1" 
+     "complete"           "399"           "399"    "0.3.0.9000"         "0.4.0" 
 ```
 
 ## Read the intervals

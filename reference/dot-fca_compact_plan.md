@@ -25,4 +25,4 @@ spread step; the SAE/HAAE plans use the demand-side fields.
 ## Details
 
 Kernels are taken as \`SpatRaster\`s here (the proven oracle shape); the
-boundary check mirrors \`compute_fca()\`'s alignment contract.
+boundary check mirrors the alignment contract of \[compute_access()\].

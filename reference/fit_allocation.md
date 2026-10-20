@@ -36,9 +36,13 @@ fit_allocation(
 
   Numeric vector or origin-by-facility matrix. Named axes match declared
   IDs independently; unnamed axes are positional. Keep all IDs and use
-  NA for unobserved entries. The count-valued `utilization` and `flow`
-  targets reject negative nonmissing observations; fractional counts are
-  allowed. Other output domains pass through to the existing fitter.
+  NA for unobserved entries. The count-valued `utilization`, `flow` and
+  `utilization_by_group` targets reject negative nonmissing
+  observations; fractional counts are allowed. Other output domains pass
+  through to the existing fitter. For `utilization_by_group` (a model
+  with demand groups) a facility-by-group matrix of observed counts with
+  both axes named (group columns by group ID, facility rows by facility
+  ID, any order).
 
 - starts:
 
@@ -57,6 +61,16 @@ fit_allocation(
   Exact model output to calibrate; default facility utilization. `flow`
   is expected origin-facility counts, while `allocation` is an inside
   probability operator. Requesting counts does not select a likelihood.
+  `utilization_by_group` is the expected count of each group at each
+  facility (a model with demand groups, see
+  [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)).
+  The group-specific parameters of such a model (`sigma.<group>`,
+  `v0.<group>`, from `by_group`) can be fitted only to this output, with
+  observed counts for every group that has one and positive demand in
+  that group; aggregated targets leave them multimodal and weakly
+  identified, so the fit is refused (before any start) with a message
+  naming the parameters. Fix them with `clm_allocation(fixed = )`, or
+  fit shared parameters to any target.
 
 - loss:
 
@@ -122,5 +136,6 @@ Other experimental allocation workflow:
 [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md),
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)

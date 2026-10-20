@@ -161,6 +161,7 @@ Other experimental allocation workflow:
 [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
 

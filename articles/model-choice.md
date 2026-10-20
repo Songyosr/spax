@@ -136,6 +136,12 @@ stands for registration with a practice outside mainland Cornwall (for
 example in Devon or on the Isles of Scilly); it is not unmet need. The
 model uses one supply vector.
 
+The Huff model is this model without the outside option, and
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
+declares it, with power decay and a fitted attractiveness exponent by
+default. This guide uses `clm_allocation(fit_v0 = TRUE)` because some
+registrations go to practices outside mainland Cornwall.
+
 Fitting needs a declared target. Here it is the observed small area ×
 practice registrations, a stock of who is registered where rather than a
 count of visits, fitted with a Poisson loss from three explicit starts.

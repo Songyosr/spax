@@ -24,7 +24,8 @@ Raster arguments remain compatible.
   id_col = NULL,
   supply_cols = NULL,
   allocation = c("clm", "huff_decay"),
-  kernel = NULL
+  kernel = NULL,
+  grouped = NULL
 )
 ```
 
@@ -35,3 +36,8 @@ Raster arguments remain compatible.
   `NULL` for a built-in `family`, or a custom `spax_decay_kernel`
   declaration passed on to
   [`.huff_spec()`](https://songyosr.github.io/spax/reference/dot-huff_spec.md).
+
+- grouped:
+
+  `NULL`, or the grouped arguments of `.clm_group_args()` for prepared
+  inputs with demand groups.

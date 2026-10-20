@@ -20,7 +20,8 @@ Validate inputs for spax_e2sfca
 
 - demand:
 
-  SpatRaster representing spatial distribution of demand
+  SpatRaster representing spatial distribution of demand, or a named
+  list of SpatRasters (demand groups)
 
 - supply:
 
@@ -28,11 +29,13 @@ Validate inputs for spax_e2sfca
 
 - distance:
 
-  SpatRaster stack of travel times/distances to facilities
+  SpatRaster stack of travel times/distances to facilities, or with
+  groups a named list of them (one per group)
 
 - decay_params:
 
-  List of parameters for decay function
+  List of parameters for decay function, or with groups a named list of
+  them (one per group)
 
 - demand_normalize:
 
