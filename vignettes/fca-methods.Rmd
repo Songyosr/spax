@@ -240,7 +240,9 @@ attractiveness is the supply measure, here GP FTE, raised to the power
 weights, because `selection_params` defaults to `decay_params`; they have no
 `demand_normalize` argument, because the shares already divide each cell's
 demand. This differs from `demand_normalize = "standard"` in `spax_e2sfca()`,
-which divides the weights that gather demand only.
+which divides the weights that gather demand only. `spax_huff2sfca()` uses Huff
+shares inside an FCA score; `huff_allocation()` fits the Huff model itself to
+observed use (see `vignette("allocation-workflow", package = "spax")`).
 
 ```{r selection-methods}
 sfca3 <- spax_3sfca(

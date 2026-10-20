@@ -102,6 +102,10 @@ results; spax does not convert units. `clm_allocation()` then declares the
 model: a Gaussian travel kernel with scale σ (minutes) and a fitted outside
 weight v0.
 
+The Huff model is this model without the outside option, and `huff_allocation()`
+declares it. The guide uses `clm_allocation(fit_v0 = TRUE)` because some
+registrations go to practices outside mainland Cornwall.
+
 ```{r prepare}
 # Labels kept with the inputs and every result derived from them
 cornwall_units <- list(
