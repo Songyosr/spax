@@ -41,6 +41,11 @@ reference:
       - spax_huff2sfca
       - compute_access
 
+  - title: "Allocation Interface (experimental)"
+    desc: "Specify an allocation model without data, with decay kernels and fitted or held parameters"
+    contents:
+      - obs_flows
+
   - title: "Experimental Allocation Workflow"
     desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"
     contents:
