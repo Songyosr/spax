@@ -21,5 +21,7 @@ save_spax(x, file, dir = FALSE, overwrite = FALSE, ...)
 Invisibly returns the input object
 }
 \description{
-Save a spax accessibility analysis
+Saves the result of a floating catchment analysis (an object of class `spax`)
+with its rasters. A result of [spax()] (a `spax_allocation`) is saved with
+[saveRDS()].
 }

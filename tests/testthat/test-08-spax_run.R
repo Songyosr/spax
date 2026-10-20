@@ -479,6 +479,25 @@ test_that("the one-shots check their arguments in the order of spax()", {
                                        decay = decay_gaussian(8), outside = 25,
                                        observed = case$y)),
                    "nothing to fit: every parameter has a value; omit observed")
+  # an argument of prep_data() in `...` is refused first, whatever else is wrong
+  for (name in c("missing_demand", "metadata", "included", "origin_ids", "facility_ids",
+                 "missing_travel", "spatial")) {
+    args <- list(case$demand, case$supply, case$distance, 1)
+    names(args) <- c("", "", "", name)
+    expect_identical(.run_error(do.call(spax_huff, c(args, list(decay = "other")))),
+                     paste0(name, " is an argument of prep_data(): give it in data_args = list(",
+                            name, " = ...)"))
+    expect_identical(.run_error(do.call(spax_clm, c(args, list(outside = "x")))),
+                     paste0(name, " is an argument of prep_data(): give it in data_args = list(",
+                            name, " = ...)"))
+  }
+  expect_identical(.run_error(spax_huff(case$demand, case$supply, case$distance,
+                                        missing_demand = "exclude", data_args = list("minutes"))),
+                   "missing_demand is an argument of prep_data(): give it in data_args = list(missing_demand = ...)")
+  # the same argument given as data_args works
+  expect_s3_class(spax_clm(case$demand, case$supply, case$distance, decay = decay_gaussian(8),
+                           outside = 25, data_args = list(missing_demand = "exclude")),
+                  "spax_allocation")
   # data_args are arguments of prep_data() by name
   expect_identical(.run_error(spax_huff(case$demand, case$supply, case$distance,
                                         data_args = list("minutes"))),
@@ -945,6 +964,44 @@ test_that("print() shows the specification, the data, the parameters and the fit
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = 1",
     "  outside     v0: 0.5",
     "  data        16 origins x 3 facilities"))
+})
+
+test_that("print() says when the outside weight is on its lower bound", {
+  case <- .run_case()
+  said <- paste0("v0 at its lower bound: the outside option adds almost nothing ",
+                 "(compare spec_huff())")
+  boundary_line <- function(x) {
+    lines <- capture.output(print(x))
+    lines[grepl("^  boundary", lines)]
+  }
+  # the default search on counts that need no outside option: v0 ends on its floor
+  huff <- clm_oracle(case$distance, case$demand, case$supply, 8, v0 = 0)
+  y <- colSums(huff$flow) * 1.01
+  y[1L] <- NA
+  x <- spax(case$data, spec_clm(), observed = obs_totals(y))
+  expect_true(x$fit$boundary[x$fit$best_start, "v0"])
+  expect_identical(boundary_line(x), paste0("  boundary    ", said))
+  # given bounds: v0 on the lower bound, on the upper bound, and both with sigma
+  starts <- rbind(a = c(sigma = 9, v0 = 40), b = c(sigma = 12, v0 = 60))
+  lower <- spax(case$data, spec_clm(), observed = obs_totals(case$y), starts = starts,
+                lower = c(sigma = 2, v0 = 30), upper = c(sigma = 40, v0 = 200))
+  expect_identical(boundary_line(lower), paste0("  boundary    ", said))
+  upper <- spax(case$data, spec_clm(), observed = obs_totals(case$y),
+                starts = rbind(a = c(sigma = 9, v0 = 10), b = c(sigma = 12, v0 = 15)),
+                lower = c(sigma = 2, v0 = 1), upper = c(sigma = 40, v0 = 20))
+  expect_identical(boundary_line(upper), "  boundary    v0 at a search bound")
+  # a group-specific v0 names the groups; other parameters on a bound come first
+  fit <- structure(list(
+    best = list(), best_start = "scan1", table = data.frame(start = "scan1", eligible = TRUE),
+    boundary = matrix(c(FALSE, TRUE, TRUE, FALSE), 1, 4,
+      dimnames = list("scan1", c("sigma", "v0.a", "v0.b", "beta"))),
+    theta = matrix(c(5, 1e-3, 40, 1), 1, 4, dimnames = list("scan1", c("sigma", "v0.a", "v0.b", "beta"))),
+    bounds = list(lower = c(sigma = 1, v0.a = 1e-3, v0.b = 1e-6, beta = 0.05),
+                  upper = c(sigma = 10, v0.a = 100, v0.b = 40, beta = 5))),
+    class = "ae_multistart_fit")
+  lines <- .result_fit_lines(list(fit = fit))
+  expect_identical(lines[2L], paste0("  boundary    v0.b at a search bound; v0.a at its lower bound: ",
+    "the outside option adds almost nothing (compare spec_huff())"))
 })
 
 test_that("summary() returns one class and prints the specification, the parameters and the fit", {

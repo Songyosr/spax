@@ -132,9 +132,16 @@ format.ae_prepared_inputs <- function(x, ...) {
   line <- function(label, text) sprintf("  %-10s  %s", label, text)
   active <- length(x$origin_ids)
   total <- length(if (is.null(x$all_origin_ids)) x$origin_ids else x$all_origin_ids)
+  # The origins that are not active, by why: zero demand, unknown demand, invalid
+  # demand or left out by `included`.
+  status <- x$origin_status
+  count <- function(what) if (is.null(status)) 0L else sum(status == what)
+  other <- c(count("zero"), count("unknown"), count("invalid_omitted"), count("excluded"))
+  if (is.null(status)) other[4L] <- total - active
+  why <- paste0(.format_total(other), c(" with zero demand", " with unknown demand",
+                                        " with invalid demand", " excluded"))[other > 0L]
   origins <- paste0(.format_total(total), " origins (", .format_total(active), " active",
-                    if (total > active) paste0(", ", .format_total(total - active), " excluded"),
-                    ")")
+                    if (length(why)) paste0("; ", paste(why, collapse = ", ")), ")")
   meta <- x$input_metadata
   # A label that was given; unit labels are caller declarations, never converted.
   given <- function(value) {
@@ -561,9 +568,17 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
       if (!control_given) dots$control <- .default_search_control
     }
     if (starts_searched) starts <- search$starts
-    result <- do.call(.fit_problem_multistart, c(list(model, observed, starts,
-      search$lower, search$upper, output = output, loss = loss, loss_args = loss_args,
-      loss_grad = loss_grad, gradient = gradient), dots))
+    search_lower <- search$lower
+    search_upper <- search$upper
+    # The call is built from symbols and evaluated here, so that an error from the
+    # fit shows `.fit_problem_multistart(model, observed, ...)` and not the function
+    # and the values written out (as do.call() with the function itself would).
+    dots <- lapply(dots, function(v) if (is.language(v)) call("quote", v) else v)
+    fit_call <- as.call(c(list(quote(.fit_problem_multistart), quote(model), quote(observed),
+      quote(starts), quote(search_lower), quote(search_upper), output = quote(output),
+      loss = quote(loss), loss_args = quote(loss_args), loss_grad = quote(loss_grad),
+      gradient = quote(gradient)), dots))
+    result <- eval(fit_call)
     if (starts_searched && inherits(result, "ae_multistart_fit")) {
       record <- search$record
       record$loss <- loss_name

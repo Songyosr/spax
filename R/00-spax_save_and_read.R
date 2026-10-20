@@ -1,5 +1,9 @@
 #' Save a spax accessibility analysis
 #'
+#' Saves the result of a floating catchment analysis (an object of class `spax`)
+#' with its rasters. A result of [spax()] (a `spax_allocation`) is saved with
+#' [saveRDS()].
+#'
 #' @param x A spax object
 #' @param file Character; path to save the object (without extension)
 #' @param dir Logical; whether to create a directory with same name for files (default FALSE)
@@ -9,6 +13,10 @@
 #' @export
 save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
   # Input validation
+  if (inherits(x, "spax_allocation")) {
+    stop("save_spax() saves FCA results; save an allocation result with saveRDS()",
+         call. = FALSE)
+  }
   .chck_class(x, "spax", "x")
   .chck_class(file, "character", "file")
 

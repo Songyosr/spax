@@ -553,7 +553,7 @@ test_that("prep_data() output prints and binds like the step functions' inputs",
 test_that("prepared inputs print their origins, labels, unknown travel and policies", {
   f <- alloc_small_case()
   expect_identical(capture.output(print(f$inputs)), c(
-    "<spax data> 5 origins (3 active, 2 excluded) x 3 facilities",
+    "<spax data> 5 origins (3 active; 1 with zero demand, 1 with unknown demand) x 3 facilities",
     "  demand      130 requests (period1)",
     "  supply      slots (period1)",
     "  travel      minutes; unknown for 0 active origins",
@@ -598,7 +598,7 @@ test_that("prepared inputs print the count of active origins with unknown travel
   one <- prep_data(f$demand, f$supply, travel, missing_demand = "exclude",
                    missing_travel = "legacy_zero", metadata = list(travel_units = "minutes"))
   expect_identical(capture.output(print(one)), c(
-    "<spax data> 5 origins (3 active, 2 excluded) x 3 facilities",
+    "<spax data> 5 origins (3 active; 1 with zero demand, 1 with unknown demand) x 3 facilities",
     "  demand      130",
     "  travel      minutes; unknown for 1 active origin",
     "  policies    missing demand: exclude; missing travel: legacy_zero"))
@@ -631,12 +631,37 @@ test_that("prepared inputs list the demand groups and count the excluded origins
   included[2] <- FALSE
   data <- prep_data(demand, g$supply, g$distance, included = included)
   expect_identical(capture.output(print(data))[1],
-                   "<spax data> 16 origins (14 active, 2 excluded) x 3 facilities")
+    "<spax data> 16 origins (14 active; 1 with zero demand, 1 excluded) x 3 facilities")
   # grouped unknown travel counts the active origins unknown for a group with demand
   travel <- g$distance
   travel["o5", "facility2"] <- NA
   data <- prep_data(demand, g$supply, travel, missing_travel = "legacy_zero")
   expect_identical(capture.output(print(data))[4], "  travel      unknown for 1 active origin")
+})
+
+test_that("prepared inputs say why origins are not active, in a fixed order", {
+  f <- alloc_small_case()
+  # zero and unknown demand
+  expect_identical(capture.output(print(f$inputs))[1],
+    "<spax data> 5 origins (3 active; 1 with zero demand, 1 with unknown demand) x 3 facilities")
+  # only the parts that occur; one origin each of the four kinds, in this order
+  demand <- c(o1 = 40, o2 = 0, o3 = 55, o4 = NA, o5 = 35, o6 = 20, o7 = 10)
+  travel <- matrix(1 + (seq_len(21) %% 5), 7, 3,
+                   dimnames = list(names(demand), c("f1", "f2", "f3")))
+  data <- prep_data(demand, c(f1 = 5, f2 = 6, f3 = 7), travel, missing_demand = "exclude",
+                    included = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE))
+  expect_identical(data$origin_status,
+                   c("active", "zero", "active", "unknown", "active", "active", "excluded"))
+  expect_identical(capture.output(print(data))[1], paste0("<spax data> 7 origins (4 active; ",
+    "1 with zero demand, 1 with unknown demand, 1 excluded) x 3 facilities"))
+  # the registry status that preparation refuses today is worded as well
+  data$origin_status[7L] <- "invalid_omitted"
+  expect_identical(capture.output(print(data))[1], paste0("<spax data> 7 origins (4 active; ",
+    "1 with zero demand, 1 with unknown demand, 1 with invalid demand) x 3 facilities"))
+  # inputs without the registry fall back on the old count
+  data$origin_status <- NULL
+  expect_identical(capture.output(print(data))[1],
+                   "<spax data> 7 origins (4 active; 3 excluded) x 3 facilities")
 })
 
 test_that("the Cornwall example prints as in the design", {
@@ -809,6 +834,11 @@ test_that("legacy and comparator models print one line and their parameters", {
   none <- .no_decay_model(clm_allocation(f$inputs, fit_v0 = TRUE, fit_beta = TRUE))
   expect_identical(capture.output(print(none)), c(
     "<ae_problem> huff (clm, family none)", "parameters: sigma, v0, beta"))
+  # a model from before the allocation was recorded (SPAX-033) is a huff_decay model
+  old <- .huff_problem(f$inputs, family = "gaussian", allocation = "huff_decay")
+  old$metadata$spec$allocation <- NULL
+  expect_identical(format(old), c("<ae_problem> huff (huff_decay, family gaussian)",
+                                  "parameters: sigma"))
   # the bound model of the step workflow is not a fallback
   expect_identical(format(clm_allocation(f$inputs, fit_v0 = TRUE))[1],
                    "<spax model> conditional logit with an outside option")

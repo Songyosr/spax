@@ -217,6 +217,7 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
 spax_huff <- function(demand, supply, travel, observed = NULL, decay = decay_power(),
                       beta = "fit", kappa = 1, by_group = character(), data_args = list(),
                       ...) {
+  .check_prep_args_in_dots(...names())
   .check_data_args(data_args)
   x <- spax(do.call(prep_data, c(list(quote(demand), quote(supply), quote(travel)),
                                  data_args)),
@@ -232,6 +233,7 @@ spax_huff <- function(demand, supply, travel, observed = NULL, decay = decay_pow
 spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaussian(),
                      outside = "fit", beta = 1, kappa = 1, by_group = character(),
                      data_args = list(), ...) {
+  .check_prep_args_in_dots(...names())
   .check_data_args(data_args)
   x <- spax(do.call(prep_data, c(list(quote(demand), quote(supply), quote(travel)),
                                  data_args)),
@@ -240,6 +242,18 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
             observed = observed, ...)
   x$call <- match.call()
   x
+}
+
+# An argument of prep_data() given through `...` would be read as an argument of spax(),
+# which would only fail later with a message about something else.
+.check_prep_args_in_dots <- function(dots_names) {
+  prep <- setdiff(names(formals(prep_data)), c("demand", "supply", "travel"))
+  hit <- intersect(dots_names[!is.na(dots_names) & nzchar(dots_names)], prep)
+  if (length(hit)) {
+    stop(hit[[1L]], " is an argument of prep_data(): give it in data_args = list(",
+         hit[[1L]], " = ...)", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 # `data_args` are arguments of prep_data() by name: an unnamed one would be matched to
@@ -358,7 +372,10 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 #'   [fit_allocation()] (`fit`, `NULL` when evaluated) and the `mode`; its print
 #'   method shows them, with the per-start table for a fit.
 #' * `coef()` returns the free parameters, fitted or given. Held values are in
-#'   `x$held`.
+#'   `x$held`. In evaluate mode, where every parameter has a value, `coef()`
+#'   returns only the decay `sigma` (or the `sigma` of each group), the
+#'   parameter the evaluation takes as free; the other numbers (`v0`, `beta`,
+#'   `kappa`) are listed as held in `as.data.frame(x, type = "parameters")`.
 #' * `fitted()` returns the modelled counts for the observations of a fit (as
 #'   [fitted.ae_multistart_fit()][allocation-fit-methods] does), and the modelled
 #'   facility utilization, named by facility, for an evaluation.
@@ -557,6 +574,17 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
   c(row("parameter", "value", "status"), row(parameters$parameter, value, parameters$status))
 }
 
+# For the parameters `at` that sit on a search bound of start `i`: whether it is the
+# lower one (the same edge rule as the multistart's boundary flag).
+.result_at_lower <- function(fit, i, at) {
+  expected <- colnames(fit$boundary)
+  lower <- stats::setNames(rep_len(unname(fit$bounds$lower), length(expected)), expected)
+  upper <- stats::setNames(rep_len(unname(fit$bounds$upper), length(expected)), expected)
+  theta <- fit$theta[i, expected]
+  edge_tol <- 1e-6 + 1e-3 * (log(upper) - log(lower))
+  as.vector(log(theta[at]) <= log(lower[at]) + edge_tol[at])
+}
+
 # The selected start, its boundary flag and the default search of a fit.
 .result_fit_lines <- function(x) {
   fit <- x$fit
@@ -575,7 +603,16 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
                                         if (n == 1L) " start" else " starts", " converged"))
     at <- colnames(fit$boundary)[fit$boundary[i, ]]
     boundary <- line("boundary", if (length(at)) {
-      paste0(paste(at, collapse = ", "), " at a search bound")
+      # An outside weight on its lower bound is the model saying "no outside option".
+      low <- .result_at_lower(fit, i, at)
+      v0_low <- at[low & (at == "v0" | startsWith(at, "v0."))]
+      other <- setdiff(at, v0_low)
+      paste(c(
+        if (length(other)) paste0(paste(other, collapse = ", "), " at a search bound"),
+        if (length(v0_low)) paste0(paste(v0_low, collapse = ", "),
+          if (length(v0_low) == 1L) " at its lower bound" else " at their lower bounds",
+          ": the outside option adds almost nothing (compare spec_huff())")),
+        collapse = "; ")
     } else {
       "none"
     })

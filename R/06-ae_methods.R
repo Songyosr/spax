@@ -297,8 +297,8 @@ plot.ae_problem_nfxp_fit <- function(x,
 #' [spec_clm()]): the decay, the attractiveness and the outside weight, then a data line
 #' with the numbers of active origins and facilities. The free parameters of the model
 #' show as `fit` and the held ones as their value. A model of the historical
-#' `huff_decay` allocation, and the internal no-decay comparator, print one line and
-#' the names of their parameters.
+#' `huff_decay` allocation (also one saved before the allocation was recorded), and the
+#' internal no-decay comparator, print one line and the names of their parameters.
 #' @param x A model, an `ae_problem` of the Huff or conditional logit family.
 #' @param ... Unused.
 #' @method format huff_problem
@@ -307,8 +307,11 @@ plot.ae_problem_nfxp_fit <- function(x,
 #' @md
 format.huff_problem <- function(x, ...) {
   spec <- x$metadata$spec
-  if (!identical(spec$allocation, "clm") || identical(spec$family, "none")) {
-    return(c(paste0("<ae_problem> ", x$model, " (", spec$allocation, ", family ",
+  # A model from before the allocation was recorded (SPAX-033) is a huff_decay model.
+  allocation <- spec[["allocation", exact = TRUE]]
+  if (is.null(allocation)) allocation <- "huff_decay"
+  if (!identical(allocation, "clm") || identical(spec$family, "none")) {
+    return(c(paste0("<ae_problem> ", x$model, " (", allocation, ", family ",
                     spec$family, ")"),
              paste0("parameters: ", if (length(x$theta$names)) {
                paste(x$theta$names, collapse = ", ")

@@ -32,17 +32,22 @@
 #' names and group column names, or a data frame of facility, group and count
 #' (three columns by default), gives totals by demand group. Duplicate facilities
 #' in a frame are summed as for flows; duplicate names in a vector or matrix are
-#' an error.
+#' an error. [tapply()] over a factor with unused levels gives `NA` for those
+#' facilities, which reads as unobserved, not as 0: use [table()], or replace the
+#' `NA` by 0 if the facility had no counts.
 #'
 #' **What the data decides.** When the observations are aligned with the data:
 #' counts from origins outside the data, excluded from it or with unknown demand
-#' are dropped with a message, and counts at facilities outside the data are the
-#' outside option of the model (dropped, with a message, for a model without
-#' one). Positive counts from origins with zero demand, at facilities with zero
-#' supply, or on pairs with unknown or infinite travel are errors, because the
-#' model cannot produce them. Flows missing for an active origin or a facility of
-#' the data are taken as 0, with a message; totals must give every facility of
-#' the data (use 0, or `NA` if unobserved).
+#' are dropped with a message. For flows, counts at facilities outside the data
+#' are the outside option of the model (dropped, with a message, for a model
+#' without one). For totals, counts at facilities outside the data never enter the
+#' fit and are left out, with a message: there is no origin to send them to.
+#' Positive counts from origins with zero demand, at facilities with zero supply,
+#' on pairs with unknown or infinite travel, or (for totals) at facilities that no
+#' origin can reach are errors, because the model cannot produce them. Flows
+#' missing for an active origin or a facility of the data are taken as 0, with a
+#' message; totals must give every facility of the data (use 0, or `NA` if
+#' unobserved).
 #'
 #' IDs match the data as text. An ID that matches nothing is then matched by its
 #' numeric value when exactly one ID of the data has that value, with a message:
@@ -329,9 +334,18 @@ print.spax_obs <- function(x, ...) {
   x <- obs$x
   fac <- data$facility_ids
   moved <- list()
+  # data IDs that two distinct observed IDs now share (long tables; the names of a
+  # matrix or vector are checked below)
+  shared <- character()
   swap <- function(ids, data_ids) {
     m <- .obs_numeric_match(ids, data_ids)
-    if (length(m$from)) moved[[length(moved) + 1L]] <<- m
+    if (length(m$from)) {
+      moved[[length(moved) + 1L]] <<- m
+      if (is.data.frame(x)) {
+        pair <- unique(data.frame(from = ids, to = m$ids, stringsAsFactors = FALSE))
+        shared <<- c(shared, pair$to[duplicated(pair$to)])
+      }
+    }
     m$ids
   }
   if (is.data.frame(x)) {
@@ -353,7 +367,7 @@ print.spax_obs <- function(x, ...) {
     pairs <- unique(paste0(from, " as ", to))
     message("observed: ", .obs_count(length(pairs), "ID", "IDs"),
             " matched to the data by numeric value, for example ", pairs[1L])
-    dup <- if (is.data.frame(x)) character() else
+    dup <- if (is.data.frame(x)) shared else
       c(rownames(x)[duplicated(rownames(x))], colnames(x)[duplicated(colnames(x))],
         names(x)[duplicated(names(x))])
     if (length(dup)) {
@@ -512,11 +526,14 @@ print.spax_obs <- function(x, ...) {
   .obs_check_facilities(names(x), data)
   outside <- !names(x) %in% data$facility_ids
   .obs_message(0, 0, sum(x[outside], na.rm = TRUE), sum(x[outside] > 0, na.rm = TRUE),
-               outside_option)
+               outside_option, totals = TRUE)
   target <- x[data$facility_ids]
   per_facility <- target
   per_facility[is.na(per_facility)] <- 0
   .obs_check_zero_supply(per_facility, data)
+  # A total at a facility that no origin can reach cannot be produced either.
+  reach <- colSums(.obs_reachable(data)) > 0
+  .obs_check_unreachable_totals(per_facility, !reach, data)
   target
 }
 
@@ -530,10 +547,33 @@ print.spax_obs <- function(x, ...) {
   .obs_check_facilities(rownames(x), data)
   outside <- !rownames(x) %in% data$facility_ids
   .obs_message(0, 0, sum(x[outside, , drop = FALSE], na.rm = TRUE),
-               sum(rowSums(x[outside, , drop = FALSE], na.rm = TRUE) > 0), outside_option)
+               sum(rowSums(x[outside, , drop = FALSE], na.rm = TRUE) > 0), outside_option,
+               totals = TRUE)
   target <- x[data$facility_ids, groups, drop = FALSE]
   .obs_check_zero_supply(rowSums(target, na.rm = TRUE), data)
+  # A total at a facility that no origin with demand of that group can reach.
+  per_group <- target
+  per_group[is.na(per_group)] <- 0
+  unreach <- matrix(vapply(groups, function(g) {
+    colSums(is.finite(data$distance_groups[[g]]) & (data$D_groups[, g] > 0)) == 0
+  }, logical(length(data$facility_ids))), nrow = length(data$facility_ids))
+  .obs_check_unreachable_totals(per_group, unreach, data)
   target
+}
+
+# `counts` is a vector (one count per facility of the data) or a facilities-by-groups
+# matrix, and `unreachable` the same shape: TRUE where no origin can reach the
+# facility (for the group's demand, in a matrix). A positive count there is an error.
+.obs_check_unreachable_totals <- function(counts, unreachable, data) {
+  bad <- unreachable & counts > 0
+  if (any(bad)) {
+    facilities <- data$facility_ids[if (is.matrix(bad)) rowSums(bad) > 0 else bad]
+    stop("observed has ", .obs_count(sum(counts[bad]), "count", "counts"), " at ",
+         .obs_count(length(facilities), "facility", "facilities"),
+         " that no origin can reach (", .obs_head(facilities), "); set them to NA or ",
+         "give their travel times", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 # Totals must give every facility of the data.
@@ -571,7 +611,10 @@ print.spax_obs <- function(x, ...) {
   reach
 }
 
-.obs_message <- function(n_origin, k_origin, n_facility, k_facility, outside_option) {
+# `totals`: counts at facilities outside the data never enter a fit to facility
+# totals (there is no origin to send them to), so the model is not involved.
+.obs_message <- function(n_origin, k_origin, n_facility, k_facility, outside_option,
+                         totals = FALSE) {
   parts <- character()
   if (n_origin > 0) {
     parts <- c(parts, paste0(.obs_count(n_origin, "count", "counts"), " from ",
@@ -583,7 +626,8 @@ print.spax_obs <- function(x, ...) {
     verb <- if (n_facility == 1) "is" else "are"
     parts <- c(parts, paste0(.obs_count(n_facility, "count", "counts"), " at ",
       .obs_count(k_facility, "facility", "facilities"), " outside the data ", verb,
-      if (outside_option) " treated as the outside option"
+      if (totals) " left out"
+      else if (outside_option) " treated as the outside option"
       else " dropped (the Huff model has no outside option)"))
   }
   if (length(parts)) message("observed: ", paste(parts, collapse = "; "))

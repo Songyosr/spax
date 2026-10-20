@@ -31,11 +31,14 @@
   explain, because the counts of a fully observed target reach the total demand, and warns
   when they are within 0.1% of it.
 * `spax()` aligns the observations with the data. Counts from origins outside the data,
-  excluded from it or with unknown demand are dropped with a message; counts at facilities
-  outside the data go to the outside option, or are dropped for the Huff model. Positive
-  counts that the model cannot produce, from origins with zero demand, at facilities with
-  zero supply or on pairs with unknown or infinite travel, are errors. IDs are matched as
-  text and, when that fails, by numeric value, so that `"1e+05"` matches `"100000"`.
+  excluded from it or with unknown demand are dropped with a message. Flow counts at
+  facilities outside the data go to the outside option, or are dropped for the Huff model;
+  facility totals at facilities outside the data never enter the fit and are left out, with
+  a message. Positive counts that the model cannot produce, from origins with zero demand, at
+  facilities with zero supply, on pairs with unknown or infinite travel, or (totals) at
+  facilities that no origin can reach, are errors. IDs are matched as text and, when that
+  fails, by numeric value, so that `"1e+05"` matches `"100000"`; two observed IDs that
+  match one ID of the data are an error.
 * Messages about the outside weight, group-specific parameters and the bootstrap now name
   the arguments of the new interface (for example `outside = "fit"` and `obs_totals()` by
   group) beside those of `clm_allocation()`.

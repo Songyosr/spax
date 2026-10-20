@@ -84,17 +84,22 @@ columns by default). These are facility totals. A matrix with facility row
 names and group column names, or a data frame of facility, group and count
 (three columns by default), gives totals by demand group. Duplicate facilities
 in a frame are summed as for flows; duplicate names in a vector or matrix are
-an error.
+an error. \code{\link[=tapply]{tapply()}} over a factor with unused levels gives \code{NA} for those
+facilities, which reads as unobserved, not as 0: use \code{\link[=table]{table()}}, or replace the
+\code{NA} by 0 if the facility had no counts.
 
 \strong{What the data decides.} When the observations are aligned with the data:
 counts from origins outside the data, excluded from it or with unknown demand
-are dropped with a message, and counts at facilities outside the data are the
-outside option of the model (dropped, with a message, for a model without
-one). Positive counts from origins with zero demand, at facilities with zero
-supply, or on pairs with unknown or infinite travel are errors, because the
-model cannot produce them. Flows missing for an active origin or a facility of
-the data are taken as 0, with a message; totals must give every facility of
-the data (use 0, or \code{NA} if unobserved).
+are dropped with a message. For flows, counts at facilities outside the data
+are the outside option of the model (dropped, with a message, for a model
+without one). For totals, counts at facilities outside the data never enter the
+fit and are left out, with a message: there is no origin to send them to.
+Positive counts from origins with zero demand, at facilities with zero supply,
+on pairs with unknown or infinite travel, or (for totals) at facilities that no
+origin can reach are errors, because the model cannot produce them. Flows
+missing for an active origin or a facility of the data are taken as 0, with a
+message; totals must give every facility of the data (use 0, or \code{NA} if
+unobserved).
 
 IDs match the data as text. An ID that matches nothing is then matched by its
 numeric value when exactly one ID of the data has that value, with a message:

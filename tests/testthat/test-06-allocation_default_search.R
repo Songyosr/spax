@@ -235,6 +235,23 @@ test_that("given starts, lower and upper give the multistart result unchanged", 
   expect_identical(.ds_strip(e1), .ds_strip(e2))
 })
 
+test_that("an error from the fit of the default search shows a short call", {
+  case <- alloc_generated_case()
+  e <- tryCatch(fit_allocation(case$model, case$y, loss = "poisson", bogus = 1),
+                error = function(e) e)
+  expect_identical(conditionMessage(e),
+    "`...` must contain unique named fitting controls, excluding init and bounds")
+  # a call to the function by name, with the arguments as symbols and the controls given
+  # to the search; not the function or the data written out
+  expect_identical(as.character(conditionCall(e)[[1L]]), ".fit_problem_multistart")
+  expect_lt(nchar(paste(deparse(conditionCall(e)), collapse = "")), 400L)
+  expect_identical(as.character(conditionCall(e)[[2L]]), "model")
+  # the same error without a search
+  e2 <- tryCatch(fit_allocation(case$model, case$y, case$starts, case$lower, case$upper,
+                                loss = "poisson", bogus = 1), error = function(e) e)
+  expect_identical(as.character(conditionCall(e2)[[1L]]), ".fit_problem_multistart")
+})
+
 test_that("complete calls never run the search", {
   case <- alloc_generated_case()
   expect_no_error(testthat::with_mocked_bindings(
@@ -790,6 +807,58 @@ test_that("no positive outside weight among the grid points is an error", {
     "no positive outside weight in the default search; give starts")
 })
 
+test_that("the default lower bound of v0 is not below the seed for an outside share of 1e-6", {
+  case <- alloc_generated_case()
+  # Counts that a model without an outside option produces, 1% too high, with one
+  # facility unobserved (so the target is not fully observed): v0 is pushed to zero.
+  huff <- clm_oracle(case$distance, case$demand, case$supply, 8, v0 = 0)
+  y <- colSums(huff$flow) * 1.01
+  y[1L] <- NA
+  f <- fit_allocation(case$model, y, loss = "poisson")
+  ds <- f$default_search
+  # the floor: s / (1 - s), s = 1e-6, times the demand-weighted median opportunity at
+  # the grid point with the lowest loss
+  top <- ds$grid[which.min(ds$grid$loss), ]
+  o <- clm_oracle(case$distance, case$demand, case$supply, top$sigma, v0 = 0)
+  floor <- 1e-6 / (1 - 1e-6) * .ds_wmedian(o$denom, case$demand)
+  best_v0 <- vapply(split(ds$grid, ds$grid$point), function(x) x$v0[which.min(x$loss)], numeric(1))
+  expect_lt(min(best_v0) / 1000, floor)     # the old bound lay far below
+  expect_equal(f$bounds$lower[["v0"]], floor, tolerance = 1e-8)
+  expect_identical(ds$bounds$lower[["v0"]], f$bounds$lower[["v0"]])
+  # the fit ends on that bound, and the boundary is flagged
+  expect_true(f$boundary[f$best_start, "v0"])
+  expect_equal(coef(f)[["v0"]], floor, tolerance = 1e-6)
+  expect_true(f$table$boundary[match(f$best_start, f$table$start)])
+  # a fit that does not push v0 to zero: the bound is the larger of the floor and the
+  # old rule, and the estimate is interior
+  g <- fit_allocation(case$model, case$y, loss = "poisson")
+  gs <- g$default_search
+  gtop <- gs$grid[which.min(gs$grid$loss), ]
+  og <- clm_oracle(case$distance, case$demand, case$supply, gtop$sigma, v0 = 0)
+  gfloor <- 1e-6 / (1 - 1e-6) * .ds_wmedian(og$denom, case$demand)
+  gbest <- vapply(split(gs$grid, gs$grid$point), function(x) x$v0[which.min(x$loss)], numeric(1))
+  expect_equal(g$bounds$lower[["v0"]], max(min(gbest) / 1000, gfloor), tolerance = 1e-8)
+  expect_false(g$boundary[g$best_start, "v0"])
+  # a bound the caller gives wins, whatever the floor
+  h <- fit_allocation(case$model, y, loss = "poisson", lower = c(v0 = 1e-9))
+  expect_identical(h$bounds$lower[["v0"]], 1e-9)
+})
+
+test_that("Cornwall: an exponential decay with a fitted beta on totals ends on the floor of v0", {
+  skip_on_cran()
+  cw <- .ds_cornwall()
+  model <- clm_allocation(cw$inputs, "exponential", fit_v0 = TRUE, fit_beta = TRUE)
+  f <- fit_allocation(model, cw$totals, output = "utilization", loss = "poisson")
+  expect_identical(f$status, "selected")
+  i <- match(f$best_start, f$table$start)
+  expect_true(f$boundary[i, "v0"])
+  expect_equal(coef(f)[["v0"]], f$bounds$lower[["v0"]], tolerance = 1e-3)
+  # the same loss as the Huff model with exponential decay and a fitted beta (v0 = 0)
+  huff <- clm_allocation(cw$inputs, "exponential", fit_v0 = FALSE, fit_beta = TRUE)
+  h <- fit_allocation(huff, cw$totals, output = "utilization", loss = "poisson")
+  expect_lt(abs(f$best$loss - h$best$loss), 0.5)
+})
+
 test_that("kappa and a held beta enter the seed as the engine's attractiveness", {
   case <- alloc_generated_case()
   model <- clm_allocation(case$inputs, kappa = 2, beta = 0.5, fit_v0 = TRUE)
@@ -899,6 +968,24 @@ test_that("grouped: a v0 by group is walked together over three points", {
   s <- 1 - sum(case$counts[, "0-15"]) / sum(colSums(o[["0-15"]]$flow))
   expect_equal(at$`v0.0-15`[2], s / (1 - s) *
                  .ds_wmedian(o[["0-15"]]$denom, case$inputs$D_groups[, "0-15"]), tolerance = 1e-8)
+})
+
+test_that("the floor of v0 is set for each group when v0 differs by group", {
+  case <- .ds_group_case()
+  model <- clm_allocation(case$inputs, by_group = c("sigma", "v0"), fit_v0 = TRUE)
+  f <- fit_allocation(model, case$counts, output = "utilization_by_group", loss = "poisson")
+  grid <- f$default_search$grid
+  top <- grid[which.min(grid$loss), ]
+  for (g in .ds_group_ids) {
+    o <- clm_oracle(case$base$distance, case$inputs$D_groups[, g], case$base$supply,
+                    top[[paste0("sigma.", g)]], v0 = 0)
+    floor <- 1e-6 / (1 - 1e-6) * .ds_wmedian(o$denom, case$inputs$D_groups[, g])
+    lower <- f$bounds$lower[[paste0("v0.", g)]]
+    expect_gte(lower, floor * (1 - 1e-8))
+    best <- vapply(split(grid, grid$point), function(x) x[[paste0("v0.", g)]][which.min(x$loss)],
+                   numeric(1))
+    expect_equal(lower, max(min(best) / 1000, floor), tolerance = 1e-8)
+  }
 })
 
 test_that("grouped: per-group families and a fixed group sigma", {

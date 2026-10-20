@@ -62,7 +62,9 @@ with \code{s <= 0} is an error, and with \code{s < 0.001} a warning.
 \item The starts are the best point of up to three sigma values: local minima
 along the grid first, ordered by loss.
 \item Default bounds: the sigma range, \verb{[min / 1000, max * 1000]} of the best v0
-values, \verb{[0.05, 5]} for beta; given entries replace the default ones.
+values (the lower one not below the seed for an outside share of 1e-6, at
+the grid point with the lowest loss), \verb{[0.05, 5]} for beta; given entries
+replace the default ones.
 }
 
 With no free sigma (every sigma held through \code{fixed}) there is no probe and no

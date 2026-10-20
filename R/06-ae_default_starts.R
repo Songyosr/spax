@@ -15,6 +15,10 @@
 .default_grid_points <- 15L
 .default_v0_multipliers <- c(0.1, 1, 10)
 .default_beta_bounds <- c(0.05, 5)
+# The default lower bound of v0 is not below the seed for this outside share: a v0 with
+# a smaller outside share cannot be told from the Huff model (v0 = 0) and the fit would
+# drift there without ever touching a bound.
+.default_v0_floor_share <- 1e-6
 # factr = 1e3 stops at a relative loss change of about 2e-13: tighter (10) ends starts that
 # reached the optimum with line-search failures, looser (the default 1e7) moves a weakly
 # identified v0 (Cornwall gaussian + beta totals: 0.0078 against 0.0109).
@@ -231,7 +235,9 @@
 #' 6. The starts are the best point of up to three sigma values: local minima
 #'    along the grid first, ordered by loss.
 #' 7. Default bounds: the sigma range, `[min / 1000, max * 1000]` of the best v0
-#'    values, `[0.05, 5]` for beta; given entries replace the default ones.
+#'    values (the lower one not below the seed for an outside share of 1e-6, at
+#'    the grid point with the lowest loss), `[0.05, 5]` for beta; given entries
+#'    replace the default ones.
 #'
 #' With no free sigma (every sigma held through `fixed`) there is no probe and no
 #' sigma grid: one point at the held values, whose starts are the three v0 seeds
@@ -323,7 +329,7 @@
       values <- scanned$best[[nm]]
       values <- values[is.finite(values) & values > 0]
       if (!length(values)) stop(.default_search_message$no_v0, call. = FALSE)
-      default_lower[[nm]] <- min(values) / 1000
+      default_lower[[nm]] <- max(min(values) / 1000, scanned$v0_floor[[nm]])
       default_upper[[nm]] <- max(values) * 1000
     }
   }
@@ -475,7 +481,8 @@
                 if (nzchar(owner)) paste0(" (", owner, ")"), call. = FALSE)
       }
     }
-    s / (1 - s) * .default_weighted_median(w, d)
+    median <- unname(.default_weighted_median(w, d))
+    c(seed = s / (1 - s) * median, median = median)
   }
 
   seeds_at <- function(states) {
@@ -487,28 +494,35 @@
       utilization_by_group = vapply(states, function(s) colSums(s$F0), numeric(n_facility)))
     shared_mask <- mask
     if (identical(output, "flow")) shared_mask[!live, ] <- FALSE
-    out <- stats::setNames(numeric(length(v0_names)), v0_names)
+    out <- med <- stats::setNames(numeric(length(v0_names)), v0_names)
     for (nm in v0_names) {
-      if (!is.null(groups) && nm != "v0") {
+      one <- if (!is.null(groups) && nm != "v0") {
         i <- match(substring(nm, 4L), groups)
         group_mask <- matrix(FALSE, nrow(mask), ncol(mask))
         group_mask[, i] <- mask[, i]
-        out[[nm]] <- seed_one(states, i, as.vector(group_mask), as.numeric(modelled),
-                              paste0("group '", groups[[i]], "'"), nm)
+        seed_one(states, i, as.vector(group_mask), as.numeric(modelled),
+                 paste0("group '", groups[[i]], "'"), nm)
       } else {
-        out[[nm]] <- seed_one(states, seq_along(units), as.vector(shared_mask),
-                              as.numeric(modelled), "", "")
+        seed_one(states, seq_along(units), as.vector(shared_mask), as.numeric(modelled),
+                 "", "")
       }
+      out[[nm]] <- one[["seed"]]
+      med[[nm]] <- one[["median"]]
     }
     guarded <<- TRUE
+    # The demand-weighted median opportunity goes with the seeds: it prices the
+    # lowest outside weight worth searching (the seed for an outside share 1e-6).
+    attr(out, "median") <- med
     out
   }
 
   rows <- list()
+  medians <- list()
   for (k in seq_len(n_sigma)) {
     point <- vapply(grids, function(g) g[[k]], numeric(1))
     states <- states_at(point)
     seeds <- if (length(v0_names) && !is.null(states)) seeds_at(states)
+    if (!is.null(seeds)) medians[[k]] <- attr(seeds, "median")
     for (combo in combos) {
       v0 <- if (length(v0_names)) {
         if (is.null(seeds)) stats::setNames(rep(NA_real_, length(v0_names)), v0_names) else {
@@ -560,7 +574,17 @@
   } else {
     lapply(ranges, pair)
   }
-  list(starts = chosen, best = best,
+  # The lowest outside weight worth searching: the seed for an outside share of 1e-6
+  # at the grid point with the lowest loss. Below it the outside option takes less
+  # than a millionth of the demand and v0 cannot be told from zero.
+  v0_floor <- NULL
+  if (length(v0_names)) {
+    top <- finite$point[which.min(finite$loss)]
+    if (top <= length(medians) && !is.null(medians[[top]])) {
+      v0_floor <- .default_v0_floor_share / (1 - .default_v0_floor_share) * medians[[top]]
+    }
+  }
+  list(starts = chosen, best = best, v0_floor = v0_floor,
        record = list(rule = .default_search_rule, sigma_range = sigma_range,
                      n_points = nrow(grid), n_finite = nrow(finite), grid = grid,
                      starts = NULL, bounds = NULL, controls = NULL))

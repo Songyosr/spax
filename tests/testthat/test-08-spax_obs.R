@@ -526,6 +526,35 @@ test_that("numeric IDs keep their digits", {
   expect_identical(.obs_ids(c(1.5, 2, 10)), c("1.5", "2", "10"))
 })
 
+test_that("two observed IDs that match one data ID are an error, in a table as in a matrix", {
+  d <- prepare_allocation(c("01234" = 100, "05678" = 100), c(f1 = 5, f2 = 5),
+                          matrix(c(1, 2, 2, 1), 2, 2,
+                                 dimnames = list(c("01234", "05678"), c("f1", "f2"))))
+  expected <- "observed has two IDs for the same data ID: 01234"
+  # a long table: 01234 and 1234 are both read as 01234 (the count 40 used to be lost)
+  long <- data.frame(o = c("01234", "1234", "05678", "05678"), f = c("f1", "f1", "f1", "f2"),
+                     n = c(40, 7, 10, 50))
+  r <- .obs_error_messages(.canonical_observed(obs_flows(long), d, TRUE))
+  expect_identical(r$error, expected)
+  expect_identical(r$messages,
+    "observed: 1 ID matched to the data by numeric value, for example 1234 as 01234\n")
+  # the matrix form says the same
+  m <- matrix(c(40, 7, 10, 0, 0, 50), 3, 2,
+              dimnames = list(c("01234", "1234", "05678"), c("f1", "f2")))
+  expect_identical(.obs_error(.canonical_observed(obs_flows(m), d, TRUE)), expected)
+  # two facility IDs that land on one data facility
+  d2 <- prepare_allocation(c(a = 100, b = 100), c("007" = 5, f2 = 5),
+                           matrix(c(1, 2, 2, 1), 2, 2, dimnames = list(c("a", "b"), c("007", "f2"))))
+  fl <- data.frame(o = c("a", "a", "b"), f = c("007", "7", "f2"), n = c(4, 3, 9))
+  expect_identical(.obs_error(.canonical_observed(obs_flows(fl), d2, TRUE)),
+                   "observed has two IDs for the same data ID: 007")
+  # one observed ID that matches by value is fine, repeated rows of it too
+  ok <- data.frame(o = c("1234", "1234", "05678"), f = c("f1", "f2", "f1"), n = c(1, 2, 3))
+  r2 <- .obs_messages(.canonical_observed(obs_flows(ok), d, TRUE))
+  expect_identical(r2$value, matrix(c(1, 3, 2, 0), 2, 2,
+                                    dimnames = list(c("01234", "05678"), c("f1", "f2"))))
+})
+
 # Zero supply and unusable travel ------------------------------------------------------
 
 test_that("positive counts at a zero-supply facility are an error", {
@@ -557,6 +586,65 @@ test_that("positive counts at a zero-supply facility are an error", {
     gdata, TRUE)),
     paste0("observed has 5 counts at 1 facility with zero supply (f1); the model sends no one ",
            "there. Remove those counts, set them to NA, or check the supply"))
+})
+
+test_that("positive totals at a facility that no origin can reach are an error", {
+  travel <- matrix(c(1, 5, 3, 4, 6, 2,  6, 2, 2, 3, 4, 3,  4, 6, 1, 2, 5, 4), 6, 3,
+                   dimnames = list(paste0("o", 1:6), c("f2", "f1", "f3")))
+  # f1 is out of reach of every origin; o2 has no demand and o6 is excluded, so the
+  # finite times of those origins do not count
+  inf <- travel
+  inf[c("o1", "o3", "o5"), "f1"] <- Inf
+  data <- .obs_case(travel = inf)
+  msg <- paste0("observed has 4 counts at 1 facility that no origin can reach (f1); ",
+                "set them to NA or give their travel times")
+  expect_identical(.obs_error(.canonical_observed(obs_totals(c(f1 = 4, f2 = 3, f3 = 5)), data, TRUE)),
+                   msg)
+  # the data frame form, and several facilities
+  inf2 <- inf
+  inf2[c("o1", "o3", "o5"), "f3"] <- Inf
+  data2 <- .obs_case(travel = inf2)
+  expect_identical(.obs_error(.canonical_observed(
+    obs_totals(c(f1 = 4, f2 = 3, f3 = 5)), data2, TRUE)),
+    paste0("observed has 9 counts at 2 facilities that no origin can reach (f1, f3); ",
+           "set them to NA or give their travel times"))
+  # zero or NA is fine: the model gives that facility nothing
+  ok <- .canonical_observed(obs_totals(c(f1 = 0, f2 = 3, f3 = 5)), data, TRUE)
+  expect_identical(ok, c(f2 = 3, f1 = 0, f3 = 5))
+  expect_identical(.canonical_observed(obs_totals(c(f1 = NA, f2 = 3, f3 = 5)), data, TRUE),
+                   c(f2 = 3, f1 = NA, f3 = 5))
+  # a facility one origin reaches is not unreachable
+  one <- inf
+  one["o3", "f1"] <- 2
+  expect_identical(.canonical_observed(obs_totals(c(f1 = 4, f2 = 3, f3 = 5)), .obs_case(travel = one), TRUE),
+                   c(f2 = 3, f1 = 4, f3 = 5))
+  # by group: reachable for the group's demand, not for the group without demand there
+  g <- .obs_case_groups()
+  ga <- g$distance_groups$a
+  gb <- g$distance_groups$b
+  act <- c("o1", "o3", "o5")
+  ga["o3", "f1"] <- Inf
+  gdem <- list(a = c(o1 = 15, o3 = 25, o5 = 0), b = c(o1 = 25, o3 = 30, o5 = 15))
+  # group a: f1 is finite only for o1 and o5, and o5 has no a-demand; o1 has
+  ga[act, "f1"] <- c(Inf, Inf, 4)
+  gd <- prepare_allocation(gdem, c(f2 = 18, f1 = 25, f3 = 15),
+                           list(a = ga[act, ], b = gb[act, ]))
+  x <- matrix(c(1, 0, 2,  3, 4, 5), 3, 2, dimnames = list(c("f1", "f2", "f3"), c("a", "b")))
+  expect_identical(.obs_error(.canonical_observed(obs_totals(x), gd, TRUE)),
+    paste0("observed has 1 count at 1 facility that no origin can reach (f1); ",
+           "set them to NA or give their travel times"))
+  x["f1", "a"] <- 0
+  expect_identical(.canonical_observed(obs_totals(x), gd, TRUE)["f1", ], c(a = 0, b = 3))
+  # the review's example: counts at a facility that every travel time makes unreachable
+  tr <- matrix(c(1, 2, 3, 2, 1, 2, Inf, Inf, Inf), 3, 3,
+               dimnames = list(c("a", "b", "c"), c("f1", "f2", "f3")))
+  d <- prep_data(c(a = 100, b = 100, c = 100), c(f1 = 5, f2 = 5, f3 = 5), tr)
+  expect_error(spax(d, spec_clm(), observed = c(f1 = 120, f2 = 120, f3 = 30)),
+               "observed has 30 counts at 1 facility that no origin can reach (f3)",
+               fixed = TRUE)
+  # the same counts as flows keep their own error
+  fl <- matrix(c(40, 40, 40, 40, 40, 40, 10, 10, 10), 3, 3, dimnames = dimnames(tr))
+  expect_error(spax(d, spec_clm(), observed = fl), "unknown or infinite travel")
 })
 
 test_that("positive counts on unknown or infinite travel are an error", {
@@ -607,10 +695,11 @@ test_that("totals are aligned to the facilities of the data", {
   x <- c(f3 = 5, out = 7, f2 = 3, f1 = 4)
   r <- .obs_messages(.canonical_observed(obs_totals(x), data, TRUE))
   expect_identical(r$value, c(f2 = 3, f1 = 4, f3 = 5))
-  expect_identical(r$messages, "observed: 7 counts at 1 facility outside the data are treated as the outside option\n")
+  # totals have no origin to send the counts to: they never enter the fit, with or
+  # without an outside option
+  expect_identical(r$messages, "observed: 7 counts at 1 facility outside the data are left out\n")
   r2 <- .obs_messages(.canonical_observed(obs_totals(x), data, FALSE))
-  expect_identical(r2$messages, paste0("observed: 7 counts at 1 facility outside the data are ",
-                                       "dropped (the Huff model has no outside option)\n"))
+  expect_identical(r2$messages, "observed: 7 counts at 1 facility outside the data are left out\n")
   # no message without counts outside; NA stays NA
   y <- c(f3 = NA, f2 = 3, f1 = 0, out = 0)
   r3 <- .obs_messages(.canonical_observed(obs_totals(y), data, TRUE))
@@ -648,8 +737,7 @@ test_that("totals by group are aligned to the facilities and groups of the data"
   r <- .obs_messages(.canonical_observed(obs_totals(x), data, TRUE))
   expect_identical(r$value, matrix(c(1, 6, 2,  3, 4, 5), 3, 2,
     dimnames = list(c("f2", "f1", "f3"), c("a", "b"))))
-  expect_identical(r$messages, paste0("observed: 10 counts at 1 facility outside the data ",
-                                      "are treated as the outside option\n"))
+  expect_identical(r$messages, "observed: 10 counts at 1 facility outside the data are left out\n")
   expect_type(r$value, "double")
   # NA cells stay NA
   y <- x
@@ -883,8 +971,7 @@ test_that("xtabs and tapply input give the same counts as the long table on Corn
   r <- .obs_messages(.canonical_observed(obs_totals(totals), cw$data, TRUE))
   expect_identical(r$value, stats::setNames(as.double(totals[colnames(cw$travel)]), colnames(cw$travel)))
   # totals are not origin by origin: all 2,279 counts at the Scilly practice are outside
-  expect_identical(r$messages, paste0("observed: 2,279 counts at 1 facility outside the data ",
-    "are treated as the outside option\n"))
+  expect_identical(r$messages, "observed: 2,279 counts at 1 facility outside the data are left out\n")
   # a transposed Cornwall matrix
   expect_identical(.obs_error(.canonical_observed(
     obs_flows(t(xtabs(patients ~ lsoa + practice, cornwall_flows))), cw$data, TRUE)),

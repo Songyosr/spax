@@ -381,9 +381,8 @@
   per_v0 <- .fca_per_group(v0, groups, "v0", atomic = TRUE)
   if (!is.null(per_v0)) {
     if (isTRUE(fit_v0)) {
-      stop("outside weights given by group are held; give outside = \"fit\" with ",
-           "by_group = \"v0\" to fit them (fit_v0 = FALSE in clm_allocation())",
-           call. = FALSE)
+      stop("v0 given by group is held: use fit_v0 = FALSE, or fit_v0 = TRUE with ",
+           "by_group = \"v0\" to fit one per group", call. = FALSE)
     }
     for (g in groups) {
       .chck_nonnegative_scalar(per_v0[[g]], paste0("v0 (group '", g, "')"))

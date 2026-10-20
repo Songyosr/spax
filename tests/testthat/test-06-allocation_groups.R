@@ -624,9 +624,8 @@ test_that("v0 constants by group with fit_v0 = FALSE", {
   expect_identical(s$metadata$spec$v0, 2)
   expect_null(s$metadata$spec$v0_groups)
   expect_error(clm_allocation(p, v0 = c(a = 1, b = 2), fit_v0 = TRUE),
-               paste0("outside weights given by group are held; give outside = \"fit\" ",
-                      "with by_group = \"v0\" to fit them (fit_v0 = FALSE in ",
-                      "clm_allocation())"), fixed = TRUE)
+               paste0("v0 given by group is held: use fit_v0 = FALSE, or fit_v0 = TRUE ",
+                      "with by_group = \"v0\" to fit one per group"), fixed = TRUE)
   expect_error(clm_allocation(p, v0 = c(a = 1)), "v0: give one element per group: a, b")
   expect_error(clm_allocation(p, v0 = c(a = 1, b = -2)), "nonnegative")
 })

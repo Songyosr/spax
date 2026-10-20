@@ -80,7 +80,10 @@ lines (\code{spec}), the parameters table (\code{parameters}), the fit summary o
 \code{\link[=fit_allocation]{fit_allocation()}} (\code{fit}, \code{NULL} when evaluated) and the \code{mode}; its print
 method shows them, with the per-start table for a fit.
 \item \code{coef()} returns the free parameters, fitted or given. Held values are in
-\code{x$held}.
+\code{x$held}. In evaluate mode, where every parameter has a value, \code{coef()}
+returns only the decay \code{sigma} (or the \code{sigma} of each group), the
+parameter the evaluation takes as free; the other numbers (\code{v0}, \code{beta},
+\code{kappa}) are listed as held in \code{as.data.frame(x, type = "parameters")}.
 \item \code{fitted()} returns the modelled counts for the observations of a fit (as
 \link[=allocation-fit-methods]{fitted.ae_multistart_fit()} does), and the modelled
 facility utilization, named by facility, for an evaluation.

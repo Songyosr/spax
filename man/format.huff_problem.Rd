@@ -19,7 +19,7 @@ A model bound to its data prints like the specification it came from (see
 \code{\link[=spec_clm]{spec_clm()}}): the decay, the attractiveness and the outside weight, then a data line
 with the numbers of active origins and facilities. The free parameters of the model
 show as \code{fit} and the held ones as their value. A model of the historical
-\code{huff_decay} allocation, and the internal no-decay comparator, print one line and
-the names of their parameters.
+\code{huff_decay} allocation (also one saved before the allocation was recorded), and the
+internal no-decay comparator, print one line and the names of their parameters.
 }
 \keyword{internal}
