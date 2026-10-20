@@ -156,7 +156,7 @@ starts to skip it.
 \seealso{
 \link{allocation-fit-methods} for methods on saved fits.
 
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -169,4 +169,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

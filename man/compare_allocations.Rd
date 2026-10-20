@@ -91,7 +91,7 @@ are listed. Classes require an adequacy cut in \code{coverage_args}; each fit us
 its own regional contact as the contact cut unless \code{contact_cut} is given.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -104,4 +104,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

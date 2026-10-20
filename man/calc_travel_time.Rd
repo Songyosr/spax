@@ -92,7 +92,7 @@ travel <- calc_travel_time(friction, gp, pop, ids = "practice", buffer = 5000)
 summary(travel[, 1])
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{check_allocation}()},
@@ -105,4 +105,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

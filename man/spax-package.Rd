@@ -54,7 +54,7 @@ general-purpose inference are not part of this experimental interface.
 
 Preserve facility and origin IDs on numeric inputs. Named axes align
 independently; unnamed inputs are positional. For FCA, travel layer names
-identify facilities. In the checked allocation route, only included positive
+identify facilities. In the allocation route, only included positive
 demand contributes to fitted facility loads. Known zero, unknown and excluded
 demand remain distinct. Requested predictions have their own support:
 unknown travel is not the same as a known absent connection (\code{Inf}).

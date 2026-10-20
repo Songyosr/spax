@@ -17,7 +17,7 @@ Description: A modular engine for spatial access and allocation models. Floating
     and Huff-weighted variants, also for several demand groups that compete for
     the same facilities, such as age bands or transport modes (Tao et al. (2018)
     <doi:10.1186/s12913-018-3132-8>). The allocation model includes the Huff
-    model (Huff (1963) <doi:10.2307/3144521>), declared with huff_allocation(),
+    model (Huff (1963) <doi:10.2307/3144521>), specified with spec_huff(),
     and extends it with an outside option for demand that goes elsewhere. It
     can be evaluated at given parameters, fitted to observed facility counts or
     origin-facility flows, compared with simpler allocations and across decay

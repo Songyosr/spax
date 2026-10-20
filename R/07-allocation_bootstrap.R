@@ -606,7 +606,7 @@
 #'   that coverage was evaluated for that case and not studied separately for the
 #'   model; it is printed with the result.
 #'   Scientific refusals are inspectable results; invalid inputs error.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {

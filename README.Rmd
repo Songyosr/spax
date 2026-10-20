@@ -305,13 +305,15 @@ registered, not how often they visit. The population grid (WorldPop 2020) and th
 ### The Huff model on the same data
 
 The Huff model is the conditional logit without the outside option.
-`spec_huff()` specifies it with power decay and a fitted attractiveness
-exponent `beta` (attraction is GP FTE to the power `beta`). Without an outside
-option it sends every registered resident to a mainland practice, and the
-counts at the Scilly practice are dropped.
+`spec_huff()` specifies it; by default it uses power decay and a fitted
+attractiveness exponent `beta`, the usual form of the Huff model. Here it takes
+the same Gaussian decay and `beta = 1` as the conditional logit above, so the two
+fits differ only in the outside option. Without one, the model sends every
+registered resident to a mainland practice, and the counts at the Scilly
+practice are dropped.
 
 ```{r huff, message = TRUE}
-huff <- spax(d, spec_huff(), observed = flows)
+huff <- spax(d, spec_huff(decay = decay_gaussian(), beta = 1), observed = flows)
 coef(huff)
 
 # Same flows, loss and inputs; loss differences are measured from the Huff fit
@@ -323,16 +325,18 @@ as.data.frame(comparison)[
 
 ```{r huff-values, include = FALSE}
 compared <- as.data.frame(comparison)
-huff_gap <- format(round(compared$loss_difference[2]), big.mark = ",")
+outside_gain <- format(round(-compared$loss_difference[2], 1), nsmall = 1)
 ```
 
-Measured from the Huff fit, the Poisson loss of the conditional logit is
-higher by `r huff_gap`, and its fitted flows correlate with the observed flows
-at `r round(compared$count_correlation[2], 2)`, against
-`r round(compared$count_correlation[1], 2)` for the Huff fit. These figures say
-how close each model's fitted flows come to these registrations under one
-criterion; they do not show which model describes how residents choose
-practices.
+The outside option moves the travel scale very little (from
+`r format(round(coef(huff)[["sigma"]], 3), nsmall = 3)` to
+`r format(round(coef(clm)[["sigma"]], 3), nsmall = 3)`
+minutes) and lowers the Poisson loss by `r outside_gain`. It lets the model
+send `r round(100 * outside[["modelled"]], 2)`% of registered residents outside
+mainland Cornwall, against `r round(100 * outside[["observed"]], 2)`% observed.
+The Huff model is nested in the conditional logit, so this comparison measures
+what the outside option adds on these registrations; it does not by itself
+show how residents choose practices.
 
 ## Continue the allocation workflow
 
@@ -349,7 +353,7 @@ and they accept a result of `spax()`:
 
 | Function | Purpose |
 |:--|:--|
-| `prepare_allocation()` | Align IDs, validate inputs, record units and support, and prepare compact numeric inputs. |
+| `prepare_allocation()` | Align IDs, record units and support, and prepare compact numeric inputs (`prep_data()` returns the same object). |
 | `clm_allocation()` | Declare corrected static CLM with Gaussian, exponential or power travel decay, or a kernel declared with `decay_kernel()`. |
 | `huff_allocation()` | Declare the Huff model: the same allocation model without an outside option, with power decay and a fitted attractiveness exponent by default. |
 | `fit_allocation()` | Fit a selected output from given starts, or from starts found in the data, and retain diagnostics. |

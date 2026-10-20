@@ -96,7 +96,7 @@ facility, as a cutoff or bisquare kernel can be beyond its range, and also
 when Gaussian weights underflow to zero.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
 \code{\link{check_allocation}()},
@@ -109,4 +109,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

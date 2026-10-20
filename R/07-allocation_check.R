@@ -51,7 +51,7 @@
 #'   `search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson fit:
 #'   its floor `eps` and the number of cells with positive observed counts modelled below
 #'   it, which cap the loss; `NULL` otherwise). Use `print()` or `as.data.frame()`.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {

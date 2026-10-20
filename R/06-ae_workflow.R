@@ -1,6 +1,6 @@
 # Experimental portable static-CLM workflow ---------------------------------
 
-#' Prepare checked numeric inputs for an experimental allocation workflow
+#' Prepare numeric inputs for the allocation model
 #'
 #' Named axes align independently; unnamed axes are positional. Positive
 #' included demand enters facility-load support. Zero, unknown and explicitly
@@ -60,7 +60,7 @@
 #'   demand groups the total demand is `D_active`, and `group_ids`, `D_groups`
 #'   and `distance_groups` are added (`distance_active` is `NULL` when travel is
 #'   given per group).
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 prepare_allocation <- function(demand, supply, distance,
@@ -216,7 +216,7 @@ print.ae_prepared_inputs <- function(x, ...) {
 #'   Parameter order is sigma, then v0 and beta when their flags are true. With
 #'   demand groups sigma and v0 are `sigma.<group>` and `v0.<group>` for the
 #'   parameters in `by_group`.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"),
@@ -291,7 +291,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' Huff DL (1963). A probabilistic analysis of shopping center trade areas.
 #' *Land Economics* 39(1):81-90. \doi{10.2307/3144521}
 #' @seealso [clm_allocation()] for the general model with an outside option.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @examples
 #' # Mainland Cornwall: small areas share their registered residents among the
 #' # practices in proportion to attractiveness times travel-time decay.
@@ -495,7 +495,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
 #'   the loss.
 #' @seealso [allocation-fit-methods] for methods on saved fits.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper = NULL,
@@ -679,7 +679,7 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
 #'   hard constraint on expected utilization.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
@@ -744,7 +744,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #'   but makes unqualified A/abar unknown; explicitly named supported-only outputs
 #'   retain the existing zero-contribution convention. Zero-denominator rows
 #'   retain guarded zero mass and a false probability-valid flag.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 predict_allocation <- function(source, distance, origin_ids = rownames(distance),

@@ -39,7 +39,7 @@ adding coverage does not retain the original model or create a scenario type.
 The caller changes system supply/demand by preparing a new model explicitly.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -52,4 +52,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

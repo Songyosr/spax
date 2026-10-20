@@ -70,7 +70,7 @@ vector only; inspect numeric validity before interpreting a map. Supply/theta
 overrides are deliberately absent. A changed system requires reevaluation.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -83,4 +83,4 @@ Other experimental allocation workflow:
 \code{\link{huff_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

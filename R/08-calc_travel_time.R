@@ -60,7 +60,7 @@
 #' gp <- cornwall_gp[1:5, ]
 #' travel <- calc_travel_time(friction, gp, pop, ids = "practice", buffer = 5000)
 #' summary(travel[, 1])
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 calc_travel_time <- function(friction, facilities, template, ids,

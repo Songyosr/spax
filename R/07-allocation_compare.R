@@ -46,7 +46,7 @@
 #' @return An `ae_allocation_comparison` with a `table` (one row per fit), a
 #'   long `zones` table when zones are supplied, and the reference name. Use
 #'   `print()` or `as.data.frame(type = "fits")` / `as.data.frame(type = "zones")`.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NULL,
