@@ -424,7 +424,7 @@ test_that("D8 ungrouped: power decay refuses a zero travel time, gaussian accept
 test_that("D8 ungrouped: Cornwall travel with one zero", {
   skip_on_cran()
   cw <- bind_cornwall()
-  msg <- paste0("power decay needs positive travel times, and 1 origin-facility pairs have ",
+  msg <- paste0("power decay needs positive travel times, and 1 origin-facility pair has ",
                 "travel 0; use decay_exponential() or decay_gaussian(), or set a minimum ",
                 "travel time (for example pmax(travel, 1))")
   expect_null(bind_error(.bind_spax_spec(spec_huff(),
@@ -455,7 +455,7 @@ test_that("D8 grouped: a zero only on a row where the power group has no demand 
       "or set a minimum travel time (for example pmax(travel, 1))"))
     # a shared power decay applies to every group, so it is refused too
     expect_match(bind_error(.bind_spax_spec(spec_huff(), data)),
-                 "^power decay needs positive travel times, and 1 origin-facility pairs")
+                 "^power decay needs positive travel times, and 1 origin-facility pair has")
     # the engine accepts what the check accepts
     expect_no_error(evaluate_allocation(
       .bind_spax_spec(spec_clm(young_power, outside = 0.1), data)$problem,
@@ -466,7 +466,7 @@ test_that("D8 grouped: a zero only on a row where the power group has no demand 
     data <- bind_zero_travel(young_at_o2 = 10, per_group_travel = per_group)
     young_power <- list(young = decay_power(), mid = decay_gaussian(), old = decay_gaussian())
     expect_match(bind_error(.bind_spax_spec(spec_clm(young_power), data)),
-                 "^power decay needs positive travel times, and 1 origin-facility pairs")
+                 "^power decay needs positive travel times, and 1 origin-facility pair has")
   }
 })
 
@@ -482,7 +482,7 @@ test_that("D8 grouped: the zero is read in the group's own travel", {
   expect_null(bind_error(.bind_spax_spec(spec_clm(power_old), data)))
   power_young <- list(young = decay_power(), mid = decay_gaussian(), old = decay_gaussian())
   expect_match(bind_error(.bind_spax_spec(spec_clm(power_young), data)),
-               "^power decay needs positive travel times, and 1 origin-facility pairs")
+               "^power decay needs positive travel times, and 1 origin-facility pair has")
   # with no demand for the young group at o2 its zero is not checked
   demand0 <- bind_split(f$demand, c(o2 = 0))
   data0 <- prepare_allocation(demand0, f$supply, travel)
