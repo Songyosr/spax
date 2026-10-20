@@ -30,6 +30,12 @@
   identified outside weight. The search is stored with the fit and shown when it is
   printed. `spax()` always uses the strict settings. Calls that give `starts`, `lower`
   and `upper` run as before.
+* The default lower bound of the outside weight is not below the weight that leaves the
+  outside option a millionth of the demand (the seed for an outside share of 1e-6, at the
+  best grid point). A fit that wants no outside option now ends on that bound, flagged, and
+  the printed result says "v0 at its lower bound: the outside option adds almost nothing
+  (compare spec_huff())"; before, the weight drifted to a negligible value without touching
+  a bound. Bounds you give are used as given.
 * The default search stops with an error when a fitted outside weight has nothing to
   explain, because the counts of a fully observed target reach the total demand, and warns
   when they are within 0.1% of it.
@@ -42,6 +48,10 @@
   facilities that no origin can reach, are errors. IDs are matched as text and, when that
   fails, by numeric value, so that `"1e+05"` matches `"100000"`; two observed IDs that
   match one ID of the data are an error.
+* The print of `prep_data()` says why origins are not active: with zero demand, unknown
+  demand, invalid demand or excluded. `spax_huff()` and `spax_clm()` refuse an argument of
+  `prep_data()` given in `...` and name `data_args`. `save_spax()` refuses a `spax()` result
+  and names `saveRDS()`.
 * Messages about the outside weight, group-specific parameters and the bootstrap now name
   the arguments of the new interface (for example `outside = "fit"` and `obs_totals()` by
   group) beside those of `clm_allocation()`.
