@@ -327,7 +327,8 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' only `beta` free, `beta` = 0.5, 1 and 2.
 #'
 #' A fully observed target whose counts reach the total demand has no outside
-#' share for `v0` to explain: the search stops with an error (use `v0 = 0`), and
+#' share for `v0` to explain: the search stops with an error (use no outside
+#' option: `fit_v0 = FALSE`), and
 #' warns when the counts are within 0.1% of the total demand. Starts and bounds
 #' remain required for any output other than `utilization`, `flow` and
 #' `utilization_by_group`, and calls that give `starts`, `lower` and `upper` run

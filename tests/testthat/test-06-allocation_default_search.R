@@ -474,7 +474,8 @@ test_that("D7: a fully observed target that reaches the demand is an error, near
   scale <- function(share) case$y * (share * total / sum(case$y))
   expect_identical(.ds_message(fit_allocation(case$model, scale(1.01), loss = "poisson")),
     paste0("the observed counts reach the total demand, so the outside weight would go ",
-           "to zero; use v0 = 0 (no outside option) or check the targets"))
+           "to zero; use no outside option (outside = 0, or fit_v0 = FALSE in ",
+           "clm_allocation()) or check the targets"))
   # warned once, not at every grid point
   warns <- character()
   fit <- withCallingHandlers(
