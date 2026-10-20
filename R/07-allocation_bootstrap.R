@@ -57,7 +57,8 @@
   # fitted, beta may be fixed or fitted, and any fixed kappa/beta is allowed (the
   # model declaration already requires both to be positive).
   if (!isTRUE(spec$fit_v0)) {
-    stop("bootstrap requires a fitted outside mass (fit_v0 = TRUE)")
+    stop("bootstrap requires a fitted outside weight (outside = \"fit\"; ",
+         "fit_v0 = TRUE in clm_allocation())")
   }
   kernel <- spec[["kernel", exact = TRUE]]
   smooth_kernel <- if (is.null(kernel)) spec$family %in% .decay_builtin_families else

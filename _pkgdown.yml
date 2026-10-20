@@ -42,8 +42,9 @@ reference:
       - compute_access
 
   - title: "Allocation Interface (experimental)"
-    desc: "Specify an allocation model without data, with decay kernels and fitted or held parameters"
+    desc: "Prepare data, and specify an allocation model without data, with decay kernels and fitted or held parameters"
     contents:
+      - prep_data
       - decay_gaussian
       - spec_clm
 

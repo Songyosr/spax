@@ -350,8 +350,8 @@
     stop("`by_group` must be a subset of \"sigma\" and \"v0\"", call. = FALSE)
   }
   if ("v0" %in% by_group && !isTRUE(fit_v0)) {
-    stop("by_group = \"v0\" requires fit_v0 = TRUE; with fit_v0 = FALSE give `v0` ",
-         "as a named vector by group", call. = FALSE)
+    stop("a group-specific v0 (by_group = \"v0\") must be fitted: outside = \"fit\" ",
+         "(fit_v0 = TRUE in clm_allocation())", call. = FALSE)
   }
   is_family <- function(e) {
     (is.character(e) && length(e) == 1L && !is.na(e)) || inherits(e, "spax_decay_kernel")
@@ -381,8 +381,9 @@
   per_v0 <- .fca_per_group(v0, groups, "v0", atomic = TRUE)
   if (!is.null(per_v0)) {
     if (isTRUE(fit_v0)) {
-      stop("`v0` given by group are constants: use fit_v0 = FALSE, or ",
-           "by_group = \"v0\" to fit a v0 for each group", call. = FALSE)
+      stop("outside weights given by group are held; give outside = \"fit\" with ",
+           "by_group = \"v0\" to fit them (fit_v0 = FALSE in clm_allocation())",
+           call. = FALSE)
     }
     for (g in groups) {
       .chck_nonnegative_scalar(per_v0[[g]], paste0("v0 (group '", g, "')"))

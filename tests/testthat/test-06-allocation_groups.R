@@ -624,7 +624,9 @@ test_that("v0 constants by group with fit_v0 = FALSE", {
   expect_identical(s$metadata$spec$v0, 2)
   expect_null(s$metadata$spec$v0_groups)
   expect_error(clm_allocation(p, v0 = c(a = 1, b = 2), fit_v0 = TRUE),
-               "constants")
+               paste0("outside weights given by group are held; give outside = \"fit\" ",
+                      "with by_group = \"v0\" to fit them (fit_v0 = FALSE in ",
+                      "clm_allocation())"), fixed = TRUE)
   expect_error(clm_allocation(p, v0 = c(a = 1)), "v0: give one element per group: a, b")
   expect_error(clm_allocation(p, v0 = c(a = 1, b = -2)), "nonnegative")
 })
@@ -795,7 +797,9 @@ test_that("clm_allocation refuses invalid grouped arguments", {
   u <- prepare_allocation(f$demand$a, f$supply, f$M, missing_demand = "exclude")
   expect_error(clm_allocation(u, by_group = "sigma"), "need prepared inputs with demand groups")
   expect_error(clm_allocation(u, fixed = c(sigma = 2)), "need prepared inputs with demand groups")
-  expect_error(clm_allocation(p, by_group = "v0"), "requires fit_v0 = TRUE")
+  expect_error(clm_allocation(p, by_group = "v0"),
+               paste0("a group-specific v0 (by_group = \"v0\") must be fitted: ",
+                      "outside = \"fit\" (fit_v0 = TRUE in clm_allocation())"), fixed = TRUE)
   expect_error(clm_allocation(p, by_group = "beta"), "must be a subset")
   expect_error(clm_allocation(p, by_group = c("sigma", "sigma")), "must be a subset")
   expect_error(clm_allocation(p, family = list(a = "gaussian")),
@@ -956,8 +960,9 @@ test_that("grouped evaluation reuses kernels of equal groups without changing re
 
 .gfit_msg <- function(names) {
   paste0("group-specific parameters (", paste(names, collapse = ", "), ") need ",
-         "group-labelled targets: fit output = \"utilization_by_group\" with observed ",
-         "counts for every group, or fix them with clm_allocation(fixed = )")
+         "group-labelled targets: fit them to counts recorded by group (obs_totals() ",
+         "by group, or output = \"utilization_by_group\" in fit_allocation()), or ",
+         "hold them")
 }
 
 .gfit_error <- function(expr) {

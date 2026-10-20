@@ -51,8 +51,9 @@ parameters of such a model (\verb{sigma.<group>}, \verb{v0.<group>}, from
 \code{by_group}) can be fitted only to this output, with observed counts for
 every group that has one and positive demand in that group; aggregated
 targets leave them multimodal and weakly identified, so the fit is refused
-(before any start) with a message naming the parameters. Fix them with
-\code{clm_allocation(fixed = )}, or fit shared parameters to any target.}
+(before any start) with a message naming the parameters. Hold them
+(\code{clm_allocation(fixed = )}, or numbers in the decay and outside slots of
+\code{\link[=spec_clm]{spec_clm()}}), or fit shared parameters to any target.}
 
 \item{loss}{\code{"weighted_sse"}, \code{"poisson"}, or a function accepting predicted
 and observed values. Weighted SSE divides squared residuals by observed+eta,

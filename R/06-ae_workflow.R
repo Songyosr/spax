@@ -75,6 +75,100 @@ prepare_allocation <- function(demand, supply, distance,
     missing_travel = missing_travel, spatial = spatial, metadata = metadata)
 }
 
+#' Prepare data for an allocation model
+#'
+#' Experimental. `prep_data()` checks and aligns the demand, supply and travel
+#' time inputs of an allocation model once, so that model specifications such
+#' as [spec_clm()] and [spec_huff()] can be bound to them with `spax()`. In
+#' this version it is [prepare_allocation()] under another name, with `travel`
+#' for `distance`: it returns the identical object, an `ae_prepared_inputs`,
+#' and every argument is passed through. The step functions
+#' ([clm_allocation()] and the others) accept the object too.
+#'
+#' Printing the object lists its origins and facilities, the demand groups, the
+#' unit labels when they were given, the active origins whose travel is unknown
+#' and the policies for missing demand and travel.
+#'
+#' @inheritParams prepare_allocation
+#' @param travel Numeric origin-by-facility travel matrix. It is the
+#'   `distance` argument of [prepare_allocation()]: the same alignment by IDs
+#'   applies, and with demand groups it can be one matrix shared by the groups
+#'   or a named list of matrices with one element per group.
+#' @param x Prepared inputs, an `ae_prepared_inputs`.
+#' @param ... Unused.
+#' @return The existing `ae_prepared_inputs`, as returned by
+#'   [prepare_allocation()]. `format()` returns the printed lines as a character
+#'   vector and `print()` returns its argument invisibly.
+#' @family allocation interface
+#' @examples
+#' # Mainland Cornwall: registered residents, GP FTE and travel minutes
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' demand <- stats::setNames(areas$registered, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' prep_data(demand, supply, travel,
+#'           metadata = list(demand_units = "registered residents",
+#'                           supply_units = "GP FTE", travel_units = "minutes"))
+#' @export
+#' @md
+prep_data <- function(demand, supply, travel,
+                      origin_ids = NULL,
+                      facility_ids = NULL,
+                      included = NULL,
+                      missing_demand = c("error", "exclude"),
+                      missing_travel = c("error", "legacy_zero"),
+                      spatial = NULL, metadata = list()) {
+  prepare_allocation(demand, supply, distance = travel, origin_ids = origin_ids,
+    facility_ids = facility_ids, included = included, missing_demand = missing_demand,
+    missing_travel = missing_travel, spatial = spatial, metadata = metadata)
+}
+
+#' @rdname prep_data
+#' @method format ae_prepared_inputs
+#' @export
+#' @md
+format.ae_prepared_inputs <- function(x, ...) {
+  line <- function(label, text) sprintf("  %-10s  %s", label, text)
+  active <- length(x$origin_ids)
+  total <- length(if (is.null(x$all_origin_ids)) x$origin_ids else x$all_origin_ids)
+  origins <- paste0(.format_total(total), " origins (", .format_total(active), " active",
+                    if (total > active) paste0(", ", .format_total(total - active), " excluded"),
+                    ")")
+  meta <- x$input_metadata
+  # A label that was given; unit labels are caller declarations, never converted.
+  given <- function(value) {
+    if (is.character(value) && length(value) == 1L && !is.na(value)) value
+  }
+  labelled <- function(units, period) {
+    period <- given(period)
+    c(given(units), if (!is.null(period)) paste0("(", period, ")"))
+  }
+  unknown <- sum(x$active_unknown_travel)
+  policy <- x$input_policy
+  policy_text <- function(value) if (is.character(value) && length(value) == 1L) value else "unknown"
+  supply <- labelled(meta$supply_units, meta$supply_period)
+  c(paste0("<spax data> ", origins, " x ", .format_total(length(x$facility_ids)), " facilities"),
+    if (!is.null(x$group_ids)) line("groups", paste(x$group_ids, collapse = ", ")),
+    line("demand", paste(c(.format_total(sum(x$D_active)),
+                           labelled(meta$demand_units, meta$demand_period)), collapse = " ")),
+    if (length(supply)) line("supply", paste(supply, collapse = " ")),
+    line("travel", paste0(if (!is.null(given(meta$travel_units))) paste0(meta$travel_units, "; "),
+                          "unknown for ", unknown, " active ",
+                          if (unknown == 1L) "origin" else "origins")),
+    line("policies", paste0("missing demand: ", policy_text(policy$missing_demand),
+                            "; missing travel: ", policy_text(policy$missing_travel))))
+}
+
+#' @rdname prep_data
+#' @method print ae_prepared_inputs
+#' @export
+#' @md
+print.ae_prepared_inputs <- function(x, ...) {
+  cat(format(x), sep = "\n")
+  invisible(x)
+}
+
 #' Declare corrected static CLM over checked allocation inputs
 #'
 #' Declare corrected static CLM over checked allocation inputs.
@@ -235,7 +329,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
                             fit_beta = TRUE, by_group = character(),
                             fixed = NULL) {
-  no_outside <- paste0("the Huff model has no outside option; use ",
+  no_outside <- paste0("the Huff model has no outside option; use spec_clm() or ",
                        "clm_allocation(fit_v0 = TRUE) for one")
   if (is.character(by_group) && "v0" %in% by_group) {
     stop(no_outside, call. = FALSE)
@@ -366,8 +460,9 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   `by_group`) can be fitted only to this output, with observed counts for
 #'   every group that has one and positive demand in that group; aggregated
 #'   targets leave them multimodal and weakly identified, so the fit is refused
-#'   (before any start) with a message naming the parameters. Fix them with
-#'   `clm_allocation(fixed = )`, or fit shared parameters to any target.
+#'   (before any start) with a message naming the parameters. Hold them
+#'   (`clm_allocation(fixed = )`, or numbers in the decay and outside slots of
+#'   [spec_clm()]), or fit shared parameters to any target.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
 #'   with eta=1 by default. Poisson omits the data-only log-factorial constant.

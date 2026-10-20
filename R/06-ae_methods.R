@@ -282,3 +282,114 @@ plot.ae_problem_nfxp_fit <- function(x,
   out[numeric_cols] <- lapply(out[numeric_cols], signif, digits = digits)
   out
 }
+
+# Bound models and prepared inputs ----------------------------------------------------
+
+# A count or total with thousands separators, to seven significant digits (used by the
+# lines of bound models here and of prepared inputs, format.ae_prepared_inputs()).
+.format_total <- function(x) {
+  format(x, big.mark = ",", digits = 7L, scientific = FALSE, trim = TRUE)
+}
+
+#' Format and print a bound allocation model
+#'
+#' A model bound to its data prints like the specification it came from (see
+#' [spec_clm()]): the decay, the attractiveness and the outside weight, then a data line
+#' with the numbers of active origins and facilities. The free parameters of the model
+#' show as `fit` and the held ones as their value. A model of the historical
+#' `huff_decay` allocation, and the internal no-decay comparator, print one line and
+#' the names of their parameters.
+#' @param x A model, an `ae_problem` of the Huff or conditional logit family.
+#' @param ... Unused.
+#' @method format huff_problem
+#' @keywords internal
+#' @export
+#' @md
+format.huff_problem <- function(x, ...) {
+  spec <- x$metadata$spec
+  if (!identical(spec$allocation, "clm") || identical(spec$family, "none")) {
+    return(c(paste0("<ae_problem> ", x$model, " (", spec$allocation, ", family ",
+                    spec$family, ")"),
+             paste0("parameters: ", if (length(x$theta$names)) {
+               paste(x$theta$names, collapse = ", ")
+             } else {
+               "none"
+             })))
+  }
+  line <- function(label, text) sprintf("  %-10s  %s", label, text)
+  huff <- !isTRUE(spec$fit_v0) && !any(c(spec$v0, spec$v0_groups) > 0, na.rm = TRUE)
+  s <- x$substrate
+  c(paste0("<spax model> ", if (huff) "Huff model (no outside option)" else
+             "conditional logit with an outside option"),
+    line("decay", .bound_decay_line(x)),
+    line("attraction", paste0("(kappa * supply)^beta: kappa = ", .spec_number(spec$kappa),
+                              ", beta = ", .bound_status(x, "beta", spec$beta))),
+    line("outside", .bound_outside_line(x)),
+    line("data", paste0(.format_total(length(s$origin_ids)), " origins x ",
+                        .format_total(length(s$facility_ids)), " facilities")))
+}
+
+#' @rdname format.huff_problem
+#' @method print huff_problem
+#' @keywords internal
+#' @export
+#' @md
+print.huff_problem <- function(x, ...) {
+  cat(format(x), sep = "\n")
+  invisible(x)
+}
+
+# "fit" for a free parameter of the model, the value for a held one: a parameter
+# fixed at a value (demand groups) or a constant of the specification (`value`).
+.bound_status <- function(x, name, value) {
+  fixed <- x$metadata$spec[["fixed", exact = TRUE]]
+  if (name %in% x$theta$names) return("fit")
+  if (name %in% names(fixed)) return(.decay_sigma_text(fixed[[name]]))
+  .decay_sigma_text(value)
+}
+
+# The decay line of a bound model, as the specification prints it: one label for a
+# shared kernel (`fit by group` for one fitted kernel with a sigma for each group) and
+# `by group:` with each group's kernel for kernels that differ or are partly held.
+.bound_decay_line <- function(x) {
+  spec <- x$metadata$spec
+  groups <- spec[["groups", exact = TRUE]]
+  # The label of the family, as for a fit (`.fit_family_label()`).
+  label <- .fit_family_label(list(
+    family = spec$family, families = spec[["families", exact = TRUE]],
+    prediction_snapshot = list(spec = list(kernel = spec[["kernel", exact = TRUE]]))))
+  if (is.null(groups) || !"sigma" %in% spec$by_group) {
+    return(paste0(label, ": ", .bound_status(x, "sigma", NA)))
+  }
+  status <- vapply(groups, function(g) .bound_status(x, paste0("sigma.", g), NA), character(1))
+  if (!identical(spec$family, "grouped") && all(status == "fit")) {
+    return(paste0(label, ": fit by group"))
+  }
+  kernels <- vapply(groups, function(g) {
+    f <- spec$families[[g]]
+    if (inherits(f, "spax_decay_kernel")) f$name else f
+  }, character(1))
+  paste0("by group: ", paste0(groups, " ", kernels, " (", status, ")", collapse = ", "))
+}
+
+# The outside line of a bound model: `none` without an outside weight, a shared weight,
+# or the weights by group.
+.bound_outside_line <- function(x) {
+  spec <- x$metadata$spec
+  groups <- spec[["groups", exact = TRUE]]
+  held <- spec[["v0_groups", exact = TRUE]]
+  if (!is.null(held)) {
+    if (all(held == 0)) return("none")
+    return(paste0("v0 by group: ", paste(names(held), .spec_number(held), collapse = ", ")))
+  }
+  if (!isTRUE(spec$fit_v0)) {
+    if (spec$v0 == 0) return("none")
+    return(paste0("v0: ", .spec_number(spec$v0)))
+  }
+  if (is.null(groups) || !"v0" %in% spec$by_group) {
+    return(paste0("v0: ", .bound_status(x, "v0", spec$v0)))
+  }
+  status <- vapply(groups, function(g) .bound_status(x, paste0("v0.", g), spec$v0), character(1))
+  if (all(status == "fit")) return("v0: fit by group")
+  paste0("v0 by group: ", paste(groups, status, collapse = ", "))
+}

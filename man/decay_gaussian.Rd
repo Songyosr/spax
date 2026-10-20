@@ -75,6 +75,7 @@ decay_custom(plateau, sigma = 8)
 }
 \seealso{
 Other allocation interface: 
+\code{\link{prep_data}()},
 \code{\link{spec_clm}()}
 }
 \concept{allocation interface}

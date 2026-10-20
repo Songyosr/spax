@@ -106,11 +106,12 @@ test_that("a Huff fit to simulated facility totals recovers sigma and beta", {
 
 test_that("a Huff model refuses an outside option", {
   f <- alloc_huff_case()
-  msg <- "the Huff model has no outside option; use clm_allocation\\(fit_v0 = TRUE\\) for one"
-  expect_error(huff_allocation(f$inputs, by_group = "v0"), msg)
-  expect_error(huff_allocation(f$inputs, by_group = c("sigma", "v0")), msg)
-  expect_error(huff_allocation(f$inputs, fixed = c(v0 = 1)), msg)
-  expect_error(huff_allocation(f$inputs, fixed = c(sigma = 2, v0.a = 0)), msg)
+  msg <- paste0("the Huff model has no outside option; use spec_clm() or ",
+                "clm_allocation(fit_v0 = TRUE) for one")
+  expect_error(huff_allocation(f$inputs, by_group = "v0"), msg, fixed = TRUE)
+  expect_error(huff_allocation(f$inputs, by_group = c("sigma", "v0")), msg, fixed = TRUE)
+  expect_error(huff_allocation(f$inputs, fixed = c(v0 = 1)), msg, fixed = TRUE)
+  expect_error(huff_allocation(f$inputs, fixed = c(sigma = 2, v0.a = 0)), msg, fixed = TRUE)
   # ungrouped inputs still refuse by_group and fixed for their own reason
   expect_error(huff_allocation(f$inputs, by_group = "sigma"), "demand groups")
   expect_error(huff_allocation(f$inputs, fixed = c(sigma = 2)), "demand groups")
