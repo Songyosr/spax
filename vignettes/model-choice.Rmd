@@ -38,8 +38,8 @@ be rewritten as allocation fits.
 | Question | Starting point | What the output means |
 |:--|:--|:--|
 | How is weighted supply distributed relative to weighted demand? | `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`, `spax_huff2sfca()` | A model-specific supply-per-demand accessibility index |
-| How are request opportunities allocated among facilities and an outside option? | `prepare_allocation()` then `clm_allocation()` | Choice probabilities and expected loads under a declared model |
-| Which parameters fit observed utilization or flows? | `fit_allocation()` with an explicit loss and starts | A calibrated mean model plus optimization diagnostics |
+| How are request opportunities allocated among facilities and an outside option? | `prep_data()` and `spec_clm()` with `spax()`, or the steps `prepare_allocation()` then `clm_allocation()` | Choice probabilities and expected loads under a declared model |
+| Which parameters fit observed utilization or flows? | `spax()` with `obs_flows()` or `obs_totals()`, or the step `fit_allocation()` | A calibrated mean model plus optimization diagnostics |
 | What changes under a supply scenario at the same parameters? | Reprepare and `evaluate_allocation()` | A model-based contrast, not an estimated causal effect |
 | What can be predicted at additional locations? | `predict_allocation()` | Requested outputs with probability, demand and capacity validity flags |
 | Are facility-count bootstrap intervals available? | `bootstrap_allocation()` after an eligible fit and observation declaration | Conditional pointwise intervals when the supported procedure's gates pass |
@@ -140,7 +140,11 @@ practices outside mainland Cornwall.
 
 Fitting needs a declared target. Here it is the observed small area × practice
 registrations, a stock of who is registered where rather than a count of
-visits, fitted with a Poisson loss from three explicit starts.
+visits, fitted with a Poisson loss from three explicit starts. The guide uses
+the step functions;
+`spax(prep_data(D, S, T), spec_clm(), observed = obs_flows(observed))` fits
+the same model in one call, with starts found in the data (see the [allocation
+workflow](allocation-workflow.html)).
 
 ```{r clm}
 # Observed registrations as an area x practice matrix (zero if none)
@@ -343,8 +347,11 @@ capacity limit.
 The six experimental verbs are **prepare, declare, fit, evaluate, predict and
 bootstrap**. They are separate steps so that a chosen fixed model can be
 evaluated without fitting, while an eligible fit can be inspected without
-refitting. An outside option does not automatically represent unmet need, and
-Poisson fitting does not impose exact total matching.
+refitting. `spax()` runs the first three in one call (or prepare, declare and
+evaluate, when every parameter has a value); `predict_allocation()`,
+`bootstrap_allocation()`, `check_allocation()` and `compare_allocations()`
+accept its result. An outside option does not automatically represent unmet
+need, and Poisson fitting does not impose exact total matching.
 
 This guide is not an uncertainty demonstration. The facility-case bootstrap
 needs a fit to whole facility counts, so the flow fit above is outside its
