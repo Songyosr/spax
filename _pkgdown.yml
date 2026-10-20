@@ -42,12 +42,15 @@ reference:
       - compute_access
 
   - title: "Allocation Interface (experimental)"
-    desc: "Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters) and declare observed counts"
+    desc: "Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters), declare observed counts, run the model and work with its result"
     contents:
       - prep_data
       - decay_gaussian
       - spec_clm
       - obs_flows
+      - spax
+      - spax_huff
+      - spax_allocation-methods
 
   - title: "Experimental Allocation Workflow"
     desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"

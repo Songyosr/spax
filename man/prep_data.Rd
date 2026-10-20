@@ -109,6 +109,9 @@ prep_data(demand, supply, travel,
 Other allocation interface: 
 \code{\link{decay_gaussian}()},
 \code{\link{obs_flows}()},
+\code{\link{spax}()},
+\code{\link{spax_allocation-methods}},
+\code{\link{spax_huff}()},
 \code{\link{spec_clm}()}
 }
 \concept{allocation interface}

@@ -114,6 +114,9 @@ spec_clm(
 Other allocation interface: 
 \code{\link{decay_gaussian}()},
 \code{\link{obs_flows}()},
-\code{\link{prep_data}()}
+\code{\link{prep_data}()},
+\code{\link{spax}()},
+\code{\link{spax_allocation-methods}},
+\code{\link{spax_huff}()}
 }
 \concept{allocation interface}

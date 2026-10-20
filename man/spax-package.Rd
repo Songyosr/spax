@@ -2,7 +2,6 @@
 % Please edit documentation in R/spax-package.R
 \docType{package}
 \name{spax-package}
-\alias{spax}
 \alias{spax-package}
 \alias{allocation-compatibility}
 \title{Spatial accessibility and allocation modeling}

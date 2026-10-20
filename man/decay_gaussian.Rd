@@ -77,6 +77,9 @@ decay_custom(plateau, sigma = 8)
 Other allocation interface: 
 \code{\link{obs_flows}()},
 \code{\link{prep_data}()},
+\code{\link{spax}()},
+\code{\link{spax_allocation-methods}},
+\code{\link{spax_huff}()},
 \code{\link{spec_clm}()}
 }
 \concept{allocation interface}
