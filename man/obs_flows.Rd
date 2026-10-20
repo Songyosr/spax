@@ -95,6 +95,11 @@ supply, or on pairs with unknown or infinite travel are errors, because the
 model cannot produce them. Flows missing for an active origin or a facility of
 the data are taken as 0, with a message; totals must give every facility of
 the data (use 0, or \code{NA} if unobserved).
+
+IDs match the data as text. An ID that matches nothing is then matched by its
+numeric value when exactly one ID of the data has that value, with a message:
+R writes the number 100000 as \code{"1e+05"}, and codes read as numbers lose
+leading zeros (\code{1234} matches \code{"01234"}).
 }
 \examples{
 # Origin-facility flows from a long table of registrations

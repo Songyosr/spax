@@ -44,6 +44,11 @@
 #' the data are taken as 0, with a message; totals must give every facility of
 #' the data (use 0, or `NA` if unobserved).
 #'
+#' IDs match the data as text. An ID that matches nothing is then matched by its
+#' numeric value when exactly one ID of the data has that value, with a message:
+#' R writes the number 100000 as `"1e+05"`, and codes read as numbers lose
+#' leading zeros (`1234` matches `"01234"`).
+#'
 #' @param x For `obs_flows()`, a numeric matrix of origin by facility counts or a
 #'   data frame of origin, facility and count. For `obs_totals()`, a named
 #'   numeric vector (or one-dimensional array or table) of facility counts, a
@@ -170,7 +175,8 @@ print.spax_obs <- function(x, ...) {
                   utilization_by_group = "totals by group: ")
   unit <- switch(x$type, flow = "origin-facility", utilization = "facility",
                  utilization_by_group = "facility-group")
-  cat("<spax obs> ", label, .obs_num(sum(!is.na(counts))), " ", unit, " counts, total ",
+  cat("<spax obs> ", label, .obs_count(sum(!is.na(counts)), paste(unit, "count"),
+                                       paste(unit, "counts")), ", total ",
       .obs_num(sum(counts, na.rm = TRUE)), "; loss ", x$loss, "\n", sep = "")
   invisible(x)
 }
@@ -294,6 +300,71 @@ print.spax_obs <- function(x, ...) {
   list(keys = lapply(keys, function(k) k[first]), count = total)
 }
 
+# A number and the noun that agrees with it: "1 origin", "2,290 counts".
+.obs_count <- function(n, one, many) {
+  paste(.obs_num(n), if (isTRUE(n == 1)) one else many)
+}
+
+# IDs match as text. An observed ID that matches no ID of the data is then matched
+# by its numeric value when exactly one ID of the data has that value: R writes
+# 100000 as "1e+05" but 100000L as "100000", and codes read as numbers lose their
+# leading zeros. Returns the IDs to use and how many were matched this way.
+.obs_numeric_match <- function(ids, data_ids) {
+  miss <- !ids %in% data_ids
+  if (!any(miss)) return(list(ids = ids, from = character(), to = character()))
+  num_data <- suppressWarnings(as.numeric(data_ids))
+  unique_num <- !is.na(num_data) & !num_data %in% num_data[duplicated(num_data)]
+  num_obs <- suppressWarnings(as.numeric(ids[miss]))
+  hit <- match(num_obs, num_data[unique_num])
+  to <- data_ids[unique_num][hit]
+  from <- ids[miss][!is.na(hit)]
+  out <- ids
+  out[miss][!is.na(hit)] <- to[!is.na(hit)]
+  list(ids = out, from = from, to = to[!is.na(hit)])
+}
+
+# Rewrite the IDs of an observation by .obs_numeric_match() before alignment, and
+# report what was matched by value.
+.obs_align_ids <- function(obs, data) {
+  x <- obs$x
+  fac <- data$facility_ids
+  moved <- list()
+  swap <- function(ids, data_ids) {
+    m <- .obs_numeric_match(ids, data_ids)
+    if (length(m$from)) moved[[length(moved) + 1L]] <<- m
+    m$ids
+  }
+  if (is.data.frame(x)) {
+    if (!is.null(x$origin)) x$origin <- swap(x$origin, data$all_origin_ids)
+    x$facility <- swap(x$facility, fac)
+  } else if (is.matrix(x)) {
+    if (identical(obs$type, "flow")) {
+      rownames(x) <- swap(rownames(x), data$all_origin_ids)
+    } else {
+      rownames(x) <- swap(rownames(x), fac)
+    }
+    if (identical(obs$type, "flow")) colnames(x) <- swap(colnames(x), fac)
+  } else {
+    names(x) <- swap(names(x), fac)
+  }
+  if (length(moved)) {
+    from <- unlist(lapply(moved, `[[`, "from"))
+    to <- unlist(lapply(moved, `[[`, "to"))
+    pairs <- unique(paste0(from, " as ", to))
+    message("observed: ", .obs_count(length(pairs), "ID", "IDs"),
+            " matched to the data by numeric value, for example ", pairs[1L])
+    dup <- if (is.data.frame(x)) character() else
+      c(rownames(x)[duplicated(rownames(x))], colnames(x)[duplicated(colnames(x))],
+        names(x)[duplicated(names(x))])
+    if (length(dup)) {
+      stop("observed has two IDs for the same data ID: ", .obs_head(unique(dup)),
+           call. = FALSE)
+    }
+  }
+  obs$x <- x
+  obs
+}
+
 # Number with thousands separators, for messages and print.
 .obs_num <- function(x) {
   format(x, big.mark = ",", scientific = FALSE, trim = TRUE, digits = 7)
@@ -372,6 +443,7 @@ print.spax_obs <- function(x, ...) {
   if (!is.logical(outside_option) || length(outside_option) != 1L || is.na(outside_option)) {
     stop("outside_option must be TRUE or FALSE", call. = FALSE)
   }
+  obs <- .obs_align_ids(obs, data)
   switch(obs$type,
     flow = .canonical_flow(obs$x, data, outside_option),
     utilization = .canonical_totals(obs$x, data, outside_option),
@@ -397,7 +469,8 @@ print.spax_obs <- function(x, ...) {
   status <- ifelse(is.na(at), "outside", data$origin_status[at])
   zero <- status == "zero" & totals$positive
   if (any(zero)) {
-    stop("observed has counts for ", sum(zero), " origins with zero demand in the data: ",
+    stop("observed has counts for ", .obs_count(sum(zero), "origin", "origins"),
+         " with zero demand in the data: ",
          .obs_head(totals$id[zero]), call. = FALSE)
   }
   dropped <- status %in% c("outside", "excluded", "unknown", "invalid_omitted")
@@ -419,7 +492,8 @@ print.spax_obs <- function(x, ...) {
   reachable <- .obs_reachable(data)
   unreachable <- positive & !reachable
   if (any(unreachable)) {
-    stop("observed has ", .obs_num(sum(block[unreachable])), " counts on origin-facility ",
+    stop("observed has ", .obs_count(sum(block[unreachable]), "count", "counts"),
+         " on origin-facility ",
          "pairs with unknown or infinite travel; set them to NA or give their travel times",
          call. = FALSE)
   }
@@ -427,8 +501,9 @@ print.spax_obs <- function(x, ...) {
   n_origins <- sum(!data$origin_ids %in% totals$id)
   n_facilities <- sum(!data$facility_ids %in% observed_facilities)
   if (n_origins + n_facilities > 0L) {
-    message("observed: no counts for ", n_origins, " active origins and ", n_facilities,
-            " facilities in the data; they are taken as 0")
+    message("observed: no counts for ", .obs_count(n_origins, "active origin", "active origins"),
+            " and ", .obs_count(n_facilities, "facility", "facilities"),
+            " in the data; they are taken as 0")
   }
   block
 }
@@ -465,7 +540,8 @@ print.spax_obs <- function(x, ...) {
 .obs_check_facilities <- function(ids, data) {
   missing <- setdiff(data$facility_ids, ids)
   if (length(missing)) {
-    stop("observed totals have no count for ", length(missing), " facilities in the data: ",
+    stop("observed totals have no count for ", .obs_count(length(missing), "facility", "facilities"),
+         " in the data: ",
          .obs_head(missing), "; give 0, or NA if unobserved", call. = FALSE)
   }
   invisible(TRUE)
@@ -475,8 +551,8 @@ print.spax_obs <- function(x, ...) {
 .obs_check_zero_supply <- function(per_facility, data) {
   bad <- as.vector(data$S[, 1L]) == 0 & per_facility > 0
   if (any(bad)) {
-    stop("observed has ", .obs_num(sum(per_facility[bad])), " counts at ", sum(bad),
-         " facilities with zero supply (", .obs_head(data$facility_ids[bad]), "); the model ",
+    stop("observed has ", .obs_count(sum(per_facility[bad]), "count", "counts"), " at ",
+         .obs_count(sum(bad), "facility", "facilities"), " with zero supply (", .obs_head(data$facility_ids[bad]), "); the model ",
          "sends no one there. Remove those counts, set them to NA, or check the supply",
          call. = FALSE)
   }
@@ -498,13 +574,17 @@ print.spax_obs <- function(x, ...) {
 .obs_message <- function(n_origin, k_origin, n_facility, k_facility, outside_option) {
   parts <- character()
   if (n_origin > 0) {
-    parts <- c(parts, paste0(.obs_num(n_origin), " counts from ", .obs_num(k_origin),
-                             " origins outside the data or left out by it are dropped"))
+    parts <- c(parts, paste0(.obs_count(n_origin, "count", "counts"), " from ",
+                             .obs_count(k_origin, "origin", "origins"),
+                             " outside the data or left out by it ",
+                             if (n_origin == 1) "is" else "are", " dropped"))
   }
   if (n_facility > 0) {
-    parts <- c(parts, paste0(.obs_num(n_facility), " counts at ", .obs_num(k_facility),
-      " facilities outside the data ", if (outside_option) "are treated as the outside option"
-      else "are dropped (the Huff model has no outside option)"))
+    verb <- if (n_facility == 1) "is" else "are"
+    parts <- c(parts, paste0(.obs_count(n_facility, "count", "counts"), " at ",
+      .obs_count(k_facility, "facility", "facilities"), " outside the data ", verb,
+      if (outside_option) " treated as the outside option"
+      else " dropped (the Huff model has no outside option)"))
   }
   if (length(parts)) message("observed: ", paste(parts, collapse = "; "))
   invisible(NULL)
