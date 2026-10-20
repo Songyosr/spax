@@ -24,12 +24,14 @@
   that range with outside weights seeded from the observed outside share, and fits from the
   best points. `loss` must then be named. Unless you give them, the fit uses analytic
   gradients, when the loss has them, and strict optimizer settings,
-  `control = list(maxit = 300, factr = 1e5, pgtol = 1e-8)`. Tighter settings (`factr = 10`
-  or `1e3`) end starts that reached the optimum with line-search failures, so that they
-  do not count as converged, and the optimizer default (`factr = 1e7`) moves a weakly
-  identified outside weight. The search is stored with the fit and shown when it is
-  printed. `spax()` always uses the strict settings. Calls that give `starts`, `lower`
-  and `upper` run as before.
+  `control = list(maxit = 300, factr = 1e3, pgtol = 1e-2)`: the fit stops when the gradient
+  of the loss is below 0.01 per unit of log parameter, which is negligible in likelihood
+  terms, or when the loss stops changing at a relative 2e-13. Looser `factr` values (1e5,
+  or the optimizer default 1e7) stop early where the loss is nearly flat in the outside
+  weight; tighter settings without `pgtol` end starts that reached the optimum with
+  line-search failures. The search is stored with the fit and shown when it is printed.
+  `spax()` always uses the strict settings. Calls that give `starts`, `lower` and `upper`
+  run as before.
 * The default lower bound of the outside weight is not below the weight that leaves the
   outside option a millionth of the demand (the seed for an outside share of 1e-6, at the
   best grid point). A fit that wants no outside option now ends on that bound, flagged, and

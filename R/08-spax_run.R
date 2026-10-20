@@ -16,7 +16,7 @@
 #' from the data when they are not given: `starts`, `lower` and `upper` are
 #' optional (see the default search in [fit_allocation()]). `spax()` always
 #' passes analytic gradients and the strict optimizer settings
-#' `control = list(maxit = 300, factr = 1e5, pgtol = 1e-8)`, also when you give
+#' `control = list(maxit = 300, factr = 1e3, pgtol = 1e-2)`, also when you give
 #' `starts`, unless `...` gives `gradient` or `control` itself. The result does
 #' not solve the model again: it reads the selected fit. A search in which no
 #' start converged gives a warning and a result with no estimates;

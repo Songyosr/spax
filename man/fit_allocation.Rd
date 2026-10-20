@@ -83,7 +83,7 @@ is \code{NULL} and \code{gradient} is not given, it is \code{TRUE} if the loss h
 \item{...}{Named multistart or fitting controls, including solver tolerances,
 optimizer \code{control}, \code{keep_fits} and descriptive disagreement tolerances.
 When \code{starts} is \code{NULL} and \code{control} is not given it is
-\code{list(maxit = 300, factr = 1e5, pgtol = 1e-8)}.}
+\code{list(maxit = 300, factr = 1e3, pgtol = 1e-2)}.}
 }
 \value{
 The existing \code{ae_multistart_fit}, retaining selected fit, all per-start
@@ -132,12 +132,9 @@ runs only to find a default bound of \code{v0}). The search is recorded in the
 
 When the starts come from the search, \code{gradient} and \code{control} default (each
 unless you give it) to analytic gradients, when the loss has one, and strict
-optimizer settings, \code{control = list(maxit = 300, factr = 1e5, pgtol = 1e-8)}.
-The optimizer's own default (\code{factr = 1e7}) can stop early at a different
-outside weight when \code{v0} is weakly identified, while tighter settings
-(\code{factr = 10} or \code{1e3}) end starts that have reached the optimum with
-line-search failures, so that they do not count as converged. Given \code{starts}
-keep the earlier defaults.
+optimizer settings, \code{control = list(maxit = 300, factr = 1e3, pgtol = 1e-2)},
+because the optimizer defaults can stop early at a different outside weight.
+Given \code{starts} keep the earlier defaults.
 
 A model in which every sigma is held (demand groups with \code{fixed}) has no sigma to
 probe or scan: the starts are the three \code{v0} seeds at the held values, or, with

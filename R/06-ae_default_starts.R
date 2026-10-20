@@ -19,11 +19,15 @@
 # a smaller outside share cannot be told from the Huff model (v0 = 0) and the fit would
 # drift there without ever touching a bound.
 .default_v0_floor_share <- 1e-6
-# factr = 1e5 stops at a relative loss change of about 2e-11. Tighter settings (10 and 1e3)
-# end starts that reached the optimum with line-search failures (the ?spax Huff example:
-# 1 of 3 starts converged at 1e3, 3 of 3 at 1e5); the optimizer default (1e7) moves a weakly
-# identified v0 (Cornwall gaussian + beta totals: 0.0078 against 0.0109).
-.default_search_control <- list(maxit = 300, factr = 1e5, pgtol = 1e-8)
+# Strict control of the default search and spax(). The fit stops when the projected gradient
+# of the loss is below 0.01 per unit of log parameter (a negligible slope in likelihood
+# terms: a 10% change of a parameter moves the loss by about 0.001) or when the loss stops
+# changing at a relative 2e-13 (factr = 1e3). On Cornwall (scratch/recipe_v1/pgtol_check.R)
+# this reaches the lowest loss and converges every start in all ten hard cases: without pgtol,
+# factr 10 and 1e3 end starts that reached the optimum with line-search failures (the ?spax
+# Huff example: 1 of 3 converged), and factr 1e5 or the optimizer default 1e7 stop early where
+# the loss is nearly flat in v0 (NA flow cells: v0 6.4e-4 against 0.0089, loss 7.4 worse).
+.default_search_control <- list(maxit = 300, factr = 1e3, pgtol = 1e-2)
 .default_solver_args <- c("lambda", "tol", "max_iter", "norm", "check")
 
 .default_search_message <- list(
