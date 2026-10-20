@@ -419,9 +419,12 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'
 #' When the starts come from the search, `gradient` and `control` default (each
 #' unless you give it) to analytic gradients, when the loss has one, and strict
-#' optimizer settings, `control = list(maxit = 300, factr = 1e3, pgtol = 1e-8)`,
-#' because the optimizer defaults can stop early at a different outside weight.
-#' Given `starts` keep the earlier defaults.
+#' optimizer settings, `control = list(maxit = 300, factr = 1e5, pgtol = 1e-8)`.
+#' The optimizer's own default (`factr = 1e7`) can stop early at a different
+#' outside weight when `v0` is weakly identified, while tighter settings
+#' (`factr = 10` or `1e3`) end starts that have reached the optimum with
+#' line-search failures, so that they do not count as converged. Given `starts`
+#' keep the earlier defaults.
 #'
 #' A model in which every sigma is held (demand groups with `fixed`) has no sigma to
 #' probe or scan: the starts are the three `v0` seeds at the held values, or, with
@@ -494,7 +497,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' @param ... Named multistart or fitting controls, including solver tolerances,
 #'   optimizer `control`, `keep_fits` and descriptive disagreement tolerances.
 #'   When `starts` is `NULL` and `control` is not given it is
-#'   `list(maxit = 300, factr = 1e3, pgtol = 1e-8)`.
+#'   `list(maxit = 300, factr = 1e5, pgtol = 1e-8)`.
 #' @return The existing `ae_multistart_fit`, retaining selected fit, all per-start
 #'   diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
 #'   whose starts came from the default search also has a `default_search`

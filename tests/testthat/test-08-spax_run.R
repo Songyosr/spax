@@ -6,7 +6,7 @@
 
 # Fixtures -------------------------------------------------------------------------
 
-.run_strict <- list(maxit = 300, factr = 1e3, pgtol = 1e-8)
+.run_strict <- list(maxit = 300, factr = 1e5, pgtol = 1e-8)
 .run_no_fit <- "no fit was selected; see summary(x)"
 
 # A small memo for fits: each is computed once per run of this file.
@@ -182,9 +182,11 @@ test_that("the fits to Cornwall by the default search equal fits from explicit s
   supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
   flows <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice",
                      count = "patients")
-  same <- function(x, ref) {
+  # The coefficients agree to 1e-5 (Huff; observed below that), and to 1e-4 for the conditional
+  # logit (observed 4.2e-5 with the strict control factr = 1e5): its v0 is nearly flat.
+  same <- function(x, ref, tolerance = 1e-5) {
     expect_identical(names(coef(x)), names(coef(ref)))
-    expect_lt(max(abs(coef(x) / coef(ref) - 1)), 1e-5)
+    expect_lt(max(abs(coef(x) / coef(ref) - 1)), tolerance)
     expect_lt(abs(x$fit$best$loss - ref$best$loss), 1e-6)
     expect_false(any(x$fit$boundary[x$fit$best_start, ]))
   }
@@ -197,6 +199,10 @@ test_that("the fits to Cornwall by the default search equal fits from explicit s
     lower = c(sigma = 0.1, beta = 0.05), upper = c(sigma = 10, beta = 5)))
   same(huff, ref_huff)
   expect_equal(unname(coef(huff)), c(2.393, 0.4863), tolerance = 1e-3)
+  # the example of ?spax: with the strict control (factr = 1e5) every start converges; at
+  # factr = 1e3 only one of three did, the others ending in line-search failures
+  expect_identical(sum(huff$fit$table$eligible), 3L)
+  expect_match(capture.output(print(huff)), "3 of 3 starts converged", all = FALSE)
 
   # conditional logit: Gaussian decay and a fitted outside weight
   d_clm <- prep_data(stats::setNames(areas$registered, areas$lsoa), supply, travel)
@@ -204,7 +210,7 @@ test_that("the fits to Cornwall by the default search equal fits from explicit s
   ref_clm <- suppressMessages(.run_steps(d_clm, spec_clm(), flows,
     starts = rbind(a = c(sigma = 4, v0 = 0.02), b = c(sigma = 6, v0 = 0.05)),
     lower = c(sigma = 1, v0 = 1e-4), upper = c(sigma = 30, v0 = 5)))
-  same(clm, ref_clm)
+  same(clm, ref_clm, tolerance = 1e-4)
   expect_equal(unname(coef(clm)), c(4.591, 0.02734), tolerance = 1e-3)
   expect_identical(clm$observed$output, "flow")
   expect_identical(dim(clm$observed$target), c(336L, 54L))

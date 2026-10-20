@@ -19,10 +19,11 @@
 # a smaller outside share cannot be told from the Huff model (v0 = 0) and the fit would
 # drift there without ever touching a bound.
 .default_v0_floor_share <- 1e-6
-# factr = 1e3 stops at a relative loss change of about 2e-13: tighter (10) ends starts that
-# reached the optimum with line-search failures, looser (the default 1e7) moves a weakly
+# factr = 1e5 stops at a relative loss change of about 2e-11. Tighter settings (10 and 1e3)
+# end starts that reached the optimum with line-search failures (the ?spax Huff example:
+# 1 of 3 starts converged at 1e3, 3 of 3 at 1e5); the optimizer default (1e7) moves a weakly
 # identified v0 (Cornwall gaussian + beta totals: 0.0078 against 0.0109).
-.default_search_control <- list(maxit = 300, factr = 1e3, pgtol = 1e-8)
+.default_search_control <- list(maxit = 300, factr = 1e5, pgtol = 1e-8)
 .default_solver_args <- c("lambda", "tol", "max_iter", "norm", "check")
 
 .default_search_message <- list(

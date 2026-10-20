@@ -24,9 +24,12 @@
   that range with outside weights seeded from the observed outside share, and fits from the
   best points. `loss` must then be named. Unless you give them, the fit uses analytic
   gradients, when the loss has them, and strict optimizer settings,
-  `control = list(maxit = 300, factr = 1e3, pgtol = 1e-8)`. The search is stored with the
-  fit and shown when it is printed. `spax()` always uses the strict settings. Calls that
-  give `starts`, `lower` and `upper` run as before.
+  `control = list(maxit = 300, factr = 1e5, pgtol = 1e-8)`. Tighter settings (`factr = 10`
+  or `1e3`) end starts that reached the optimum with line-search failures, so that they
+  do not count as converged, and the optimizer default (`factr = 1e7`) moves a weakly
+  identified outside weight. The search is stored with the fit and shown when it is
+  printed. `spax()` always uses the strict settings. Calls that give `starts`, `lower`
+  and `upper` run as before.
 * The default search stops with an error when a fitted outside weight has nothing to
   explain, because the counts of a fully observed target reach the total demand, and warns
   when they are within 0.1% of it.
