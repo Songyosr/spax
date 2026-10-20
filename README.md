@@ -39,14 +39,15 @@ later versions.
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.3.1. Existing public FCA calling semantics are unchanged.
+for spax 0.4.0. FCA calls from earlier versions keep working; a few inputs that
+gave meaningless surfaces are now refused (see the NEWS).
 
-Install version 0.3.1 by its release tag rather than from the
+Install version 0.4.0 by its release tag rather than from the
 repository’s default branch:
 
 ``` r
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.3.1")
+pak::pak("Songyosr/spax@v0.4.0")
 ```
 
 The allocation interface is experimental and may change in later
