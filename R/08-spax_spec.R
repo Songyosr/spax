@@ -196,7 +196,8 @@ print.spax_spec <- function(x, ...) {
       "by_group can contain \"sigma\"; the Huff model has no outside option"
     }, call. = FALSE)
   }
-  if ("v0" %in% by_group && is.numeric(outside)) {
+  held_list <- is.list(outside) && !any(vapply(outside, identical, logical(1), "fit"))
+  if ("v0" %in% by_group && (is.numeric(outside) || held_list)) {
     stop("by_group = \"v0\" needs outside = \"fit\"", call. = FALSE)
   }
   if ("sigma" %in% by_group && inherits(decay, "spax_decay") &&
@@ -244,6 +245,9 @@ print.spax_spec <- function(x, ...) {
 
 .spec_outside_line <- function(x) {
   outside <- x$outside
+  # No outside option at all (Huff, or every weight held at 0) prints as none.
+  held <- if (is.list(outside)) unlist(outside) else outside
+  if (is.numeric(held) && length(held) && all(held == 0)) return("none")
   if (is.list(outside)) {
     shown <- vapply(outside, function(v) {
       if (identical(v, "fit")) "fit" else .spec_number(v)

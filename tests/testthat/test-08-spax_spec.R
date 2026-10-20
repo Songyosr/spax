@@ -379,6 +379,8 @@ test_that("by_group = \"v0\" needs outside = \"fit\" or a list by group", {
                        decay_text[["v0_needs"]])
   expect_message_exact(spec_clm(outside = c(a = 0.1), by_group = c("sigma", "v0")),
                        decay_text[["v0_needs"]])
+  expect_message_exact(spec_clm(outside = list(a = 0.1, b = 0.2), by_group = "v0"),
+                       decay_text[["v0_needs"]])
   expect_identical(spec_clm(outside = "fit", by_group = "v0")$by_group, "v0")
   expect_identical(spec_clm(outside = list(a = "fit", b = 0), by_group = "v0")$by_group,
                    "v0")
@@ -463,7 +465,7 @@ test_that("the default Huff model prints without an outside option", {
     "<spax spec> Huff model (no outside option)",
     "  decay       power (sigma = exponent): fit",
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = fit",
-    "  outside     v0: 0"
+    "  outside     none"
   ))
 })
 
@@ -493,7 +495,7 @@ test_that("held values print as numbers", {
     "<spax spec> Huff model (no outside option)",
     "  decay       power (sigma = exponent): 1.5",
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = 1",
-    "  outside     v0: 0"
+    "  outside     none"
   ))
 })
 
@@ -525,7 +527,7 @@ test_that("a decay by group prints one entry per group", {
     "<spax spec> Huff model (no outside option)",
     "  decay       by group: a power (2), b power (fit), c simple (fit)",
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = fit",
-    "  outside     v0: 0"
+    "  outside     none"
   ))
 })
 
@@ -546,7 +548,7 @@ test_that("a single decay with by_group = \"sigma\" prints \"fit by group\"", {
     "<spax spec> Huff model (no outside option)",
     "  decay       power (sigma = exponent): fit by group",
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = fit",
-    "  outside     v0: 0"
+    "  outside     none"
   ))
 })
 
@@ -584,11 +586,11 @@ test_that("v0 in by_group prints \"fit by group\"", {
 test_that("every outside weight 0 by group is the Huff model", {
   expect_identical(capture.output(print(spec_clm(outside = c(a = 0, b = 0))))[c(1, 4)], c(
     "<spax spec> Huff model (no outside option)",
-    "  outside     v0 by group: a 0, b 0"
+    "  outside     none"
   ))
   expect_identical(capture.output(print(spec_clm(outside = list(a = 0, b = 0))))[c(1, 4)], c(
     "<spax spec> Huff model (no outside option)",
-    "  outside     v0 by group: a 0, b 0"
+    "  outside     none"
   ))
   # One group with an outside option, or a fitted one, is a conditional logit.
   expect_identical(capture.output(print(spec_clm(outside = c(a = 0, b = 0.1))))[1],
