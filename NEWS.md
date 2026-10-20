@@ -1,3 +1,8 @@
+# spax (development version)
+
+* Version 0.4.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23495125.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 # spax 0.4.0
 
 FCA methods and the allocation model now run on one numeric engine, and both
