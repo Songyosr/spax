@@ -60,8 +60,8 @@ keep their arguments and their results.
 * Allocation specifications from `spec_huff()` and `spec_clm()` now have class
   `c("spax_allocation_spec", "spax_spec")`; they had class `"spax_spec"`. FCA
   specifications have class `c("spax_fca_spec", "spax_spec")`. Test the specific class.
-  `spax()` refuses a specification saved with spax 0.5.0: make it again with
-  `spec_huff()` or `spec_clm()`.
+  Specifications and results saved with spax 0.5.0 keep working: `spax()` and
+  `print()` take their old class.
 
 # spax 0.5.0
 

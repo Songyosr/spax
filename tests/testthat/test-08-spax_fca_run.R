@@ -928,3 +928,26 @@ test_that("a result is the same whether the data are used once or several times"
   expect_identical(format(d), format(prep_data(td$demand, td$supply_df, td$distance,
                                                id_col = "id", supply_cols = "doctors")))
 })
+
+test_that("allocation specifications saved with spax 0.5.0 (class spax_spec alone) keep working", {
+  old <- spec_clm()
+  class(old) <- "spax_spec"
+  expect_identical(format(old), format(spec_clm()))
+  expect_identical(capture.output(print(old)), capture.output(print(spec_clm())))
+  expect_identical(class(.upgrade_spec(old)), c("spax_allocation_spec", "spax_spec"))
+  # an object that is not an allocation specification is left alone
+  other <- structure(list(kind = "other"), class = "spax_spec")
+  expect_identical(.upgrade_spec(other), other)
+  # spax() takes the old class
+  case <- alloc_small_case()
+  fit_it <- function(spec) {
+    suppressMessages(spax(case$inputs, spec, observed = obs_totals(case$observed),
+                          starts = case$starts, lower = case$lower, upper = case$upper))
+  }
+  fresh <- fit_it(spec_clm())
+  saved <- fit_it(old)
+  expect_identical(coef(saved), coef(fresh))
+  # a result saved with 0.5.0 prints its specification block
+  saved$spec <- old
+  expect_identical(capture.output(print(saved))[1:4], capture.output(print(fresh))[1:4])
+})

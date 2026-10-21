@@ -463,8 +463,8 @@ time, and they accept a result of `spax()`:
 | `fit_allocation()` | Fit a selected output from given starts, or from starts found in the data, and retain diagnostics. |
 | `evaluate_allocation()` | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | `predict_allocation()` | Predict requested origins against saved facility loads; maps are explicit. |
-| `check_allocation()`, `compare_allocations()` | Compare a fit with simpler models, or fits with each other, on the same loss. |
-| `bootstrap_allocation()` | Run the separately supported conditional facility-case bootstrap. |
+| `check_fit()`, `compare_fits()` (also `check_allocation()`, `compare_allocations()`) | Compare a fit with simpler models, or fits with each other, on the same loss. |
+| `bootstrap_fit()` (also `bootstrap_allocation()`) | Run the separately supported conditional facility-case bootstrap. |
 
 `vignette("model-choice", package = "spax")` compares an FCA index and
 the static CLM on the same Cornwall inputs and explains what each output

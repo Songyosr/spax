@@ -211,12 +211,13 @@ prepare_allocation <- function(demand, supply, distance,
 #'                           cornwall_flows$practice %in% gp$practice, ]
 #' totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
 #'
-#' # The cells with residents become the origins
-#' clm <- spax(d_mainland, spec_clm(), observed = totals)
-#' clm
+#' # The cells with residents become the origins. The Huff model (power decay,
+#' # fitted attractiveness exponent) is well determined by these totals.
+#' huff <- spax(d_mainland, spec_huff(), observed = totals)
+#' huff
 #'
 #' # What the totals say about travel: the fit against no decay
-#' check_fit(clm)
+#' check_fit(huff)
 #' }
 #' @export
 #' @md

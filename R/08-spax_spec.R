@@ -116,6 +116,25 @@ format.spax_allocation_spec <- function(x, ...) {
     line("outside", .spec_outside_line(x)))
 }
 
+# Allocation specifications saved with spax 0.5.0 have class "spax_spec" alone; they
+# get the class of today's allocation specifications, so spax() and print() take them.
+.upgrade_spec <- function(x) {
+  if (inherits(x, "spax_spec") && !inherits(x, c("spax_allocation_spec", "spax_fca_spec")) &&
+      is.list(x) && isTRUE(x[["kind", exact = TRUE]] %in% c("huff", "clm"))) {
+    class(x) <- c("spax_allocation_spec", "spax_spec")
+  }
+  x
+}
+
+#' @rdname spec_clm
+#' @export
+#' @md
+format.spax_spec <- function(x, ...) {
+  upgraded <- .upgrade_spec(x)
+  if (inherits(upgraded, "spax_allocation_spec")) return(format(upgraded, ...))
+  NextMethod()
+}
+
 #' @rdname spec_clm
 #' @export
 #' @md

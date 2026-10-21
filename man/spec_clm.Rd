@@ -4,6 +4,7 @@
 \alias{spec_clm}
 \alias{spec_huff}
 \alias{format.spax_allocation_spec}
+\alias{format.spax_spec}
 \alias{print.spax_spec}
 \title{Specify an allocation model without data}
 \usage{
@@ -23,6 +24,8 @@ spec_huff(
 )
 
 \method{format}{spax_allocation_spec}(x, ...)
+
+\method{format}{spax_spec}(x, ...)
 
 \method{print}{spax_spec}(x, ...)
 }
