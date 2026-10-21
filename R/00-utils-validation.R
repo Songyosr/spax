@@ -18,6 +18,19 @@
   invisible(TRUE)
 }
 
+#' Does a numeric object hold any NA, NaN or infinite value?
+#'
+#' Same answer as `any(!is.finite(x))`. For a double it scans with `anyNA()`,
+#' `min()` and `max()`, which allocate nothing, where `is.finite()` allocates a
+#' logical vector as long as `x`. Other types take the original test.
+#' @keywords internal
+.any_nonfinite <- function(x) {
+  if (is.double(x)) {
+    return(length(x) > 0L && (anyNA(x) || min(x) == -Inf || max(x) == Inf))
+  }
+  any(!is.finite(x))
+}
+
 #' Check if input is a numeric vector
 #' @keywords internal
 .chck_numeric_vector <- function(x, name = "Input", finite = TRUE) {
@@ -25,7 +38,7 @@
   if (is.null(x) || !is.null(dim(x))) {
     stop(sprintf("%s must be a numeric vector", name))
   }
-  if (finite && any(!is.finite(x))) {
+  if (finite && .any_nonfinite(x)) {
     stop(sprintf("%s must contain only finite values", name))
   }
   invisible(TRUE)
@@ -38,7 +51,7 @@
   if (is.null(dim(x)) || length(dim(x)) != 2L) {
     stop(sprintf("%s must be a numeric matrix", name))
   }
-  if (finite && any(!is.finite(x))) {
+  if (finite && .any_nonfinite(x)) {
     stop(sprintf("%s must contain only finite values", name))
   }
   invisible(TRUE)

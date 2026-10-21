@@ -2,6 +2,9 @@
 
 * Version 0.5.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23527706.
   doi:10.5281/zenodo.23438611 refers to all versions.
+* Allocation fits need less memory and time, with the same results: about half the
+  memory and less than half the time for a fit to facility totals (one start on
+  100,000 origins and 250 facilities: 141 s instead of 318 s).
 
 FCA indices join the experimental interface: `spec_2sfca()`, `spec_e2sfca()`,
 `spec_m2sfca()`, `spec_3sfca()` and `spec_huff2sfca()` specify an index without

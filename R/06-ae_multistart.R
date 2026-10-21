@@ -103,6 +103,7 @@
         messages <<- c(messages, conditionMessage(w))
         invokeRestart("muffleWarning")
       }), error = function(e) {
+        if (inherits(e, "spax_lean_missing")) stop(e)
         error <<- conditionMessage(e)
         NULL
       })
