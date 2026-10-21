@@ -1,3 +1,8 @@
+# spax (development version)
+
+* Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 # spax 0.6.0
 
 FCA indices join the experimental interface: `spec_2sfca()`, `spec_e2sfca()`,
