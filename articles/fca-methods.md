@@ -123,6 +123,64 @@ m2sfca <- spax_m2sfca(
 )
 ```
 
+The same three indices can be specified without data and computed with
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) on data
+prepared once with
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md).
+This interface is experimental.
+[`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+takes the 15-minute catchment as `threshold`; the other specifications
+take a decay:
+[`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+here, or
+[`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
+[`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
+[`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md)
+(a binary catchment) and
+[`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md).
+A Gaussian, exponential or power decay can also take a raster of `sigma`
+values, for a catchment that varies in space.
+
+``` r
+
+# Demand grid, practice table and travel stack, held together
+grid_data <- prep_data(
+  pop,
+  gp,
+  travel,
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+grid_data
+```
+
+``` spax-output
+<spax data> raster 117 x 187 cells x 54 facilities; supply gp_fte_extg
+  demand    1 layer; travel 54 layers
+  note      holds terra rasters: prepare the data again after saveRDS()
+```
+
+``` r
+
+# The same three indices from specifications
+gaussian_10 <- decay_gaussian(sigma = 10)
+by_spec <- list(
+  twosfca = spax(grid_data, spec_2sfca(threshold = 15)),
+  e2sfca = spax(grid_data, spec_e2sfca(decay = gaussian_10)),
+  m2sfca = spax(grid_data, spec_m2sfca(decay = gaussian_10))
+)
+
+# Each surface is identical to that of the one-call function
+same <- function(x, y) {
+  identical(values(x$accessibility), values(y$accessibility))
+}
+stopifnot(
+  same(by_spec$twosfca, twosfca),
+  same(by_spec$e2sfca, e2sfca),
+  same(by_spec$m2sfca, m2sfca)
+)
+```
+
 Each result is a `spax` object whose `accessibility` member is a raster
 of GP FTE per resident. The maps show all three in GP FTE per 1,000
 residents on one colour scale.
@@ -473,7 +531,12 @@ this guide does not estimate from data.
 and
 [`?spax_huff2sfca`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
 describe `selection_params`, which gives the selection weights another
-decay or a catchment limit, and cite the methods.
+decay or a catchment limit, and cite the methods. In
+[`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+and
+[`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+the same choice is `selection`, a decay; `NULL`, the default, uses
+`decay`.
 
 ## Several demand groups
 
@@ -596,7 +659,11 @@ multi-modal 2SFCA work includes [Mao and Nekorchuk
 [Langford, Higgs and Fry
 (2016)](https://doi.org/10.1016/j.healthplace.2015.11.007).
 [`?spax_e2sfca`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
-lists which arguments can be given per group.
+lists which arguments can be given per group. In a specification,
+`decay` and `selection` can be a named list by group and `threshold` a
+named vector by group;
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+takes the list of group rasters as `demand`.
 
 ## Continue
 

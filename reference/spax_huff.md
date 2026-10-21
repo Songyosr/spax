@@ -50,7 +50,8 @@ spax_clm(
   The inputs of
   [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md):
   demand by origin (a named list by group for demand groups), supply by
-  facility and the origin-by-facility travel matrix.
+  facility and the origin-by-facility travel matrix (or the rasters of
+  raster mode, with `id_col` and `supply_cols` in `data_args`).
 
 - observed:
 
@@ -124,6 +125,7 @@ Other allocation interface:
 [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md),
+[`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_allocation-methods`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md),
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
 

@@ -5,7 +5,7 @@ in [The Cornwall GP example
 data](https://songyosr.github.io/spax/articles/cornwall-data.md), for
 the reasons below.
 
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
 adds conditional bootstrap intervals to a fitted static allocation
 model. It resamples facility totals, refits the model to each resample
 and reports percentile intervals for the parameters and for derived
@@ -207,7 +207,7 @@ c(
 
 ``` spax-output
          status       attempted      successful built_with_spax    running_spax 
-     "complete"           "399"           "399"    "0.3.0.9000"         "0.5.0" 
+     "complete"           "399"           "399"    "0.3.0.9000"         "0.6.0" 
 ```
 
 ## Read the intervals

@@ -142,8 +142,10 @@ almost the same result here and both differ from `"identity"`. The
 choice changes the demand each practice gathers and so the index:
 normalization is a model choice, not a correction. In
 [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
-the `demand_normalize` argument applies it to the demand side only. We
-keep `"identity"`, so $`G = H = W`$.
+the `demand_normalize` argument (`normalize` in
+[`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md))
+applies it to the demand side only. We keep `"identity"`, so
+$`G = H = W`$.
 
 ## Step 3: gather demand to practices
 
@@ -303,6 +305,26 @@ stopifnot(isTRUE(all.equal(
 
 The check verifies this calculation with these inputs; it does not make
 different accessibility models equivalent.
+
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
+the same index from a specification without data,
+[`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+on data prepared once with
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md);
+this interface is experimental. Its surface is identical to that of the
+wrapper:
+
+``` r
+
+by_spec <- spax(
+  prep_data(pop, gp, travel, id_col = "practice", supply_cols = "gp_fte_extg"),
+  spec_e2sfca(decay = decay_gaussian(sigma = 10), normalize = "identity")
+)
+stopifnot(identical(
+  values(by_spec$accessibility),
+  values(e2sfca$accessibility)
+))
+```
 
 ## Why the calculation covers the whole mainland
 

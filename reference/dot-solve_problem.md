@@ -27,7 +27,9 @@ version.
   check = TRUE,
   diagnostics = TRUE,
   keep_state_history = FALSE,
-  requested_outputs = NULL
+  requested_outputs = NULL,
+  keep_step = FALSE,
+  keep = NULL
 )
 ```
 
@@ -37,3 +39,16 @@ version.
 
   Optional output names to materialize in addition to the provider's
   default outputs. `NULL` retains the legacy output callback.
+
+- keep_step:
+
+  If `TRUE`, the bound step is returned as `$step`, so a gradient at the
+  same theta need not bind again. Only the optimizer asks for it, never
+  the final fresh solve.
+
+- keep:
+
+  Lean evaluation (see
+  [`.bind_theta()`](https://songyosr.github.io/spax/reference/dot-bind_theta.md));
+  only the optimizer and the default scan pass it, never the final fresh
+  solve.

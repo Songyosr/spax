@@ -19,7 +19,7 @@ specification; the record then has a separate schema version."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,7 +62,7 @@ specification; the record then has a separate schema version."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Solve an AE problem at fixed theta</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/06-ae_problem.R" class="external-link"><code>R/06-ae_problem.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/06-ae_problem.R" class="external-link"><code>R/06-ae_problem.R</code></a></small>
       <div class="d-none name"><code>dot-solve_problem.Rd</code></div>
     </div>
 
@@ -91,7 +91,9 @@ specification; the record then has a separate schema version.</p>
 <span>  check <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  diagnostics <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  keep_state_history <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  requested_outputs <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  requested_outputs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  keep_step <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  keep <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -102,6 +104,17 @@ specification; the record then has a separate schema version.</p>
 <dl><dt id="arg-requested-outputs">requested_outputs<a class="anchor" aria-label="anchor" href="#arg-requested-outputs"></a></dt>
 <dd><p>Optional output names to materialize in addition to
 the provider's default outputs. <code>NULL</code> retains the legacy output callback.</p></dd>
+
+
+<dt id="arg-keep-step">keep_step<a class="anchor" aria-label="anchor" href="#arg-keep-step"></a></dt>
+<dd><p>If <code>TRUE</code>, the bound step is returned as <code>$step</code>, so a
+gradient at the same theta need not bind again. Only the optimizer asks
+for it, never the final fresh solve.</p></dd>
+
+
+<dt id="arg-keep">keep<a class="anchor" aria-label="anchor" href="#arg-keep"></a></dt>
+<dd><p>Lean evaluation (see <code><a href="dot-bind_theta.html">.bind_theta()</a></code>); only the optimizer and
+the default scan pass it, never the final fresh solve.</p></dd>
 
 </dl></div>
 

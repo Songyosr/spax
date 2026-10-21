@@ -31,7 +31,12 @@ print(x, ...)
 - sigma:
 
   `"fit"`, or a single finite number greater than 0 that holds `sigma`
-  at that value.
+  at that value. For an FCA specification
+  ([`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  and its relatives), `decay_gaussian()`, `decay_exponential()` and
+  `decay_power()` also accept a `SpatRaster` of `sigma` values (a
+  variable catchment, with one layer or one per facility); it is not
+  checked here, and an allocation model refuses it.
 
 - kernel:
 
@@ -69,6 +74,9 @@ it at that value. A number must be positive and must lie within the
 bounds the kernel declares for `sigma` (the built-in kernels allow any
 positive number).
 
+A raster `sigma` is for FCA specifications only. `decay_custom()`
+refuses it for a declared kernel.
+
 A model specification also accepts an exact built-in name (`"gaussian"`,
 `"exponential"` or `"power"`) or a
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md)
@@ -81,6 +89,7 @@ Other allocation interface:
 [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md),
+[`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_allocation-methods`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md),
 [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md),
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)

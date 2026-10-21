@@ -21,7 +21,7 @@ that stays inside the bounds and down otherwise."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@ that stays inside the bounds and down otherwise."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Finite-difference Jacobian of a vector-valued function</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/06-ae_solver.R" class="external-link"><code>R/06-ae_solver.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/06-ae_solver.R" class="external-link"><code>R/06-ae_solver.R</code></a></small>
       <div class="d-none name"><code>fd_jacobian.Rd</code></div>
     </div>
 
@@ -89,7 +89,8 @@ that stays inside the bounds and down otherwise.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"central"</span>, <span class="st">"forward"</span><span class="op">)</span>,</span>
 <span>  check <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  lower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
-<span>  upper <span class="op">=</span> <span class="cn">Inf</span></span>
+<span>  upper <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  lazy_f0 <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -124,6 +125,12 @@ that stays inside the bounds and down otherwise.</p>
 <dt id="arg-lower-upper">lower, upper<a class="anchor" aria-label="anchor" href="#arg-lower-upper"></a></dt>
 <dd><p>Inclusive bounds of the evaluation points, recycled to the
 length of <code>x</code>.</p></dd>
+
+
+<dt id="arg-lazy-f-">lazy_f0<a class="anchor" aria-label="anchor" href="#arg-lazy-f-"></a></dt>
+<dd><p>If <code>TRUE</code>, <code>fn(x)</code> is evaluated (and checked as usual) only
+when a coordinate needs a one-sided or room step; the result is identical.
+An invalid <code>fn(x)</code> is then detected only when it is used.</p></dd>
 
 </dl></div>
 

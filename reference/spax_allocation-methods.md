@@ -176,5 +176,6 @@ Other allocation interface:
 [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md),
+[`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md),
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)

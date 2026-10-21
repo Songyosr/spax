@@ -31,6 +31,33 @@ independent supply indicators
 - [`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md)
   : Calculate spatial accessibility using weighted surfaces
 
+## Access Interface (experimental)
+
+Specify a floating catchment area index without data: its decay
+(distance weights with a sigma, a step or an inverse decay), its
+normalization and its selection. spax() computes it on data from
+prep_data(): raster data give the spax object of the one-call functions,
+numeric data the index at each origin
+
+- [`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  [`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  [`spec_m2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  [`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  [`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  [`format(`*`<spax_fca_spec>`*`)`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  : Specify a floating catchment area index without data
+- [`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md)
+  [`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md)
+  [`format(`*`<spax_fca_decay>`*`)`](https://songyosr.github.io/spax/reference/decay_step.md)
+  [`print(`*`<spax_fca_decay>`*`)`](https://songyosr.github.io/spax/reference/decay_step.md)
+  : Declare a step or inverse decay for an FCA specification
+- [`format(`*`<spax_access_values>`*`)`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md)
+  [`print(`*`<spax_access_values>`*`)`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md)
+  [`summary(`*`<spax_access_values>`*`)`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md)
+  [`print(`*`<summary.spax_access_values>`*`)`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md)
+  [`as.data.frame(`*`<spax_access_values>`*`)`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md)
+  : Methods for FCA indices on numeric data
+
 ## Allocation Interface (experimental)
 
 Prepare data, specify an allocation model without data (decay kernels,
@@ -40,7 +67,9 @@ work with its result
 - [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
   [`format(`*`<ae_prepared_inputs>`*`)`](https://songyosr.github.io/spax/reference/prep_data.md)
   [`print(`*`<ae_prepared_inputs>`*`)`](https://songyosr.github.io/spax/reference/prep_data.md)
-  : Prepare data for an allocation model
+  [`format(`*`<spax_raster_data>`*`)`](https://songyosr.github.io/spax/reference/prep_data.md)
+  [`print(`*`<spax_raster_data>`*`)`](https://songyosr.github.io/spax/reference/prep_data.md)
+  : Prepare data for a spax model
 - [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
   [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
   [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
@@ -50,6 +79,7 @@ work with its result
   : Declare a decay for a model specification
 - [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
   [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  [`format(`*`<spax_allocation_spec>`*`)`](https://songyosr.github.io/spax/reference/spec_clm.md)
   [`format(`*`<spax_spec>`*`)`](https://songyosr.github.io/spax/reference/spec_clm.md)
   [`print(`*`<spax_spec>`*`)`](https://songyosr.github.io/spax/reference/spec_clm.md)
   : Specify an allocation model without data
@@ -90,16 +120,19 @@ Prediction, check, compare and bootstrap also accept a result of spax()
   : Evaluate a declared allocation model at supplied fixed parameters
 - [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
   : Predict requested origins against a saved fitted or evaluated CLM
-- [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
-  : Conditional facility-case bootstrap for a fitted allocation
-- [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
-  [`print(`*`<ae_allocation_check>`*`)`](https://songyosr.github.io/spax/reference/check_allocation.md)
-  [`as.data.frame(`*`<ae_allocation_check>`*`)`](https://songyosr.github.io/spax/reference/check_allocation.md)
+- [`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
+  [`print(`*`<ae_allocation_check>`*`)`](https://songyosr.github.io/spax/reference/check_fit.md)
+  [`as.data.frame(`*`<ae_allocation_check>`*`)`](https://songyosr.github.io/spax/reference/check_fit.md)
   : Check what fitted facility counts identify in an allocation model
-- [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
-  [`print(`*`<ae_allocation_comparison>`*`)`](https://songyosr.github.io/spax/reference/compare_allocations.md)
-  [`as.data.frame(`*`<ae_allocation_comparison>`*`)`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+- [`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+  [`print(`*`<ae_allocation_comparison>`*`)`](https://songyosr.github.io/spax/reference/compare_fits.md)
+  [`as.data.frame(`*`<ae_allocation_comparison>`*`)`](https://songyosr.github.io/spax/reference/compare_fits.md)
   : Compare fitted allocations across model and input specifications
+- [`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+  : Conditional facility-case bootstrap for a fitted allocation
 - [`coef(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
   [`coef(`*`<ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
   [`fitted(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)

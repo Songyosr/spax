@@ -255,26 +255,26 @@ summary(fit)
 ```
 
 ``` spax-output
-<summary.ae_multistart_fit>
+<allocation fit summary>
 status: selected; selected start: near
 loss disagreement: FALSE; parameter disagreement: FALSE
 Supplied-start diagnostics (not a global-optimum or identification guarantee):
   start     loss eligible optim_convergence solver_converged residual seconds
-   near -3168000     TRUE                 0             TRUE        0   0.305
- middle -3168000     TRUE                 0             TRUE        0   0.218
-    far -3168000     TRUE                 0             TRUE        0   0.677
+   near -3168000     TRUE                 0             TRUE        0   0.173
+ middle -3168000     TRUE                 0             TRUE        0   0.127
+    far -3168000     TRUE                 0             TRUE        0   0.222
  boundary   status                                   optim_message
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
  solver_message log_parameter_gap loss_gap
       converged         0.000e+00        0
-      converged         1.759e-07        0
-      converged         2.755e-07        0
+      converged         1.762e-07        0
+      converged         2.760e-07        0
 
 Selected fit:
-<summary.ae_problem_nfxp_fit>
-model: clm
+<allocation fit result summary>
+model: conditional logit
 family: gaussian (sigma = travel scale)
 allocation_form: clm
 
@@ -285,7 +285,7 @@ theta:
 
 fit:
      loss convergence seconds spectral_radius gradient
- -3168000           0   0.297               0     TRUE
+ -3168000           0    0.17               0     TRUE
 
 predicted:
         min       q25   median  mean      q75  max
@@ -370,7 +370,7 @@ modelled lists and sit below the dashed line.
 ## What the observations identify
 
 A good fit does not show that the travel kernel is right.
-[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
 never changes the fit; it compares the fitted model, on the same loss,
 with the same model without distance decay (each small area chooses
 among the practices it can reach in proportion to GP FTE), and reports
@@ -383,7 +383,7 @@ check_allocation(model, fit)
 ```
 
 ``` spax-output
-<ae_allocation_check>
+<allocation check>
     comparator     loss loss_difference contact trip_median trip_p90
         fitted -3168283               0  0.9946           3       10
       no_decay -1567076         1601207  0.9909          39       84
@@ -549,7 +549,7 @@ you give, never derived from the totals (see
 
 Fits are compared on the same observation. `clm` and `clm_known` are
 fits to different data, so
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
 gives no loss difference between them; to compare the Huff model with
 the conditional logit, use the same observation without outside counts
 for both.
@@ -656,6 +656,17 @@ are an extrapolation of the model, not a measure of unmet need. The grid
 population (WorldPop 2020) and the registrations (NHS England 2026) are
 different sources and dates, so the grid is used here only for
 locations.
+
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) can also
+fit the model on the grid itself: given the population raster and the
+travel stack,
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+holds raster data, and
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) turns the
+cells with demand into origins on each call. The examples of
+[`?prep_data`](https://songyosr.github.io/spax/reference/prep_data.md)
+fit the model to practice totals that way; demand must then count the
+same people as the totals.
 
 ## Change one practice’s supply
 
@@ -899,7 +910,7 @@ coef(plateau_fit)
 of a declared kernel is the scale of that kernel, so 3.89 minutes for
 the plateau kernel and 4.59 minutes for the Gaussian kernel are not
 comparable values.
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
 puts the two fits side by side. Given the models as well, it checks that
 both fits use the same flow matrix, loss, inputs and travel times, which
 it requires before it reports a loss difference.

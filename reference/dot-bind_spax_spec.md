@@ -2,7 +2,7 @@
 
 The private step inside
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md) that turns
-a data-free `spax_spec` (see
+a data-free `spax_allocation_spec` (see
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md))
 and checked `ae_prepared_inputs` into the existing `ae_problem`, built
 through
@@ -23,7 +23,7 @@ that is undefined at a zero travel time.
 
 - spec:
 
-  A `spax_spec` from
+  A `spax_allocation_spec` from
   [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
   or
   [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md).

@@ -21,12 +21,12 @@ remain valid; they do not need to be rewritten as allocation fits.
 
 | Question | Starting point | What the output means |
 |:---|:---|:---|
-| How is weighted supply distributed relative to weighted demand? | [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md), [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md), [`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md), [`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md), [`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md) | A model-specific supply-per-demand accessibility index |
+| How is weighted supply distributed relative to weighted demand? | [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md), [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md), [`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md), [`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md), [`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md), or [`spax()`](https://songyosr.github.io/spax/reference/spax.md) with an FCA specification such as [`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md) | A model-specific supply-per-demand accessibility index |
 | How are request opportunities allocated among facilities and an outside option? | [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md) and [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md) with [`spax()`](https://songyosr.github.io/spax/reference/spax.md), or the steps [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md) then [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Choice probabilities and expected loads under a declared model |
 | Which parameters fit observed utilization or flows? | [`spax()`](https://songyosr.github.io/spax/reference/spax.md) with [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md) or [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md), or the step [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md) | A calibrated mean model plus optimization diagnostics |
 | What changes under a supply scenario at the same parameters? | Reprepare and [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md) | A model-based contrast, not an estimated causal effect |
 | What can be predicted at additional locations? | [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md) | Requested outputs with probability, demand and capacity validity flags |
-| Are facility-count bootstrap intervals available? | [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md) after an eligible fit and observation declaration | Conditional pointwise intervals when the supported procedure’s gates pass |
+| Are facility-count bootstrap intervals available? | [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md) after an eligible fit and observation declaration | Conditional pointwise intervals when the supported procedure’s gates pass |
 
 An FCA index is not a choice probability. A fitted model is not
 automatically identified or empirically validated. A regional interval
@@ -71,43 +71,34 @@ c(
 
 ### An FCA index
 
-The public FCA functions take a demand raster and one travel layer per
-facility. To give the FCA exactly the same demand and travel as the
-allocation model, place the 336 areas in a one-row raster. The raster is
-only a container without geographic meaning; values are mapped back to
-the areas afterwards. The Gaussian scale of 10 minutes is a choice for
-this guide, not an estimate.
+An FCA specification also runs on the numeric inputs of the allocation
+model, so the FCA uses exactly the same demand and travel.
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+aligns them by ID, and
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
+the index at each area, as a matrix with one row per area rather than a
+raster. This interface is experimental. The Gaussian scale of 10 minutes
+is a choice for this guide, not an estimate.
 
 ``` r
 
-# A one-row raster with one cell per area, in the order of D
-template <- rast(
-  nrows = 1,
-  ncols = length(D),
-  xmin = 0,
-  xmax = length(D),
-  ymin = 0,
-  ymax = 1,
-  crs = "EPSG:27700"
+# Demand, supply and travel aligned by ID once
+dm <- prep_data(D, S, T)
+
+# The E2SFCA index at each area, with a 10-minute Gaussian decay
+e2sfca <- spec_e2sfca(decay = decay_gaussian(sigma = 10))
+fca <- spax(dm, e2sfca)
+
+# Numeric data hold one supply measure, so GP FTE including GPs in training
+# needs data of its own
+dm_all <- prep_data(D, setNames(gp$gp_fte, gp$practice), T)
+fca_all <- spax(dm_all, e2sfca)
+
+# One row per area, in the order of D, in GP FTE per 1,000
+fca_index <- data.frame(
+  gp_fte_extg = 1000 * fca$access[names(D), "supply"],
+  gp_fte = 1000 * fca_all$access[names(D), "supply"]
 )
-demand_raster <- setValues(template, unname(D))
-
-# One travel layer per practice, named by practice code
-travel_raster <- rast(template, nlyrs = ncol(T))
-values(travel_raster) <- T
-names(travel_raster) <- colnames(T)
-
-fca <- spax_e2sfca(
-  demand = demand_raster,
-  supply = gp,
-  distance = travel_raster,
-  decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice",
-  supply_cols = c("gp_fte_extg", "gp_fte")  # two separate indices
-)
-
-# Back to one row per area, in GP FTE per 1,000
-fca_index <- 1000 * values(fca$accessibility, dataframe = TRUE)
 summary(fca_index)
 ```
 
@@ -121,7 +112,7 @@ summary(fca_index)
  Max.   :0.6915   Max.   :0.8890  
 ```
 
-Each supply column gives its own index, in GP FTE per 1,000
+Each supply measure gives its own index, in GP FTE per 1,000
 distance-weighted registered residents: `gp_fte_extg` excludes GPs in
 training and `gp_fte` includes them. The two are separate indicators
 computed side by side; the FCA does not combine them.
@@ -389,10 +380,10 @@ inspected without refitting.
 first three in one call (or prepare, declare and evaluate, when every
 parameter has a value);
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
-[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md),
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
 and
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
 accept its result. An outside option does not automatically represent
 unmet need, and Poisson fitting does not impose exact total matching.
 

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,7 @@
       <h1>Fitting an allocation model to GP registrations in Cornwall</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/vignettes/allocation-workflow.Rmd" class="external-link"><code>vignettes/allocation-workflow.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/allocation-workflow.Rmd" class="external-link"><code>vignettes/allocation-workflow.Rmd</code></a></small>
       <div class="d-none name"><code>allocation-workflow.Rmd</code></div>
     </div>
 
@@ -280,26 +280,26 @@ does not force the modelled total to match the observed total.</p>
 <span></span>
 <span><span class="co"># Every start, then the selected parameters as a table</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>&lt;summary.ae_multistart_fit&gt;
+<pre class="spax-output"><code>&lt;allocation fit summary&gt;
 status: selected; selected start: near
 loss disagreement: FALSE; parameter disagreement: FALSE
 Supplied-start diagnostics (not a global-optimum or identification guarantee):
   start     loss eligible optim_convergence solver_converged residual seconds
-   near -3168000     TRUE                 0             TRUE        0   0.305
- middle -3168000     TRUE                 0             TRUE        0   0.218
-    far -3168000     TRUE                 0             TRUE        0   0.677
+   near -3168000     TRUE                 0             TRUE        0   0.173
+ middle -3168000     TRUE                 0             TRUE        0   0.127
+    far -3168000     TRUE                 0             TRUE        0   0.222
  boundary   status                                   optim_message
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
  solver_message log_parameter_gap loss_gap
       converged         0.000e+00        0
-      converged         1.759e-07        0
-      converged         2.755e-07        0
+      converged         1.762e-07        0
+      converged         2.760e-07        0
 
 Selected fit:
-&lt;summary.ae_problem_nfxp_fit&gt;
-model: clm
+&lt;allocation fit result summary&gt;
+model: conditional logit
 family: gaussian (sigma = travel scale)
 allocation_form: clm
 
@@ -310,7 +310,7 @@ theta:
 
 fit:
      loss convergence seconds spectral_radius gradient
- -3168000           0   0.297               0     TRUE
+ -3168000           0    0.17               0     TRUE
 
 predicted:
         min       q25   median  mean      q75  max
@@ -379,14 +379,14 @@ than modelled lists and sit below the dashed line.</p>
 <h2 id="what-the-observations-identify">What the observations identify<a class="anchor" aria-label="anchor" href="#what-the-observations-identify"></a>
 </h2>
 <p>A good fit does not show that the travel kernel is right.
-<code><a href="../reference/check_allocation.html">check_allocation()</a></code> never changes the fit; it compares the
+<code><a href="../reference/check_fit.html">check_allocation()</a></code> never changes the fit; it compares the
 fitted model, on the same loss, with the same model without distance
 decay (each small area chooses among the practices it can reach in
 proportion to GP FTE), and reports the one-way trips each implies.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The fit against an allocation without distance decay</span></span>
-<span><span class="fu"><a href="../reference/check_allocation.html">check_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>&lt;ae_allocation_check&gt;
+<span><span class="fu"><a href="../reference/check_fit.html">check_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;allocation check&gt;
     comparator     loss loss_difference contact trip_median trip_p90
         fitted -3168283               0  0.9946           3       10
       no_decay -1567076         1601207  0.9909          39       84
@@ -520,12 +520,12 @@ outside count is one number you give, never derived from the totals (see
 <code><a href="../reference/obs_flows.html">?obs_flows</a></code>).</p>
 <p>Fits are compared on the same observation. <code>clm</code> and
 <code>clm_known</code> are fits to different data, so
-<code><a href="../reference/compare_allocations.html">compare_allocations()</a></code> gives no loss difference between
+<code><a href="../reference/compare_fits.html">compare_allocations()</a></code> gives no loss difference between
 them; to compare the Huff model with the conditional logit, use the same
 observation without outside counts for both.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Different observations: the loss difference is withheld</span></span>
-<span><span class="va">compared_known</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_allocations.html">compare_allocations</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>without <span class="op">=</span> <span class="va">clm</span>, with <span class="op">=</span> <span class="va">clm_known</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">compared_known</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_fits.html">compare_allocations</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>without <span class="op">=</span> <span class="va">clm</span>, with <span class="op">=</span> <span class="va">clm_known</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">compared_known</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"comparable"</span>, <span class="st">"loss_difference"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <pre class="spax-output"><code>  specification comparable loss_difference
 1       without       TRUE               0
@@ -603,6 +603,12 @@ but their values are an extrapolation of the model, not a measure of
 unmet need. The grid population (WorldPop 2020) and the registrations
 (NHS England 2026) are different sources and dates, so the grid is used
 here only for locations.</p>
+<p><code><a href="../reference/spax.html">spax()</a></code> can also fit the model on the grid itself: given
+the population raster and the travel stack, <code><a href="../reference/prep_data.html">prep_data()</a></code>
+holds raster data, and <code><a href="../reference/spax.html">spax()</a></code> turns the cells with demand
+into origins on each call. The examples of <code><a href="../reference/prep_data.html">?prep_data</a></code> fit
+the model to practice totals that way; demand must then count the same
+people as the totals.</p>
 </div>
 <div class="section level2">
 <h2 id="change-one-practices-supply">Change one practice’s supply<a class="anchor" aria-label="anchor" href="#change-one-practices-supply"></a>
@@ -809,13 +815,13 @@ below repeats the Gaussian fit’s starts and bounds.</p>
 <p><code>summary(plateau_fit)</code> shows how closely the starts agree.
 The <code>sigma</code> of a declared kernel is the scale of that kernel,
 so 3.89 minutes for the plateau kernel and 4.59 minutes for the Gaussian
-kernel are not comparable values. <code><a href="../reference/compare_allocations.html">compare_allocations()</a></code>
+kernel are not comparable values. <code><a href="../reference/compare_fits.html">compare_allocations()</a></code>
 puts the two fits side by side. Given the models as well, it checks that
 both fits use the same flow matrix, loss, inputs and travel times, which
 it requires before it reports a loss difference.</p>
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Loss differences are measured from the first fit, the Gaussian</span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_allocations.html">compare_allocations</a></span><span class="op">(</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_fits.html">compare_allocations</a></span><span class="op">(</span></span>
 <span>  fits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>gaussian <span class="op">=</span> <span class="va">fit</span>, plateau <span class="op">=</span> <span class="va">plateau_fit</span><span class="op">)</span>,</span>
 <span>  models <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>gaussian <span class="op">=</span> <span class="va">model</span>, plateau <span class="op">=</span> <span class="va">plateau_model</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>

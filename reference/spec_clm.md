@@ -25,6 +25,9 @@ spec_huff(
   by_group = character()
 )
 
+# S3 method for class 'spax_allocation_spec'
+format(x, ...)
+
 # S3 method for class 'spax_spec'
 format(x, ...)
 
@@ -81,8 +84,9 @@ print(x, ...)
 
 ## Value
 
-A `spax_spec`: a list with `kind` (`"clm"` or `"huff"`), `decay`,
-`outside` (`0` for `spec_huff()`), `beta`, `kappa` and `by_group`.
+A `spax_allocation_spec` (also a `spax_spec`): a list with `kind`
+(`"clm"` or `"huff"`), `decay`, `outside` (`0` for `spec_huff()`),
+`beta`, `kappa` and `by_group`.
 
 ## Details
 
@@ -117,6 +121,12 @@ differ by group. Group-specific parameters can be fitted only to counts
 recorded by group; a held `sigma` cannot differ by group unless the
 decay is given by group.
 
+**FCA decays.** An allocation model refuses
+[`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md),
+[`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md)
+and a raster `sigma`, which are for the FCA specifications
+([`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)).
+
 ## See also
 
 Other allocation interface:
@@ -124,6 +134,7 @@ Other allocation interface:
 [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md),
+[`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_allocation-methods`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md),
 [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md)
 

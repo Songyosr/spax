@@ -187,9 +187,9 @@ comparison
 
 ``` spax-output
   factor cell_km2 populated_cells residents seconds mean_per_1000
-1    0.5     0.14           27648    541184   0.302         0.575
-2    1.0     0.55            6912    541184   0.058         0.575
-3    2.0     2.20            1829    541184   0.014         0.575
+1    0.5     0.14           27648    541184   0.282         0.575
+2    1.0     0.55            6912    541184   0.061         0.575
+3    2.0     2.20            1829    541184   0.015         0.575
 4    4.0     8.79             506    541184   0.010         0.575
   median_abs_change_pct weighted_abs_change_pct
 1                   0.0                     0.0

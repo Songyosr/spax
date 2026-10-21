@@ -85,9 +85,9 @@ with `v0 = 0` and returns the same kind of model, so
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
-[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
 and
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
 work on it unchanged. Use `clm_allocation(fit_v0 = TRUE)` when part of
 the demand goes to facilities that are not in the data.
 
@@ -99,7 +99,7 @@ decay is undefined at a travel time of 0, so use a positive minimum
 travel time or another kernel (`family`).
 
 The facility bootstrap
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
 needs a fitted outside weight and so does not apply to a Huff model.
 
 ## References
@@ -114,12 +114,12 @@ Huff DL (1963). A probabilistic analysis of shopping center trade areas.
 for the general model with an outside option.
 
 Other allocation steps:
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),
-[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),
+[`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md),
 [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md),
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md),
+[`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md),
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
@@ -147,7 +147,7 @@ model <- huff_allocation(inputs)
 # Evaluate at given parameters: distance exponent 2, attractiveness
 # exponent 1
 evaluate_allocation(model, c(sigma = 2, beta = 1))
-#> <ae_equilibrium>
+#> <allocation evaluation>
 #> converged: TRUE
 #> iterations: 1
 #> error: 0

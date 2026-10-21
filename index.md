@@ -33,15 +33,15 @@ later versions.
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.5.0. Calls from earlier versions keep working (see the NEWS).
+for spax 0.6.0. Calls from earlier versions keep working (see the NEWS).
 
-Install version 0.5.0 by its release tag rather than from the
+Install version 0.6.0 by its release tag rather than from the
 repository’s default branch:
 
 ``` r
 
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.5.0")
+pak::pak("Songyosr/spax@v0.6.0")
 ```
 
 The allocation interface is experimental and may change in later
@@ -51,7 +51,7 @@ Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
 
 Each release is archived on Zenodo; <doi:10.5281/zenodo.23438611> refers
-to all versions (version 0.4.0 is <doi:10.5281/zenodo.23495125>). Cite
+to all versions (version 0.5.0 is <doi:10.5281/zenodo.23527706>). Cite
 the version you used with `citation("spax")`.
 
 Package and function help are available from an installed package.
@@ -94,8 +94,14 @@ describes each object, its sources and its licences.
 
 ### An FCA accessibility map
 
-FCA entry points take a demand raster and one aligned travel layer per
-facility, with layer names matching facility IDs.
+An FCA index takes a demand raster, a facility table and one travel
+layer per facility, with layer names matching facility IDs.
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+holds them together, a specification such as
+[`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+declares the index without data, and
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
+it. This interface is experimental.
 
 ``` r
 
@@ -118,14 +124,17 @@ mainland <- ext(-6, xmax(pop), ymin(pop), ymax(pop))
 pop <- crop(pop, mainland)
 travel_grid <- crop(travel_grid[[mainland_gp$practice]], mainland)
 
-fca <- spax_e2sfca(
-  demand = pop,
-  supply = mainland_gp,
-  distance = travel_grid,
-  decay_params = list(method = "gaussian", sigma = 10),
+# Demand grid, practice table and travel stack, held together
+grid_data <- prep_data(
+  pop,
+  mainland_gp,
+  travel_grid,
   id_col = "practice",  # matches supply rows to travel layers
   supply_cols = "gp_fte_extg"
 )
+
+# The E2SFCA index with a 10-minute Gaussian decay
+fca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 
 plot(
   1000 * fca$accessibility,
@@ -144,10 +153,12 @@ This is an enhanced two-step FCA index: supply per distance-weighted
 population, in GP FTE per 1,000 residents. The 10-minute Gaussian scale
 is a choice for this example, not an estimate. The index is a
 supply-per-demand score, not a probability that anyone uses a practice.
-See
-[`?spax_e2sfca`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
-for decay and normalization options, and `summary(fca)` or `plot(fca)`
-to inspect the result.
+[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
+remains the one-call shortcut and gives the same result from the same
+inputs. See
+[`?spec_e2sfca`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+for the other FCA indices, decays and normalization options, and
+`summary(fca)` or `plot(fca)` to inspect the result.
 
 ### A static CLM fitted to registrations
 
@@ -502,8 +513,8 @@ time, and they accept a result of
 | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md) | Fit a selected output from given starts, or from starts found in the data, and retain diagnostics. |
 | [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md) | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md) | Predict requested origins against saved facility loads; maps are explicit. |
-| [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md) | Compare a fit with simpler models, or fits with each other, on the same loss. |
-| [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md) | Run the separately supported conditional facility-case bootstrap. |
+| [`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md), [`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md) (also [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)) | Compare a fit with simpler models, or fits with each other, on the same loss. |
+| [`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md) (also [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)) | Run the separately supported conditional facility-case bootstrap. |
 
 [`vignette("model-choice", package = "spax")`](https://songyosr.github.io/spax/articles/model-choice.md)
 compares an FCA index and the static CLM on the same Cornwall inputs and

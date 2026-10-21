@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -120,6 +120,36 @@
         </dt>
         <dd>Calculate spatial accessibility using weighted surfaces</dd>
       </dl></div><div class="section level2">
+      <h2 id="access-interface-experimental-">Access Interface (experimental)<a class="anchor" aria-label="anchor" href="#access-interface-experimental-"></a></h2>
+
+      <div class="section-desc"><p>Specify a floating catchment area index without data: its decay (distance weights with a sigma, a step or an inverse decay), its normalization and its selection. spax() computes it on data from prep_data(): raster data give the spax object of the one-call functions, numeric data the index at each origin</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="spec_e2sfca.html">spec_2sfca()</a></code> <code><a href="spec_e2sfca.html">spec_e2sfca()</a></code> <code><a href="spec_e2sfca.html">spec_m2sfca()</a></code> <code><a href="spec_e2sfca.html">spec_3sfca()</a></code> <code><a href="spec_e2sfca.html">spec_huff2sfca()</a></code> <code><a href="spec_e2sfca.html">format(<i>&lt;spax_fca_spec&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Specify a floating catchment area index without data</dd>
+
+        <dt>
+
+          <code><a href="decay_step.html">decay_step()</a></code> <code><a href="decay_step.html">decay_inverse()</a></code> <code><a href="decay_step.html">format(<i>&lt;spax_fca_decay&gt;</i>)</a></code> <code><a href="decay_step.html">print(<i>&lt;spax_fca_decay&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Declare a step or inverse decay for an FCA specification</dd>
+
+        <dt>
+
+          <code><a href="spax_access_values-methods.html">format(<i>&lt;spax_access_values&gt;</i>)</a></code> <code><a href="spax_access_values-methods.html">print(<i>&lt;spax_access_values&gt;</i>)</a></code> <code><a href="spax_access_values-methods.html">summary(<i>&lt;spax_access_values&gt;</i>)</a></code> <code><a href="spax_access_values-methods.html">print(<i>&lt;summary.spax_access_values&gt;</i>)</a></code> <code><a href="spax_access_values-methods.html">as.data.frame(<i>&lt;spax_access_values&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Methods for FCA indices on numeric data</dd>
+      </dl></div><div class="section level2">
       <h2 id="allocation-interface-experimental-">Allocation Interface (experimental)<a class="anchor" aria-label="anchor" href="#allocation-interface-experimental-"></a></h2>
 
       <div class="section-desc"><p>Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters), declare observed counts, run the model and work with its result</p></div>
@@ -131,10 +161,10 @@
 
       <dl><dt>
 
-          <code><a href="prep_data.html">prep_data()</a></code> <code><a href="prep_data.html">format(<i>&lt;ae_prepared_inputs&gt;</i>)</a></code> <code><a href="prep_data.html">print(<i>&lt;ae_prepared_inputs&gt;</i>)</a></code>
+          <code><a href="prep_data.html">prep_data()</a></code> <code><a href="prep_data.html">format(<i>&lt;ae_prepared_inputs&gt;</i>)</a></code> <code><a href="prep_data.html">print(<i>&lt;ae_prepared_inputs&gt;</i>)</a></code> <code><a href="prep_data.html">format(<i>&lt;spax_raster_data&gt;</i>)</a></code> <code><a href="prep_data.html">print(<i>&lt;spax_raster_data&gt;</i>)</a></code>
 
         </dt>
-        <dd>Prepare data for an allocation model</dd>
+        <dd>Prepare data for a spax model</dd>
 
         <dt>
 
@@ -145,7 +175,7 @@
 
         <dt>
 
-          <code><a href="spec_clm.html">spec_clm()</a></code> <code><a href="spec_clm.html">spec_huff()</a></code> <code><a href="spec_clm.html">format(<i>&lt;spax_spec&gt;</i>)</a></code> <code><a href="spec_clm.html">print(<i>&lt;spax_spec&gt;</i>)</a></code>
+          <code><a href="spec_clm.html">spec_clm()</a></code> <code><a href="spec_clm.html">spec_huff()</a></code> <code><a href="spec_clm.html">format(<i>&lt;spax_allocation_spec&gt;</i>)</a></code> <code><a href="spec_clm.html">format(<i>&lt;spax_spec&gt;</i>)</a></code> <code><a href="spec_clm.html">print(<i>&lt;spax_spec&gt;</i>)</a></code>
 
         </dt>
         <dd>Specify an allocation model without data</dd>
@@ -231,24 +261,24 @@
 
         <dt>
 
-          <code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>
-
-        </dt>
-        <dd>Conditional facility-case bootstrap for a fitted allocation</dd>
-
-        <dt>
-
-          <code><a href="check_allocation.html">check_allocation()</a></code> <code><a href="check_allocation.html">print(<i>&lt;ae_allocation_check&gt;</i>)</a></code> <code><a href="check_allocation.html">as.data.frame(<i>&lt;ae_allocation_check&gt;</i>)</a></code>
+          <code><a href="check_fit.html">check_fit()</a></code> <code><a href="check_fit.html">check_allocation()</a></code> <code><a href="check_fit.html">print(<i>&lt;ae_allocation_check&gt;</i>)</a></code> <code><a href="check_fit.html">as.data.frame(<i>&lt;ae_allocation_check&gt;</i>)</a></code>
 
         </dt>
         <dd>Check what fitted facility counts identify in an allocation model</dd>
 
         <dt>
 
-          <code><a href="compare_allocations.html">compare_allocations()</a></code> <code><a href="compare_allocations.html">print(<i>&lt;ae_allocation_comparison&gt;</i>)</a></code> <code><a href="compare_allocations.html">as.data.frame(<i>&lt;ae_allocation_comparison&gt;</i>)</a></code>
+          <code><a href="compare_fits.html">compare_fits()</a></code> <code><a href="compare_fits.html">compare_allocations()</a></code> <code><a href="compare_fits.html">print(<i>&lt;ae_allocation_comparison&gt;</i>)</a></code> <code><a href="compare_fits.html">as.data.frame(<i>&lt;ae_allocation_comparison&gt;</i>)</a></code>
 
         </dt>
         <dd>Compare fitted allocations across model and input specifications</dd>
+
+        <dt>
+
+          <code><a href="bootstrap_fit.html">bootstrap_fit()</a></code> <code><a href="bootstrap_fit.html">bootstrap_allocation()</a></code>
+
+        </dt>
+        <dd>Conditional facility-case bootstrap for a fitted allocation</dd>
 
         <dt>
 

@@ -21,7 +21,7 @@ this is the one-group case of the same loops."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@ this is the one-group case of the same loops."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Two-pass block FCA engine</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/05-executor.R" class="external-link"><code>R/05-executor.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/05-executor.R" class="external-link"><code>R/05-executor.R</code></a></small>
       <div class="d-none name"><code>dot-fca_blocks.Rd</code></div>
     </div>
 
@@ -87,7 +87,8 @@ this is the one-group case of the same loops.</p>
 <span>  <span class="va">supply</span>,</span>
 <span>  normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
 <span>  snap <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  groups <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  block <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -127,10 +128,21 @@ TRUE such cells are not active. Weight checks (D1) live in the kernels.</p></dd>
 <dd><p>`NULL` for one ungrouped demand raster, or the character
 vector of group IDs (also for a single group).</p></dd>
 
+
+<dt id="arg-block">block<a class="anchor" aria-label="anchor" href="#arg-block"></a></dt>
+<dd><p>`NULL` (the rasters are read in blocks), or the whole input as
+one in-memory block: a list with the keys that `rasters` would hold (`demand`,
+or `demand.&lt;group&gt;` with `groups`, and whatever the kernels read, such as
+`distance`), each a matrix with one row per origin and one column per layer
+(a plain vector is one column). `rasters` is then ignored and nothing is
+opened or read; both passes, the NA rule and the overall layer are the same
+code as for rasters (SPAX-060, FCA on numeric data).</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A matrix with one row per cell of the grid. Ungrouped, one column
+    <p>A matrix with one row per cell of the grid (per origin of `block`).
+  Ungrouped, one column
   per supply measure. Grouped, `M * (G + 1)` columns in measure-major order:
   for each measure the groups in the order of `groups`, then the overall
   layer.</p>

@@ -50,4 +50,4 @@ results. This is an internal constructor and should be used with
 
 ## Value
 
-A spax object
+A spax object, of class \`c("spax", "spax_result")\`

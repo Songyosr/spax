@@ -41,7 +41,9 @@ spax(
   A model specification:
   [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
   or
-  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md).
+  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md),
+  or an FCA specification such as
+  [`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md).
 
 - observed:
 
@@ -71,18 +73,79 @@ spax(
 
 ## Value
 
-An object of class `c("spax_allocation", "spax_result")`: a list with
-`model` (the bound `ae_problem`), `spec`, `observed` (a list with
-`spec`, the observation as declared, `target`, the counts aligned to the
-data, and `output`; `NULL` in evaluate mode), `fit` (the
-`ae_multistart_fit`, in fit mode), `evaluation` (the `ae_equilibrium`,
-in evaluate mode), `theta` (the named free parameters, fitted or given;
-`NULL` when no start was selected), `held` (the named held values,
-including `kappa`), `mode` (`"fit"` or `"evaluate"`) and `call`. See
+For an FCA specification on raster data, a `spax` object (class
+`c("spax", "spax_result")`), see
+[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md);
+on numeric data, a `spax_access_values` (class
+`c("spax_access_values", "spax_result")`), see
+[spax_access_values-methods](https://songyosr.github.io/spax/reference/spax_access_values-methods.md).
+For an allocation model, an object of class
+`c("spax_allocation", "spax_result")`: a list with `model` (the bound
+`ae_problem`), `spec`, `observed` (a list with `spec`, the observation
+as declared, `target`, the counts aligned to the data, and `output`;
+`NULL` in evaluate mode), `fit` (the `ae_multistart_fit`, in fit mode),
+`evaluation` (the `ae_equilibrium`, in evaluate mode), `theta` (the
+named free parameters, fitted or given; `NULL` when no start was
+selected), `held` (the named held values, including `kappa`), `mode`
+(`"fit"` or `"evaluate"`) and `call`. See
 [spax_allocation-methods](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
 for what to do with it.
 
 ## Details
+
+**FCA indices.** With raster data
+([`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+with a `SpatRaster` as demand) and an FCA specification
+([`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_m2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)),
+`spax()` computes the index and returns the same object as the matching
+one-shot
+([`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md),
+[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
+and the others): the `type`, `parameters` and accessibility layers are
+identical, and `call` is the call of `spax()`. An index is computed, not
+fitted: `observed`, `starts`, `lower`, `upper` and `...` are refused.
+Group lists of `decay` and `selection` and a `threshold` by group are
+matched to the demand groups of the data by name and put in their order.
+
+**FCA indices on numeric data.** With numeric data (demand, supply and a
+travel matrix) an FCA specification gives the index at the active
+origins, computed by the same engine and the same rules (the cells that
+reach no facility are `NA`, and the overall layer of demand groups is
+the same). The result is a `spax_access_values`, a list with `access`, a
+matrix with one row per active origin and one column per layer, not a
+raster (see
+[spax_access_values-methods](https://songyosr.github.io/spax/reference/spax_access_values-methods.md)).
+Numeric data has one supply measure, `"supply"`, so there is one
+measure, and an origin with zero or unknown demand has no row. A raster
+`sigma` (a variable catchment) is refused: "a raster sigma needs raster
+data".
+
+**Allocation models on raster data.** With raster data and an allocation
+model
+([`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md),
+[`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)),
+`spax()` first converts the data to origins, on each call and without
+keeping anything: the cells with finite, positive demand are the
+origins, their IDs are the cell numbers (`"843"`) and each has its
+travel to every facility; a missing or infinite travel time is an absent
+pair, and a cell that reaches no facility stays an origin: with
+[`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+its demand goes to the outside option, while
+[`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+has no outside option and allocates none of it.
+[`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+works as it is, and
+[`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+is keyed by cell number: counts at cells that are not origins are
+dropped with a message. The model then runs as on numeric data, so every
+step function accepts the result, and fits to the same data can be
+compared. See
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+for the conversion and its memory.
 
 **Fit mode.** Some parameter is `"fit"`. `observed` is needed. The
 counts are aligned with the data (see
@@ -152,9 +215,9 @@ in `as.data.frame(x)`. Outputs that the fit did not compute, for
 instance the flows of a fit to facility totals, are computed when asked
 for and not stored. The step functions
 ([`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
-[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md),
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md))
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md),
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md),
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md))
 accept the result itself: each takes the bound model and the fit (or,
 for prediction, the evaluation) from it. Use
 [`saveRDS()`](https://rspatial.github.io/terra/reference/serialize.html)
@@ -171,6 +234,7 @@ Other allocation interface:
 [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
 [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
+[`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_allocation-methods`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md),
 [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md),
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
@@ -237,14 +301,14 @@ summary(clm)
 #>   beta       1         held
 #>   kappa      1         held
 #> 
-#> <summary.ae_multistart_fit>
+#> <allocation fit summary>
 #> status: selected; selected start: scan3
 #> loss disagreement: TRUE; parameter disagreement: TRUE
 #> Supplied-start diagnostics (not a global-optimum or identification guarantee):
 #>  start     loss eligible optim_convergence solver_converged residual seconds
-#>  scan1 -5036000     TRUE                 0             TRUE        0   0.073
-#>  scan2 -5036000     TRUE                 0             TRUE        0   0.299
-#>  scan3 -5037000     TRUE                 0             TRUE        0   0.129
+#>  scan1 -5036000     TRUE                 0             TRUE        0   0.045
+#>  scan2 -5036000     TRUE                 0             TRUE        0   0.180
+#>  scan3 -5037000     TRUE                 0             TRUE        0   0.082
 #>  boundary   status                                    optim_message
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
@@ -255,8 +319,8 @@ summary(clm)
 #>       converged               0.0        0
 #> 
 #> Selected fit:
-#> <summary.ae_problem_nfxp_fit>
-#> model: clm
+#> <allocation fit result summary>
+#> model: conditional logit
 #> family: gaussian (sigma = travel scale)
 #> allocation_form: clm
 #> 
@@ -267,7 +331,7 @@ summary(clm)
 #> 
 #> fit:
 #>      loss convergence seconds spectral_radius gradient
-#>  -5037000           0   0.127               0     TRUE
+#>  -5037000           0   0.079               0     TRUE
 #> 
 #> predicted:
 #>   min  q25 median  mean   q75   max

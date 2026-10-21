@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,7 @@
       <h1>Choosing an FCA index or an allocation model</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/vignettes/model-choice.Rmd" class="external-link"><code>vignettes/model-choice.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/model-choice.Rmd" class="external-link"><code>vignettes/model-choice.Rmd</code></a></small>
       <div class="d-none name"><code>model-choice.Rmd</code></div>
     </div>
 
@@ -112,7 +112,8 @@ demand?</td>
 <td align="left">
 <code><a href="../reference/spax_2sfca.html">spax_2sfca()</a></code>, <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>,
 <code><a href="../reference/spax_m2sfca.html">spax_m2sfca()</a></code>, <code><a href="../reference/spax_3sfca.html">spax_3sfca()</a></code>,
-<code><a href="../reference/spax_huff2sfca.html">spax_huff2sfca()</a></code>
+<code><a href="../reference/spax_huff2sfca.html">spax_huff2sfca()</a></code>, or <code><a href="../reference/spax.html">spax()</a></code> with an FCA
+specification such as <code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>
 </td>
 <td align="left">A model-specific supply-per-demand accessibility
 index</td>
@@ -156,7 +157,7 @@ validity flags</td>
 <tr class="even">
 <td align="left">Are facility-count bootstrap intervals available?</td>
 <td align="left">
-<code><a href="../reference/bootstrap_allocation.html">bootstrap_allocation()</a></code> after an eligible
+<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code> after an eligible
 fit and observation declaration</td>
 <td align="left">Conditional pointwise intervals when the supported
 procedure’s gates pass</td>
@@ -200,41 +201,30 @@ matrix of minutes.</p>
 <div class="section level3">
 <h3 id="an-fca-index">An FCA index<a class="anchor" aria-label="anchor" href="#an-fca-index"></a>
 </h3>
-<p>The public FCA functions take a demand raster and one travel layer
-per facility. To give the FCA exactly the same demand and travel as the
-allocation model, place the 336 areas in a one-row raster. The raster is
-only a container without geographic meaning; values are mapped back to
-the areas afterwards. The Gaussian scale of 10 minutes is a choice for
-this guide, not an estimate.</p>
+<p>An FCA specification also runs on the numeric inputs of the
+allocation model, so the FCA uses exactly the same demand and travel.
+<code><a href="../reference/prep_data.html">prep_data()</a></code> aligns them by ID, and <code><a href="../reference/spax.html">spax()</a></code>
+computes the index at each area, as a matrix with one row per area
+rather than a raster. This interface is experimental. The Gaussian scale
+of 10 minutes is a choice for this guide, not an estimate.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># A one-row raster with one cell per area, in the order of D</span></span>
-<span><span class="va">template</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span></span>
-<span>  nrows <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  ncols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>,</span>
-<span>  xmin <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  xmax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>,</span>
-<span>  ymin <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  ymax <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  crs <span class="op">=</span> <span class="st">"EPSG:27700"</span></span>
+<code class="sourceCode R"><span><span class="co"># Demand, supply and travel aligned by ID once</span></span>
+<span><span class="va">dm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">D</span>, <span class="va">S</span>, <span class="cn">T</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The E2SFCA index at each area, with a 10-minute Gaussian decay</span></span>
+<span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">dm</span>, <span class="va">e2sfca</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Numeric data hold one supply measure, so GP FTE including GPs in training</span></span>
+<span><span class="co"># needs data of its own</span></span>
+<span><span class="va">dm_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">D</span>, <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>, <span class="cn">T</span><span class="op">)</span></span>
+<span><span class="va">fca_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">dm_all</span>, <span class="va">e2sfca</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># One row per area, in the order of D, in GP FTE per 1,000</span></span>
+<span><span class="va">fca_index</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  gp_fte_extg <span class="op">=</span> <span class="fl">1000</span> <span class="op">*</span> <span class="va">fca</span><span class="op">$</span><span class="va">access</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>, <span class="st">"supply"</span><span class="op">]</span>,</span>
+<span>  gp_fte <span class="op">=</span> <span class="fl">1000</span> <span class="op">*</span> <span class="va">fca_all</span><span class="op">$</span><span class="va">access</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>, <span class="st">"supply"</span><span class="op">]</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">demand_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/setValues.html" class="external-link">setValues</a></span><span class="op">(</span><span class="va">template</span>, <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># One travel layer per practice, named by practice code</span></span>
-<span><span class="va">travel_raster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">template</span>, nlyrs <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncol</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel_raster</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">T</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">travel_raster</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">demand_raster</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel_raster</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gp_fte_extg"</span>, <span class="st">"gp_fte"</span><span class="op">)</span>  <span class="co"># two separate indices</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Back to one row per area, in GP FTE per 1,000</span></span>
-<span><span class="va">fca_index</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">fca</span><span class="op">$</span><span class="va">accessibility</span>, dataframe <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fca_index</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>  gp_fte_extg         gp_fte      
  Min.   :0.1609   Min.   :0.2410  
@@ -243,7 +233,7 @@ this guide, not an estimate.</p>
  Mean   :0.5131   Mean   :0.6371  
  3rd Qu.:0.5988   3rd Qu.:0.7475  
  Max.   :0.6915   Max.   :0.8890  </code></pre>
-<p>Each supply column gives its own index, in GP FTE per 1,000
+<p>Each supply measure gives its own index, in GP FTE per 1,000
 distance-weighted registered residents: <code>gp_fte_extg</code>
 excludes GPs in training and <code>gp_fte</code> includes them. The two
 are separate indicators computed side by side; the FCA does not combine
@@ -508,8 +498,8 @@ that a chosen fixed model can be evaluated without fitting, while an
 eligible fit can be inspected without refitting. <code><a href="../reference/spax.html">spax()</a></code>
 runs the first three in one call (or prepare, declare and evaluate, when
 every parameter has a value); <code><a href="../reference/predict_allocation.html">predict_allocation()</a></code>,
-<code><a href="../reference/bootstrap_allocation.html">bootstrap_allocation()</a></code>, <code><a href="../reference/check_allocation.html">check_allocation()</a></code> and
-<code><a href="../reference/compare_allocations.html">compare_allocations()</a></code> accept its result. An outside option
+<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code>, <code><a href="../reference/check_fit.html">check_allocation()</a></code> and
+<code><a href="../reference/compare_fits.html">compare_allocations()</a></code> accept its result. An outside option
 does not automatically represent unmet need, and Poisson fitting does
 not impose exact total matching.</p>
 <p>This guide is not an uncertainty demonstration. The facility-case

@@ -13,7 +13,7 @@ spec_huff(), which holds no data and is used with spax()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,7 +56,7 @@ spec_huff(), which holds no data and is used with spax()."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Declare a decay for a model specification</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/01-decay_objects.R" class="external-link"><code>R/01-decay_objects.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/01-decay_objects.R" class="external-link"><code>R/01-decay_objects.R</code></a></small>
       <div class="d-none name"><code>decay_gaussian.Rd</code></div>
     </div>
 
@@ -90,7 +90,11 @@ number. It is one slot of a model specification such as <code><a href="spec_clm.
 
 <dl><dt id="arg-sigma">sigma<a class="anchor" aria-label="anchor" href="#arg-sigma"></a></dt>
 <dd><p><code>"fit"</code>, or a single finite number greater than 0 that holds
-<code>sigma</code> at that value.</p></dd>
+<code>sigma</code> at that value. For an FCA specification (<code><a href="spec_e2sfca.html">spec_e2sfca()</a></code> and its
+relatives), <code>decay_gaussian()</code>, <code>decay_exponential()</code> and <code>decay_power()</code>
+also accept a <code>SpatRaster</code> of <code>sigma</code> values (a variable catchment, with one
+layer or one per facility); it is not checked here, and an allocation model
+refuses it.</p></dd>
 
 
 <dt id="arg-kernel">kernel<a class="anchor" aria-label="anchor" href="#arg-kernel"></a></dt>
@@ -122,6 +126,8 @@ kernel is undefined at distance zero.</p>
 <p><code>sigma = "fit"</code> (the default) lets the fit estimate it. A number holds it
 at that value. A number must be positive and must lie within the bounds the
 kernel declares for <code>sigma</code> (the built-in kernels allow any positive number).</p>
+<p>A raster <code>sigma</code> is for FCA specifications only. <code>decay_custom()</code> refuses
+it for a declared kernel.</p>
 <p>A model specification also accepts an exact built-in name (<code>"gaussian"</code>,
 <code>"exponential"</code> or <code>"power"</code>) or a <code><a href="decay_kernel.html">decay_kernel()</a></code> where it expects a decay;
 both mean <code>sigma = "fit"</code>. There is no partial matching.</p>
@@ -132,6 +138,7 @@ both mean <code>sigma = "fit"</code>. There is no partial matching.</p>
 <code><a href="obs_flows.html">obs_flows()</a></code>,
 <code><a href="prep_data.html">prep_data()</a></code>,
 <code><a href="spax.html">spax()</a></code>,
+<code><a href="spax_access_values-methods.html">spax_access_values-methods</a></code>,
 <code><a href="spax_allocation-methods.html">spax_allocation-methods</a></code>,
 <code><a href="spax_huff.html">spax_huff()</a></code>,
 <code><a href="spec_clm.html">spec_clm()</a></code></p></div>

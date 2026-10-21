@@ -15,7 +15,7 @@ used with spax()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,7 @@ used with spax()."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Specify an allocation model without data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/08-spax_spec.R" class="external-link"><code>R/08-spax_spec.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/08-spax_spec.R" class="external-link"><code>R/08-spax_spec.R</code></a></small>
       <div class="d-none name"><code>spec_clm.Rd</code></div>
     </div>
 
@@ -86,6 +86,9 @@ used with <code><a href="spax.html">spax()</a></code>.</p>
 <span>  kappa <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  by_group <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'spax_allocation_spec'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'spax_spec'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
@@ -140,8 +143,9 @@ number; hold values by group through a list or vector instead.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>spax_spec</code>: a list with <code>kind</code> (<code>"clm"</code> or <code>"huff"</code>), <code>decay</code>,
-<code>outside</code> (<code>0</code> for <code>spec_huff()</code>), <code>beta</code>, <code>kappa</code> and <code>by_group</code>.</p>
+    <p>A <code>spax_allocation_spec</code> (also a <code>spax_spec</code>): a list with <code>kind</code>
+(<code>"clm"</code> or <code>"huff"</code>), <code>decay</code>, <code>outside</code> (<code>0</code> for <code>spec_huff()</code>), <code>beta</code>,
+<code>kappa</code> and <code>by_group</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -165,6 +169,8 @@ list whose elements are <code>"fit"</code> or a number. <code>by_group</code> le
 decay (<code>"sigma"</code>) or one fitted outside weight (<code>"v0"</code>) differ by group.
 Group-specific parameters can be fitted only to counts recorded by group;
 a held <code>sigma</code> cannot differ by group unless the decay is given by group.</p>
+<p><strong>FCA decays.</strong> An allocation model refuses <code><a href="decay_step.html">decay_step()</a></code>, <code><a href="decay_step.html">decay_inverse()</a></code>
+and a raster <code>sigma</code>, which are for the FCA specifications (<code><a href="spec_e2sfca.html">spec_e2sfca()</a></code>).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -173,6 +179,7 @@ a held <code>sigma</code> cannot differ by group unless the decay is given by gr
 <code><a href="obs_flows.html">obs_flows()</a></code>,
 <code><a href="prep_data.html">prep_data()</a></code>,
 <code><a href="spax.html">spax()</a></code>,
+<code><a href="spax_access_values-methods.html">spax_access_values-methods</a></code>,
 <code><a href="spax_allocation-methods.html">spax_allocation-methods</a></code>,
 <code><a href="spax_huff.html">spax_huff()</a></code></p></div>
     </div>

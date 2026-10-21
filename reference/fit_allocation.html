@@ -17,7 +17,7 @@ global optimality."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,7 +60,7 @@ global optimality."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Calibrate a declared allocation model, by default from starts found in the data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/06-ae_workflow.R" class="external-link"><code>R/06-ae_workflow.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/06-ae_workflow.R" class="external-link"><code>R/06-ae_workflow.R</code></a></small>
       <div class="d-none name"><code>fit_allocation.Rd</code></div>
     </div>
 
@@ -243,10 +243,10 @@ inside its bounds, the fitted model's total outside count equals the observed
 one (the score equation of <code>log v0</code>). This is not claimed for totals or for
 models with demand groups: there the total outside count is not guaranteed to
 match. Fits to different outputs, or with and without outside counts, are fits
-to different data, so <code><a href="compare_allocations.html">compare_allocations()</a></code> gives no loss difference between
+to different data, so <code><a href="compare_fits.html">compare_allocations()</a></code> gives no loss difference between
 them;
 compare models on the same observation, and a model without an outside option
-(Huff) on the observation without outside counts. <code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>
+(Huff) on the observation without outside counts. <code><a href="bootstrap_fit.html">bootstrap_allocation()</a></code>
 refuses these fits: the facility-case bootstrap is defined for facility
 totals without outside counts.</p>
 <p><strong>Default search.</strong> For the count outputs <code>starts</code>, <code>lower</code> and <code>upper</code> are
@@ -295,12 +295,12 @@ starts to skip it.</p>
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><a href="allocation-fit-methods.html">allocation-fit-methods</a> for methods on saved fits.</p>
 <p>Other allocation steps:
-<code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>,
+<code><a href="bootstrap_fit.html">bootstrap_fit()</a></code>,
 <code><a href="calc_demand.html">calc_demand()</a></code>,
 <code><a href="calc_travel_time.html">calc_travel_time()</a></code>,
-<code><a href="check_allocation.html">check_allocation()</a></code>,
+<code><a href="check_fit.html">check_fit()</a></code>,
 <code><a href="clm_allocation.html">clm_allocation()</a></code>,
-<code><a href="compare_allocations.html">compare_allocations()</a></code>,
+<code><a href="compare_fits.html">compare_fits()</a></code>,
 <code><a href="decay_kernel.html">decay_kernel()</a></code>,
 <code><a href="evaluate_allocation.html">evaluate_allocation()</a></code>,
 <code><a href="huff_allocation.html">huff_allocation()</a></code>,

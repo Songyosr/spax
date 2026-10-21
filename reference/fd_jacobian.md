@@ -21,7 +21,8 @@ fd_jacobian(
   method = c("central", "forward"),
   check = TRUE,
   lower = -Inf,
-  upper = Inf
+  upper = Inf,
+  lazy_f0 = FALSE
 )
 ```
 
@@ -55,3 +56,9 @@ fd_jacobian(
 
   Inclusive bounds of the evaluation points, recycled to the length of
   `x`.
+
+- lazy_f0:
+
+  If `TRUE`, `fn(x)` is evaluated (and checked as usual) only when a
+  coordinate needs a one-sided or room step; the result is identical. An
+  invalid `fn(x)` is then detected only when it is used.

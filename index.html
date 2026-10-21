@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -86,13 +86,13 @@
 <div class="section level2">
 <h2 id="install">Install<a class="anchor" aria-label="anchor" href="#install"></a>
 </h2>
-<p>Use R 4.4.0 or newer. This is the supported dependency and testing floor for spax 0.5.0. Calls from earlier versions keep working (see the NEWS).</p>
-<p>Install version 0.5.0 by its release tag rather than from the repository’s default branch:</p>
+<p>Use R 4.4.0 or newer. This is the supported dependency and testing floor for spax 0.6.0. Calls from earlier versions keep working (see the NEWS).</p>
+<p>Install version 0.6.0 by its release tag rather than from the repository’s default branch:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"Songyosr/spax@v0.5.0"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"Songyosr/spax@v0.6.0"</span><span class="op">)</span></span></code></pre></div>
 <p>The allocation interface is experimental and may change in later versions. For reproducible work, record the package version and retain the input IDs, units, observation declaration and saved results. Development continues on the <code>develop</code> branch (<code>pak::pak("Songyosr/spax@develop")</code>).</p>
-<p>Each release is archived on Zenodo; <a href="doi:10.5281/zenodo.23438611" class="uri">doi:10.5281/zenodo.23438611</a> refers to all versions (version 0.4.0 is <a href="doi:10.5281/zenodo.23495125" class="uri">doi:10.5281/zenodo.23495125</a>). Cite the version you used with <code>citation("spax")</code>.</p>
+<p>Each release is archived on Zenodo; <a href="doi:10.5281/zenodo.23438611" class="uri">doi:10.5281/zenodo.23438611</a> refers to all versions (version 0.5.0 is <a href="doi:10.5281/zenodo.23527706" class="uri">doi:10.5281/zenodo.23527706</a>). Cite the version you used with <code>citation("spax")</code>.</p>
 <p>Package and function help are available from an installed package. Installations that include built articles also provide the guides, which follow one reader journey: Get started, the example data and data preparation, the FCA guides, then the allocation model (model choice, the workflow and bootstrap intervals):</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Package overview, and notes on reusing saved results</span></span>
@@ -116,7 +116,7 @@
 <div class="section level3">
 <h3 id="an-fca-accessibility-map">An FCA accessibility map<a class="anchor" aria-label="anchor" href="#an-fca-accessibility-map"></a>
 </h3>
-<p>FCA entry points take a demand raster and one aligned travel layer per facility, with layer names matching facility IDs.</p>
+<p>An FCA index takes a demand raster, a facility table and one travel layer per facility, with layer names matching facility IDs. <code><a href="reference/prep_data.html">prep_data()</a></code> holds them together, a specification such as <code><a href="reference/spec_e2sfca.html">spec_e2sfca()</a></code> declares the index without data, and <code><a href="reference/spax.html">spax()</a></code> computes it. This interface is experimental.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
@@ -137,14 +137,17 @@
 <span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">mainland</span><span class="op">)</span></span>
 <span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">[[</span><span class="va">mainland_gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span>, <span class="va">mainland</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">mainland_gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel_grid</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
+<span><span class="co"># Demand grid, practice table and travel stack, held together</span></span>
+<span><span class="va">grid_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep_data.html">prep_data</a></span><span class="op">(</span></span>
+<span>  <span class="va">pop</span>,</span>
+<span>  <span class="va">mainland_gp</span>,</span>
+<span>  <span class="va">travel_grid</span>,</span>
 <span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,  <span class="co"># matches supply rows to travel layers</span></span>
 <span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The E2SFCA index with a 10-minute Gaussian decay</span></span>
+<span><span class="va">fca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span></span>
 <span>  <span class="fl">1000</span> <span class="op">*</span> <span class="va">fca</span><span class="op">$</span><span class="va">accessibility</span>,</span>
@@ -153,7 +156,7 @@
 <span>  main <span class="op">=</span> <span class="st">"E2SFCA index, GP FTE per 1,000 residents"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-fca-1.png" alt="Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents; values are highest in the west of the county and lowest on Bodmin Moor and at the tips of the western peninsulas."></p>
-<p>This is an enhanced two-step FCA index: supply per distance-weighted population, in GP FTE per 1,000 residents. The 10-minute Gaussian scale is a choice for this example, not an estimate. The index is a supply-per-demand score, not a probability that anyone uses a practice. See <code><a href="reference/spax_e2sfca.html">?spax_e2sfca</a></code> for decay and normalization options, and <code>summary(fca)</code> or <code>plot(fca)</code> to inspect the result.</p>
+<p>This is an enhanced two-step FCA index: supply per distance-weighted population, in GP FTE per 1,000 residents. The 10-minute Gaussian scale is a choice for this example, not an estimate. The index is a supply-per-demand score, not a probability that anyone uses a practice. <code><a href="reference/spax_e2sfca.html">spax_e2sfca()</a></code> remains the one-call shortcut and gives the same result from the same inputs. See <code><a href="reference/spec_e2sfca.html">?spec_e2sfca</a></code> for the other FCA indices, decays and normalization options, and <code>summary(fca)</code> or <code>plot(fca)</code> to inspect the result.</p>
 </div>
 <div class="section level3">
 <h3 id="a-static-clm-fitted-to-registrations">A static CLM fitted to registrations<a class="anchor" aria-label="anchor" href="#a-static-clm-fitted-to-registrations"></a>
@@ -334,7 +337,7 @@
 <span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a><span class="fl">4.590493</span> </span></code></pre></div>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Same flows, loss and inputs; loss differences are measured from the Huff fit</span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compare_allocations.html">compare_allocations</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>huff <span class="op">=</span> <span class="va">huff</span>, clm <span class="op">=</span> <span class="va">clm</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compare_fits.html">compare_allocations</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>huff <span class="op">=</span> <span class="va">huff</span>, clm <span class="op">=</span> <span class="va">clm</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"parameters"</span>, <span class="st">"loss_difference"</span>, <span class="st">"count_correlation"</span><span class="op">)</span></span>
 <span><span class="op">]</span></span></code></pre></div>
@@ -424,12 +427,12 @@
 </tr>
 <tr>
 <td align="left">
-<code><a href="reference/check_allocation.html">check_allocation()</a></code>, <code><a href="reference/compare_allocations.html">compare_allocations()</a></code>
-</td>
+<code><a href="reference/check_fit.html">check_fit()</a></code>, <code><a href="reference/compare_fits.html">compare_fits()</a></code> (also <code><a href="reference/check_fit.html">check_allocation()</a></code>, <code><a href="reference/compare_fits.html">compare_allocations()</a></code>)</td>
 <td align="left">Compare a fit with simpler models, or fits with each other, on the same loss.</td>
 </tr>
 <tr>
-<td align="left"><code><a href="reference/bootstrap_allocation.html">bootstrap_allocation()</a></code></td>
+<td align="left">
+<code><a href="reference/bootstrap_fit.html">bootstrap_fit()</a></code> (also <code><a href="reference/bootstrap_fit.html">bootstrap_allocation()</a></code>)</td>
 <td align="left">Run the separately supported conditional facility-case bootstrap.</td>
 </tr>
 </tbody>

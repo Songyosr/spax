@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,7 @@
       <h1>Finding functions and inspecting results</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/vignettes/function-naming.Rmd" class="external-link"><code>vignettes/function-naming.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/function-naming.Rmd" class="external-link"><code>vignettes/function-naming.Rmd</code></a></small>
       <div class="d-none name"><code>function-naming.Rmd</code></div>
     </div>
 
@@ -91,21 +91,25 @@ for, and the suffix names the thing.</p>
 <ul>
 <li>
 <code><a href="../reference/spax.html">spax()</a></code> and <code>spax_&lt;model&gt;()</code> run an
-analysis. <code><a href="../reference/spax.html">spax()</a></code> runs a model specification on prepared
-data; <code><a href="../reference/spax_huff.html">spax_huff()</a></code> and <code><a href="../reference/spax_huff.html">spax_clm()</a></code> run the Huff
-model and the conditional logit from raw inputs;
-<code><a href="../reference/spax_2sfca.html">spax_2sfca()</a></code>, <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> and the other FCA
-functions compute an FCA index.</li>
+analysis. <code><a href="../reference/spax.html">spax()</a></code> runs a model specification, an allocation
+model or an FCA index, on prepared data; <code><a href="../reference/spax_huff.html">spax_huff()</a></code> and
+<code><a href="../reference/spax_huff.html">spax_clm()</a></code> run the Huff model and the conditional logit
+from raw inputs; <code><a href="../reference/spax_2sfca.html">spax_2sfca()</a></code>, <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>
+and the other FCA functions compute an FCA index.</li>
 <li>
 <code>prep_</code> prepares data: <code><a href="../reference/prep_data.html">prep_data()</a></code>.</li>
 <li>
 <code>spec_</code> specifies a model without data:
-<code><a href="../reference/spec_clm.html">spec_huff()</a></code>, <code><a href="../reference/spec_clm.html">spec_clm()</a></code>.</li>
+<code><a href="../reference/spec_clm.html">spec_huff()</a></code>, <code><a href="../reference/spec_clm.html">spec_clm()</a></code>, and the FCA indices
+<code><a href="../reference/spec_e2sfca.html">spec_2sfca()</a></code>, <code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>,
+<code><a href="../reference/spec_e2sfca.html">spec_m2sfca()</a></code>, <code><a href="../reference/spec_e2sfca.html">spec_3sfca()</a></code> and
+<code><a href="../reference/spec_e2sfca.html">spec_huff2sfca()</a></code>.</li>
 <li>
 <code>decay_</code> declares a decay kernel:
 <code><a href="../reference/decay_gaussian.html">decay_gaussian()</a></code>, <code><a href="../reference/decay_gaussian.html">decay_exponential()</a></code>,
 <code><a href="../reference/decay_gaussian.html">decay_power()</a></code>, <code><a href="../reference/decay_gaussian.html">decay_custom()</a></code> and
-<code><a href="../reference/decay_kernel.html">decay_kernel()</a></code>.</li>
+<code><a href="../reference/decay_kernel.html">decay_kernel()</a></code>; <code><a href="../reference/decay_step.html">decay_step()</a></code> and
+<code><a href="../reference/decay_step.html">decay_inverse()</a></code> are for FCA specifications only.</li>
 <li>
 <code>obs_</code> declares observations: <code><a href="../reference/obs_flows.html">obs_flows()</a></code>,
 <code><a href="../reference/obs_flows.html">obs_totals()</a></code>.</li>
@@ -119,8 +123,12 @@ allocation names stay: the model declarations
 <code><a href="../reference/clm_allocation.html">clm_allocation()</a></code> and <code><a href="../reference/huff_allocation.html">huff_allocation()</a></code> and the
 steps <code>&lt;verb&gt;_allocation()</code>, such as
 <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code>, which <code><a href="../reference/spax.html">spax()</a></code> uses
-underneath. The allocation functions are experimental. Existing FCA
-calls and result types remain supported.</p>
+underneath. <code><a href="../reference/check_fit.html">check_fit()</a></code>, <code><a href="../reference/compare_fits.html">compare_fits()</a></code> and
+<code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> are the general names of
+<code><a href="../reference/check_fit.html">check_allocation()</a></code>, <code><a href="../reference/compare_fits.html">compare_allocations()</a></code> and
+<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code>: each pair is one function. The
+allocation functions and the specifications are experimental. Existing
+FCA calls and result types remain supported.</p>
 <div class="section level2">
 <h2 id="choose-the-level-of-operation">Choose the level of operation<a class="anchor" aria-label="anchor" href="#choose-the-level-of-operation"></a>
 </h2>
@@ -164,6 +172,27 @@ calls and result types remain supported.</p>
 <code>spax</code> result with accessibility raster</td>
 </tr>
 <tr class="odd">
+<td align="left">Compute an FCA index from a specification</td>
+<td align="left">
+<code><a href="../reference/spax.html">spax()</a></code> with <code><a href="../reference/spec_e2sfca.html">spec_2sfca()</a></code>,
+<code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>, <code><a href="../reference/spec_e2sfca.html">spec_m2sfca()</a></code>,
+<code><a href="../reference/spec_e2sfca.html">spec_3sfca()</a></code> or <code><a href="../reference/spec_e2sfca.html">spec_huff2sfca()</a></code>
+</td>
+<td align="left">On raster data, the <code>spax</code> result of the
+one-call function; on numeric data, the index at each active origin
+(<code>spax_access_values</code>)</td>
+</tr>
+<tr class="even">
+<td align="left">Declare the decay of an FCA specification</td>
+<td align="left">
+<code><a href="../reference/decay_gaussian.html">decay_gaussian()</a></code>,
+<code><a href="../reference/decay_gaussian.html">decay_exponential()</a></code> or <code><a href="../reference/decay_gaussian.html">decay_power()</a></code> with a
+number or a raster <code>sigma</code>; <code><a href="../reference/decay_step.html">decay_step()</a></code>,
+<code><a href="../reference/decay_step.html">decay_inverse()</a></code>, <code><a href="../reference/decay_gaussian.html">decay_custom()</a></code>
+</td>
+<td align="left">FCA specification slot</td>
+</tr>
+<tr class="odd">
 <td align="left">Supply/demand calculation using supplied kernels</td>
 <td align="left"><code><a href="../reference/compute_access.html">compute_access()</a></code></td>
 <td align="left">Accessibility <code>SpatRaster</code>
@@ -203,9 +232,10 @@ calls and result types remain supported.</p>
 (<code>spax_allocation</code>)</td>
 </tr>
 <tr class="even">
-<td align="left">Prepare allocation data</td>
+<td align="left">Prepare data</td>
 <td align="left"><code><a href="../reference/prep_data.html">prep_data()</a></code></td>
-<td align="left">Prepared inputs</td>
+<td align="left">Prepared numeric inputs, or raster data
+(<code>spax_raster_data</code>)</td>
 </tr>
 <tr class="odd">
 <td align="left">Specify an allocation model without data</td>
@@ -214,7 +244,8 @@ calls and result types remain supported.</p>
 <code><a href="../reference/decay_gaussian.html">decay_gaussian()</a></code>, <code><a href="../reference/decay_gaussian.html">decay_exponential()</a></code>,
 <code><a href="../reference/decay_gaussian.html">decay_power()</a></code> or <code><a href="../reference/decay_gaussian.html">decay_custom()</a></code>
 </td>
-<td align="left">Model specification (<code>spax_spec</code>)</td>
+<td align="left">Model specification
+(<code>spax_allocation_spec</code>)</td>
 </tr>
 <tr class="even">
 <td align="left">Declare observed counts</td>
@@ -239,16 +270,16 @@ bootstrap</td>
 <td align="left">
 <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code>,
 <code><a href="../reference/evaluate_allocation.html">evaluate_allocation()</a></code>, <code><a href="../reference/predict_allocation.html">predict_allocation()</a></code>,
-<code><a href="../reference/bootstrap_allocation.html">bootstrap_allocation()</a></code>
-</td>
+<code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> (or
+<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code>)</td>
 <td align="left">Model-specific saved results</td>
 </tr>
 <tr class="odd">
 <td align="left">Check and compare fitted allocations</td>
 <td align="left">
-<code><a href="../reference/check_allocation.html">check_allocation()</a></code>,
-<code><a href="../reference/compare_allocations.html">compare_allocations()</a></code>
-</td>
+<code><a href="../reference/check_fit.html">check_fit()</a></code>, <code><a href="../reference/compare_fits.html">compare_fits()</a></code>
+(or <code><a href="../reference/check_fit.html">check_allocation()</a></code>,
+<code><a href="../reference/compare_fits.html">compare_allocations()</a></code>)</td>
 <td align="left">Comparison tables; the fits are not changed</td>
 </tr>
 <tr class="even">
@@ -272,6 +303,9 @@ appropriate to the declared axes; do not infer behavior from a name.</p>
 <span>  <span class="co"># FCA accessibility</span></span>
 <span>  <span class="st">"spax_2sfca"</span>, <span class="st">"spax_e2sfca"</span>, <span class="st">"spax_m2sfca"</span>, <span class="st">"spax_3sfca"</span>, <span class="st">"spax_huff2sfca"</span>,</span>
 <span>  <span class="st">"compute_access"</span>,</span>
+<span>  <span class="co"># FCA specifications (experimental)</span></span>
+<span>  <span class="st">"spec_2sfca"</span>, <span class="st">"spec_e2sfca"</span>, <span class="st">"spec_m2sfca"</span>, <span class="st">"spec_3sfca"</span>, <span class="st">"spec_huff2sfca"</span>,</span>
+<span>  <span class="st">"decay_step"</span>, <span class="st">"decay_inverse"</span>,</span>
 <span>  <span class="co"># Allocation interface (experimental)</span></span>
 <span>  <span class="st">"spax"</span>, <span class="st">"spax_huff"</span>, <span class="st">"spax_clm"</span>, <span class="st">"prep_data"</span>, <span class="st">"spec_huff"</span>, <span class="st">"spec_clm"</span>,</span>
 <span>  <span class="st">"decay_gaussian"</span>, <span class="st">"decay_exponential"</span>, <span class="st">"decay_power"</span>, <span class="st">"decay_custom"</span>,</span>
@@ -280,6 +314,7 @@ appropriate to the declared axes; do not infer behavior from a name.</p>
 <span>  <span class="st">"prepare_allocation"</span>, <span class="st">"clm_allocation"</span>, <span class="st">"huff_allocation"</span>, <span class="st">"fit_allocation"</span>,</span>
 <span>  <span class="st">"evaluate_allocation"</span>, <span class="st">"predict_allocation"</span>, <span class="st">"bootstrap_allocation"</span>,</span>
 <span>  <span class="st">"check_allocation"</span>, <span class="st">"compare_allocations"</span>,</span>
+<span>  <span class="st">"check_fit"</span>, <span class="st">"compare_fits"</span>, <span class="st">"bootstrap_fit"</span>,</span>
 <span>  <span class="co"># Input helpers</span></span>
 <span>  <span class="st">"calc_travel_time"</span>, <span class="st">"calc_demand"</span>, <span class="st">"decay_kernel"</span></span>
 <span><span class="op">)</span></span>
@@ -294,30 +329,40 @@ appropriate to the declared axes; do not infer behavior from a name.</p>
 4            spax_3sfca
 5        spax_huff2sfca
 6        compute_access
-7                  spax
-8             spax_huff
-9              spax_clm
-10            prep_data
-11            spec_huff
-12             spec_clm
-13       decay_gaussian
-14    decay_exponential
-15          decay_power
-16         decay_custom
-17            obs_flows
-18           obs_totals
-19   prepare_allocation
-20       clm_allocation
-21      huff_allocation
-22       fit_allocation
-23  evaluate_allocation
-24   predict_allocation
-25 bootstrap_allocation
-26     check_allocation
-27  compare_allocations
-28     calc_travel_time
-29          calc_demand
-30         decay_kernel</code></pre>
+7            spec_2sfca
+8           spec_e2sfca
+9           spec_m2sfca
+10           spec_3sfca
+11       spec_huff2sfca
+12           decay_step
+13        decay_inverse
+14                 spax
+15            spax_huff
+16             spax_clm
+17            prep_data
+18            spec_huff
+19             spec_clm
+20       decay_gaussian
+21    decay_exponential
+22          decay_power
+23         decay_custom
+24            obs_flows
+25           obs_totals
+26   prepare_allocation
+27       clm_allocation
+28      huff_allocation
+29       fit_allocation
+30  evaluate_allocation
+31   predict_allocation
+32 bootstrap_allocation
+33     check_allocation
+34  compare_allocations
+35            check_fit
+36         compare_fits
+37        bootstrap_fit
+38     calc_travel_time
+39          calc_demand
+40         decay_kernel</code></pre>
 <p>The former iterative-FCA interface is no longer available. It is not
 an alias for static CLM or a supported fixed-point workflow. Private
 functions beginning with <code>.</code> and other unexported
@@ -348,6 +393,16 @@ should not call them with <code>:::</code>.</p>
 <td align="left">Saved supply-per-demand index; raster-cell summary</td>
 </tr>
 <tr class="even">
+<td align="left">FCA index on numeric data
+(<code>spax_access_values</code>)</td>
+<td align="left">
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary()</a></code>,
+<code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code>, <code>$access</code>
+</td>
+<td align="left">The index at each active origin; an origin without
+demand has no row</td>
+</tr>
+<tr class="odd">
 <td align="left">Allocation result of <code><a href="../reference/spax.html">spax()</a></code>
 </td>
 <td align="left">
@@ -360,7 +415,7 @@ should not call them with <code>:::</code>.</p>
 <td align="left">The bound model with its fit or evaluation; an output
 that was not saved is computed when asked for</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Allocation multistart fit</td>
 <td align="left">
 <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>,
@@ -369,7 +424,7 @@ that was not saved is computed when asked for</td>
 </td>
 <td align="left">Selected fit plus retained per-start diagnostics</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Allocation coverage</td>
 <td align="left">
 <code><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary()</a></code>,
@@ -378,7 +433,7 @@ that was not saved is computed when asked for</td>
 </td>
 <td align="left">Saved coverage on retained positive-demand support</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Allocation bootstrap</td>
 <td align="left">
 <code><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary()</a></code>,

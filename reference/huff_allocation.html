@@ -9,7 +9,7 @@ option, over checked allocation inputs."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,7 +52,7 @@ option, over checked allocation inputs."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Declare the Huff model over checked allocation inputs</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/06-ae_workflow.R" class="external-link"><code>R/06-ae_workflow.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/06-ae_workflow.R" class="external-link"><code>R/06-ae_workflow.R</code></a></small>
       <div class="d-none name"><code>huff_allocation.Rd</code></div>
     </div>
 
@@ -132,7 +132,7 @@ facilities, so the shares at an origin add up to 1.</p>
 <p>This is the conditional logit model of <code><a href="clm_allocation.html">clm_allocation()</a></code> without an outside
 option: <code>huff_allocation()</code> calls <code><a href="clm_allocation.html">clm_allocation()</a></code> with <code>v0 = 0</code> and returns
 the same kind of model, so <code><a href="fit_allocation.html">fit_allocation()</a></code>, <code><a href="evaluate_allocation.html">evaluate_allocation()</a></code>,
-<code><a href="predict_allocation.html">predict_allocation()</a></code>, <code><a href="check_allocation.html">check_allocation()</a></code> and <code><a href="compare_allocations.html">compare_allocations()</a></code> work
+<code><a href="predict_allocation.html">predict_allocation()</a></code>, <code><a href="check_fit.html">check_allocation()</a></code> and <code><a href="compare_fits.html">compare_allocations()</a></code> work
 on it unchanged. Use <code>clm_allocation(fit_v0 = TRUE)</code> when part of the demand
 goes to facilities that are not in the data.</p>
 <p>With the default power decay, <code>W(d) = d^(-sigma)</code>, so spax's <code>sigma</code> is
@@ -141,7 +141,7 @@ are fitted by default (<code>fit_beta = TRUE</code>); with <code>beta = 1</code>
 <code>fit_beta = FALSE</code>, attractiveness is proportional to supply. Power decay is
 undefined at a travel time of 0, so use a positive minimum travel time or
 another kernel (<code>family</code>).</p>
-<p>The facility bootstrap <code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code> needs a fitted outside weight
+<p>The facility bootstrap <code><a href="bootstrap_fit.html">bootstrap_allocation()</a></code> needs a fitted outside weight
 and so does not apply to a Huff model.</p>
     </div>
     <div class="section level2">
@@ -153,12 +153,12 @@ and so does not apply to a Huff model.</p>
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="clm_allocation.html">clm_allocation()</a></code> for the general model with an outside option.</p>
 <p>Other allocation steps:
-<code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>,
+<code><a href="bootstrap_fit.html">bootstrap_fit()</a></code>,
 <code><a href="calc_demand.html">calc_demand()</a></code>,
 <code><a href="calc_travel_time.html">calc_travel_time()</a></code>,
-<code><a href="check_allocation.html">check_allocation()</a></code>,
+<code><a href="check_fit.html">check_fit()</a></code>,
 <code><a href="clm_allocation.html">clm_allocation()</a></code>,
-<code><a href="compare_allocations.html">compare_allocations()</a></code>,
+<code><a href="compare_fits.html">compare_fits()</a></code>,
 <code><a href="decay_kernel.html">decay_kernel()</a></code>,
 <code><a href="evaluate_allocation.html">evaluate_allocation()</a></code>,
 <code><a href="fit_allocation.html">fit_allocation()</a></code>,
@@ -186,7 +186,7 @@ and so does not apply to a Huff model.</p>
 <span class="r-in"><span><span class="co"># Evaluate at given parameters: distance exponent 2, attractiveness</span></span></span>
 <span class="r-in"><span><span class="co"># exponent 1</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="evaluate_allocation.html">evaluate_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">2</span>, beta <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;ae_equilibrium&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation evaluation&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> converged: TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> iterations: 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> error: 0</span>

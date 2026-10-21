@@ -105,7 +105,7 @@ e2sfca
 ```
 
 ``` spax-output
-Spatial Accessibility Analysis (E2SFCA)
+<spax access> E2SFCA, 1 layer on 117 x 187 cells
 
 Spatial Properties:
 - Resolution: 0.00833333 x 0.00833333

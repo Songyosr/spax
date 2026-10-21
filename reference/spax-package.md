@@ -52,7 +52,7 @@ Underneath, the six experimental allocation steps are
 [`evaluate_allocation`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`predict_allocation`](https://songyosr.github.io/spax/reference/predict_allocation.md)
 and
-[`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md);
+[`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_fit.md);
 use them for full control. They describe one static CLM system with one
 supply vector and an outside option;
 [`huff_allocation`](https://songyosr.github.io/spax/reference/huff_allocation.md)
@@ -61,10 +61,15 @@ model. The first five support Gaussian, exponential and power decay and
 kernels declared with
 [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 (fitting needs a kernel that is smooth in `sigma`); bootstrap has the
-narrower scope below. Prediction, the bootstrap,
-[`check_allocation`](https://songyosr.github.io/spax/reference/check_allocation.md)
+narrower scope below. Prediction, the bootstrap
+([`bootstrap_fit`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)),
+[`check_fit`](https://songyosr.github.io/spax/reference/check_fit.md)
 and
-[`compare_allocations`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+[`compare_fits`](https://songyosr.github.io/spax/reference/compare_fits.md)
+(also named
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
+and
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md))
 accept a result of
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md) in place
 of the model and its fit. Broader feedback-model declarations and
@@ -139,7 +144,7 @@ coverage guarantee or validation of an application's observation law.
 Regional attributed capacity per demand is a fixed-input identity and
 has no bootstrap interval. No simultaneous spatial intervals are
 provided. See
-[`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+[`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
 for the full restrictions.
 
 ## Compatibility and migration

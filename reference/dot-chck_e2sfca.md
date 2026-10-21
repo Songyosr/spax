@@ -1,6 +1,10 @@
 # Validate inputs for spax_e2sfca
 
-Validate inputs for spax_e2sfca
+The checks of the FCA wrappers that take a decay (E2SFCA, M2SFCA, 3SFCA
+and Huff-2SFCA, and 2SFCA through its binary decay) are two functions
+that run in this order: the data (\`.chck_e2sfca_data()\`) and the decay
+and normalization (\`.chck_e2sfca_decay()\`). \`prep_data()\` with
+rasters runs the data part alone.
 
 ## Usage
 

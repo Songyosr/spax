@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,7 @@
       <h1>Bootstrap intervals for a fitted allocation model</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/vignettes/facility-bootstrap.Rmd" class="external-link"><code>vignettes/facility-bootstrap.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/facility-bootstrap.Rmd" class="external-link"><code>vignettes/facility-bootstrap.Rmd</code></a></small>
       <div class="d-none name"><code>facility-bootstrap.Rmd</code></div>
     </div>
 
@@ -85,7 +85,7 @@
 <p>This guide uses generated data instead of the Cornwall GP data
 described in <a href="cornwall-data.html">The Cornwall GP example
 data</a>, for the reasons below.</p>
-<p><code><a href="../reference/bootstrap_allocation.html">bootstrap_allocation()</a></code> adds conditional bootstrap
+<p><code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code> adds conditional bootstrap
 intervals to a fitted static allocation model. It resamples facility
 totals, refits the model to each resample and reports percentile
 intervals for the parameters and for derived quantities, including a
@@ -219,7 +219,7 @@ evaluates baseline and scenario at the same parameters.</p>
 <h2 id="run-the-bootstrap">Run the bootstrap<a class="anchor" aria-label="anchor" href="#run-the-bootstrap"></a>
 </h2>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_allocation.html">bootstrap_allocation</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_fit.html">bootstrap_allocation</a></span><span class="op">(</span></span>
 <span>  model <span class="op">=</span> <span class="va">boot_model</span>,</span>
 <span>  fit <span class="op">=</span> <span class="va">boot_fit</span>,</span>
 <span>  observation <span class="op">=</span> <span class="va">observation</span>,</span>
@@ -268,7 +268,7 @@ attempts were made.</p>
 <span>  running_spax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"spax"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>         status       attempted      successful built_with_spax    running_spax 
-     "complete"           "399"           "399"    "0.3.0.9000"         "0.5.0" </code></pre>
+     "complete"           "399"           "399"    "0.3.0.9000"         "0.6.0" </code></pre>
 </div>
 </div>
 <div class="section level2">

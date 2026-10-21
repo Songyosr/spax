@@ -17,7 +17,7 @@ spax() for fitting, evaluation and the result."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,7 +60,7 @@ spax() for fitting, evaluation and the result."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Run the Huff or conditional logit model from raw inputs</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/08-spax_run.R" class="external-link"><code>R/08-spax_run.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/08-spax_run.R" class="external-link"><code>R/08-spax_run.R</code></a></small>
       <div class="d-none name"><code>spax_huff.Rd</code></div>
     </div>
 
@@ -110,7 +110,8 @@ with <code><a href="spax.html">spax()</a></code>, in one call:
 <dl><dt id="arg-demand-supply-travel">demand, supply, travel<a class="anchor" aria-label="anchor" href="#arg-demand-supply-travel"></a></dt>
 <dd><p>The inputs of <code><a href="prep_data.html">prep_data()</a></code>: demand by origin
 (a named list by group for demand groups), supply by facility and the
-origin-by-facility travel matrix.</p></dd>
+origin-by-facility travel matrix (or the rasters of raster mode, with <code>id_col</code>
+and <code>supply_cols</code> in <code>data_args</code>).</p></dd>
 
 
 <dt id="arg-observed">observed<a class="anchor" aria-label="anchor" href="#arg-observed"></a></dt>
@@ -169,6 +170,7 @@ as its <code>call</code>.</p>
 <code><a href="obs_flows.html">obs_flows()</a></code>,
 <code><a href="prep_data.html">prep_data()</a></code>,
 <code><a href="spax.html">spax()</a></code>,
+<code><a href="spax_access_values-methods.html">spax_access_values-methods</a></code>,
 <code><a href="spax_allocation-methods.html">spax_allocation-methods</a></code>,
 <code><a href="spec_clm.html">spec_clm()</a></code></p></div>
     </div>

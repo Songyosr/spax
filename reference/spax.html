@@ -15,7 +15,7 @@ spax_huff() and spax_clm() do the same from raw inputs in one call."></head><bod
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,7 @@ spax_huff() and spax_clm() do the same from raw inputs in one call."></head><bod
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Run an allocation model on prepared data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.5.0/R/08-spax_run.R" class="external-link"><code>R/08-spax_run.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/08-spax_run.R" class="external-link"><code>R/08-spax_run.R</code></a></small>
       <div class="d-none name"><code>spax.Rd</code></div>
     </div>
 
@@ -92,7 +92,8 @@ every parameter has a value, evaluates the model at those values.
 
 
 <dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
-<dd><p>A model specification: <code><a href="spec_clm.html">spec_huff()</a></code> or <code><a href="spec_clm.html">spec_clm()</a></code>.</p></dd>
+<dd><p>A model specification: <code><a href="spec_clm.html">spec_huff()</a></code> or <code><a href="spec_clm.html">spec_clm()</a></code>, or an FCA
+specification such as <code><a href="spec_e2sfca.html">spec_e2sfca()</a></code>.</p></dd>
 
 
 <dt id="arg-observed">observed<a class="anchor" aria-label="anchor" href="#arg-observed"></a></dt>
@@ -116,7 +117,11 @@ nothing is fitted.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An object of class <code>c("spax_allocation", "spax_result")</code>: a list
+    <p>For an FCA specification on raster data, a <code>spax</code> object (class
+<code>c("spax", "spax_result")</code>), see <code><a href="spax_e2sfca.html">spax_e2sfca()</a></code>; on numeric data, a
+<code>spax_access_values</code> (class <code>c("spax_access_values", "spax_result")</code>), see
+<a href="spax_access_values-methods.html">spax_access_values-methods</a>. For an allocation model, an object of class
+<code>c("spax_allocation", "spax_result")</code>: a list
 with <code>model</code> (the bound <code>ae_problem</code>), <code>spec</code>, <code>observed</code> (a list with
 <code>spec</code>, the observation as declared, <code>target</code>, the counts aligned to the
 data, and <code>output</code>; <code>NULL</code> in evaluate mode), <code>fit</code> (the
@@ -128,7 +133,36 @@ when no start was selected), <code>held</code> (the named held values, including
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><strong>Fit mode.</strong> Some parameter is <code>"fit"</code>. <code>observed</code> is needed. The counts
+    <p><strong>FCA indices.</strong> With raster data (<code><a href="prep_data.html">prep_data()</a></code> with a <code>SpatRaster</code> as demand)
+and an FCA specification (<code><a href="spec_e2sfca.html">spec_2sfca()</a></code>, <code><a href="spec_e2sfca.html">spec_e2sfca()</a></code>, <code><a href="spec_e2sfca.html">spec_m2sfca()</a></code>,
+<code><a href="spec_e2sfca.html">spec_3sfca()</a></code>, <code><a href="spec_e2sfca.html">spec_huff2sfca()</a></code>), <code>spax()</code> computes the index and returns
+the same object as the matching one-shot (<code><a href="spax_2sfca.html">spax_2sfca()</a></code>, <code><a href="spax_e2sfca.html">spax_e2sfca()</a></code> and
+the others): the <code>type</code>, <code>parameters</code> and accessibility layers are identical,
+and <code>call</code> is the call of <code>spax()</code>. An index is computed, not fitted: <code>observed</code>,
+<code>starts</code>, <code>lower</code>, <code>upper</code> and <code>...</code> are refused. Group lists of <code>decay</code> and
+<code>selection</code> and a <code>threshold</code> by group are matched to the demand groups of the data
+by name and put in their order.</p>
+<p><strong>FCA indices on numeric data.</strong> With numeric data (demand, supply and a travel
+matrix) an FCA specification gives the index at the active origins, computed by the
+same engine and the same rules (the cells that reach no facility are <code>NA</code>, and the
+overall layer of demand groups is the same). The result is a <code>spax_access_values</code>, a
+list with <code>access</code>, a matrix with one row per active origin and one column per layer,
+not a raster (see <a href="spax_access_values-methods.html">spax_access_values-methods</a>). Numeric data has one supply
+measure, <code>"supply"</code>, so there is one measure, and an origin with zero or unknown
+demand has no row. A raster <code>sigma</code> (a variable catchment) is refused: "a raster
+sigma needs raster data".</p>
+<p><strong>Allocation models on raster data.</strong> With raster data and an allocation model
+(<code><a href="spec_clm.html">spec_clm()</a></code>, <code><a href="spec_clm.html">spec_huff()</a></code>), <code>spax()</code> first converts the data to origins, on each
+call and without keeping anything: the cells with finite, positive demand are the
+origins, their IDs are the cell numbers (<code>"843"</code>) and each has its travel to every
+facility; a missing or infinite travel time is an absent pair, and a cell that reaches
+no facility stays an origin: with <code><a href="spec_clm.html">spec_clm()</a></code> its demand goes to the outside option,
+while <code><a href="spec_clm.html">spec_huff()</a></code> has no outside option and allocates none of it. <code><a href="obs_flows.html">obs_totals()</a></code>
+works as it is, and <code><a href="obs_flows.html">obs_flows()</a></code> is keyed by cell number: counts at cells that are not
+origins are dropped with a message. The model then runs as on numeric data, so every
+step function accepts the result, and fits to the same data can be compared. See
+<code><a href="prep_data.html">prep_data()</a></code> for the conversion and its memory.</p>
+<p><strong>Fit mode.</strong> Some parameter is <code>"fit"</code>. <code>observed</code> is needed. The counts
 are aligned with the data (see <code><a href="obs_flows.html">obs_flows()</a></code>), the model is bound to the
 data and <code><a href="fit_allocation.html">fit_allocation()</a></code> fits it. The loss is set by the observation and
 the output it is compared with by its kind, so <code>output</code>, <code>loss</code> and
@@ -171,8 +205,8 @@ evaluation. <code><a href="https://rdrr.io/r/stats/coef.html" class="external-li
 held values are in <code>$held</code> and in <code>as.data.frame(x)</code>. Outputs that the fit
 did not compute, for instance the flows of a fit to facility totals, are
 computed when asked for and not stored. The step functions
-(<code><a href="predict_allocation.html">predict_allocation()</a></code>, <code><a href="check_allocation.html">check_allocation()</a></code>, <code><a href="compare_allocations.html">compare_allocations()</a></code>,
-<code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>) accept the result itself: each takes the bound model
+(<code><a href="predict_allocation.html">predict_allocation()</a></code>, <code><a href="check_fit.html">check_allocation()</a></code>, <code><a href="compare_fits.html">compare_allocations()</a></code>,
+<code><a href="bootstrap_fit.html">bootstrap_allocation()</a></code>) accept the result itself: each takes the bound model
 and the fit (or, for prediction, the evaluation) from it. Use <code><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS()</a></code> to
 save a result.</p>
     </div>
@@ -183,6 +217,7 @@ save a result.</p>
 <code><a href="decay_gaussian.html">decay_gaussian()</a></code>,
 <code><a href="obs_flows.html">obs_flows()</a></code>,
 <code><a href="prep_data.html">prep_data()</a></code>,
+<code><a href="spax_access_values-methods.html">spax_access_values-methods</a></code>,
 <code><a href="spax_allocation-methods.html">spax_allocation-methods</a></code>,
 <code><a href="spax_huff.html">spax_huff()</a></code>,
 <code><a href="spec_clm.html">spec_clm()</a></code></p></div>
@@ -249,14 +284,14 @@ save a result.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   beta       1         held</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   kappa      1         held</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;summary.ae_multistart_fit&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation fit summary&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> status: selected; selected start: scan3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> loss disagreement: TRUE; parameter disagreement: TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Supplied-start diagnostics (not a global-optimum or identification guarantee):</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  start     loss eligible optim_convergence solver_converged residual seconds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  scan1 -5036000     TRUE                 0             TRUE        0   0.073</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  scan2 -5036000     TRUE                 0             TRUE        0   0.299</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  scan3 -5037000     TRUE                 0             TRUE        0   0.129</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  scan1 -5036000     TRUE                 0             TRUE        0   0.045</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  scan2 -5036000     TRUE                 0             TRUE        0   0.180</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  scan3 -5037000     TRUE                 0             TRUE        0   0.082</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  boundary   status                                    optim_message</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL</span>
@@ -267,8 +302,8 @@ save a result.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       converged               0.0        0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Selected fit:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;summary.ae_problem_nfxp_fit&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> model: clm</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation fit result summary&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> model: conditional logit</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> family: gaussian (sigma = travel scale)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> allocation_form: clm</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -279,7 +314,7 @@ save a result.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> fit:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      loss convergence seconds spectral_radius gradient</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -5037000           0   0.127               0     TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -5037000           0   0.079               0     TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> predicted:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   min  q25 median  mean   q75   max</span>

@@ -197,7 +197,7 @@ fitted total outside count equals the observed one. That is not claimed
 for totals or for demand groups: there the total outside count is not
 guaranteed to match. Fits with and without outside counts are fits to
 different data, so
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
 gives no loss difference between them: compare models on the same
 observation, and compare the Huff model
 ([`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md))
@@ -210,6 +210,7 @@ Other allocation interface:
 [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
 [`spax()`](https://songyosr.github.io/spax/reference/spax.md),
+[`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_allocation-methods`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md),
 [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md),
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)

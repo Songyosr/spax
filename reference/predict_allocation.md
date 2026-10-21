@@ -97,12 +97,12 @@ probability-valid flag.
 ## See also
 
 Other allocation steps:
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),
-[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),
+[`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md),
 [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md),
-[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md),
+[`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md),
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md),
 [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),

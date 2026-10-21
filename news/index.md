@@ -1,5 +1,152 @@
 # Changelog
 
+## spax 0.6.0
+
+FCA indices join the experimental interface:
+[`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_m2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+[`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+and
+[`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+specify an index without data, and
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
+it.
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+now also holds raster data, on which
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
+FCA indices and fits allocation models. The step functions gain the
+general names
+[`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md),
+[`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+and
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md),
+and allocation fits need less memory and time, with the same results.
+Calls from 0.5.x keep working and give the same values; printed results
+start with new plain headers (see below).
+
+- New experimental FCA specifications. `spec_2sfca(threshold)`,
+  [`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  and
+  [`spec_m2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  (with `normalize`),
+  [`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  (with `selection`) and
+  [`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  (with `selection`, `attractiveness` and `alpha`) are the data-free
+  counterparts of
+  [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md)
+  and the other one-call functions. An index is computed, not fitted:
+  every decay needs its `sigma`, and
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) refuses
+  `observed`, `starts`, `lower`, `upper` and fitting controls with an
+  FCA specification. With demand groups, `decay` and `selection` can be
+  named lists by group and `threshold` a named vector.
+- [`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
+  FCA indices. On raster data it returns the `spax` object of the
+  matching one-call function, with the same `type`, `parameters` and
+  layers; its `call` is the
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) call. On
+  numeric data (demand, supply and a travel matrix) it returns a
+  `spax_access_values`, the index at each active origin with one column
+  per layer, computed by the same engine and rules, with
+  [`print()`](https://rdrr.io/r/base/print.html),
+  [`summary()`](https://rspatial.github.io/terra/reference/summary.html)
+  and
+  [`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html)
+  methods. Numeric data has one supply measure, and an origin with zero
+  or unknown demand has no row.
+- New decays for FCA specifications: `decay_step(threshold)`, a binary
+  catchment, and
+  [`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md),
+  the weight `1 / (d + 1)`. In an FCA specification,
+  [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
+  [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  and
+  [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  also take a `SpatRaster` of `sigma` values, a catchment that varies in
+  space. Allocation specifications refuse all three, and numeric data
+  refuses a raster `sigma`.
+- [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+  has a raster mode. With a `SpatRaster` as `demand` (or a named list of
+  them for demand groups), a travel stack with one layer per facility
+  and a supply table named by the new arguments `id_col` and
+  `supply_cols`, it returns a `spax_raster_data`. It reads no raster
+  values. The object does not survive
+  [`saveRDS()`](https://rspatial.github.io/terra/reference/serialize.html):
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) then
+  asks for the data to be prepared again. `id_col` and `supply_cols`
+  come after the existing arguments, so positional calls keep working.
+- [`spax()`](https://songyosr.github.io/spax/reference/spax.md) fits and
+  evaluates allocation models
+  ([`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md),
+  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md))
+  on raster data. It converts the data to origins on each call and keeps
+  nothing: the cells with finite, positive demand are the origins, named
+  by their cell numbers, a missing or infinite travel time is an absent
+  pair, and a cell that reaches no facility stays an origin (with
+  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  its demand goes to the outside option;
+  [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  has no outside option and allocates none of it).
+  [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+  works as it is, and
+  [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+  is keyed by cell number. The model uses one supply measure. The travel
+  of the origins is held as a dense matrix: on a synthetic grid with
+  100,000 origins and 250 facilities it is 200 MB, the conversion peaks
+  at about 0.5 GB of R memory and a fit to facility totals from one
+  start at about 1.6 GB, in about 2.5 minutes (see
+  [`?prep_data`](https://songyosr.github.io/spax/reference/prep_data.md)).
+- New general step names
+  [`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md),
+  [`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+  and
+  [`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md).
+  They are the same functions as
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md),
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+  and
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md),
+  which stay, and differ only in the name that a message gives for the
+  step. Given an FCA result, all of them stop: an FCA index has no fit
+  to check, compare or bootstrap.
+- Printed results of the workflow start with a plain line in place of
+  the class name: `<allocation fit> 3 starts, selected scan1` for a fit
+  with several starts and `<allocation fit summary>` for its summary,
+  `<allocation fit result>` for one fit, `<allocation evaluation>`,
+  `<allocation coverage> gaussian`, `<allocation check>`,
+  `<allocation comparison> reference: ...`, `<allocation bootstrap>`,
+  and for FCA results `<spax access> E2SFCA, 1 layer on 132 x 223 cells`
+  and `<spax access summary> E2SFCA`. Only the printed lines change:
+  classes and fields are the same, and saved objects keep working.
+  Legacy SAE, HAAE and `huff_decay` objects keep their headers.
+- FCA results have the parent class `spax_result`, as allocation results
+  do. The `call` of a
+  [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md)
+  result is now the
+  [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md)
+  call; it was the inner
+  [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
+  call.
+- Allocation specifications from
+  [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  and
+  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  now have class `c("spax_allocation_spec", "spax_spec")`; they had
+  class `"spax_spec"`. FCA specifications have class
+  `c("spax_fca_spec", "spax_spec")`. Test the specific class.
+  Specifications and results saved with spax 0.5.0 keep working:
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) and
+  [`print()`](https://rdrr.io/r/base/print.html) take their old class.
+- Allocation fits need less memory and time, with the same results:
+  about half the memory and less than half the time for a fit to
+  facility totals (one start on 100,000 origins and 250 facilities: 141
+  s instead of 318 s).
+- Version 0.5.0 is archived on Zenodo: cite it as
+  <doi:10.5281/zenodo.23527706>. <doi:10.5281/zenodo.23438611> refers to
+  all versions.
+
 ## spax 0.5.0
 
 A new experimental interface fits and evaluates allocation models in one
@@ -62,10 +209,10 @@ are unchanged.
   [`predict()`](https://rspatial.github.io/terra/reference/predict.html)
   methods.
   [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md),
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   and
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   accept the result in place of the model and its fit. Prepared inputs
   and models declared with
   [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
@@ -145,7 +292,7 @@ are unchanged.
   fits them with the Poisson loss and no new argument: the observed
   counts carry the outside count as the entry `"(outside)"`, `NA` where
   it is unknown. They need a model with an outside option, and
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   refuses them. Fits to the other outputs are unchanged. Models and fits
   saved by earlier versions keep working; bootstrap checkpoints written
   by earlier versions cannot be resumed with a model built by this
@@ -175,7 +322,7 @@ are unchanged.
   a model without an outside option
   ([`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)),
   and
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   gives no loss difference between fits with and without outside counts.
   The printed result has a line `outside`,
   `as.data.frame(type = "origins")` adds `outside_observed` and
@@ -243,9 +390,9 @@ FCA inputs that are now refused (first item below).
   show that aggregated flows cannot tell group decays apart. Evaluation
   reports pooled outputs, as before, and per-group outputs on request
   (`evaluate_allocation(requested_outputs = )`);
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   compares grouped fits. Prediction,
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   and the bootstrap do not yet accept grouped models.
 - New experimental
   [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
@@ -253,7 +400,7 @@ FCA inputs that are now refused (first item below).
   [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
   without an outside option, with power distance decay and a fitted
   attractiveness exponent by default.
-- [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+- [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   no longer stops when the no-decay comparator searches a fitted
   attractiveness exponent `beta` into a range where attractiveness is
   not finite, which can happen for a model without an outside weight.
@@ -278,13 +425,13 @@ saved fits from 0.3.0 keep working.
   estimates are unaffected.
   [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
   warns and
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   reports cells with positive counts that are still modelled below the
   floor (for example counts on absent edges or at a facility with zero
   supply);
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   also reports them for saved fits made with the old floor.
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   treats a saved Poisson fit without a stored floor as using 1e-9, and
   compares fits with different floors when neither floor changes either
   loss.
@@ -331,11 +478,11 @@ version when reproducing an analysis.
 - [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
   accepts a declared kernel as `family`. Fitting, evaluation,
   requested-location prediction,
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   and
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   work with it, and so does
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   when the kernel is smooth in `sigma`. A kernel declared with
   `smooth = FALSE` (a cutoff or a step, for example) can be evaluated
   and used for prediction but not fitted. Results that use a declared
@@ -362,19 +509,19 @@ version when reproducing an analysis.
   into memory when a declared kernel is applied to it.
 
 - The finite-difference derivatives that fitting and
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   use no longer step outside the bounds of a model’s parameters. Next to
   a bound, for example the `lower` bound of a declared kernel, they use
   a one-sided difference. The central step used to leave the bounds
   there: a fit then fell back from its analytic gradient without a
   message, and
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   could stop with an error about `theta` being outside its bounds or
   lose draws that lie on a bound. Results for the built-in kernels do
   not change, except that a parameter closer to zero than one step
   (about `1e-6`) no longer errors. If the score diagnostic of the
   original fit cannot be computed,
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   now refuses intervals with the status `original_score_failed` instead
   of stopping.
 
@@ -382,12 +529,12 @@ version when reproducing an analysis.
   parameters and the estimate inside the search bounds, also where
   `exp(log(bound))` rounds just outside a bound (for example 7.6). A fit
   on its search bound is then refused by
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   as a boundary estimate instead of failing with “invalid saved fit
   bounds”, and a declared kernel can be fitted on a declared bound.
   Other estimates do not change.
 
-- [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+- [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   adds a `coverage_note` to its result, and prints it, for every model
   other than built-in Gaussian decay with fitted `sigma` and `v0` and
   `kappa` and `beta` equal to 1, the case the coverage study covered:
@@ -432,7 +579,7 @@ version when reproducing an analysis.
   facility.
 
 - New experimental
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   summarizes several fitted allocations side by side (contact, capacity
   per contact, spread of contact, agreement with observed counts and
   loss) and, with zones, lists the zones whose reporting class changes.
@@ -443,7 +590,7 @@ version when reproducing an analysis.
   to zones with demand and contacting-demand weights.
 
 - New experimental
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   compares a fitted allocation with an allocation without distance decay
   (within the prepared travel support) and one that shares counts by
   capacity alone, on the same loss, and reports the one-way trip lengths
@@ -454,7 +601,7 @@ version when reproducing an analysis.
   reports only and never changes the fit.
 
 - The no-decay comparator of
-  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+  [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
   is exact: it is the same model with a constant kernel (weight 1 on
   every finite travel time), whatever kernel the model uses, instead of
   a built-in kernel at an extreme parameter value. Its reported
@@ -477,9 +624,9 @@ version when reproducing an analysis.
 - A fit saved with
   [`saveRDS()`](https://rspatial.github.io/terra/reference/serialize.html)
   and read back is no longer rejected by
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   or reported as not like for like by
-  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+  [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
   when the package keeps source references (in a development load, or
   with `R_KEEP_PKG_SOURCE=yes`). The saved copy of the package’s Poisson
   loss function then differed from the original only in those
@@ -617,7 +764,7 @@ version when reproducing an analysis.
 
 - [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
   and
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md)
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
   no longer force a full garbage collection before every fit: the
   internal fit timer used
   [`system.time()`](https://rdrr.io/r/base/system.time.html), which
@@ -677,7 +824,7 @@ version when reproducing an analysis.
   [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
   [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
   and
-  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md).
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md).
   Preparation checks IDs, units declarations and support. Fitting
   retains explicit starts and diagnostics; prediction uses saved
   facility loads.

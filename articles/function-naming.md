@@ -16,7 +16,8 @@ and the suffix names the thing.
 - [`spax()`](https://songyosr.github.io/spax/reference/spax.md) and
   `spax_<model>()` run an analysis.
   [`spax()`](https://songyosr.github.io/spax/reference/spax.md) runs a
-  model specification on prepared data;
+  model specification, an allocation model or an FCA index, on prepared
+  data;
   [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md)
   and
   [`spax_clm()`](https://songyosr.github.io/spax/reference/spax_huff.md)
@@ -28,14 +29,25 @@ and the suffix names the thing.
   [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md).
 - `spec_` specifies a model without data:
   [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md),
-  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md).
+  [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md),
+  and the FCA indices
+  [`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+  [`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+  [`spec_m2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md),
+  [`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+  and
+  [`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md).
 - `decay_` declares a decay kernel:
   [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
   [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
   [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
   [`decay_custom()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
   and
-  [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md).
+  [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md);
+  [`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md)
+  and
+  [`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md)
+  are for FCA specifications only.
 - `obs_` declares observations:
   [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
   [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md).
@@ -52,8 +64,19 @@ and
 and the steps `<verb>_allocation()`, such as
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
 which [`spax()`](https://songyosr.github.io/spax/reference/spax.md) uses
-underneath. The allocation functions are experimental. Existing FCA
-calls and result types remain supported.
+underneath.
+[`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md),
+[`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+and
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+are the general names of
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md),
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)
+and
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md):
+each pair is one function. The allocation functions and the
+specifications are experimental. Existing FCA calls and result types
+remain supported.
 
 ## Choose the level of operation
 
@@ -63,17 +86,19 @@ calls and result types remain supported.
 | Distance-weighted FCA | [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md) | `spax` result with accessibility raster |
 | Squared access-side decay FCA | [`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md) | `spax` result with accessibility raster |
 | Selection-weighted FCA | [`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md), [`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md) | `spax` result with accessibility raster |
+| Compute an FCA index from a specification | [`spax()`](https://songyosr.github.io/spax/reference/spax.md) with [`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md), [`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md), [`spec_m2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md), [`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md) or [`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md) | On raster data, the `spax` result of the one-call function; on numeric data, the index at each active origin (`spax_access_values`) |
+| Declare the decay of an FCA specification | [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) or [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) with a number or a raster `sigma`; [`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md), [`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md), [`decay_custom()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) | FCA specification slot |
 | Supply/demand calculation using supplied kernels | [`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md) | Accessibility `SpatRaster` |
 | Decay, normalization or choice weights | [`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md), [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md), [`calc_normalize()`](https://songyosr.github.io/spax/reference/calc_normalize.md), [`calc_choice()`](https://songyosr.github.io/spax/reference/calc_choice.md) | See the individual input/output contracts |
 | Weighted reduction to facilities | [`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md), [`gather_demand()`](https://songyosr.github.io/spax/reference/gather_demand.md) | Facility vector/table |
 | Weighted distribution to origins | [`spread_weighted()`](https://songyosr.github.io/spax/reference/spread_weighted.md), [`spread_access()`](https://songyosr.github.io/spax/reference/spread_access.md) | Raster result |
 | Run an allocation model in one call | [`spax()`](https://songyosr.github.io/spax/reference/spax.md), [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md), [`spax_clm()`](https://songyosr.github.io/spax/reference/spax_huff.md) | Experimental allocation result (`spax_allocation`) |
-| Prepare allocation data | [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md) | Prepared inputs |
-| Specify an allocation model without data | [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md), [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md) with [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) or [`decay_custom()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) | Model specification (`spax_spec`) |
+| Prepare data | [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md) | Prepared numeric inputs, or raster data (`spax_raster_data`) |
+| Specify an allocation model without data | [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md), [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md) with [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) or [`decay_custom()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) | Model specification (`spax_allocation_spec`) |
 | Declare observed counts | [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md), [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md) | Observations and their loss (`spax_obs`) |
 | Allocation steps: prepare and declare | [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md), [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md), [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md) | Prepared inputs and experimental model |
-| Allocation steps: fit, evaluate, predict and bootstrap | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md), [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md), [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md), [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md) | Model-specific saved results |
-| Check and compare fitted allocations | [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md) | Comparison tables; the fits are not changed |
+| Allocation steps: fit, evaluate, predict and bootstrap | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md), [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md), [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md), [`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md) (or [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)) | Model-specific saved results |
+| Check and compare fitted allocations | [`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md), [`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md) (or [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)) | Comparison tables; the fits are not changed |
 | Travel times and demand inputs | [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md), [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md) | Travel matrix or raster; demand raster or vector |
 
 These function families share concepts such as supply, demand and
@@ -91,6 +116,9 @@ functions <- c(
   # FCA accessibility
   "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
   "compute_access",
+  # FCA specifications (experimental)
+  "spec_2sfca", "spec_e2sfca", "spec_m2sfca", "spec_3sfca", "spec_huff2sfca",
+  "decay_step", "decay_inverse",
   # Allocation interface (experimental)
   "spax", "spax_huff", "spax_clm", "prep_data", "spec_huff", "spec_clm",
   "decay_gaussian", "decay_exponential", "decay_power", "decay_custom",
@@ -99,6 +127,7 @@ functions <- c(
   "prepare_allocation", "clm_allocation", "huff_allocation", "fit_allocation",
   "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
   "check_allocation", "compare_allocations",
+  "check_fit", "compare_fits", "bootstrap_fit",
   # Input helpers
   "calc_travel_time", "calc_demand", "decay_kernel"
 )
@@ -116,30 +145,40 @@ data.frame(function_name = functions)
 4            spax_3sfca
 5        spax_huff2sfca
 6        compute_access
-7                  spax
-8             spax_huff
-9              spax_clm
-10            prep_data
-11            spec_huff
-12             spec_clm
-13       decay_gaussian
-14    decay_exponential
-15          decay_power
-16         decay_custom
-17            obs_flows
-18           obs_totals
-19   prepare_allocation
-20       clm_allocation
-21      huff_allocation
-22       fit_allocation
-23  evaluate_allocation
-24   predict_allocation
-25 bootstrap_allocation
-26     check_allocation
-27  compare_allocations
-28     calc_travel_time
-29          calc_demand
-30         decay_kernel
+7            spec_2sfca
+8           spec_e2sfca
+9           spec_m2sfca
+10           spec_3sfca
+11       spec_huff2sfca
+12           decay_step
+13        decay_inverse
+14                 spax
+15            spax_huff
+16             spax_clm
+17            prep_data
+18            spec_huff
+19             spec_clm
+20       decay_gaussian
+21    decay_exponential
+22          decay_power
+23         decay_custom
+24            obs_flows
+25           obs_totals
+26   prepare_allocation
+27       clm_allocation
+28      huff_allocation
+29       fit_allocation
+30  evaluate_allocation
+31   predict_allocation
+32 bootstrap_allocation
+33     check_allocation
+34  compare_allocations
+35            check_fit
+36         compare_fits
+37        bootstrap_fit
+38     calc_travel_time
+39          calc_demand
+40         decay_kernel
 ```
 
 The former iterative-FCA interface is no longer available. It is not an
@@ -153,6 +192,7 @@ them with `:::`.
 | Result | Inspection | Interpretation |
 |:---|:---|:---|
 | FCA `spax` object | [`print()`](https://rdrr.io/r/base/print.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), [`plot()`](https://rspatial.github.io/terra/reference/plot.html), `$accessibility` | Saved supply-per-demand index; raster-cell summary |
+| FCA index on numeric data (`spax_access_values`) | [`print()`](https://rdrr.io/r/base/print.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), [`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html), `$access` | The index at each active origin; an origin without demand has no row |
 | Allocation result of [`spax()`](https://songyosr.github.io/spax/reference/spax.md) | [`coef()`](https://rdrr.io/r/stats/coef.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), [`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html) with `type` `"parameters"`, `"facilities"`, `"origins"`, `"flows"` or `"starts"`, [`predict()`](https://rspatial.github.io/terra/reference/predict.html) | The bound model with its fit or evaluation; an output that was not saved is computed when asked for |
 | Allocation multistart fit | [`coef()`](https://rdrr.io/r/stats/coef.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), `as.data.frame(type = "parameters")`, [`plot()`](https://rspatial.github.io/terra/reference/plot.html) | Selected fit plus retained per-start diagnostics |
 | Allocation coverage | [`summary()`](https://rspatial.github.io/terra/reference/summary.html), `as.data.frame(type = "regional")` or `type = "cells"` | Saved coverage on retained positive-demand support |
