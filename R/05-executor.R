@@ -392,13 +392,21 @@
 #'   TRUE such cells are not active. Weight checks (D1) live in the kernels.
 #' @param groups `NULL` for one ungrouped demand raster, or the character
 #'   vector of group IDs (also for a single group).
-#' @return A matrix with one row per cell of the grid. Ungrouped, one column
+#' @param block `NULL` (the rasters are read in blocks), or the whole input as
+#'   one in-memory block: a list with the keys that `rasters` would hold (`demand`,
+#'   or `demand.<group>` with `groups`, and whatever the kernels read, such as
+#'   `distance`), each a matrix with one row per origin and one column per layer
+#'   (a plain vector is one column). `rasters` is then ignored and nothing is
+#'   opened or read; both passes, the NA rule and the overall layer are the same
+#'   code as for rasters (SPAX-060, FCA on numeric data).
+#' @return A matrix with one row per cell of the grid (per origin of `block`).
+#'   Ungrouped, one column
 #'   per supply measure. Grouped, `M * (G + 1)` columns in measure-major order:
 #'   for each measure the groups in the order of `groups`, then the overall
 #'   layer.
 #' @keywords internal
 .fca_blocks <- function(rasters, kernels, supply, normalize = "identity",
-                        snap = FALSE, groups = NULL) {
+                        snap = FALSE, groups = NULL, block = NULL) {
   supply <- as.matrix(supply)
   J <- nrow(supply)
   M <- ncol(supply)
@@ -418,14 +426,25 @@
   per <- if (grouped) G + 1L else 1L
   cols_of <- function(g) (seq_len(M) - 1L) * per + g
 
-  blocks <- .raster_blocks(rasters)
-  rest <- setdiff(names(blocks$same), dkeys)
-  close <- .raster_open(rasters, blocks$same)
-  on.exit(close(), add = TRUE)
+  if (is.null(block)) {
+    blocks <- .raster_blocks(rasters)
+    rest <- setdiff(names(blocks$same), dkeys)
+    close <- .raster_open(rasters, blocks$same)
+    on.exit(close(), add = TRUE)
 
-  # A grid that fits in one block is read once and used by both passes.
-  single <- length(blocks$starts) == 1L
-  cached <- if (single) .raster_read(rasters, blocks$same, blocks$starts, blocks$n)
+    # A grid that fits in one block is read once and used by both passes.
+    single <- length(blocks$starts) == 1L
+    cached <- if (single) .raster_read(rasters, blocks$same, blocks$starts, blocks$n)
+    n_cells <- terra::ncell(rasters[[1L]])
+  } else {
+    # The input is in memory: one block of all origins, used by both passes.
+    block <- .fca_memory_block(block, dkeys)
+    n_cells <- nrow(block[[dkeys[1L]]])
+    blocks <- list(starts = 1L, n = as.integer(n_cells), ncol = 1L)
+    rest <- setdiff(names(block), dkeys)
+    single <- TRUE
+    cached <- block
+  }
 
   # Pass 1: the demand that reaches each facility, from all groups.
   U <- numeric(J)
@@ -460,7 +479,7 @@
 
   # Pass 2: spread the ratios back to the cells that reach a facility; with
   # groups, also the overall layer, which needs the demand blocks.
-  out <- matrix(NA_real_, terra::ncell(rasters[[1L]]), M * per)
+  out <- matrix(NA_real_, n_cells, M * per)
   for (k in seq_along(blocks$starts)) {
     b <- if (single) cached else
       .raster_read(rasters, blocks$same, blocks$starts[k], blocks$n[k],
@@ -505,6 +524,27 @@
     }
   }
   out
+}
+
+# The in-memory block of .fca_blocks(): a named list of matrices with one row per
+# origin; a plain vector is one column. The demand keys must be there.
+.fca_memory_block <- function(block, dkeys) {
+  if (!is.list(block) || is.null(names(block)) || anyDuplicated(names(block))) {
+    stop("internal error: a block must be a list with unique names", call. = FALSE)
+  }
+  missing <- setdiff(dkeys, names(block))
+  if (length(missing)) {
+    stop("internal error: the block has no '", missing[1L], "'", call. = FALSE)
+  }
+  block <- lapply(block, function(x) {
+    if (is.null(dim(x))) matrix(x, ncol = 1L) else x
+  })
+  rows <- vapply(block, nrow, numeric(1))
+  if (any(rows != rows[[1L]])) {
+    stop("internal error: every element of a block needs one row per origin",
+         call. = FALSE)
+  }
+  block
 }
 
 #' Layer names and table of an FCA result

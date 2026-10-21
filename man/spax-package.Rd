@@ -44,8 +44,9 @@ the same system without the outside option, the classic Huff model. The
 first five support Gaussian, exponential and power decay and kernels
 declared with \code{\link{decay_kernel}} (fitting needs a kernel that is
 smooth in \code{sigma}); bootstrap has the narrower scope below. Prediction,
-the bootstrap, \code{\link{check_allocation}} and
-\code{\link{compare_allocations}} accept a result of \code{spax()} in place
+the bootstrap (\code{\link{bootstrap_fit}}), \code{\link{check_fit}} and
+\code{\link{compare_fits}} (also named \code{check_allocation()} and
+\code{compare_allocations()}) accept a result of \code{spax()} in place
 of the model and its fit. Broader feedback-model declarations and
 general-purpose inference are not part of this experimental interface.
 }

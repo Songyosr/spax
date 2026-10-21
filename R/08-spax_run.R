@@ -8,6 +8,38 @@
 #' every parameter has a value, evaluates the model at those values.
 #' `spax_huff()` and `spax_clm()` do the same from raw inputs in one call.
 #'
+#' **FCA indices.** With raster data ([prep_data()] with a `SpatRaster` as demand)
+#' and an FCA specification ([spec_2sfca()], [spec_e2sfca()], [spec_m2sfca()],
+#' [spec_3sfca()], [spec_huff2sfca()]), `spax()` computes the index and returns
+#' the same object as the matching one-shot ([spax_2sfca()], [spax_e2sfca()] and
+#' the others): the `type`, `parameters` and accessibility layers are identical,
+#' and `call` is the call of `spax()`. An index is computed, not fitted: `observed`,
+#' `starts`, `lower`, `upper` and `...` are refused. Group lists of `decay` and
+#' `selection` and a `threshold` by group are matched to the demand groups of the data
+#' by name and put in their order.
+#'
+#' **FCA indices on numeric data.** With numeric data (demand, supply and a travel
+#' matrix) an FCA specification gives the index at the active origins, computed by the
+#' same engine and the same rules (the cells that reach no facility are `NA`, and the
+#' overall layer of demand groups is the same). The result is a `spax_access_values`, a
+#' list with `access`, a matrix with one row per active origin and one column per layer,
+#' not a raster (see [spax_access_values-methods]). Numeric data has one supply
+#' measure, `"supply"`, so there is one measure, and an origin with zero or unknown
+#' demand has no row. A raster `sigma` (a variable catchment) is refused: "a raster
+#' sigma needs raster data".
+#'
+#' **Allocation models on raster data.** With raster data and an allocation model
+#' ([spec_clm()], [spec_huff()]), `spax()` first converts the data to origins, on each
+#' call and without keeping anything: the cells with finite, positive demand are the
+#' origins, their IDs are the cell numbers (`"843"`) and each has its travel to every
+#' facility; a missing or infinite travel time is an absent pair, and a cell that reaches
+#' no facility stays an origin: with [spec_clm()] its demand goes to the outside option,
+#' while [spec_huff()] has no outside option and allocates none of it. [obs_totals()]
+#' works as it is, and [obs_flows()] is keyed by cell number: counts at cells that are not
+#' origins are dropped with a message. The model then runs as on numeric data, so every
+#' step function accepts the result, and fits to the same data can be compared. See
+#' [prep_data()] for the conversion and its memory.
+#'
 #' **Fit mode.** Some parameter is `"fit"`. `observed` is needed. The counts
 #' are aligned with the data (see [obs_flows()]), the model is bound to the
 #' data and [fit_allocation()] fits it. The loss is set by the observation and
@@ -61,7 +93,8 @@
 #' save a result.
 #'
 #' @param data Prepared inputs: the result of [prep_data()].
-#' @param model A model specification: [spec_huff()] or [spec_clm()].
+#' @param model A model specification: [spec_huff()] or [spec_clm()], or an FCA
+#'   specification such as [spec_e2sfca()].
 #' @param observed Observed counts for a model with a parameter to fit: an
 #'   [obs_flows()] or [obs_totals()] object, or raw counts (see Details).
 #'   `NULL` (the default) for a model with a value for every parameter.
@@ -72,7 +105,11 @@
 #'   `control`, `lambda`, `tol`, `max_iter`, `norm`, `keep_fits`, ...); `output`,
 #'   `loss` and `loss_args` are refused. Evaluate mode: further arguments of
 #'   [evaluate_allocation()], for example `requested_outputs`.
-#' @return An object of class `c("spax_allocation", "spax_result")`: a list
+#' @return For an FCA specification on raster data, a `spax` object (class
+#'   `c("spax", "spax_result")`), see [spax_e2sfca()]; on numeric data, a
+#'   `spax_access_values` (class `c("spax_access_values", "spax_result")`), see
+#'   [spax_access_values-methods]. For an allocation model, an object of class
+#'   `c("spax_allocation", "spax_result")`: a list
 #'   with `model` (the bound `ae_problem`), `spec`, `observed` (a list with
 #'   `spec`, the observation as declared, `target`, the counts aligned to the
 #'   data, and `output`; `NULL` in evaluate mode), `fit` (the
@@ -122,12 +159,38 @@
 spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, upper = NULL,
                  ...) {
   call <- match.call()
-  if (!inherits(data, "ae_prepared_inputs")) {
+  if (!inherits(data, c("ae_prepared_inputs", "spax_data"))) {
     stop("data must come from prep_data()", call. = FALSE)
   }
-  if (!inherits(model, "spax_spec")) {
-    stop("model must be a model specification such as spec_huff() or spec_clm()",
-         call. = FALSE)
+  model <- .upgrade_spec(model)
+  if (!inherits(model, c("spax_allocation_spec", "spax_fca_spec"))) {
+    stop("model must be a model specification such as spec_e2sfca(), spec_huff() or ",
+         "spec_clm()", call. = FALSE)
+  }
+  raster <- inherits(data, "spax_raster_data")
+  if (raster && !.raster_data_alive(data)) {
+    stop("the rasters of this data are no longer available (saved and reloaded?): ",
+         "prepare the data again", call. = FALSE)
+  }
+  if (!.spec_rasters_alive(model)) {
+    stop("the raster sigma of this specification is no longer available (saved and ",
+         "reloaded?): give the decay its raster again", call. = FALSE)
+  }
+  if (inherits(model, "spax_fca_spec")) {
+    # An FCA index is computed, not fitted.
+    if (!is.null(observed)) {
+      stop("FCA indices are computed, not fitted; to fit how demand chooses facilities ",
+           "use spec_huff() or spec_clm()", call. = FALSE)
+    }
+    if (!is.null(starts) || !is.null(lower) || !is.null(upper) || ...length() > 0L) {
+      stop("starts, bounds and fitting controls apply to allocation models", call. = FALSE)
+    }
+    return(if (raster) .spax_fca_raster(data, model, call) else
+      .spax_fca_numeric(data, model, call))
+  }
+  if (raster) {
+    # The cells with demand become the origins; from here on the model runs on them.
+    data <- .raster_to_origins(data, model)
   }
   dots <- list(...)
   if (any(c("output", "loss", "loss_args") %in% names(dots))) {
@@ -202,7 +265,8 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
 #' @inheritParams spec_clm
 #' @param demand,supply,travel The inputs of [prep_data()]: demand by origin
 #'   (a named list by group for demand groups), supply by facility and the
-#'   origin-by-facility travel matrix.
+#'   origin-by-facility travel matrix (or the rasters of raster mode, with `id_col`
+#'   and `supply_cols` in `data_args`).
 #' @param observed Observed counts, as in [spax()]: an [obs_flows()] or
 #'   [obs_totals()] object, or raw counts. `NULL` (the default) evaluates a model
 #'   that has a value for every parameter.
@@ -316,37 +380,61 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 
 .is_allocation_result <- function(x) inherits(x, "spax_allocation")
 
+# FCA results: the access of an index is computed, not fitted, so the fit steps
+# refuse them (class "spax" of the raster route, "spax_access_values" of numeric data).
+.is_fca_result <- function(x) inherits(x, c("spax", "spax_access_values"))
+
+# The verb of a step function name, for the refusal of an FCA result: "check_fit()" and
+# "check_allocation()" give "check", "compare_fits()" "compare", "bootstrap_fit()" "bootstrap".
+.step_verb <- function(caller) sub("_.*$", "", sub("\\(\\)$", "", caller))
+
+.fca_no_fit_message <- function(caller) {
+  paste0("FCA indices have no fit to ", .step_verb(caller))
+}
+
 # What a step function takes from one result of spax(). The step function calls this
 # first, before its class and group checks, so that it then checks the parts of the
-# result as it would the same objects given one by one.
+# result as it would the same objects given one by one. `caller` names the step the user
+# called ("check_fit()" or "check_allocation()"), which the messages repeat.
 # * `use = "source"` (predict_allocation()): the saved fit in fit mode, the saved
 #   evaluation in evaluate mode. A fit with no selected start has nothing to predict
 #   from.
-# * `use = "model_fit"` (check_allocation(), bootstrap_allocation()): the bound model
-#   and the fit, as list(model, fit). `fit_given` says the caller gave `fit` as well,
-#   which is refused; an evaluation has no fit.
-.allocation_unbundle <- function(x, use = c("source", "model_fit"), fn = NULL,
+# * `use = "model_fit"` (check and bootstrap steps): the bound model and the fit, as
+#   list(model, fit). `fit_given` says the caller gave `fit` as well, which is refused;
+#   an evaluation has no fit; an FCA result has none either.
+.allocation_unbundle <- function(x, use = c("source", "model_fit"), caller = NULL,
                                  fit_given = FALSE) {
   use <- match.arg(use)
   if (identical(use, "source")) {
     if (is.null(x$theta)) stop(.result_no_fit, call. = FALSE)
     return(if (identical(x$mode, "fit")) x$fit else x$evaluation)
   }
+  if (.is_fca_result(x)) stop(.fca_no_fit_message(caller), call. = FALSE)
   if (isTRUE(fit_given)) stop("give a result from spax() alone, without fit", call. = FALSE)
-  if (!identical(x$mode, "fit")) stop(fn, " needs a fitted model", call. = FALSE)
+  if (!identical(x$mode, "fit")) stop(caller, " needs a fitted model", call. = FALSE)
   list(model = x$model, fit = x$fit)
 }
 
-# The `fits` and `models` of compare_allocations() when some element of `fits` is a
-# result of spax(): each result supplies its fit and its model. The merged models are
+# The `fits` and `models` of the compare step when some element of `fits` is a result of
+# spax(): each result supplies its fit and its model. The merged models are
 # the models of the results and the caller's `models` (naming a result in both is an
 # error); they are used when they cover every fit, and otherwise the caller is asked
-# for the missing ones. Anything that is not a list of fits with results in it is
-# returned as it came, for the checks of compare_allocations().
-.allocation_unbundle_fits <- function(fits, models) {
+# for the missing ones. An FCA result, given as `fits` or as an element of it, is refused
+# (naming the element). Anything that is not a list of fits with results in it is
+# returned as it came, for the checks of the compare step. `caller` names the step the
+# user called.
+.allocation_unbundle_fits <- function(fits, models, caller) {
   unchanged <- list(fits = fits, models = models)
+  if (.is_fca_result(fits)) stop(.fca_no_fit_message(caller), call. = FALSE)
   if (!is.list(fits) || inherits(fits, c("ae_multistart_fit", "spax_allocation"))) {
     return(unchanged)
+  }
+  is_fca <- vapply(fits, .is_fca_result, logical(1))
+  if (any(is_fca)) {
+    first <- which(is_fca)[[1L]]
+    label <- names(fits)[first]
+    if (is.null(label) || is.na(label) || !nzchar(label)) label <- paste0("fits[[", first, "]]")
+    stop(label, " is an FCA index: ", .fca_no_fit_message(caller), call. = FALSE)
   }
   is_result <- vapply(fits, .is_allocation_result, logical(1))
   nms <- names(fits)
@@ -357,7 +445,7 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
   evaluated <- nms[is_result][vapply(fits[is_result], function(x) !identical(x$mode, "fit"),
                                      logical(1))]
   if (length(evaluated)) {
-    stop(evaluated[1L], " was evaluated, not fitted; compare_allocations() needs fits",
+    stop(evaluated[1L], " was evaluated, not fitted; ", caller, " needs fits",
          call. = FALSE)
   }
   doubled <- intersect(nms[is_result], names(models))

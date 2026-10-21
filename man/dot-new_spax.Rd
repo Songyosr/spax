@@ -30,7 +30,7 @@
 \item{call}{The original function call}
 }
 \value{
-A spax object
+A spax object, of class `c("spax", "spax_result")`
 }
 \description{
 Creates a new spax object for storing spatial accessibility analysis results.

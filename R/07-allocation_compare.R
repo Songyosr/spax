@@ -6,6 +6,10 @@
 #' loss. Each fit's coverage is computed from its saved outputs; nothing is
 #' refitted.
 #'
+#' `compare_fits()` is the general name of this step and `compare_allocations()` its
+#' earlier name: the two are the same function, and they differ only in the name that a
+#' message gives for the step.
+#'
 #' Loss differences from the reference are reported only when the comparison is
 #' like for like: the same observed targets, loss function and arguments
 #' (Poisson fits: the same floor, a fit that stored none used 1e-9, or floors
@@ -37,7 +41,9 @@
 #' @param fits A named list of `ae_multistart_fit` results from
 #'   [fit_allocation()], each with a selected fit. An element can instead be a
 #'   result of [spax()] that fitted a model; it supplies its fit and its model.
-#'   A result that was evaluated at given values has no fit and is refused.
+#'   A result that was evaluated at given values has no fit and is refused, and so
+#'   is an FCA index (a result of [spax()] with an FCA specification, or of
+#'   [spax_e2sfca()] and the other one-shots): the message names the element.
 #' @param models Optional named list of the corresponding models from
 #'   [clm_allocation()], with the same names, used to verify that travel times
 #'   are identical before reporting loss differences. The elements of `fits`
@@ -56,30 +62,46 @@
 #' @family allocation steps
 #' @export
 #' @md
+compare_fits <- function(fits, models = NULL, reference = 1L, zones = NULL,
+                         coverage_args = list()) {
+  .compare_fits_run(fits, models, reference, zones, coverage_args, "compare_fits()")
+}
+
+#' @rdname compare_fits
+#' @export
+#' @md
 compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NULL,
                                 coverage_args = list()) {
-  unbundled <- .allocation_unbundle_fits(fits, models)
+  .compare_fits_run(fits, models, reference, zones, coverage_args, "compare_allocations()")
+}
+
+# The body of both names; `caller` is the name the user called, which the messages repeat.
+.compare_fits_run <- function(fits, models, reference, zones, coverage_args, caller) {
+  unbundled <- .allocation_unbundle_fits(fits, models, caller)
   fits <- unbundled$fits
   models <- unbundled$models
   if (!is.list(fits) || inherits(fits, c("ae_multistart_fit", "spax_allocation")) ||
       length(fits) < 2L ||
       is.null(names(fits)) || anyNA(names(fits)) || any(!nzchar(names(fits))) ||
       anyDuplicated(names(fits))) {
-    stop("fits must be a named list of at least two allocation fits with unique names")
+    stop("fits must be a named list of at least two allocation fits with unique names",
+         call. = FALSE)
   }
   for (nm in names(fits)) .chck_class(fits[[nm]], "ae_multistart_fit", paste0("fits$", nm))
   if (!is.null(models)) {
     if (!is.list(models) || !setequal(names(models), names(fits))) {
-      stop("models must be a list with the same names as fits")
+      stop("models must be a list with the same names as fits", call. = FALSE)
     }
     for (nm in names(models)) .check_allocation_model(models[[nm]])
   }
   if (is.character(reference)) {
-    if (length(reference) != 1L || !reference %in% names(fits)) stop("reference must name a fit")
+    if (length(reference) != 1L || !reference %in% names(fits)) {
+      stop("reference must name a fit", call. = FALSE)
+    }
   } else {
     if (!is.numeric(reference) || length(reference) != 1L || reference < 1 ||
         reference > length(fits) || reference != round(reference)) {
-      stop("reference must name a fit or give its position")
+      stop("reference must name a fit or give its position", call. = FALSE)
     }
     reference <- names(fits)[reference]
   }
@@ -87,7 +109,7 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
       (is.null(names(coverage_args)) || any(!nzchar(names(coverage_args))) ||
        anyDuplicated(names(coverage_args)) ||
        any(!names(coverage_args) %in% setdiff(names(formals(.ae_coverage)), "fit"))))) {
-    stop("coverage_args must contain unique named coverage controls")
+    stop("coverage_args must contain unique named coverage controls", call. = FALSE)
   }
   best <- lapply(fits, .selected_allocation_fit)
   if (!is.null(models)) {
@@ -188,14 +210,14 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
             class = "ae_allocation_comparison")
 }
 
-#' @rdname compare_allocations
+#' @rdname compare_fits
 #' @param x An `ae_allocation_comparison`.
 #' @param digits Significant digits for printed values.
 #' @param ... Unused.
 #' @export
 #' @md
 print.ae_allocation_comparison <- function(x, digits = 4, ...) {
-  cat("<ae_allocation_comparison> reference: ", x$reference, "\n", sep = "")
+  cat("<allocation comparison> reference: ", x$reference, "\n", sep = "")
   cols <- intersect(c("specification", "contact", "capacity_per_contact", "cv_contact",
                       "count_correlation", "loss_difference", "zones_changed"), names(x$table))
   print(format(x$table[, cols], digits = digits), row.names = FALSE)
@@ -205,7 +227,7 @@ print.ae_allocation_comparison <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-#' @rdname compare_allocations
+#' @rdname compare_fits
 #' @param row.names,optional Standard `as.data.frame()` arguments; unused.
 #' @param type `"fits"` for one row per fit or `"zones"` for zone summaries.
 #' @exportS3Method base::as.data.frame

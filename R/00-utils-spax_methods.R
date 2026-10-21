@@ -41,8 +41,11 @@
 #' @return Invisibly returns the input object
 #' @export
 print.spax <- function(x, ...) {
-  # Title with analysis type
-  cat("Spatial Accessibility Analysis (", x$type, ")\n\n", sep = "")
+  # Header: the type, the layers and the grid
+  n_layers <- nlyr(x$accessibility)
+  cat(sprintf("<spax access> %s, %d %s on %d x %d cells\n\n", x$type, n_layers,
+              if (n_layers == 1L) "layer" else "layers",
+              dim(x$accessibility)[1], dim(x$accessibility)[2]))
 
   # Core spatial information
   cat("Spatial Properties:\n")
@@ -200,7 +203,7 @@ print.summary.spax <- function(x, digits = 4, ...) {
   fmt <- paste0("%.", digits, "g")
 
   # Title and type
-  cat("\nSummary of Spatial Accessibility Analysis (", x$type, ")\n", sep = "")
+  cat("<spax access summary> ", x$type, "\n", sep = "")
   cat(paste(rep("-", 45), collapse = ""), "\n\n")
 
   # Demand groups: the groups and, for per-group decay, one line per group

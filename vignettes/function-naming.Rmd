@@ -26,13 +26,17 @@ Function names follow one rule: the prefix says what a function is for, and
 the suffix names the thing.
 
 - `spax()` and `spax_<model>()` run an analysis. `spax()` runs a model
-  specification on prepared data; `spax_huff()` and `spax_clm()` run the Huff
-  model and the conditional logit from raw inputs; `spax_2sfca()`,
-  `spax_e2sfca()` and the other FCA functions compute an FCA index.
+  specification, an allocation model or an FCA index, on prepared data;
+  `spax_huff()` and `spax_clm()` run the Huff model and the conditional logit
+  from raw inputs; `spax_2sfca()`, `spax_e2sfca()` and the other FCA functions
+  compute an FCA index.
 - `prep_` prepares data: `prep_data()`.
-- `spec_` specifies a model without data: `spec_huff()`, `spec_clm()`.
+- `spec_` specifies a model without data: `spec_huff()`, `spec_clm()`, and the
+  FCA indices `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`, `spec_3sfca()`
+  and `spec_huff2sfca()`.
 - `decay_` declares a decay kernel: `decay_gaussian()`, `decay_exponential()`,
-  `decay_power()`, `decay_custom()` and `decay_kernel()`.
+  `decay_power()`, `decay_custom()` and `decay_kernel()`; `decay_step()` and
+  `decay_inverse()` are for FCA specifications only.
 - `obs_` declares observations: `obs_flows()`, `obs_totals()`.
 - `calc_`, `gather_` and `spread_` are the building blocks.
 
@@ -40,8 +44,11 @@ A model keeps its name as the suffix: `spax_huff()` runs the Huff model and
 `spec_huff()` specifies it. The earlier allocation names stay: the model
 declarations `clm_allocation()` and `huff_allocation()` and the steps
 `<verb>_allocation()`, such as `fit_allocation()`, which `spax()` uses
-underneath. The allocation functions are experimental. Existing FCA calls and
-result types remain supported.
+underneath. `check_fit()`, `compare_fits()` and `bootstrap_fit()` are the
+general names of `check_allocation()`, `compare_allocations()` and
+`bootstrap_allocation()`: each pair is one function. The allocation functions
+and the specifications are experimental. Existing FCA calls and result types
+remain supported.
 
 ## Choose the level of operation
 
@@ -51,17 +58,19 @@ result types remain supported.
 | Distance-weighted FCA | `spax_e2sfca()` | `spax` result with accessibility raster |
 | Squared access-side decay FCA | `spax_m2sfca()` | `spax` result with accessibility raster |
 | Selection-weighted FCA | `spax_3sfca()`, `spax_huff2sfca()` | `spax` result with accessibility raster |
+| Compute an FCA index from a specification | `spax()` with `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`, `spec_3sfca()` or `spec_huff2sfca()` | On raster data, the `spax` result of the one-call function; on numeric data, the index at each active origin (`spax_access_values`) |
+| Declare the decay of an FCA specification | `decay_gaussian()`, `decay_exponential()` or `decay_power()` with a number or a raster `sigma`; `decay_step()`, `decay_inverse()`, `decay_custom()` | FCA specification slot |
 | Supply/demand calculation using supplied kernels | `compute_access()` | Accessibility `SpatRaster` |
 | Decay, normalization or choice weights | `calc_decay()`, `decay_kernel()`, `calc_normalize()`, `calc_choice()` | See the individual input/output contracts |
 | Weighted reduction to facilities | `gather_weighted()`, `gather_demand()` | Facility vector/table |
 | Weighted distribution to origins | `spread_weighted()`, `spread_access()` | Raster result |
 | Run an allocation model in one call | `spax()`, `spax_huff()`, `spax_clm()` | Experimental allocation result (`spax_allocation`) |
-| Prepare allocation data | `prep_data()` | Prepared inputs |
-| Specify an allocation model without data | `spec_huff()`, `spec_clm()` with `decay_gaussian()`, `decay_exponential()`, `decay_power()` or `decay_custom()` | Model specification (`spax_spec`) |
+| Prepare data | `prep_data()` | Prepared numeric inputs, or raster data (`spax_raster_data`) |
+| Specify an allocation model without data | `spec_huff()`, `spec_clm()` with `decay_gaussian()`, `decay_exponential()`, `decay_power()` or `decay_custom()` | Model specification (`spax_allocation_spec`) |
 | Declare observed counts | `obs_flows()`, `obs_totals()` | Observations and their loss (`spax_obs`) |
 | Allocation steps: prepare and declare | `prepare_allocation()`, `clm_allocation()`, `huff_allocation()` | Prepared inputs and experimental model |
-| Allocation steps: fit, evaluate, predict and bootstrap | `fit_allocation()`, `evaluate_allocation()`, `predict_allocation()`, `bootstrap_allocation()` | Model-specific saved results |
-| Check and compare fitted allocations | `check_allocation()`, `compare_allocations()` | Comparison tables; the fits are not changed |
+| Allocation steps: fit, evaluate, predict and bootstrap | `fit_allocation()`, `evaluate_allocation()`, `predict_allocation()`, `bootstrap_fit()` (or `bootstrap_allocation()`) | Model-specific saved results |
+| Check and compare fitted allocations | `check_fit()`, `compare_fits()` (or `check_allocation()`, `compare_allocations()`) | Comparison tables; the fits are not changed |
 | Travel times and demand inputs | `calc_travel_time()`, `calc_demand()` | Travel matrix or raster; demand raster or vector |
 
 These function families share concepts such as supply, demand and facility IDs.
@@ -75,6 +84,9 @@ functions <- c(
   # FCA accessibility
   "spax_2sfca", "spax_e2sfca", "spax_m2sfca", "spax_3sfca", "spax_huff2sfca",
   "compute_access",
+  # FCA specifications (experimental)
+  "spec_2sfca", "spec_e2sfca", "spec_m2sfca", "spec_3sfca", "spec_huff2sfca",
+  "decay_step", "decay_inverse",
   # Allocation interface (experimental)
   "spax", "spax_huff", "spax_clm", "prep_data", "spec_huff", "spec_clm",
   "decay_gaussian", "decay_exponential", "decay_power", "decay_custom",
@@ -83,6 +95,7 @@ functions <- c(
   "prepare_allocation", "clm_allocation", "huff_allocation", "fit_allocation",
   "evaluate_allocation", "predict_allocation", "bootstrap_allocation",
   "check_allocation", "compare_allocations",
+  "check_fit", "compare_fits", "bootstrap_fit",
   # Input helpers
   "calc_travel_time", "calc_demand", "decay_kernel"
 )
@@ -102,6 +115,7 @@ examples for users should not call them with `:::`.
 | Result | Inspection | Interpretation |
 |:--|:--|:--|
 | FCA `spax` object | `print()`, `summary()`, `plot()`, `$accessibility` | Saved supply-per-demand index; raster-cell summary |
+| FCA index on numeric data (`spax_access_values`) | `print()`, `summary()`, `as.data.frame()`, `$access` | The index at each active origin; an origin without demand has no row |
 | Allocation result of `spax()` | `coef()`, `fitted()`, `summary()`, `as.data.frame()` with `type` `"parameters"`, `"facilities"`, `"origins"`, `"flows"` or `"starts"`, `predict()` | The bound model with its fit or evaluation; an output that was not saved is computed when asked for |
 | Allocation multistart fit | `coef()`, `fitted()`, `summary()`, `as.data.frame(type = "parameters")`, `plot()` | Selected fit plus retained per-start diagnostics |
 | Allocation coverage | `summary()`, `as.data.frame(type = "regional")` or `type = "cells"` | Saved coverage on retained positive-demand support |

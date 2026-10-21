@@ -159,7 +159,9 @@
     warnings = warnings, errors = errors, fits = fits, seconds = unname(elapsed),
     loss_disagreement = loss_disagreement, parameter_disagreement = parameter_disagreement,
     tolerances = list(loss = loss_tol, log_parameter = parameter_tol),
-    bounds = list(lower = lower, upper = upper)), class = "ae_multistart_fit")
+    bounds = list(lower = lower, upper = upper), model = problem$model,
+    allocation_form = problem$metadata$spec[["allocation", exact = TRUE]]),
+    class = "ae_multistart_fit")
 }
 
 #' Print the outcome of a private AE multistart search
@@ -168,7 +170,15 @@
 #' @export
 #' @md
 print.ae_multistart_fit <- function(x, ...) {
-  cat("<ae_multistart_fit>\n")
+  if (.is_public_multistart(x)) {
+    # k starts, and the name of the selected one (or that none was selected)
+    k <- nrow(x$table)
+    cat("<allocation fit> ", k, if (k == 1L) " start" else " starts", ", ",
+        if (is.null(x$best_start)) "none selected" else paste0("selected ", x$best_start),
+        "\n", sep = "")
+  } else {
+    cat("<ae_multistart_fit>\n")
+  }
   cat("eligible starts: ", sum(x$table$eligible), " / ", nrow(x$table), "\n", sep = "")
   cat("selected start: ", if (is.null(x$best_start)) "none" else x$best_start, "\n", sep = "")
   search <- x[["default_search", exact = TRUE]]

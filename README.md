@@ -97,8 +97,11 @@ object, its sources and its licences.
 
 ### An FCA accessibility map
 
-FCA entry points take a demand raster and one aligned travel layer per
-facility, with layer names matching facility IDs.
+An FCA index takes a demand raster, a facility table and one travel
+layer per facility, with layer names matching facility IDs.
+`prep_data()` holds them together, a specification such as
+`spec_e2sfca()` declares the index without data, and `spax()` computes
+it. This interface is experimental.
 
 ``` r
 library(spax)
@@ -120,14 +123,17 @@ mainland <- ext(-6, xmax(pop), ymin(pop), ymax(pop))
 pop <- crop(pop, mainland)
 travel_grid <- crop(travel_grid[[mainland_gp$practice]], mainland)
 
-fca <- spax_e2sfca(
-  demand = pop,
-  supply = mainland_gp,
-  distance = travel_grid,
-  decay_params = list(method = "gaussian", sigma = 10),
+# Demand grid, practice table and travel stack, held together
+grid_data <- prep_data(
+  pop,
+  mainland_gp,
+  travel_grid,
   id_col = "practice",  # matches supply rows to travel layers
   supply_cols = "gp_fte_extg"
 )
+
+# The E2SFCA index with a 10-minute Gaussian decay
+fca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 
 plot(
   1000 * fca$accessibility,
@@ -143,8 +149,10 @@ This is an enhanced two-step FCA index: supply per distance-weighted
 population, in GP FTE per 1,000 residents. The 10-minute Gaussian scale
 is a choice for this example, not an estimate. The index is a
 supply-per-demand score, not a probability that anyone uses a practice.
-See `?spax_e2sfca` for decay and normalization options, and
-`summary(fca)` or `plot(fca)` to inspect the result.
+`spax_e2sfca()` remains the one-call shortcut and gives the same result
+from the same inputs. See `?spec_e2sfca` for the other FCA indices,
+decays and normalization options, and `summary(fca)` or `plot(fca)` to
+inspect the result.
 
 ### A static CLM fitted to registrations
 
@@ -455,8 +463,8 @@ time, and they accept a result of `spax()`:
 | `fit_allocation()` | Fit a selected output from given starts, or from starts found in the data, and retain diagnostics. |
 | `evaluate_allocation()` | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | `predict_allocation()` | Predict requested origins against saved facility loads; maps are explicit. |
-| `check_allocation()`, `compare_allocations()` | Compare a fit with simpler models, or fits with each other, on the same loss. |
-| `bootstrap_allocation()` | Run the separately supported conditional facility-case bootstrap. |
+| `check_fit()`, `compare_fits()` (also `check_allocation()`, `compare_allocations()`) | Compare a fit with simpler models, or fits with each other, on the same loss. |
+| `bootstrap_fit()` (also `bootstrap_allocation()`) | Run the separately supported conditional facility-case bootstrap. |
 
 `vignette("model-choice", package = "spax")` compares an FCA index and
 the static CLM on the same Cornwall inputs and explains what each output

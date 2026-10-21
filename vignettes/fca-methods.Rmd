@@ -127,6 +127,44 @@ m2sfca <- spax_m2sfca(
 )
 ```
 
+The same three indices can be specified without data and computed with
+`spax()` on data prepared once with `prep_data()`. This interface is
+experimental. `spec_2sfca()` takes the 15-minute catchment as `threshold`;
+the other specifications take a decay: `decay_gaussian()` here, or
+`decay_exponential()`, `decay_power()`, `decay_step()` (a binary catchment)
+and `decay_inverse()`. A Gaussian, exponential or power decay can also take a
+raster of `sigma` values, for a catchment that varies in space.
+
+```{r methods-specs}
+# Demand grid, practice table and travel stack, held together
+grid_data <- prep_data(
+  pop,
+  gp,
+  travel,
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+grid_data
+
+# The same three indices from specifications
+gaussian_10 <- decay_gaussian(sigma = 10)
+by_spec <- list(
+  twosfca = spax(grid_data, spec_2sfca(threshold = 15)),
+  e2sfca = spax(grid_data, spec_e2sfca(decay = gaussian_10)),
+  m2sfca = spax(grid_data, spec_m2sfca(decay = gaussian_10))
+)
+
+# Each surface is identical to that of the one-call function
+same <- function(x, y) {
+  identical(values(x$accessibility), values(y$accessibility))
+}
+stopifnot(
+  same(by_spec$twosfca, twosfca),
+  same(by_spec$e2sfca, e2sfca),
+  same(by_spec$m2sfca, m2sfca)
+)
+```
+
 Each result is a `spax` object whose `accessibility` member is a raster of GP
 FTE per resident. The maps show all three in GP FTE per 1,000 residents on one
 colour scale.
@@ -409,7 +447,9 @@ As for the other methods, the index has supply-per-demand units, and the decay
 scale, the attractiveness measure and `alpha` are choices that this guide does
 not estimate from data. `?spax_3sfca` and `?spax_huff2sfca` describe
 `selection_params`, which gives the selection weights another decay or a
-catchment limit, and cite the methods.
+catchment limit, and cite the methods. In `spec_3sfca()` and
+`spec_huff2sfca()` the same choice is `selection`, a decay; `NULL`, the
+default, uses `decay`.
 
 ## Several demand groups
 
@@ -517,7 +557,10 @@ generalizes it to a decay that differs by group. Earlier multi-modal 2SFCA
 work includes [Mao and Nekorchuk
 (2013)](https://doi.org/10.1016/j.healthplace.2013.08.008) and [Langford,
 Higgs and Fry (2016)](https://doi.org/10.1016/j.healthplace.2015.11.007).
-`?spax_e2sfca` lists which arguments can be given per group.
+`?spax_e2sfca` lists which arguments can be given per group. In a
+specification, `decay` and `selection` can be a named list by group and
+`threshold` a named vector by group; `prep_data()` takes the list of group
+rasters as `demand`.
 
 ## Continue
 

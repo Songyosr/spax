@@ -543,6 +543,10 @@
 #' in the allocation network. Need, travel, capacity and included-network inputs
 #' remain fixed. Facility independence is a caller-declared working assumption.
 #'
+#' `bootstrap_fit()` is the general name of this step and `bootstrap_allocation()` its
+#' earlier name: the two are the same function, and they differ only in the name that a
+#' message gives for the step.
+#'
 #' The model is a static CLM with a fitted outside mass (`outside = "fit"` in
 #' [spec_clm()], or `fit_v0 = TRUE` in [clm_allocation()]) and a
 #' decay kernel that is smooth in sigma: the Gaussian, exponential or power
@@ -581,7 +585,9 @@
 #'   be a result of [spax()] that fitted such a model to facility totals: the
 #'   result supplies its bound model and its fit, so leave `fit` out and give
 #'   `observation` by name. A Huff model, a fit to flows and an evaluated result
-#'   are refused as for the model and fit given separately.
+#'   are refused as for the model and fit given separately, and so is an FCA index
+#'   (a result of [spax()] with an FCA specification, or of [spax_e2sfca()] and the
+#'   other one-shots): an index is computed, not fitted.
 #' @param fit A matching multistart fit of complete whole facility counts using
 #'   the unweighted built-in Poisson objective. Fractional or partial observations,
 #'   flow targets, fits with observed outside counts (`flow_outside`,
@@ -615,13 +621,26 @@
 #' @family allocation steps
 #' @export
 #' @md
-bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
-  if (.is_allocation_result(model)) {
-    parts <- .allocation_unbundle(model, "model_fit", "bootstrap_allocation()",
-                                  fit_given = !missing(fit))
+bootstrap_fit <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
+  .bootstrap_fit_run(model, fit, observation, scenario, seed, checkpoint, "bootstrap_fit()")
+}
+
+#' @rdname bootstrap_fit
+#' @export
+#' @md
+bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed,
+                                 checkpoint = NULL) {
+  .bootstrap_fit_run(model, fit, observation, scenario, seed, checkpoint,
+                     "bootstrap_allocation()")
+}
+
+# The body of both names; `caller` is the name the user called, which the messages repeat.
+.bootstrap_fit_run <- function(model, fit, observation, scenario, seed, checkpoint, caller) {
+  if (.is_allocation_result(model) || .is_fca_result(model)) {
+    parts <- .allocation_unbundle(model, "model_fit", caller, fit_given = !missing(fit))
     model <- parts$model
     fit <- parts$fit
   }
-  .refuse_grouped("bootstrap_allocation()", model, fit)
+  .refuse_grouped(caller, model, fit)
   .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint, attempts = 399L)
 }

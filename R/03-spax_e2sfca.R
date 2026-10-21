@@ -225,6 +225,12 @@
 }
 
 #' Validate inputs for spax_e2sfca
+#'
+#' The checks of the FCA wrappers that take a decay (E2SFCA, M2SFCA, 3SFCA and
+#' Huff-2SFCA, and 2SFCA through its binary decay) are two functions that run in
+#' this order: the data (`.chck_e2sfca_data()`) and the decay and normalization
+#' (`.chck_e2sfca_decay()`). `prep_data()` with rasters runs the data part
+#' alone.
 #' @param demand SpatRaster representing spatial distribution of demand, or a
 #'   named list of SpatRasters (demand groups)
 #' @param supply vector, matrix, or data.frame containing supply capacity values
@@ -238,24 +244,56 @@
 #' @keywords internal
 .chck_e2sfca <- function(demand, supply, distance, decay_params,
                          demand_normalize, id_col = NULL, supply_cols = NULL) {
-  # Check input types; with groups, each group's travel and decay are checked
+  .chck_e2sfca_data(demand, supply, distance, id_col, supply_cols)
+  .chck_e2sfca_decay(demand, decay_params, demand_normalize)
+}
+
+# The data part of .chck_e2sfca(): the demand groups, the travel stacks (one
+# geometry, the same facilities in the same order for every group), the supply,
+# the alignment of each stack with the demand and one layer per facility.
+# `arg` names the travel argument in the messages (`prep_data()` calls it
+# "travel").
+.chck_e2sfca_data <- function(demand, supply, distance, id_col = NULL,
+                              supply_cols = NULL, arg = "distance") {
+  # Check input types; with groups, each group's travel is checked
   groups <- .fca_demand_groups(demand)
   if (is.null(groups)) {
     demands <- list(demand)
     dist <- list(distance)
-    decay <- list(decay_params)
   } else {
     demands <- demand
-    plan <- .fca_group_plan(groups, distance, decay_params)
-    dist <- plan$distance
-    decay <- plan$decay
+    dist <- .fca_expand_groups(distance, groups, arg, stacks = TRUE)
   }
   for (d in dist) {
-    .chck_class(d, "SpatRaster", "distance")
+    .chck_class(d, "SpatRaster", arg)
   }
 
   # Validate supply and get facility count
   n_facilities <- .validate_facility_supply(supply, id_col, supply_cols)
+
+  for (i in seq_along(dist)) {
+    # Validate raster alignment
+    .chck_raster_alignment(demands[[i]], dist[[i]], "demand", arg)
+
+    # Validate facility counts match
+    .chck_lengths_match(
+      nlyr(dist[[i]]), n_facilities,
+      paste(arg, "layers"), "facilities"
+    )
+  }
+
+  invisible(TRUE)
+}
+
+# The decay part of .chck_e2sfca(): the decay parameters (one list, or with
+# groups one per group or shared) and the normalization of demand.
+.chck_e2sfca_decay <- function(demand, decay_params, demand_normalize) {
+  groups <- .fca_demand_groups(demand)
+  decay <- if (is.null(groups)) {
+    list(decay_params)
+  } else {
+    .fca_expand_groups(decay_params, groups, "decay_params")
+  }
 
   # Validate decay_params
   for (dp in decay) {
@@ -272,17 +310,6 @@
       "demand_normalize must be one of: %s",
       paste(valid_normalize, collapse = ", ")
     ))
-  }
-
-  for (i in seq_along(dist)) {
-    # Validate raster alignment
-    .chck_raster_alignment(demands[[i]], dist[[i]], "demand", "distance")
-
-    # Validate facility counts match
-    .chck_lengths_match(
-      nlyr(dist[[i]]), n_facilities,
-      "distance layers", "facilities"
-    )
   }
 
   invisible(TRUE)
@@ -404,6 +431,10 @@
   method <- params$method
   dist_key <- paste0("distance", suffix)
   if (is.function(method)) {
+    if (!inherits(distance, "SpatRaster")) {
+      stop("a plain decay function needs raster data; declare a kernel with decay_kernel()",
+           call. = FALSE)
+    }
     nm <- paste0("weights_", key, suffix)
     weights <- .fca_decay_weights(distance, params, snap)
     # The weight layers belong to facilities by their names, as before; layers
@@ -513,15 +544,21 @@
 }
 
 # The kernels of one demand group for the block engine. `type` is "e2sfca",
-# "m2sfca", "3sfca" or "huff"; it builds the kernel specification of the
-# wrapper. `attractiveness` is the vector from .fca_attractiveness() for
+# "m2sfca", "3sfca" or "huff" (any other is an error); it builds the kernel
+# specification of the wrapper. `attractiveness` is the vector from .fca_attractiveness() for
 # "huff". `suffix` ends every raster key of the group (see .fca_decay_spec()).
 # Returns `rasters`, the named SpatRasters the kernels read (the group's
-# distance first), and `kernels`, `list(demand, access)`.
+# distance first), and `kernels`, `list(demand, access)`. `distance` may also be
+# a numeric matrix (origins by facilities: FCA on numeric data, SPAX-060 V3):
+# the kernels then read it from the in-memory block of .fca_blocks() under the key
+# "distance<suffix>", and `rasters` is NULL.
 .fca_group_kernels <- function(type, distance, decay_params,
                                selection_params = NULL, attractiveness = NULL,
                                alpha = 1, snap = FALSE, suffix = "") {
-  .chck_class(distance, "SpatRaster", "distance")
+  in_memory <- is.matrix(distance)
+  if (!in_memory) {
+    .chck_class(distance, "SpatRaster", "distance")
+  }
   decay <- .fca_decay_spec(distance, decay_params, "decay", snap, suffix)
   selection <- NULL
   if (type %in% c("3sfca", "huff") && !identical(selection_params, decay_params)) {
@@ -529,7 +566,9 @@
                                  suffix)
   }
   # The first raster names the facilities and gives the grid of the result.
-  rasters <- .fca_merge_rasters(c(decay$rasters, selection$rasters))
+  rasters <- if (!in_memory) {
+    .fca_merge_rasters(c(decay$rasters, selection$rasters))
+  }
 
   attract <- if (is.null(attractiveness)) NULL else unname(attractiveness)
   choice_kernel <- function(b, rows) {
@@ -546,7 +585,9 @@
         W * W
       }
     ),
-    list(demand = choice_kernel, access = choice_kernel)
+    `3sfca` = ,
+    huff = list(demand = choice_kernel, access = choice_kernel),
+    stop("unknown FCA type '", type, "'", call. = FALSE)
   )
   list(rasters = rasters, kernels = kernels)
 }
@@ -583,6 +624,83 @@
     kernels = spec$kernels, demand_normalize = demand_normalize,
     id_col = id_col, supply_cols = supply_cols,
     indicator_names = indicator_names, snap = snap
+  )
+}
+
+# What the FCA kinds are to the runner. `kind` is the kind of an FCA
+# specification ("2sfca", "e2sfca", "m2sfca", "3sfca" or "huff2sfca"; see
+# .fca_spec_args()): `type` is the type of .fca_block_run(), `label` the `type`
+# of the result and `parameter_names` the elements of its `parameters` list, in
+# the order of the wrappers.
+.fca_kind_info <- function(kind) {
+  type <- switch(kind,
+    `2sfca` = , e2sfca = "e2sfca",
+    m2sfca = "m2sfca",
+    `3sfca` = "3sfca",
+    huff2sfca = "huff",
+    stop("unknown FCA kind '", kind, "'", call. = FALSE)
+  )
+  list(
+    type = type,
+    label = unname(.fca_spec_labels[[kind]]),
+    parameter_names = switch(type,
+      e2sfca = , m2sfca = c("decay_params", "demand_normalize"),
+      `3sfca` = c("decay_params", "selection_params"),
+      huff = c("decay_params", "selection_params", "attractiveness", "alpha")
+    )
+  )
+}
+
+# The shared runner of the FCA family: what each wrapper does after its
+# validation. It runs the block engine (.fca_block_run()), builds the facility
+# table and the parameters list of the wrapper and returns the spax object.
+# The one-shots and spax() call it; `call` is stored as given (the caller's own
+# call). `kind` is as in .fca_kind_info(). For Huff-2SFCA `attractiveness` is
+# NULL (the supply measure) or the vector the caller gave; it is resolved here,
+# with the first group's stack as the wrapper does, and stored resolved. The
+# arguments the kind does not use (selection_params, attractiveness, alpha,
+# demand_normalize) are ignored.
+.fca_run <- function(kind, demand, supply, distance, decay_params,
+                     selection_params = NULL, attractiveness = NULL, alpha = 1,
+                     demand_normalize = "identity", id_col = NULL,
+                     supply_cols = NULL, indicator_names = NULL, snap = FALSE,
+                     call = NULL) {
+  info <- .fca_kind_info(kind)
+  if (identical(info$type, "huff")) {
+    groups <- .fca_demand_groups(demand)
+    # Attractiveness in the order of the distance layers (with groups, those of
+    # the first group), named by facility ID
+    attractiveness <- .fca_attractiveness(
+      attractiveness, supply, .fca_first_stack(distance, groups, "distance"),
+      id_col, supply_cols, snap
+    )
+  }
+
+  result <- .fca_block_run(
+    info$type, demand, supply, distance, decay_params,
+    selection_params = selection_params, attractiveness = attractiveness,
+    alpha = alpha, demand_normalize = demand_normalize, id_col = id_col,
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
+  )
+
+  # Process facility information
+  facilities <- .fca_facility_table(supply, id_col, supply_cols)
+
+  # Create spax object
+  out <- .fca_group_result(result, list(
+    decay_params = decay_params,
+    demand_normalize = demand_normalize,
+    selection_params = selection_params,
+    attractiveness = attractiveness,
+    alpha = alpha
+  )[info$parameter_names])
+  .create_spax(
+    accessibility = out$accessibility,
+    type = info$label,
+    parameters = out$parameters,
+    facilities = facilities,
+    call = call,
+    snap = snap
   )
 }
 
@@ -671,7 +789,14 @@
 # `snap` skips only the checks of type, length and value.
 .fca_attractiveness <- function(attractiveness, supply, distance,
                                 id_col, supply_cols, snap) {
-  ids <- names(distance)
+  .fca_attractiveness_ids(attractiveness, supply, names(distance), id_col,
+                          supply_cols, snap)
+}
+
+# .fca_attractiveness() for facilities given by their IDs, in the order of the
+# distance layers (or of the columns of a travel matrix).
+.fca_attractiveness_ids <- function(attractiveness, supply, ids, id_col,
+                                    supply_cols, snap) {
   if (is.null(attractiveness)) {
     values <- .help_process_supply(
       supply, id_col, supply_cols, weight_ids = ids
@@ -684,7 +809,7 @@
   } else {
     if (!snap) {
       .chck_numeric_vector(attractiveness, "attractiveness", finite = FALSE)
-      .chck_lengths_match(length(attractiveness), nlyr(distance),
+      .chck_lengths_match(length(attractiveness), length(ids),
                           "attractiveness", "distance layers")
     }
     values <- attractiveness
@@ -957,6 +1082,7 @@ spax_e2sfca <- function(demand, supply, distance,
                         id_col = NULL, supply_cols = NULL,
                         indicator_names = NULL,
                         snap = FALSE) {
+  call <- match.call()
   # Validation (skip if snap = TRUE)
   if (!snap) {
     .chck_e2sfca(
@@ -965,27 +1091,11 @@ spax_e2sfca <- function(demand, supply, distance,
     )
   }
 
-  result <- .fca_block_run(
+  .fca_run(
     "e2sfca", demand, supply, distance, decay_params,
     demand_normalize = demand_normalize, id_col = id_col,
-    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
-  )
-
-  # Process facility information
-  facilities <- .fca_facility_table(supply, id_col, supply_cols)
-
-  # Create spax object
-  out <- .fca_group_result(result, list(
-    decay_params = decay_params,
-    demand_normalize = demand_normalize
-  ))
-  .create_spax(
-    accessibility = out$accessibility,
-    type = "E2SFCA",
-    parameters = out$parameters,
-    facilities = facilities,
-    call = match.call(),
-    snap = snap
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap,
+    call = call
   )
 }
 
@@ -1026,6 +1136,7 @@ spax_m2sfca <- function(demand, supply, distance,
                         id_col = NULL, supply_cols = NULL,
                         indicator_names = NULL,
                         snap = FALSE) {
+  call <- match.call()
   # Validation (M2SFCA takes the same inputs as E2SFCA)
   if (!snap) {
     .chck_e2sfca(
@@ -1034,27 +1145,11 @@ spax_m2sfca <- function(demand, supply, distance,
     )
   }
 
-  result <- .fca_block_run(
+  .fca_run(
     "m2sfca", demand, supply, distance, decay_params,
     demand_normalize = demand_normalize, id_col = id_col,
-    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
-  )
-
-  # Process facility information
-  facilities <- .fca_facility_table(supply, id_col, supply_cols)
-
-  # Create spax object
-  out <- .fca_group_result(result, list(
-    decay_params = decay_params,
-    demand_normalize = demand_normalize
-  ))
-  .create_spax(
-    accessibility = out$accessibility,
-    type = "M2SFCA",
-    parameters = out$parameters,
-    facilities = facilities,
-    call = match.call(),
-    snap = snap
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap,
+    call = call
   )
 }
 
@@ -1172,6 +1267,7 @@ spax_m2sfca <- function(demand, supply, distance,
 spax_2sfca <- function(demand, supply, distance, threshold,
                        id_col = NULL, supply_cols = NULL,
                        snap = FALSE) {
+  call <- match.call()
   # With demand groups, the threshold is one number or one per group
   groups <- if (is.list(demand)) .fca_demand_groups(demand)
   thresholds <- if (!is.null(groups)) {
@@ -1191,21 +1287,21 @@ spax_2sfca <- function(demand, supply, distance, threshold,
     lapply(thresholds, function(th) list(method = "binary", sigma = th))
   }
 
-  # Use spax_e2sfca with binary catchment and no demand normalization
-  result <- spax_e2sfca(
-    demand = demand,
-    supply = supply,
-    distance = distance,
-    decay_params = decay_params,
-    demand_normalize = "identity", # No normalization for original 2SFCA
-    id_col = id_col,
-    supply_cols = supply_cols,
-    snap = snap
-  )
+  # Validation as for E2SFCA with binary catchment and no demand normalization
+  if (!snap) {
+    .chck_e2sfca(
+      demand, supply, distance, decay_params,
+      "identity", id_col, supply_cols
+    )
+  }
 
-  # Update type while preserving other components
-  result$type <- "2SFCA"
-  return(result)
+  # E2SFCA with binary catchment and no demand normalization, as the original
+  # 2SFCA
+  .fca_run(
+    "2sfca", demand, supply, distance, decay_params,
+    demand_normalize = "identity", id_col = id_col,
+    supply_cols = supply_cols, snap = snap, call = call
+  )
 }
 
 #' Calculate Three-Step Floating Catchment Area (3SFCA) accessibility scores
@@ -1345,6 +1441,7 @@ spax_3sfca <- function(demand, supply, distance,
                        id_col = NULL, supply_cols = NULL,
                        indicator_names = NULL,
                        snap = FALSE) {
+  call <- match.call()
   # Validation (3SFCA takes the inputs of E2SFCA, without normalization)
   groups <- .fca_demand_groups(demand)
   if (!snap) {
@@ -1355,27 +1452,11 @@ spax_3sfca <- function(demand, supply, distance,
     .chck_selection_params(selection_params, groups)
   }
 
-  result <- .fca_block_run(
+  .fca_run(
     "3sfca", demand, supply, distance, decay_params,
     selection_params = selection_params, id_col = id_col,
-    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap
-  )
-
-  # Process facility information
-  facilities <- .fca_facility_table(supply, id_col, supply_cols)
-
-  # Create spax object
-  out <- .fca_group_result(result, list(
-    decay_params = decay_params,
-    selection_params = selection_params
-  ))
-  .create_spax(
-    accessibility = out$accessibility,
-    type = "3SFCA",
-    parameters = out$parameters,
-    facilities = facilities,
-    call = match.call(),
-    snap = snap
+    supply_cols = supply_cols, indicator_names = indicator_names, snap = snap,
+    call = call
   )
 }
 
@@ -1514,6 +1595,7 @@ spax_huff2sfca <- function(demand, supply, distance,
                            id_col = NULL, supply_cols = NULL,
                            indicator_names = NULL,
                            snap = FALSE) {
+  call <- match.call()
   # Validation (Huff-2SFCA takes the inputs of E2SFCA, without normalization)
   groups <- .fca_demand_groups(demand)
   if (!snap) {
@@ -1525,36 +1607,10 @@ spax_huff2sfca <- function(demand, supply, distance,
     .chck_nonnegative_scalar(alpha, "alpha")
   }
 
-  # Attractiveness in the order of the distance layers (with groups, those of
-  # the first group), named by facility ID
-  attractiveness <- .fca_attractiveness(
-    attractiveness, supply, .fca_first_stack(distance, groups, "distance"),
-    id_col, supply_cols, snap
-  )
-
-  result <- .fca_block_run(
-    "huff", demand, supply, distance, decay_params,
+  .fca_run(
+    "huff2sfca", demand, supply, distance, decay_params,
     selection_params = selection_params, attractiveness = attractiveness,
     alpha = alpha, id_col = id_col, supply_cols = supply_cols,
-    indicator_names = indicator_names, snap = snap
-  )
-
-  # Process facility information
-  facilities <- .fca_facility_table(supply, id_col, supply_cols)
-
-  # Create spax object
-  out <- .fca_group_result(result, list(
-    decay_params = decay_params,
-    selection_params = selection_params,
-    attractiveness = attractiveness,
-    alpha = alpha
-  ))
-  .create_spax(
-    accessibility = out$accessibility,
-    type = "Huff-2SFCA",
-    parameters = out$parameters,
-    facilities = facilities,
-    call = match.call(),
-    snap = snap
+    indicator_names = indicator_names, snap = snap, call = call
   )
 }

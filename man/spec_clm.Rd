@@ -3,6 +3,7 @@
 \name{spec_clm}
 \alias{spec_clm}
 \alias{spec_huff}
+\alias{format.spax_allocation_spec}
 \alias{format.spax_spec}
 \alias{print.spax_spec}
 \title{Specify an allocation model without data}
@@ -21,6 +22,8 @@ spec_huff(
   kappa = 1,
   by_group = character()
 )
+
+\method{format}{spax_allocation_spec}(x, ...)
 
 \method{format}{spax_spec}(x, ...)
 
@@ -54,8 +57,9 @@ number; hold values by group through a list or vector instead.}
 \item{...}{Unused.}
 }
 \value{
-A \code{spax_spec}: a list with \code{kind} (\code{"clm"} or \code{"huff"}), \code{decay},
-\code{outside} (\code{0} for \code{spec_huff()}), \code{beta}, \code{kappa} and \code{by_group}.
+A \code{spax_allocation_spec} (also a \code{spax_spec}): a list with \code{kind}
+(\code{"clm"} or \code{"huff"}), \code{decay}, \code{outside} (\code{0} for \code{spec_huff()}), \code{beta},
+\code{kappa} and \code{by_group}.
 }
 \description{
 Experimental. \code{spec_clm()} and \code{spec_huff()} declare an allocation model
@@ -92,6 +96,9 @@ list whose elements are \code{"fit"} or a number. \code{by_group} lets one fitte
 decay (\code{"sigma"}) or one fitted outside weight (\code{"v0"}) differ by group.
 Group-specific parameters can be fitted only to counts recorded by group;
 a held \code{sigma} cannot differ by group unless the decay is given by group.
+
+\strong{FCA decays.} An allocation model refuses \code{\link[=decay_step]{decay_step()}}, \code{\link[=decay_inverse]{decay_inverse()}}
+and a raster \code{sigma}, which are for the FCA specifications (\code{\link[=spec_e2sfca]{spec_e2sfca()}}).
 }
 \examples{
 # Huff: power decay and fitted exponent, no outside option
@@ -116,6 +123,7 @@ Other allocation interface:
 \code{\link{obs_flows}()},
 \code{\link{prep_data}()},
 \code{\link{spax}()},
+\code{\link{spax_access_values-methods}},
 \code{\link{spax_allocation-methods}},
 \code{\link{spax_huff}()}
 }

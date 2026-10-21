@@ -52,12 +52,14 @@ test_that("saved fits and evaluations of the earlier version print and summarize
   x <- saved_objects()
   shown <- function(object) utils::capture.output(print(object))
   expect_true("family: gaussian (sigma = travel scale)" %in% shown(x$fit$best))
-  expect_true("model: clm" %in% shown(x$fit$best))
-  expect_true(any(grepl("^<summary.ae_multistart_fit>", shown(summary(x$fit)))))
+  expect_true("model: conditional logit" %in% shown(x$fit$best))
+  expect_true("<allocation fit result>" %in% shown(x$fit$best))
+  expect_true("<allocation fit summary>" %in% shown(summary(x$fit)))
   expect_true("family: gaussian (sigma = travel scale)" %in% shown(summary(x$fit$best)))
-  expect_true(all(c("<ae_multistart_fit>", "selected start: far") %in% shown(x$fit)))
-  expect_output(print(x$evaluation), "<ae_equilibrium>")
-  expect_output(print(x$evaluation$coverage), "<ae_coverage> huff/gaussian (sigma=3, v0=10)",
+  expect_true(all(c("<allocation fit> 2 starts, selected far", "selected start: far") %in%
+                    shown(x$fit)))
+  expect_output(print(x$evaluation), "<allocation evaluation>")
+  expect_output(print(x$evaluation$coverage), "<allocation coverage> gaussian (sigma=3, v0=10)",
                 fixed = TRUE)
   expect_s3_class(summary(x$evaluation$coverage), "summary.ae_coverage")
   expect_true(any(grepl("^Facility ratio", shown(summary(x$evaluation$coverage)))))
@@ -127,7 +129,7 @@ test_that("a saved fit of the earlier version can be checked against the current
   expect_identical(out$family, "gaussian")
   expect_identical(names(out$parameters$fitted), c("sigma", "v0"))
   expect_identical(names(out$parameters$no_decay), "v0")
-  expect_output(print(out), "ae_allocation_check")
+  expect_output(print(out), "<allocation check>", fixed = TRUE)
   # The fixture's counts were built with exp() on the platform that wrote it, and
   # exp() can differ in the last bit between platforms, so the fresh fit uses the
   # saved fit's own counts. The fixture was made when Poisson fits used the floor

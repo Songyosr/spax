@@ -5,7 +5,8 @@
 #' @keywords internal
 #' @export
 print.ae_equilibrium <- function(x, digits = 4, ...) {
-  cat("<ae_equilibrium>\n")
+  cat(if (.is_public_equilibrium(x)) "<allocation evaluation>" else "<ae_equilibrium>", "\n",
+      sep = "")
   cat("converged: ", isTRUE(x$converged), "\n", sep = "")
   cat("iterations: ", x$iterations, "\n", sep = "")
   cat("error: ", .ae_format_number(x$error, digits = digits), "\n", sep = "")
@@ -22,6 +23,49 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
 # huff family with allocation form "clm"; show the allocation users declared.
 .ae_model_label <- function(x) {
   if (identical(x$model, "huff") && identical(x$allocation_form, "clm")) "clm" else x$model
+}
+
+# The objects of the public workflow (spax(), fit_allocation() and the other allocation
+# steps) are the corrected conditional logit models, built by the internal huff model with
+# allocation form "clm". They print plain headers; the legacy SAE, HAAE and huff_decay
+# objects, and the ratio-response model, keep their old ones. A fit, a fit summary or a
+# coverage object carries both fields.
+.is_public_allocation <- function(x) {
+  is.list(x) && identical(x[["model", exact = TRUE]], "huff") &&
+    identical(x[["allocation_form", exact = TRUE]], "clm")
+}
+
+# A multistart fit or its summary carries the two fields of the problem it fitted, so that
+# a search with no selected start is told apart too; one saved before they were kept has
+# the selected fit (`best` of a fit, `selected` of a summary) and only that.
+.is_public_multistart <- function(x, selected = "best") {
+  .is_public_allocation(x) || .is_public_allocation(x[[selected, exact = TRUE]])
+}
+
+# An evaluation (an `ae_equilibrium`) does not carry the model: a corrected conditional
+# logit evaluation carries a prediction snapshot, and one with demand groups the group
+# markers. No other model has either, so the raw solver output, SAE, HAAE, huff_decay and
+# ratio-response solutions keep the old header.
+.is_public_equilibrium <- function(x) {
+  !is.null(x[["prediction_snapshot", exact = TRUE]]) || !is.null(x[["groups", exact = TRUE]])
+}
+
+# The model line of a printed fit of the public workflow: "Huff" for a model without an
+# outside option (no fitted `v0` and a snapshot with v0 = 0), "conditional logit" otherwise.
+# A model that has no snapshot, as one with demand groups, cannot be told apart from its
+# parts and is an "allocation model".
+.public_model_label <- function(x) {
+  snapshot <- x[["prediction_snapshot", exact = TRUE]]
+  if (is.null(snapshot)) {
+    # fitted outside weight: a conditional logit even without a snapshot
+    # (the group rule comes first: a model with groups is an allocation model)
+    if (is.null(x[["groups", exact = TRUE]]) && "v0" %in% names(x$theta)) {
+      return("conditional logit")
+    }
+    return("allocation model")
+  }
+  if ("v0" %in% names(x$theta)) return("conditional logit")
+  if (isTRUE(snapshot$spec$v0 == 0)) "Huff" else "conditional logit"
 }
 
 # Display label for the decay family of a fit or fit summary, with what sigma
@@ -82,8 +126,13 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
 #' @keywords internal
 #' @export
 print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
-  cat("<ae_problem_nfxp_fit>\n")
-  cat("model: ", .ae_model_label(x), "\n", sep = "")
+  if (.is_public_allocation(x)) {
+    cat("<allocation fit result>\n")
+    cat("model: ", .public_model_label(x), "\n", sep = "")
+  } else {
+    cat("<ae_problem_nfxp_fit>\n")
+    cat("model: ", .ae_model_label(x), "\n", sep = "")
+  }
   cat("family: ", .fit_family_label(x), "\n", sep = "")
   if (!is.null(x$allocation_form)) {
     cat("allocation_form: ", x$allocation_form, "\n", sep = "")
@@ -165,6 +214,8 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
     out$fixed <- data.frame(parameter = names(fixed), value = as.numeric(fixed),
                             stringsAsFactors = FALSE, check.names = FALSE)
   }
+  # The model line of the public workflow, as the fit prints it (appended last).
+  if (.is_public_allocation(object)) out$model_label <- .public_model_label(object)
   out
 }
 
@@ -173,8 +224,11 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
 #' @keywords internal
 #' @export
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
-  cat("<summary.ae_problem_nfxp_fit>\n")
-  cat("model: ", .ae_model_label(x), "\n", sep = "")
+  public <- .is_public_allocation(x)
+  cat(if (public) "<allocation fit result summary>\n" else "<summary.ae_problem_nfxp_fit>\n")
+  # Summaries saved before the public label was stored keep the internal label.
+  cat("model: ", if (public) x$model_label %||% .ae_model_label(x) else .ae_model_label(x),
+      "\n", sep = "")
   # Summaries saved before the label was stored show the family alone.
   cat("family: ", x$family_label %||% x$family, "\n", sep = "")
   if (!is.null(x$allocation_form)) {
