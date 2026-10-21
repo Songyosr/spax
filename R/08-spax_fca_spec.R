@@ -81,7 +81,7 @@ spec_2sfca <- function(threshold) {
 spec_e2sfca <- function(decay = decay_gaussian(sigma = 30),
                         normalize = c("identity", "standard", "semi")) {
   decay <- .spec_fca_decay(decay, "decay")
-  normalize <- match.arg(normalize)
+  normalize <- .spec_fca_normalize(normalize)
   .new_fca_spec("e2sfca", decay = decay, normalize = normalize)
 }
 
@@ -91,7 +91,7 @@ spec_e2sfca <- function(decay = decay_gaussian(sigma = 30),
 spec_m2sfca <- function(decay = decay_gaussian(sigma = 30),
                         normalize = c("identity", "standard", "semi")) {
   decay <- .spec_fca_decay(decay, "decay")
-  normalize <- match.arg(normalize)
+  normalize <- .spec_fca_normalize(normalize)
   .new_fca_spec("m2sfca", decay = decay, normalize = normalize)
 }
 
@@ -171,11 +171,26 @@ format.spax_fca_spec <- function(x, ...) {
        "by group", call. = FALSE)
 }
 
+# The normalization of demand: one exact name; the default vector gives "identity".
+.spec_fca_normalize <- function(normalize) {
+  choices <- c("identity", "standard", "semi")
+  if (identical(normalize, choices)) return("identity")
+  if (!is.character(normalize) || length(normalize) != 1L || !normalize %in% choices) {
+    stop("normalize must be \"identity\", \"standard\" or \"semi\"", call. = FALSE)
+  }
+  normalize
+}
+
 # One decay in any accepted form, or a named list of them by demand group. `arg`
 # names the argument in the messages ("decay" or "selection").
 .spec_fca_decay <- function(x, arg) {
   # The decay classes are lists, so classes come before list-ness.
   if (is.list(x) && !is.object(x)) {
+    # A decay_params list of the FCA one-shots is not a list by group.
+    if ("method" %in% names(x)) {
+      stop(arg, " is given as a list with `method`: write it as decay_gaussian(sigma = ...) ",
+           "or another decay_*() function", call. = FALSE)
+    }
     if (!.has_group_names(names(x), length(x))) {
       stop(arg, " by group must be a named list with one decay per group", call. = FALSE)
     }

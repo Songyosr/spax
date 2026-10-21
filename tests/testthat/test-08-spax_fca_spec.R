@@ -25,7 +25,7 @@ fca_text <- c(
 )
 
 # match.arg() words this message; compare with its own wording.
-normalize_text <- "'arg' should be one of"
+normalize_text <- "normalize must be \"identity\", \"standard\" or \"semi\""
 
 # A declared kernel for the declared-kernel cases.
 pexp_kernel <- function() {
@@ -230,8 +230,9 @@ test_that("normalize is identity, standard or semi", {
     expect_identical(spec_e2sfca(normalize = value)$normalize, value)
     expect_identical(spec_m2sfca(normalize = value)$normalize, value)
   }
-  # match.arg() allows a partial name.
-  expect_identical(spec_e2sfca(normalize = "stand")$normalize, "standard")
+
+  # exact names only, as for the decay strings
+  expect_error(spec_e2sfca(normalize = "stand"), normalize_text, fixed = TRUE)
   for (value in list("none", "Standard", 1, NA, c("identity", "semi"), character())) {
     expect_error(spec_e2sfca(normalize = value))
   }
@@ -660,4 +661,11 @@ test_that(".fca_group_kernels() stops on an unknown type and keeps the known one
     expect_named(spec, c("rasters", "kernels"))
     expect_named(spec$kernels, c("demand", "access"))
   }
+})
+
+test_that("a decay_params list of the one-shots is pointed to the decay functions", {
+  msg <- "decay is given as a list with `method`: write it as decay_gaussian(sigma = ...) or another decay_*() function"
+  expect_error(spec_e2sfca(decay = list(method = "gaussian", sigma = 10)), msg, fixed = TRUE)
+  expect_error(spec_3sfca(selection = list(method = "gaussian", sigma = 10)),
+               sub("^decay", "selection", msg), fixed = TRUE)
 })
