@@ -21,7 +21,8 @@
 # * Facility IDs come from the data (layer names, or facility_1.. for default names); supply
 #   must be one measure.
 # * Travel is NA or infinite for a pair that is absent (`missing_travel = "legacy_zero"`);
-#   an active cell that reaches no facility is kept and its demand goes to the outside option.
+#   an active cell that reaches no facility is kept; a CLM sends its demand to the outside
+#   option, and a Huff model (no outside option) allocates none of it.
 #
 # The inputs are recorded as from raster data with the strict kernel domain of numeric
 # preparation: input_policy$source is "raster" and kernel_domain "strict".

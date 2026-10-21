@@ -67,6 +67,13 @@
   }, logical(1)))
 }
 
+# The rasters inside a specification (a raster sigma, shared or by group) are alive.
+.spec_rasters_alive <- function(x) {
+  if (inherits(x, "SpatRaster")) return(.raster_data_alive(list(demand = x, travel = list())))
+  if (is.list(x)) return(all(vapply(x, .spec_rasters_alive, logical(1))))
+  TRUE
+}
+
 # The names of the supply measures of raster data: the supply columns of a data frame,
 # the column names of a matrix (measure_1, ... without names) and "supply" for a vector.
 .raster_data_measures <- function(x) {
@@ -147,6 +154,11 @@ print.spax_raster_data <- function(x, ...) {
       is.list(x) && !is.object(x)
     }
     if (!by_group) next
+    # One named threshold (from quantile(), say) on data without groups is a plain value.
+    if (is.null(groups) && identical(arg, "threshold") && length(x) == 1L) {
+      spec[[arg]] <- unname(x)
+      next
+    }
     given <- names(x)
     if (is.null(groups)) {
       stop(arg, " needs data with demand groups", call. = FALSE)

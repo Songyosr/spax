@@ -4,7 +4,9 @@
 # hold no data; the mapping is also run on the toy data against the wrappers.
 
 expect_message_exact <- function(object, message) {
-  expect_error(object, message, fixed = TRUE)
+  # the whole message, not a part of it
+  got <- tryCatch({ object; NULL }, error = function(e) conditionMessage(e))
+  expect_identical(got, message)
 }
 
 fca_text <- c(

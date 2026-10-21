@@ -4,7 +4,9 @@
 # keep their direct path; spax() reaches the same engine through the same runner.
 
 expect_message_exact <- function(object, message) {
-  expect_error(object, message, fixed = TRUE)
+  # the whole message, not a part of it
+  got <- tryCatch({ object; NULL }, error = function(e) conditionMessage(e))
+  expect_identical(got, message)
 }
 
 # A kernel declared with decay_kernel() for the declared-kernel cases.
@@ -854,7 +856,7 @@ test_that("group arguments need data with groups and must name its groups", {
                        "decay needs data with demand groups")
   expect_message_exact(spax(ungrouped, spec_3sfca(decay_gaussian(2), list(a = decay_step(2)))),
                        "selection needs data with demand groups")
-  expect_message_exact(spax(ungrouped, spec_2sfca(c(a = 3))),
+  expect_message_exact(spax(ungrouped, spec_2sfca(c(a = 3, b = 4))),
                        "threshold needs data with demand groups")
   expect_message_exact(spax(ungrouped, spec_huff2sfca(list(a = decay_gaussian(2)))),
                        "decay needs data with demand groups")
@@ -950,4 +952,29 @@ test_that("allocation specifications saved with spax 0.5.0 (class spax_spec alon
   # a result saved with 0.5.0 prints its specification block
   saved$spec <- old
   expect_identical(capture.output(print(saved))[1:4], capture.output(print(fresh))[1:4])
+})
+
+test_that("a raster sigma saved and reloaded is refused with the package's message", {
+  td <- fca_toy()
+  d <- prep_data(td$demand, td$supply_vector, td$distance)
+  sig <- terra::rast(td$demand)
+  terra::values(sig) <- 2
+  spec <- spec_e2sfca(decay_gaussian(sig))
+  expect_s3_class(spax(d, spec), "spax")
+  path <- tempfile(fileext = ".rds")
+  saveRDS(spec, path)
+  expect_message_exact(spax(d, readRDS(path)),
+                       paste0("the raster sigma of this specification is no longer ",
+                              "available (saved and reloaded?): give the decay its raster again"))
+})
+
+test_that("one named threshold on data without groups is a plain threshold", {
+  td <- fca_toy()
+  d <- prep_data(td$demand, td$supply_vector, td$distance)
+  named <- spax(d, spec_2sfca(threshold = c("50%" = 2)))
+  plain <- spax(d, spec_2sfca(threshold = 2))
+  expect_identical(terra::values(named$accessibility), terra::values(plain$accessibility))
+  # two named thresholds still need groups
+  expect_message_exact(spax(d, spec_2sfca(threshold = c(a = 2, b = 3))),
+                       "threshold needs data with demand groups")
 })

@@ -35,7 +35,8 @@ keep their arguments and their results.
   data. It converts the data to origins on each call and keeps nothing: the cells with
   finite, positive demand are the origins, named by their cell numbers, a missing or
   infinite travel time is an absent pair, and a cell that reaches no facility stays an
-  origin whose demand goes to the outside option. `obs_totals()` works as it is, and
+  origin (with `spec_clm()` its demand goes to the outside option; `spec_huff()` has no
+  outside option and allocates none of it). `obs_totals()` works as it is, and
   `obs_flows()` is keyed by cell number. The model uses one supply measure. The travel of
   the origins is held as a dense matrix: on a synthetic grid with 100,000 origins and 250
   facilities it is 200 MB, the conversion peaks at about 0.5 GB of R memory and a fit to

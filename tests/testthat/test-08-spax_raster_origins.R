@@ -5,7 +5,9 @@
 # the Cornwall cases read the shipped example grids and are skipped on CRAN.
 
 expect_error_exact <- function(object, message) {
-  expect_error(object, message, fixed = TRUE)
+  # the whole message, not a part of it
+  got <- tryCatch({ object; NULL }, error = function(e) conditionMessage(e))
+  expect_identical(got, message)
 }
 
 # The 3 x 4 grid of the block engine fixture: demand is missing in cell 7 and zero in

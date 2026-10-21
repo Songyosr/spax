@@ -120,8 +120,9 @@ prepare_allocation <- function(demand, supply, distance,
 #' is unknown. [obs_totals()] works directly. [obs_flows()] is keyed by cell
 #' number, and counts at cells that are not origins (no demand, or unknown) are
 #' dropped with a message. A missing or infinite travel time is an absent pair, and a
-#' cell with demand that reaches no facility stays an origin, its demand going to the
-#' outside option. The allocation model uses one supply measure: with several
+#' cell with demand that reaches no facility stays an origin: with [spec_clm()] its
+#' demand goes to the outside option, while [spec_huff()] has no outside option and
+#' allocates none of it. The allocation model uses one supply measure: with several
 #' `supply_cols`, choose one with `prep_data(supply_cols = )`. The conversion is
 #' the same on every call, so fits to the same data share their travel matrix and
 #' can be compared with [compare_allocations()], and a result does not depend on the
@@ -229,7 +230,8 @@ prep_data <- function(demand, supply, travel,
                       missing_travel = c("error", "legacy_zero"),
                       spatial = NULL, metadata = list(),
                       id_col = NULL, supply_cols = NULL) {
-  if (identical(.prep_data_mode(demand), "raster")) {
+  mode <- .prep_data_mode(demand)
+  if (mode == "raster") {
     given <- c(origin_ids = !missing(origin_ids), facility_ids = !missing(facility_ids),
                included = !missing(included), missing_demand = !missing(missing_demand),
                missing_travel = !missing(missing_travel), spatial = !missing(spatial))

@@ -145,8 +145,9 @@ rule of the indices applies: negative or infinite demand is an error and \code{N
 is unknown. \code{\link[=obs_totals]{obs_totals()}} works directly. \code{\link[=obs_flows]{obs_flows()}} is keyed by cell
 number, and counts at cells that are not origins (no demand, or unknown) are
 dropped with a message. A missing or infinite travel time is an absent pair, and a
-cell with demand that reaches no facility stays an origin, its demand going to the
-outside option. The allocation model uses one supply measure: with several
+cell with demand that reaches no facility stays an origin: with \code{\link[=spec_clm]{spec_clm()}} its
+demand goes to the outside option, while \code{\link[=spec_huff]{spec_huff()}} has no outside option and
+allocates none of it. The allocation model uses one supply measure: with several
 \code{supply_cols}, choose one with \code{prep_data(supply_cols = )}. The conversion is
 the same on every call, so fits to the same data share their travel matrix and
 can be compared with \code{\link[=compare_allocations]{compare_allocations()}}, and a result does not depend on the

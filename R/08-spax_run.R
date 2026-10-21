@@ -33,7 +33,8 @@
 #' call and without keeping anything: the cells with finite, positive demand are the
 #' origins, their IDs are the cell numbers (`"843"`) and each has its travel to every
 #' facility; a missing or infinite travel time is an absent pair, and a cell that reaches
-#' no facility stays an origin whose demand goes to the outside option. [obs_totals()]
+#' no facility stays an origin: with [spec_clm()] its demand goes to the outside option,
+#' while [spec_huff()] has no outside option and allocates none of it. [obs_totals()]
 #' works as it is, and [obs_flows()] is keyed by cell number: counts at cells that are not
 #' origins are dropped with a message. The model then runs as on numeric data, so every
 #' step function accepts the result, and fits to the same data can be compared. See
@@ -171,6 +172,10 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
     stop("the rasters of this data are no longer available (saved and reloaded?): ",
          "prepare the data again", call. = FALSE)
   }
+  if (!.spec_rasters_alive(model)) {
+    stop("the raster sigma of this specification is no longer available (saved and ",
+         "reloaded?): give the decay its raster again", call. = FALSE)
+  }
   if (inherits(model, "spax_fca_spec")) {
     # An FCA index is computed, not fitted.
     if (!is.null(observed)) {
@@ -260,7 +265,8 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
 #' @inheritParams spec_clm
 #' @param demand,supply,travel The inputs of [prep_data()]: demand by origin
 #'   (a named list by group for demand groups), supply by facility and the
-#'   origin-by-facility travel matrix.
+#'   origin-by-facility travel matrix (or the rasters of raster mode, with `id_col`
+#'   and `supply_cols` in `data_args`).
 #' @param observed Observed counts, as in [spax()]: an [obs_flows()] or
 #'   [obs_totals()] object, or raw counts. `NULL` (the default) evaluates a model
 #'   that has a value for every parameter.

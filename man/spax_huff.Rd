@@ -35,7 +35,8 @@ spax_clm(
 \arguments{
 \item{demand, supply, travel}{The inputs of \code{\link[=prep_data]{prep_data()}}: demand by origin
 (a named list by group for demand groups), supply by facility and the
-origin-by-facility travel matrix.}
+origin-by-facility travel matrix (or the rasters of raster mode, with \code{id_col}
+and \code{supply_cols} in \code{data_args}).}
 
 \item{observed}{Observed counts, as in \code{\link[=spax]{spax()}}: an \code{\link[=obs_flows]{obs_flows()}} or
 \code{\link[=obs_totals]{obs_totals()}} object, or raw counts. \code{NULL} (the default) evaluates a model

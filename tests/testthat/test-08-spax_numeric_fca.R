@@ -5,7 +5,9 @@
 # cases read the shipped example grids.
 
 expect_error_exact <- function(object, message) {
-  expect_error(object, message, fixed = TRUE)
+  # the whole message, not a part of it
+  got <- tryCatch({ object; NULL }, error = function(e) conditionMessage(e))
+  expect_identical(got, message)
 }
 
 # Cornwall: the raster data and the numeric data made from it in two ways (the

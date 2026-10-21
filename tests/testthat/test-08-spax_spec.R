@@ -22,7 +22,9 @@ decay_text <- c(
 )
 
 expect_message_exact <- function(object, message) {
-  expect_error(object, message, fixed = TRUE)
+  # the whole message, not a part of it
+  got <- tryCatch({ object; NULL }, error = function(e) conditionMessage(e))
+  expect_identical(got, message)
 }
 
 # A declared kernel with bounds on sigma.

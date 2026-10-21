@@ -81,7 +81,8 @@ sigma needs raster data".
 call and without keeping anything: the cells with finite, positive demand are the
 origins, their IDs are the cell numbers (\code{"843"}) and each has its travel to every
 facility; a missing or infinite travel time is an absent pair, and a cell that reaches
-no facility stays an origin whose demand goes to the outside option. \code{\link[=obs_totals]{obs_totals()}}
+no facility stays an origin: with \code{\link[=spec_clm]{spec_clm()}} its demand goes to the outside option,
+while \code{\link[=spec_huff]{spec_huff()}} has no outside option and allocates none of it. \code{\link[=obs_totals]{obs_totals()}}
 works as it is, and \code{\link[=obs_flows]{obs_flows()}} is keyed by cell number: counts at cells that are not
 origins are dropped with a message. The model then runs as on numeric data, so every
 step function accepts the result, and fits to the same data can be compared. See
