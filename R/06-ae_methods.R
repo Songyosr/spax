@@ -214,6 +214,8 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
     out$fixed <- data.frame(parameter = names(fixed), value = as.numeric(fixed),
                             stringsAsFactors = FALSE, check.names = FALSE)
   }
+  # The model line of the public workflow, as the fit prints it (appended last).
+  if (.is_public_allocation(object)) out$model_label <- .public_model_label(object)
   out
 }
 
@@ -222,8 +224,11 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
 #' @keywords internal
 #' @export
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
-  cat("<summary.ae_problem_nfxp_fit>\n")
-  cat("model: ", .ae_model_label(x), "\n", sep = "")
+  public <- .is_public_allocation(x)
+  cat(if (public) "<allocation fit result summary>\n" else "<summary.ae_problem_nfxp_fit>\n")
+  # Summaries saved before the public label was stored keep the internal label.
+  cat("model: ", if (public) x$model_label %||% .ae_model_label(x) else .ae_model_label(x),
+      "\n", sep = "")
   # Summaries saved before the label was stored show the family alone.
   cat("family: ", x$family_label %||% x$family, "\n", sep = "")
   if (!is.null(x$allocation_form)) {

@@ -43,9 +43,14 @@ test_that("a fit of the public workflow prints a plain header and its model", {
   nosnap_huff <- hfit$best
   nosnap_huff$prediction_snapshot <- NULL
   expect_identical(.first(nosnap_huff, 2L)[2L], "model: allocation model")
-  # the summary of the selected fit keeps its own header
-  expect_identical(.first(summary(fit$best), 2L), c("<summary.ae_problem_nfxp_fit>",
-                                                    "model: clm"))
+  # the summary of the selected fit has the plain header and the same model line
+  expect_identical(.first(summary(fit$best), 2L), c("<allocation fit result summary>",
+                                                    "model: conditional logit"))
+  expect_identical(.first(summary(hfit$best), 2L)[2L], "model: Huff")
+  # a summary saved before the label was stored keeps the internal label
+  old_summary <- summary(fit$best)
+  old_summary$model_label <- NULL
+  expect_identical(.first(old_summary, 2L), c("<allocation fit result summary>", "model: clm"))
 })
 
 test_that("a search with no selected start prints its header and summary header", {
