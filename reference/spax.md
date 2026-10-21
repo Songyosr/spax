@@ -242,9 +242,9 @@ summary(clm)
 #> loss disagreement: TRUE; parameter disagreement: TRUE
 #> Supplied-start diagnostics (not a global-optimum or identification guarantee):
 #>  start     loss eligible optim_convergence solver_converged residual seconds
-#>  scan1 -5036000     TRUE                 0             TRUE        0   0.069
-#>  scan2 -5036000     TRUE                 0             TRUE        0   0.272
-#>  scan3 -5037000     TRUE                 0             TRUE        0   0.115
+#>  scan1 -5036000     TRUE                 0             TRUE        0   0.073
+#>  scan2 -5036000     TRUE                 0             TRUE        0   0.299
+#>  scan3 -5037000     TRUE                 0             TRUE        0   0.129
 #>  boundary   status                                    optim_message
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
@@ -267,7 +267,7 @@ summary(clm)
 #> 
 #> fit:
 #>      loss convergence seconds spectral_radius gradient
-#>  -5037000           0   0.111               0     TRUE
+#>  -5037000           0   0.127               0     TRUE
 #> 
 #> predicted:
 #>   min  q25 median  mean   q75   max
