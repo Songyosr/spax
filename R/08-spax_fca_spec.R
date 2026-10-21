@@ -285,31 +285,26 @@ format.spax_fca_spec <- function(x, ...) {
   lapply(decay, .fca_map_decay)
 }
 
-# The arguments of .fca_block_run() for an FCA specification, and the pieces of
-# the result of the matching wrapper: `type` (the runner's type), `label` (the
-# `type` of the result), `decay_params`, `selection_params` (for 3SFCA and Huff, the
-# mapped decay itself when the specification has no selection), `demand_normalize`,
-# `attractiveness` (`NULL` for "supply", as the wrappers default it; the Huff wrapper
-# resolves it with .fca_attractiveness()), `alpha`, and `parameter_names`, the
-# elements of the `parameters` list of the result in the wrapper's order. Groups are
-# in the order of the specification; they are bound to the data later.
+# The arguments of .fca_run() for an FCA specification, and the pieces of the
+# result of the matching wrapper: `kind` (the kind of the specification), `type` (the
+# type of .fca_block_run()), `label` (the `type` of the result), `decay_params`,
+# `selection_params` (for 3SFCA and Huff, the mapped decay itself when the specification
+# has no selection), `demand_normalize`, `attractiveness` (`NULL` for "supply", as the
+# wrappers default it; .fca_run() resolves it with .fca_attractiveness()), `alpha`, and
+# `parameter_names`, the elements of the `parameters` list of the result in the
+# wrapper's order. Groups are in the order of the specification; they are bound to the
+# data later.
 .fca_spec_args <- function(spec) {
   kind <- spec$kind
-  type <- switch(kind,
-    `2sfca` = , e2sfca = "e2sfca",
-    m2sfca = "m2sfca",
-    `3sfca` = "3sfca",
-    huff2sfca = "huff",
-    stop("unknown FCA kind '", kind, "'", call. = FALSE)
-  )
+  info <- .fca_kind_info(kind)
   decay_params <- .fca_map_decay(
     if (identical(kind, "2sfca")) .fca_threshold_decay(spec$threshold) else spec$decay
   )
   selection <- kind %in% c("3sfca", "huff2sfca")
   list(
     kind = kind,
-    type = type,
-    label = unname(.fca_spec_labels[[kind]]),
+    type = info$type,
+    label = info$label,
     decay_params = decay_params,
     selection_params = if (selection) {
       if (is.null(spec$selection)) decay_params else .fca_map_decay(spec$selection)
@@ -318,10 +313,6 @@ format.spax_fca_spec <- function(x, ...) {
     attractiveness = if (identical(kind, "huff2sfca") &&
                          !identical(spec$attractiveness, "supply")) spec$attractiveness,
     alpha = if (identical(kind, "huff2sfca")) spec$alpha else 1,
-    parameter_names = switch(type,
-      e2sfca = , m2sfca = c("decay_params", "demand_normalize"),
-      `3sfca` = c("decay_params", "selection_params"),
-      huff = c("decay_params", "selection_params", "attractiveness", "alpha")
-    )
+    parameter_names = info$parameter_names
   )
 }

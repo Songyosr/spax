@@ -60,7 +60,7 @@
 #' This is an internal constructor and should be used with .chck_spax().
 #'
 #' @inheritParams .chck_spax
-#' @return A spax object
+#' @return A spax object, of class `c("spax", "spax_result")`
 #' @keywords internal
 .new_spax <- function(accessibility = NULL,
                      type = NULL,
@@ -80,7 +80,7 @@
       variations = variations,
       call = call
     ),
-    class = "spax"
+    class = c("spax", "spax_result")
   )
 }
 

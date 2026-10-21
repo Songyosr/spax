@@ -17,7 +17,8 @@ spax(
 \arguments{
 \item{data}{Prepared inputs: the result of \code{\link[=prep_data]{prep_data()}}.}
 
-\item{model}{A model specification: \code{\link[=spec_huff]{spec_huff()}} or \code{\link[=spec_clm]{spec_clm()}}.}
+\item{model}{A model specification: \code{\link[=spec_huff]{spec_huff()}} or \code{\link[=spec_clm]{spec_clm()}}, or for raster
+data an FCA specification such as \code{\link[=spec_e2sfca]{spec_e2sfca()}}.}
 
 \item{observed}{Observed counts for a model with a parameter to fit: an
 \code{\link[=obs_flows]{obs_flows()}} or \code{\link[=obs_totals]{obs_totals()}} object, or raw counts (see Details).
@@ -33,7 +34,9 @@ nothing is fitted.}
 \code{\link[=evaluate_allocation]{evaluate_allocation()}}, for example \code{requested_outputs}.}
 }
 \value{
-An object of class \code{c("spax_allocation", "spax_result")}: a list
+For an FCA specification, a \code{spax} object (class \code{c("spax", "spax_result")}),
+see \code{\link[=spax_e2sfca]{spax_e2sfca()}}. For an allocation model, an object of class
+\code{c("spax_allocation", "spax_result")}: a list
 with \code{model} (the bound \code{ae_problem}), \code{spec}, \code{observed} (a list with
 \code{spec}, the observation as declared, \code{target}, the counts aligned to the
 data, and \code{output}; \code{NULL} in evaluate mode), \code{fit} (the
@@ -51,6 +54,17 @@ every parameter has a value, evaluates the model at those values.
 \code{spax_huff()} and \code{spax_clm()} do the same from raw inputs in one call.
 }
 \details{
+\strong{FCA indices.} With raster data (\code{\link[=prep_data]{prep_data()}} with a \code{SpatRaster} as demand)
+and an FCA specification (\code{\link[=spec_2sfca]{spec_2sfca()}}, \code{\link[=spec_e2sfca]{spec_e2sfca()}}, \code{\link[=spec_m2sfca]{spec_m2sfca()}},
+\code{\link[=spec_3sfca]{spec_3sfca()}}, \code{\link[=spec_huff2sfca]{spec_huff2sfca()}}), \code{spax()} computes the index and returns
+the same object as the matching one-shot (\code{\link[=spax_2sfca]{spax_2sfca()}}, \code{\link[=spax_e2sfca]{spax_e2sfca()}} and
+the others): the \code{type}, \code{parameters} and accessibility layers are identical,
+and \code{call} is the call of \code{spax()}. An index is computed, not fitted: \code{observed},
+\code{starts}, \code{lower}, \code{upper} and \code{...} are refused. Group lists of \code{decay} and
+\code{selection} and a \code{threshold} by group are matched to the demand groups of the data
+by name and put in their order. FCA specifications on numeric data and allocation
+models on raster data are not available yet.
+
 \strong{Fit mode.} Some parameter is \code{"fit"}. \code{observed} is needed. The counts
 are aligned with the data (see \code{\link[=obs_flows]{obs_flows()}}), the model is bound to the
 data and \code{\link[=fit_allocation]{fit_allocation()}} fits it. The loss is set by the observation and

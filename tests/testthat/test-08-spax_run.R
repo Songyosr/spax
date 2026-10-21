@@ -281,7 +281,8 @@ test_that("the checks run in order and the messages are exact", {
   expect_identical(.run_error(spax(case$demand, spec_huff())),
                    "data must come from prep_data()")
   # 2. model, before the refusals and the binding
-  model_message <- "model must be a model specification such as spec_huff() or spec_clm()"
+  model_message <- paste0("model must be a model specification such as spec_e2sfca(), ",
+                          "spec_huff() or spec_clm()")
   expect_identical(.run_error(spax(d, "huff", loss = "poisson")), model_message)
   expect_identical(.run_error(spax(d, list(kind = "huff"))), model_message)
   expect_identical(.run_error(spax(d, decay_gaussian())), model_message)

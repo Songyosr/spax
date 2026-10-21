@@ -8,6 +8,17 @@
 #' every parameter has a value, evaluates the model at those values.
 #' `spax_huff()` and `spax_clm()` do the same from raw inputs in one call.
 #'
+#' **FCA indices.** With raster data ([prep_data()] with a `SpatRaster` as demand)
+#' and an FCA specification ([spec_2sfca()], [spec_e2sfca()], [spec_m2sfca()],
+#' [spec_3sfca()], [spec_huff2sfca()]), `spax()` computes the index and returns
+#' the same object as the matching one-shot ([spax_2sfca()], [spax_e2sfca()] and
+#' the others): the `type`, `parameters` and accessibility layers are identical,
+#' and `call` is the call of `spax()`. An index is computed, not fitted: `observed`,
+#' `starts`, `lower`, `upper` and `...` are refused. Group lists of `decay` and
+#' `selection` and a `threshold` by group are matched to the demand groups of the data
+#' by name and put in their order. FCA specifications on numeric data and allocation
+#' models on raster data are not available yet.
+#'
 #' **Fit mode.** Some parameter is `"fit"`. `observed` is needed. The counts
 #' are aligned with the data (see [obs_flows()]), the model is bound to the
 #' data and [fit_allocation()] fits it. The loss is set by the observation and
@@ -61,7 +72,8 @@
 #' save a result.
 #'
 #' @param data Prepared inputs: the result of [prep_data()].
-#' @param model A model specification: [spec_huff()] or [spec_clm()].
+#' @param model A model specification: [spec_huff()] or [spec_clm()], or for raster
+#'   data an FCA specification such as [spec_e2sfca()].
 #' @param observed Observed counts for a model with a parameter to fit: an
 #'   [obs_flows()] or [obs_totals()] object, or raw counts (see Details).
 #'   `NULL` (the default) for a model with a value for every parameter.
@@ -72,7 +84,9 @@
 #'   `control`, `lambda`, `tol`, `max_iter`, `norm`, `keep_fits`, ...); `output`,
 #'   `loss` and `loss_args` are refused. Evaluate mode: further arguments of
 #'   [evaluate_allocation()], for example `requested_outputs`.
-#' @return An object of class `c("spax_allocation", "spax_result")`: a list
+#' @return For an FCA specification, a `spax` object (class `c("spax", "spax_result")`),
+#'   see [spax_e2sfca()]. For an allocation model, an object of class
+#'   `c("spax_allocation", "spax_result")`: a list
 #'   with `model` (the bound `ae_problem`), `spec`, `observed` (a list with
 #'   `spec`, the observation as declared, `target`, the counts aligned to the
 #'   data, and `output`; `NULL` in evaluate mode), `fit` (the
@@ -122,12 +136,34 @@
 spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, upper = NULL,
                  ...) {
   call <- match.call()
-  if (!inherits(data, "ae_prepared_inputs")) {
+  if (!inherits(data, c("ae_prepared_inputs", "spax_data"))) {
     stop("data must come from prep_data()", call. = FALSE)
   }
-  if (!inherits(model, "spax_allocation_spec")) {
-    stop("model must be a model specification such as spec_huff() or spec_clm()",
-         call. = FALSE)
+  if (!inherits(model, c("spax_allocation_spec", "spax_fca_spec"))) {
+    stop("model must be a model specification such as spec_e2sfca(), spec_huff() or ",
+         "spec_clm()", call. = FALSE)
+  }
+  raster <- inherits(data, "spax_raster_data")
+  if (raster && !.raster_data_alive(data)) {
+    stop("the rasters of this data are no longer available (saved and reloaded?): ",
+         "prepare the data again", call. = FALSE)
+  }
+  if (inherits(model, "spax_fca_spec")) {
+    # An FCA index is computed, not fitted.
+    if (!is.null(observed)) {
+      stop("FCA indices are computed, not fitted; to fit how demand chooses facilities ",
+           "use spec_huff() or spec_clm()", call. = FALSE)
+    }
+    if (!is.null(starts) || !is.null(lower) || !is.null(upper) || ...length() > 0L) {
+      stop("starts, bounds and fitting controls apply to allocation models", call. = FALSE)
+    }
+    if (!raster) {
+      stop("FCA specifications on numeric data come in a later task", call. = FALSE)
+    }
+    return(.spax_fca_raster(data, model, call))
+  }
+  if (raster) {
+    stop("allocation models on raster data come in a later task", call. = FALSE)
   }
   dots <- list(...)
   if (any(c("output", "loss", "loss_args") %in% names(dots))) {
