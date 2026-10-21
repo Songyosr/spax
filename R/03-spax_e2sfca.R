@@ -431,6 +431,10 @@
   method <- params$method
   dist_key <- paste0("distance", suffix)
   if (is.function(method)) {
+    if (!inherits(distance, "SpatRaster")) {
+      stop("a plain decay function needs raster data; declare a kernel with decay_kernel()",
+           call. = FALSE)
+    }
     nm <- paste0("weights_", key, suffix)
     weights <- .fca_decay_weights(distance, params, snap)
     # The weight layers belong to facilities by their names, as before; layers
@@ -544,11 +548,17 @@
 # specification of the wrapper. `attractiveness` is the vector from .fca_attractiveness() for
 # "huff". `suffix` ends every raster key of the group (see .fca_decay_spec()).
 # Returns `rasters`, the named SpatRasters the kernels read (the group's
-# distance first), and `kernels`, `list(demand, access)`.
+# distance first), and `kernels`, `list(demand, access)`. `distance` may also be
+# a numeric matrix (origins by facilities: FCA on numeric data, SPAX-060 V3):
+# the kernels then read it from the in-memory block of .fca_blocks() under the key
+# "distance<suffix>", and `rasters` is NULL.
 .fca_group_kernels <- function(type, distance, decay_params,
                                selection_params = NULL, attractiveness = NULL,
                                alpha = 1, snap = FALSE, suffix = "") {
-  .chck_class(distance, "SpatRaster", "distance")
+  in_memory <- is.matrix(distance)
+  if (!in_memory) {
+    .chck_class(distance, "SpatRaster", "distance")
+  }
   decay <- .fca_decay_spec(distance, decay_params, "decay", snap, suffix)
   selection <- NULL
   if (type %in% c("3sfca", "huff") && !identical(selection_params, decay_params)) {
@@ -556,7 +566,9 @@
                                  suffix)
   }
   # The first raster names the facilities and gives the grid of the result.
-  rasters <- .fca_merge_rasters(c(decay$rasters, selection$rasters))
+  rasters <- if (!in_memory) {
+    .fca_merge_rasters(c(decay$rasters, selection$rasters))
+  }
 
   attract <- if (is.null(attractiveness)) NULL else unname(attractiveness)
   choice_kernel <- function(b, rows) {
@@ -777,7 +789,14 @@
 # `snap` skips only the checks of type, length and value.
 .fca_attractiveness <- function(attractiveness, supply, distance,
                                 id_col, supply_cols, snap) {
-  ids <- names(distance)
+  .fca_attractiveness_ids(attractiveness, supply, names(distance), id_col,
+                          supply_cols, snap)
+}
+
+# .fca_attractiveness() for facilities given by their IDs, in the order of the
+# distance layers (or of the columns of a travel matrix).
+.fca_attractiveness_ids <- function(attractiveness, supply, ids, id_col,
+                                    supply_cols, snap) {
   if (is.null(attractiveness)) {
     values <- .help_process_supply(
       supply, id_col, supply_cols, weight_ids = ids
@@ -790,7 +809,7 @@
   } else {
     if (!snap) {
       .chck_numeric_vector(attractiveness, "attractiveness", finite = FALSE)
-      .chck_lengths_match(length(attractiveness), nlyr(distance),
+      .chck_lengths_match(length(attractiveness), length(ids),
                           "attractiveness", "distance layers")
     }
     values <- attractiveness

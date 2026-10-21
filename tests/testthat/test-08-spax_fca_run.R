@@ -821,7 +821,7 @@ test_that("an FCA index is computed, not fitted: observed, starts, bounds and ..
   expect_s3_class(spax(d, spec), "spax")
 })
 
-test_that("the refusals of an FCA index apply to numeric data too, before its placeholder", {
+test_that("the refusals of an FCA index apply to numeric data too", {
   f <- alloc_huff_case()
   d <- prep_data(f$demand, f$supply, f$distance)
   spec <- spec_e2sfca(decay_gaussian(2))
@@ -832,19 +832,16 @@ test_that("the refusals of an FCA index apply to numeric data too, before its pl
                        "starts, bounds and fitting controls apply to allocation models")
 })
 
-test_that("the two combinations that wait for a later task say so", {
+test_that("the two combinations that waited for V3 now run (see test-08-spax_numeric_fca.R)", {
   td <- fca_toy()
   raster <- prep_data(td$demand, td$supply_vector, td$distance)
   f <- alloc_huff_case()
   numeric <- prep_data(f$demand, f$supply, f$distance)
-  expect_message_exact(spax(numeric, spec_e2sfca(decay_gaussian(2))),
-                       "FCA specifications on numeric data come in a later task")
-  expect_message_exact(spax(numeric, spec_2sfca(3)),
-                       "FCA specifications on numeric data come in a later task")
-  expect_message_exact(spax(raster, spec_clm()),
-                       "allocation models on raster data come in a later task")
-  expect_message_exact(spax(raster, spec_huff()),
-                       "allocation models on raster data come in a later task")
+  expect_s3_class(spax(numeric, spec_e2sfca(decay_gaussian(2))), "spax_access_values")
+  expect_s3_class(spax(numeric, spec_2sfca(3)), "spax_access_values")
+  expect_s3_class(spax(raster, spec_clm(decay_gaussian(2), outside = 1, beta = 1)),
+                  "spax_allocation")
+  expect_s3_class(spax(raster, spec_huff(decay_gaussian(2), beta = 1)), "spax_allocation")
   # the allocation route on numeric data is untouched
   expect_s3_class(spax(numeric, spec_clm(decay_gaussian(8), outside = 0.5, beta = 1)),
                   "spax_allocation")

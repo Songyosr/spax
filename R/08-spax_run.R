@@ -16,8 +16,28 @@
 #' and `call` is the call of `spax()`. An index is computed, not fitted: `observed`,
 #' `starts`, `lower`, `upper` and `...` are refused. Group lists of `decay` and
 #' `selection` and a `threshold` by group are matched to the demand groups of the data
-#' by name and put in their order. FCA specifications on numeric data and allocation
-#' models on raster data are not available yet.
+#' by name and put in their order.
+#'
+#' **FCA indices on numeric data.** With numeric data (demand, supply and a travel
+#' matrix) an FCA specification gives the index at the active origins, computed by the
+#' same engine and the same rules (the cells that reach no facility are `NA`, and the
+#' overall layer of demand groups is the same). The result is a `spax_access_values`, a
+#' list with `access`, a matrix with one row per active origin and one column per layer,
+#' not a raster (see [spax_access_values-methods]). Numeric data has one supply
+#' measure, `"supply"`, so there is one measure, and an origin with zero or unknown
+#' demand has no row. A raster `sigma` (a variable catchment) is refused: "a raster
+#' sigma needs raster data".
+#'
+#' **Allocation models on raster data.** With raster data and an allocation model
+#' ([spec_clm()], [spec_huff()]), `spax()` first converts the data to origins, on each
+#' call and without keeping anything: the cells with finite, positive demand are the
+#' origins, their IDs are the cell numbers (`"843"`) and each has its travel to every
+#' facility; a missing or infinite travel time is an absent pair, and a cell that reaches
+#' no facility stays an origin whose demand goes to the outside option. [obs_totals()]
+#' works as it is, and [obs_flows()] is keyed by cell number: counts at cells that are not
+#' origins are dropped with a message. The model then runs as on numeric data, so every
+#' step function accepts the result, and fits to the same data can be compared. See
+#' [prep_data()] for the conversion and its memory.
 #'
 #' **Fit mode.** Some parameter is `"fit"`. `observed` is needed. The counts
 #' are aligned with the data (see [obs_flows()]), the model is bound to the
@@ -72,8 +92,8 @@
 #' save a result.
 #'
 #' @param data Prepared inputs: the result of [prep_data()].
-#' @param model A model specification: [spec_huff()] or [spec_clm()], or for raster
-#'   data an FCA specification such as [spec_e2sfca()].
+#' @param model A model specification: [spec_huff()] or [spec_clm()], or an FCA
+#'   specification such as [spec_e2sfca()].
 #' @param observed Observed counts for a model with a parameter to fit: an
 #'   [obs_flows()] or [obs_totals()] object, or raw counts (see Details).
 #'   `NULL` (the default) for a model with a value for every parameter.
@@ -84,8 +104,10 @@
 #'   `control`, `lambda`, `tol`, `max_iter`, `norm`, `keep_fits`, ...); `output`,
 #'   `loss` and `loss_args` are refused. Evaluate mode: further arguments of
 #'   [evaluate_allocation()], for example `requested_outputs`.
-#' @return For an FCA specification, a `spax` object (class `c("spax", "spax_result")`),
-#'   see [spax_e2sfca()]. For an allocation model, an object of class
+#' @return For an FCA specification on raster data, a `spax` object (class
+#'   `c("spax", "spax_result")`), see [spax_e2sfca()]; on numeric data, a
+#'   `spax_access_values` (class `c("spax_access_values", "spax_result")`), see
+#'   [spax_access_values-methods]. For an allocation model, an object of class
 #'   `c("spax_allocation", "spax_result")`: a list
 #'   with `model` (the bound `ae_problem`), `spec`, `observed` (a list with
 #'   `spec`, the observation as declared, `target`, the counts aligned to the
@@ -157,13 +179,12 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
     if (!is.null(starts) || !is.null(lower) || !is.null(upper) || ...length() > 0L) {
       stop("starts, bounds and fitting controls apply to allocation models", call. = FALSE)
     }
-    if (!raster) {
-      stop("FCA specifications on numeric data come in a later task", call. = FALSE)
-    }
-    return(.spax_fca_raster(data, model, call))
+    return(if (raster) .spax_fca_raster(data, model, call) else
+      .spax_fca_numeric(data, model, call))
   }
   if (raster) {
-    stop("allocation models on raster data come in a later task", call. = FALSE)
+    # The cells with demand become the origins; from here on the model runs on them.
+    data <- .raster_to_origins(data, model)
   }
   dots <- list(...)
   if (any(c("output", "loss", "loss_args") %in% names(dots))) {

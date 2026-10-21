@@ -134,6 +134,39 @@ are for numeric data and are refused. \code{id_col} and \code{supply_cols} are f
 raster data and are refused for numeric data. The result holds the rasters as
 they are, so it does not survive \code{\link[=saveRDS]{saveRDS()}}: its pointers to the rasters are
 then empty, and \code{spax()} stops and asks for the data to be prepared again.
+
+\strong{Allocation models on raster data.} \code{spax()} also runs \code{\link[=spec_clm]{spec_clm()}} and
+\code{\link[=spec_huff]{spec_huff()}} on raster data. It converts the data to origins on each call,
+behind the scenes, and keeps nothing: the origins are the cells with finite,
+positive demand (with demand groups, the cells where every group's demand is
+known and the total is positive), their IDs are the cell numbers of the grid
+as text (\code{"843"}), and the origin registry holds these cells only. The demand
+rule of the indices applies: negative or infinite demand is an error and \code{NA}
+is unknown. \code{\link[=obs_totals]{obs_totals()}} works directly. \code{\link[=obs_flows]{obs_flows()}} is keyed by cell
+number, and counts at cells that are not origins (no demand, or unknown) are
+dropped with a message. A missing or infinite travel time is an absent pair, and a
+cell with demand that reaches no facility stays an origin, its demand going to the
+outside option. The allocation model uses one supply measure: with several
+\code{supply_cols}, choose one with \code{prep_data(supply_cols = )}. The conversion is
+the same on every call, so fits to the same data share their travel matrix and
+can be compared with \code{\link[=compare_allocations]{compare_allocations()}}, and a result does not depend on the
+rasters after the call.
+
+The travel of the origins is held as a matrix of origins by facilities, 8 bytes per
+value. On a synthetic grid of 400 x 500 cells with demand in half of them and 250
+facilities (100,000 origins), the matrix is 200 MB; converting takes 2 seconds and
+peaks at about 0.5 GB of R memory (0.85 GB of process memory above the data), 2.5 to
+4 times the matrix. A fit to facility totals from one start peaks at about 3 GB of R
+memory (3.4 GB of process memory), 15 to 17 times the matrix, and takes about 5
+minutes. That is the memory of the fit, the same as for numeric inputs of that size,
+so a much larger grid is better cropped or coarsened first.
+
+\strong{FCA indices on numeric data.} An FCA specification (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and its
+relatives) also runs on numeric data with \code{\link[=spax]{spax()}}. It gives the index at the active
+origins only: an origin with zero or unknown demand, or left out, has no row in the
+result. The result is a \code{spax_access_values} (see \link{spax_access_values-methods}), not
+rasters, and numeric data has one supply measure, \code{"supply"}. A raster \code{sigma} (a
+variable catchment) needs raster data.
 }
 \examples{
 # Mainland Cornwall: registered residents, GP FTE and travel minutes
@@ -157,6 +190,7 @@ Other allocation interface:
 \code{\link{decay_gaussian}()},
 \code{\link{obs_flows}()},
 \code{\link{spax}()},
+\code{\link{spax_access_values-methods}},
 \code{\link{spax_allocation-methods}},
 \code{\link{spax_huff}()},
 \code{\link{spec_clm}()}

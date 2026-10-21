@@ -98,6 +98,7 @@ Other allocation interface:
 \code{\link{obs_flows}()},
 \code{\link{prep_data}()},
 \code{\link{spax}()},
+\code{\link{spax_access_values-methods}},
 \code{\link{spax_allocation-methods}},
 \code{\link{spec_clm}()}
 }
