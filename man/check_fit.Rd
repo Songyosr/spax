@@ -49,14 +49,14 @@ its floor \code{eps} and the number of cells with positive observed counts model
 it, which cap the loss; \code{NULL} otherwise). Use \code{print()} or \code{as.data.frame()}.
 }
 \description{
-\code{check_fit()} is the general name of this step and \code{check_allocation()} its earlier
-name: the two are the same function, and they differ only in the name that a message
-gives for the step.
-}
-\details{
 Compares a fitted allocation with two simpler allocations on the same loss
 and observed targets, and summarizes the travel times the allocations imply.
 The check reports only: it never changes or replaces the fit.
+}
+\details{
+\code{check_fit()} is the general name of this step and \code{check_allocation()} its earlier
+name: the two are the same function, and they differ only in the name that a message
+gives for the step.
 
 Facility counts constrain where predicted loads fall but not where users
 live. When facility capacity closely tracks the observed counts, an

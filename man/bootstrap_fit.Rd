@@ -74,15 +74,15 @@ model; it is printed with the result.
 Scientific refusals are inspectable results; invalid inputs error.
 }
 \description{
-\code{bootstrap_fit()} is the general name of this step and \code{bootstrap_allocation()} its
-earlier name: the two are the same function, and they differ only in the name that a
-message gives for the step.
-}
-\details{
 This experimental operation runs separately from fitting. It resamples facility
 observation multiplicities, retaining every physical facility and its supply
 in the allocation network. Need, travel, capacity and included-network inputs
 remain fixed. Facility independence is a caller-declared working assumption.
+}
+\details{
+\code{bootstrap_fit()} is the general name of this step and \code{bootstrap_allocation()} its
+earlier name: the two are the same function, and they differ only in the name that a
+message gives for the step.
 
 The model is a static CLM with a fitted outside mass (\code{outside = "fit"} in
 \code{\link[=spec_clm]{spec_clm()}}, or \code{fit_v0 = TRUE} in \code{\link[=clm_allocation]{clm_allocation()}}) and a

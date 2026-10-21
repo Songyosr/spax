@@ -43,9 +43,9 @@
 print.spax <- function(x, ...) {
   # Header: the type, the layers and the grid
   n_layers <- nlyr(x$accessibility)
-  cat("<spax access> ", x$type, ", ", n_layers, if (n_layers == 1L) " layer" else " layers",
-      " on ", .format_total(dim(x$accessibility)[1]), " x ",
-      .format_total(dim(x$accessibility)[2]), " cells\n\n", sep = "")
+  cat(sprintf("<spax access> %s, %d %s on %d x %d cells\n\n", x$type, n_layers,
+              if (n_layers == 1L) "layer" else "layers",
+              dim(x$accessibility)[1], dim(x$accessibility)[2]))
 
   # Core spatial information
   cat("Spatial Properties:\n")

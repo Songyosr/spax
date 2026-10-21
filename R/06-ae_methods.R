@@ -35,6 +35,13 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
     identical(x[["allocation_form", exact = TRUE]], "clm")
 }
 
+# A multistart fit or its summary carries the two fields of the problem it fitted, so that
+# a search with no selected start is told apart too; one saved before they were kept has
+# the selected fit (`best` of a fit, `selected` of a summary) and only that.
+.is_public_multistart <- function(x, selected = "best") {
+  .is_public_allocation(x) || .is_public_allocation(x[[selected, exact = TRUE]])
+}
+
 # An evaluation (an `ae_equilibrium`) does not carry the model: a corrected conditional
 # logit evaluation carries a prediction snapshot, and one with demand groups the group
 # markers. No other model has either, so the raw solver output, SAE, HAAE, huff_decay and

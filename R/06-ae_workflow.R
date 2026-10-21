@@ -824,7 +824,9 @@ summary.ae_multistart_fit <- function(object, ...) {
        disagreement = list(loss = object$loss_disagreement,
                            parameter = object$parameter_disagreement,
                            tolerances = object$tolerances),
-       warnings = object$warnings, errors = object$errors),
+       warnings = object$warnings, errors = object$errors,
+       model = object[["model", exact = TRUE]],
+       allocation_form = object[["allocation_form", exact = TRUE]]),
     class = "summary.ae_multistart_fit")
 }
 

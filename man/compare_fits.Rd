@@ -73,16 +73,16 @@ long \code{zones} table when zones are supplied, and the reference name. Use
 \code{print()} or \code{as.data.frame(type = "fits")} / \code{as.data.frame(type = "zones")}.
 }
 \description{
-\code{compare_fits()} is the general name of this step and \code{compare_allocations()} its
-earlier name: the two are the same function, and they differ only in the name that a
-message gives for the step.
-}
-\details{
 Summarizes several fitted allocations side by side: regional contact,
 attributed capacity and its per-contact value, the spread of contact across
 origins, agreement between predicted and observed counts, and the fitted
 loss. Each fit's coverage is computed from its saved outputs; nothing is
 refitted.
+}
+\details{
+\code{compare_fits()} is the general name of this step and \code{compare_allocations()} its
+earlier name: the two are the same function, and they differ only in the name that a
+message gives for the step.
 
 Loss differences from the reference are reported only when the comparison is
 like for like: the same observed targets, loss function and arguments

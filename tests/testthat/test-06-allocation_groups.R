@@ -1272,6 +1272,10 @@ test_that("grouped fits, summaries and evaluations print their groups and parame
   case <- .gfit_case()
   fit <- .gfit_fits()$gradient$fit
   out <- capture.output(print(fit$best))
+  # a model with demand groups has no snapshot: it is an "allocation model"
+  expect_identical(out[1:2], c("<allocation fit result>", "model: allocation model"))
+  expect_match(capture.output(print(fit))[1], "^<allocation fit> 2 starts, selected ")
+  expect_identical(capture.output(print(summary(fit)))[1], "<allocation fit summary>")
   expect_true(any(out == "groups: 0-15, 16-64, 65+"))
   expect_true(any(out == "by_group: sigma"))
   expect_true(any(startsWith(out, "  sigma.0-15: ")))
@@ -1306,9 +1310,11 @@ test_that("grouped fits, summaries and evaluations print their groups and parame
   expect_identical(as.data.frame(f)$parameter, c("sigma.16-64", "v0"))
   # evaluations show them through the coverage format
   e <- evaluate_allocation(fixed, c("sigma.16-64" = 8, v0 = 25))
+  expect_identical(capture.output(print(e))[1], "<allocation evaluation>")
   expect_match(format(e$coverage),
     "[groups 0-15, 16-64, 65+] (sigma.16-64=8, v0=25; fixed sigma.0-15=5, sigma.65+=12)",
     fixed = TRUE)
+  expect_match(format(e$coverage), "^<allocation coverage> gaussian \\[groups ")
   expect_true(any(grepl("[groups 0-15, 16-64, 65+]", capture.output(print(e$coverage)),
                         fixed = TRUE)))
   # ungrouped printing is unchanged: no group lines
