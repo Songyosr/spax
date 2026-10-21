@@ -24,12 +24,18 @@ declared \code{smooth = FALSE} cannot be fitted.}
 
 \item{observed}{Numeric vector or origin-by-facility matrix. Named axes match
 declared IDs independently; unnamed axes are positional. Keep all IDs and
-use NA for unobserved entries. The count-valued \code{utilization}, \code{flow} and
-\code{utilization_by_group} targets reject negative nonmissing observations;
-fractional counts are allowed. Other output domains pass through to the
-existing fitter. For \code{utilization_by_group} (a model with demand groups) a
-facility-by-group matrix of observed counts with both axes named (group
-columns by group ID, facility rows by facility ID, any order).}
+use NA for unobserved entries. The count-valued \code{utilization}, \code{flow},
+\code{utilization_by_group} and outside-count targets reject negative nonmissing
+observations; fractional counts are allowed. Other output domains pass
+through to the existing fitter. For \code{utilization_by_group} (a model with
+demand groups) a facility-by-group matrix of observed counts with both axes
+named (group columns by group ID, facility rows by facility ID, any order).
+For the outside-count outputs the same shapes with the outside count added
+under the name \code{"(outside)"}: for \code{flow_outside} an extra column of the
+origin-by-facility matrix, for \code{utilization_outside} an extra element of the
+named vector, for \code{utilization_outside_by_group} an extra row of the
+facility-by-group matrix. The names are matched to the IDs in any order, the
+outside entry included, and \code{NA} leaves an outside count unobserved.}
 
 \item{starts}{\code{NULL} (default) for the default search, or a finite positive
 matrix, one explicit independent start per row, with exactly the named model
@@ -53,7 +59,12 @@ every group that has one and positive demand in that group; aggregated
 targets leave them multimodal and weakly identified, so the fit is refused
 (before any start) with a message naming the parameters. Hold them
 (\code{clm_allocation(fixed = )}, or numbers in the decay and outside slots of
-\code{\link[=spec_clm]{spec_clm()}}), or fit shared parameters to any target.}
+\code{\link[=spec_clm]{spec_clm()}}), or fit shared parameters to any target.
+\code{flow_outside}, \code{utilization_outside} and \code{utilization_outside_by_group} are
+the three count outputs above with the modelled outside count added as one
+more column, element or row named \code{"(outside)"} (see the section on outside
+counts); they need a model with an outside option. The group-specific
+parameters can also be fitted to \code{utilization_outside_by_group}.}
 
 \item{loss}{\code{"weighted_sse"}, \code{"poisson"}, or a function accepting predicted
 and observed values. Weighted SSE divides squared residuals by observed+eta,
@@ -107,6 +118,46 @@ A model whose decay kernel was declared with \code{smooth = FALSE} (see
 sigma. Evaluate such a kernel at fixed parameters with \code{\link[=evaluate_allocation]{evaluate_allocation()}},
 for example over a grid of sigma and v0.
 
+\strong{Outside counts.} The outputs \code{flow_outside}, \code{utilization_outside} and
+\code{utilization_outside_by_group} are \code{flow}, \code{utilization} and
+\code{utilization_by_group} with the modelled outside count added: the demand of
+the active origins that goes to the outside option, that is, to facilities
+that are not in the data or to none. For \code{flow_outside} the outside count of
+origin \code{i} is \code{D_i * outside_share_i}, one more column (each row then adds up
+to the demand of the origin); \code{utilization_outside} adds the sum of these over
+the origins as one more element, and \code{utilization_outside_by_group} adds, for
+each group, the sum of its demand times its outside share as one more row.
+They are available for a model with an outside option (a fitted \code{v0}, or a
+held \code{v0} above 0) and are refused as targets for any other model, such as
+the Huff model: "outside counts need a model with an outside option". They are
+fitted like the other count outputs, with \code{loss = "poisson"} and no further
+argument. The observed counts carry the outside counts under the name
+\code{"(outside)"}: a column of the flow matrix, an element of the totals vector, a
+row of the facility-by-group matrix, matched by name like the facility IDs and
+in any order. \code{NA} is allowed: an origin or group whose outside count is not
+known carries no outside term, and its facility counts are used as before. A
+facility cannot have the ID \code{"(outside)"}.
+
+What an outside count means depends on how the counts were recorded. It is
+the demand of the data's active origins that went to facilities outside the
+data or to none, so for flows it is known by subtraction, \verb{y0_i = D_i - sum_j y_ij}, only when demand counts the same people as the observations (for
+example registrations by residence from the same extract and date). It is not
+a population estimate: list sizes and population differ by several percent,
+and the gap goes straight into the outside count. For an origin whose outside
+count is known and \verb{y0_i + sum_j y_ij = D_i}, the Poisson loss on its cells
+(facilities and outside) is the multinomial likelihood of its choices up to
+constants. When this holds for every origin of a flow fit and \code{v0} is free and
+inside its bounds, the fitted model's total outside count equals the observed
+one (the score equation of \verb{log v0}). This is not claimed for totals or for
+models with demand groups: there the loss is a Poisson working likelihood and
+the total outside count is not matched. Fits to
+different outputs, or with and without outside counts, are fits to different
+data, so \code{\link[=compare_allocations]{compare_allocations()}} gives no loss difference between them;
+compare models on the same observation, and a model without an outside option
+(Huff) on the observation without outside counts. \code{\link[=bootstrap_allocation]{bootstrap_allocation()}}
+refuses these fits: the facility-case bootstrap is defined for facility
+totals without outside counts.
+
 \strong{Default search.} For the count outputs \code{starts}, \code{lower} and \code{upper} are
 optional. When \code{starts} is \code{NULL} they come from the data (\code{loss} must then be
 named, because the estimator is not chosen silently):
@@ -117,7 +168,9 @@ travel times, whatever the unit of the travel times;
 \item sigma takes 15 log-spaced values over that range, from the steepest to the
 flattest kernel (group-specific sigmas walk together);
 \item a fitted outside weight \code{v0} is seeded from the observed outside share,
-times 0.1, 1 and 10, and a fitted \code{beta} starts at 1;
+times 0.1, 1 and 10, and a fitted \code{beta} starts at 1 (for the outside-count
+outputs the seed reads the facility counts only, the \code{"(outside)"} entries
+dropped, as for \code{flow} and \code{utilization});
 \item the loss is evaluated at every point, by the code the fit itself uses;
 \item the fit starts from the best point of up to three sigma values (local
 minima along the grid first), named \code{scan1}, \code{scan2}, ...
@@ -143,10 +196,12 @@ only \code{beta} free, \code{beta} = 0.5, 1 and 2.
 A fully observed target whose counts reach the total demand has no outside
 share for \code{v0} to explain: the search stops with an error (use no outside
 option: \code{fit_v0 = FALSE}), and
-warns when the counts are within 0.1\% of the total demand. Starts and bounds
-remain required for any output other than \code{utilization}, \code{flow} and
-\code{utilization_by_group}, and calls that give \code{starts}, \code{lower} and \code{upper} run
-exactly as before.
+warns when the counts are within 0.1\% of the total demand (for the
+outside-count outputs these are the facility counts, without the \code{"(outside)"}
+entries). Starts and bounds
+remain required for any output other than \code{utilization}, \code{flow},
+\code{utilization_by_group} and the three outside-count outputs, and calls that
+give \code{starts}, \code{lower} and \code{upper} run exactly as before.
 
 The cost is about one solve of the model per grid point, 15 to 45 solves: about
 a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins

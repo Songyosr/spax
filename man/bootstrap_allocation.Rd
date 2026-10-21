@@ -26,7 +26,10 @@ are refused as for the model and fit given separately.}
 
 \item{fit}{A matching multistart fit of complete whole facility counts using
 the unweighted built-in Poisson objective. Fractional or partial observations,
-flow targets and custom objectives are outside this method. Not given when
+flow targets, fits with observed outside counts (\code{flow_outside},
+\code{utilization_outside}: the facility-case bootstrap is defined for facility
+totals without outside counts) and custom objectives are outside this
+method. Not given when
 \code{model} is a result of \code{\link[=spax]{spax()}}.}
 
 \item{observation}{Named list declaring nonblank \code{event}, \code{period} (including

@@ -709,7 +709,7 @@ test_that("grouped spec, problem and contract names and order", {
   expect_identical(names(um$theta), c("names", "lower", "upper"))
   expect_identical(names(um$metadata$spec$output_axes), c("target", "utilization",
     "attractiveness", "access", "outside_share", "allocation", "huff_share",
-    "opportunity", "flow"))
+    "opportunity", "flow", "flow_outside", "utilization_outside"))
   expect_identical(names(.huff_theta_contract(TRUE, TRUE)), c("names", "lower", "upper"))
   expect_identical(.huff_theta_contract(TRUE, TRUE)$names, c("sigma", "v0", "beta"))
   # grouped
@@ -727,8 +727,9 @@ test_that("grouped spec, problem and contract names and order", {
   expect_true("v0_groups" %in% names(spec))
   expect_null(spec$v0_groups)
   expect_identical(names(spec$output_axes), c("target", "utilization", "attractiveness",
-    "access", "outside_share", "allocation", "huff_share", "flow",
-    "utilization_by_group", "access_by_group", "outside_share_by_group"))
+    "access", "outside_share", "allocation", "huff_share", "flow", "flow_outside",
+    "utilization_outside", "utilization_by_group", "access_by_group",
+    "outside_share_by_group", "utilization_outside_by_group"))
   expect_identical(spec$output_axes[["utilization_by_group"]], "facility_group")
   expect_identical(spec$output_axes[["access_by_group"]], "origin_group")
   expect_identical(spec$output_axes[["outside_share_by_group"]], "origin_group")
@@ -742,7 +743,8 @@ test_that("grouped spec, problem and contract names and order", {
   # the problem passes the output declarations
   step <- .bind_theta(gm, c(sigma.a = 2, sigma.b = 3, v0 = 1))
   expect_identical(step$state_independent_outputs,
-    c("flow", "utilization_by_group", "access_by_group", "outside_share_by_group"))
+    c("flow", "utilization_by_group", "access_by_group", "outside_share_by_group",
+      "flow_outside", "utilization_outside", "utilization_outside_by_group"))
   expect_null(step$clm_prediction)
   # the default outputs do not carry the per-group matrices
   expect_false(any(c("utilization_by_group", "access_by_group", "outside_share_by_group",

@@ -396,6 +396,47 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' sigma. Evaluate such a kernel at fixed parameters with [evaluate_allocation()],
 #' for example over a grid of sigma and v0.
 #'
+#' **Outside counts.** The outputs `flow_outside`, `utilization_outside` and
+#' `utilization_outside_by_group` are `flow`, `utilization` and
+#' `utilization_by_group` with the modelled outside count added: the demand of
+#' the active origins that goes to the outside option, that is, to facilities
+#' that are not in the data or to none. For `flow_outside` the outside count of
+#' origin `i` is `D_i * outside_share_i`, one more column (each row then adds up
+#' to the demand of the origin); `utilization_outside` adds the sum of these over
+#' the origins as one more element, and `utilization_outside_by_group` adds, for
+#' each group, the sum of its demand times its outside share as one more row.
+#' They are available for a model with an outside option (a fitted `v0`, or a
+#' held `v0` above 0) and are refused as targets for any other model, such as
+#' the Huff model: "outside counts need a model with an outside option". They are
+#' fitted like the other count outputs, with `loss = "poisson"` and no further
+#' argument. The observed counts carry the outside counts under the name
+#' `"(outside)"`: a column of the flow matrix, an element of the totals vector, a
+#' row of the facility-by-group matrix, matched by name like the facility IDs and
+#' in any order. `NA` is allowed: an origin or group whose outside count is not
+#' known carries no outside term, and its facility counts are used as before. A
+#' facility cannot have the ID `"(outside)"`.
+#'
+#' What an outside count means depends on how the counts were recorded. It is
+#' the demand of the data's active origins that went to facilities outside the
+#' data or to none, so for flows it is known by subtraction, `y0_i = D_i -
+#' sum_j y_ij`, only when demand counts the same people as the observations (for
+#' example registrations by residence from the same extract and date). It is not
+#' a population estimate: list sizes and population differ by several percent,
+#' and the gap goes straight into the outside count. For an origin whose outside
+#' count is known and `y0_i + sum_j y_ij = D_i`, the Poisson loss on its cells
+#' (facilities and outside) is the multinomial likelihood of its choices up to
+#' constants. When this holds for every origin of a flow fit and `v0` is free and
+#' inside its bounds, the fitted model's total outside count equals the observed
+#' one (the score equation of `log v0`). This is not claimed for totals or for
+#' models with demand groups: there the loss is a Poisson working likelihood and
+#' the total outside count is not matched. Fits to
+#' different outputs, or with and without outside counts, are fits to different
+#' data, so [compare_allocations()] gives no loss difference between them;
+#' compare models on the same observation, and a model without an outside option
+#' (Huff) on the observation without outside counts. [bootstrap_allocation()]
+#' refuses these fits: the facility-case bootstrap is defined for facility
+#' totals without outside counts.
+#'
 #' **Default search.** For the count outputs `starts`, `lower` and `upper` are
 #' optional. When `starts` is `NULL` they come from the data (`loss` must then be
 #' named, because the estimator is not chosen silently):
@@ -405,7 +446,9 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' 2. sigma takes 15 log-spaced values over that range, from the steepest to the
 #'    flattest kernel (group-specific sigmas walk together);
 #' 3. a fitted outside weight `v0` is seeded from the observed outside share,
-#'    times 0.1, 1 and 10, and a fitted `beta` starts at 1;
+#'    times 0.1, 1 and 10, and a fitted `beta` starts at 1 (for the outside-count
+#'    outputs the seed reads the facility counts only, the `"(outside)"` entries
+#'    dropped, as for `flow` and `utilization`);
 #' 4. the loss is evaluated at every point, by the code the fit itself uses;
 #' 5. the fit starts from the best point of up to three sigma values (local
 #'    minima along the grid first), named `scan1`, `scan2`, ...
@@ -430,10 +473,12 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' A fully observed target whose counts reach the total demand has no outside
 #' share for `v0` to explain: the search stops with an error (use no outside
 #' option: `fit_v0 = FALSE`), and
-#' warns when the counts are within 0.1% of the total demand. Starts and bounds
-#' remain required for any output other than `utilization`, `flow` and
-#' `utilization_by_group`, and calls that give `starts`, `lower` and `upper` run
-#' exactly as before.
+#' warns when the counts are within 0.1% of the total demand (for the
+#' outside-count outputs these are the facility counts, without the `"(outside)"`
+#' entries). Starts and bounds
+#' remain required for any output other than `utilization`, `flow`,
+#' `utilization_by_group` and the three outside-count outputs, and calls that
+#' give `starts`, `lower` and `upper` run exactly as before.
 #'
 #' The cost is about one solve of the model per grid point, 15 to 45 solves: about
 #' a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins
@@ -443,12 +488,18 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
-#'   use NA for unobserved entries. The count-valued `utilization`, `flow` and
-#'   `utilization_by_group` targets reject negative nonmissing observations;
-#'   fractional counts are allowed. Other output domains pass through to the
-#'   existing fitter. For `utilization_by_group` (a model with demand groups) a
-#'   facility-by-group matrix of observed counts with both axes named (group
-#'   columns by group ID, facility rows by facility ID, any order).
+#'   use NA for unobserved entries. The count-valued `utilization`, `flow`,
+#'   `utilization_by_group` and outside-count targets reject negative nonmissing
+#'   observations; fractional counts are allowed. Other output domains pass
+#'   through to the existing fitter. For `utilization_by_group` (a model with
+#'   demand groups) a facility-by-group matrix of observed counts with both axes
+#'   named (group columns by group ID, facility rows by facility ID, any order).
+#'   For the outside-count outputs the same shapes with the outside count added
+#'   under the name `"(outside)"`: for `flow_outside` an extra column of the
+#'   origin-by-facility matrix, for `utilization_outside` an extra element of the
+#'   named vector, for `utilization_outside_by_group` an extra row of the
+#'   facility-by-group matrix. The names are matched to the IDs in any order, the
+#'   outside entry included, and `NA` leaves an outside count unobserved.
 #' @param starts `NULL` (default) for the default search, or a finite positive
 #'   matrix, one explicit independent start per row, with exactly the named model
 #'   parameter columns. No random starts are added. Each start must lie inside the
@@ -470,6 +521,11 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   (before any start) with a message naming the parameters. Hold them
 #'   (`clm_allocation(fixed = )`, or numbers in the decay and outside slots of
 #'   [spec_clm()]), or fit shared parameters to any target.
+#'   `flow_outside`, `utilization_outside` and `utilization_outside_by_group` are
+#'   the three count outputs above with the modelled outside count added as one
+#'   more column, element or row named `"(outside)"` (see the section on outside
+#'   counts); they need a model with an outside option. The group-specific
+#'   parameters can also be fitted to `utilization_outside_by_group`.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
 #'   with eta=1 by default. Poisson omits the data-only log-factorial constant.
@@ -519,7 +575,7 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     }
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
-      output %in% c("utilization", "flow", "utilization_by_group") && is.numeric(observed) &&
+      output %in% .default_count_outputs && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {
     stop("observed expected counts must be nonnegative for output '", output, "'")
   }
@@ -532,6 +588,8 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
       output %in% .default_count_outputs &&
       output %in% names(model$metadata$spec$output_axes)
     if (!counts) {
+      # An outside-count output the model cannot carry is refused with its own message.
+      .check_outside_target(model, output)
       stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
            "'")
     }
@@ -689,6 +747,16 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   "outside_share_by_group")`; the other outputs are pooled over the groups
 #'   (demand-weighted). A group's own access and outside share are `NA` on rows
 #'   where that group has no demand and its travel there is not usable.
+#'
+#'   The expected counts that can be requested with `requested_outputs` are
+#'   `flow` (origins by facilities), `flow_outside` (`flow` with one more column,
+#'   `"(outside)"`, holding each origin's expected outside count `D_i *
+#'   outside_share_i`), `utilization_outside` (`utilization` with one more
+#'   element, `"(outside)"`, the expected outside count of all origins) and, with
+#'   demand groups, `utilization_by_group` and `utilization_outside_by_group`
+#'   (with one more row, `"(outside)"`, the expected outside count of each group).
+#'   The outside counts are zero for a model without an outside option; they
+#'   are the outputs that [fit_allocation()] fits to observed outside counts.
 #' @return The existing `ae_equilibrium` with its portable prediction snapshot
 #'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;

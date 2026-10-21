@@ -23,7 +23,16 @@ including \code{requested_outputs}. For a model with demand groups, request the
 per-group outputs here, for example
 \code{requested_outputs = c("utilization_by_group", "access_by_group", "outside_share_by_group")}; the other outputs are pooled over the groups
 (demand-weighted). A group's own access and outside share are \code{NA} on rows
-where that group has no demand and its travel there is not usable.}
+where that group has no demand and its travel there is not usable.
+
+The expected counts that can be requested with \code{requested_outputs} are
+\code{flow} (origins by facilities), \code{flow_outside} (\code{flow} with one more column,
+\code{"(outside)"}, holding each origin's expected outside count \code{D_i * outside_share_i}), \code{utilization_outside} (\code{utilization} with one more
+element, \code{"(outside)"}, the expected outside count of all origins) and, with
+demand groups, \code{utilization_by_group} and \code{utilization_outside_by_group}
+(with one more row, \code{"(outside)"}, the expected outside count of each group).
+The outside counts are zero for a model without an outside option; they
+are the outputs that \code{\link[=fit_allocation]{fit_allocation()}} fits to observed outside counts.}
 }
 \value{
 The existing \code{ae_equilibrium} with its portable prediction snapshot
