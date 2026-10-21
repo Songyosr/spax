@@ -33,7 +33,8 @@ fd_jacobian(
 length of \code{x}.}
 
 \item{lazy_f0}{If \code{TRUE}, \code{fn(x)} is evaluated (and checked as usual) only
-when a coordinate needs a one-sided or room step; the result is identical.}
+when a coordinate needs a one-sided or room step; the result is identical.
+An invalid \code{fn(x)} is then detected only when it is used.}
 }
 \description{
 Column \code{j} is a central difference with step \code{eps * max(abs(x[j]), 1)}. With

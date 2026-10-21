@@ -512,6 +512,9 @@
       if (inherits(outcome, "interrupt")) {
         reason <- "interrupted before attempt completed"; break
       }
+      # A lean model evaluation asked for an output it did not keep: an engine
+      # defect, not a failed draw (SPAX-061).
+      if (inherits(outcome, "spax_lean_missing")) stop(outcome)
       if (inherits(outcome, "error")) outcome <- list(success = FALSE,
         status = paste0("fit_error: ", conditionMessage(outcome)),
         theta = .allocation_bootstrap_na_theta(context$model$theta$names),

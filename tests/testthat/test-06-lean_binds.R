@@ -169,12 +169,22 @@ test_that("a lean fit gives the fit of the full path", {
       upper = c(sigma = 9, v0 = 40), output = output, loss = .poisson_loss,
       loss_grad = .poisson_gradient, loss_args = list(), gradient = TRUE))
     lean <- run()
-    local_mocked_bindings(.lean_keep = function(problem, output) NULL)
-    full <- run()
+    # the full path for this output only: the mock ends with the call
+    full <- with_mocked_bindings(run(), .lean_keep = function(problem, output) NULL)
     expect_identical(lean$theta, full$theta)
     expect_identical(lean$loss, full$loss)
     expect_identical(lean$optim$counts, full$optim$counts)
     expect_null(lean$equilibrium$kept)
     expect_true(!is.null(lean$outputs$allocation))
   }
+})
+
+test_that("the bootstrap does not record the condition as a failed draw", {
+  case <- alloc_generated_case()
+  fit <- alloc_generated_fit()
+  expect_error(with_mocked_bindings(
+    .run_allocation_bootstrap(case$model, fit, alloc_bootstrap_observation(),
+                              seed = 31L, attempts = 2L),
+    .allocation_case_fit = function(...) .lean_missing("allocation", character())),
+    class = "spax_lean_missing")
 })

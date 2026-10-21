@@ -36,6 +36,7 @@
 #' inside and outside shares. The returned `target` is the exogenous
 #' attractiveness, so the map `T(x) = a` is state-independent.
 #' @keywords internal
+# Keep the arithmetic in step with .huff_state_lean(), which must stay bit-identical.
 .huff_state <- function(a, plan, v0 = 0,
                         allocation = c("clm", "huff_decay")) {
   allocation <- match.arg(allocation)
@@ -137,6 +138,7 @@
 #'   a positive total on every row.
 #' @param v0 Outside-option weight of each group.
 #' @keywords internal
+# Keep the arithmetic in step with .clm_group_state_lean(), which must stay bit-identical.
 .clm_group_state <- function(a, kernels, D_groups, v0) {
   groups <- colnames(D_groups)
   G <- ncol(D_groups)
@@ -228,4 +230,3 @@
   )
   .lean_counts(out, pooled, keep, demand)
 }
-
