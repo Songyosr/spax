@@ -1,4 +1,12 @@
-# spax (development version)
+# spax 0.5.0
+
+A new experimental interface fits and evaluates allocation models in one call:
+`spax()` takes data from `prep_data()`, a model specified without data with
+`spec_huff()` or `spec_clm()`, and observed counts from `obs_flows()` or
+`obs_totals()`. `fit_allocation()` now finds starting values and bounds from the
+data when they are not given, and known outside counts can be fitted. The step
+functions and calls from 0.4.x keep working, and fits that do not use the new
+options are unchanged.
 
 * New experimental interface for allocation models. `prep_data()` prepares the demand,
   supply and travel inputs. `spec_huff()` and `spec_clm()` specify a model without data,
