@@ -1391,3 +1391,20 @@ test_that("Cornwall with known outside counts gives sigma 4.6194 and v0 0.04864"
     cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")))
   expect_equal(unname(coef(plain)), c(4.591, 0.02733), tolerance = 1e-3)
 })
+
+test_that("known outside counts with no complete origin are refused, and the bootstrap refuses outside fits", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  # every origin has an unobserved cell: no outside count can be known
+  flows <- case$flow
+  flows[, 1] <- NA
+  expect_error(spax(case$data, spec_clm(), observed = obs_flows(flows, outside = "known")),
+               "no origin has a known outside count", fixed = TRUE)
+  # a fit to totals with an outside total is refused by the facility-case bootstrap
+  totals <- obs_totals(colSums(case$flow), outside = sum(oc$y0))
+  x <- spax(case$data, spec_clm(), observed = totals)
+  expect_identical(x$observed$output, "utilization_outside")
+  expect_error(bootstrap_allocation(x, observation = alloc_bootstrap_observation(), seed = 1L),
+               "the facility-case bootstrap is defined for facility totals without outside counts",
+               fixed = TRUE)
+})

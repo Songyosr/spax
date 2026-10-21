@@ -676,6 +676,10 @@ print.spax_obs <- function(x, ...) {
   } else {
     .obs_outside_given(outside, data)
   }
+  if (all(is.na(y0))) {
+    stop("no origin has a known outside count (every origin has an unobserved count or is ",
+         "not in the observations); use outside = \"unknown\"", call. = FALSE)
+  }
   out <- cbind(block, as.numeric(y0))
   dimnames(out) <- list(rownames(block), c(colnames(block), .outside_label))
   out

@@ -1007,9 +1007,10 @@ test_that("given outside counts are matched to the active origins by ID", {
   expect_identical(.obs_error(.canonical_observed(
     obs_flows(m, outside = c(o1 = 1, zz = 2, yy = 3, o2 = 1)), data, TRUE)),
     "outside counts are named by origin ID; 2 names are not origins of the data: zz, yy")
-  # no active origin named: all unknown, no error
-  none <- ask(c(o2 = 3))
-  expect_true(all(is.na(none$value[, "(outside)"])))
+  # no active origin named: no outside count is known, which is refused
+  expect_identical(.obs_error(.canonical_observed(obs_flows(m, outside = c(o2 = 3)), data, TRUE)),
+    paste0("no origin has a known outside count (every origin has an unobserved count or is ",
+           "not in the observations); use outside = \"unknown\""))
 })
 
 test_that("outside counts match origin IDs by numeric value as the observed IDs do", {
