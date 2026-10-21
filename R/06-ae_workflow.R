@@ -1,6 +1,6 @@
 # Experimental portable static-CLM workflow ---------------------------------
 
-#' Prepare checked numeric inputs for an experimental allocation workflow
+#' Prepare numeric inputs for the allocation model
 #'
 #' Named axes align independently; unnamed axes are positional. Positive
 #' included demand enters facility-load support. Zero, unknown and explicitly
@@ -60,7 +60,7 @@
 #'   demand groups the total demand is `D_active`, and `group_ids`, `D_groups`
 #'   and `distance_groups` are added (`distance_active` is `NULL` when travel is
 #'   given per group).
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 prepare_allocation <- function(demand, supply, distance,
@@ -73,6 +73,107 @@ prepare_allocation <- function(demand, supply, distance,
   .prepare_allocation(demand, supply, distance, origin_ids = origin_ids,
     facility_ids = facility_ids, included = included, missing_demand = missing_demand,
     missing_travel = missing_travel, spatial = spatial, metadata = metadata)
+}
+
+#' Prepare data for an allocation model
+#'
+#' Experimental. `prep_data()` checks and aligns the demand, supply and travel
+#' time inputs of an allocation model once, so that model specifications such
+#' as [spec_clm()] and [spec_huff()] can be bound to them with `spax()`. In
+#' this version it is [prepare_allocation()] under another name, with `travel`
+#' for `distance`: it returns the identical object, an `ae_prepared_inputs`,
+#' and every argument is passed through. The step functions
+#' ([clm_allocation()] and the others) accept the object too.
+#'
+#' Printing the object lists its origins and facilities, the demand groups, the
+#' unit labels when they were given, the active origins whose travel is unknown
+#' and the policies for missing demand and travel.
+#'
+#' @inheritParams prepare_allocation
+#' @param travel Numeric origin-by-facility travel matrix. It is the
+#'   `distance` argument of [prepare_allocation()]: the same alignment by IDs
+#'   applies, and with demand groups it can be one matrix shared by the groups
+#'   or a named list of matrices with one element per group.
+#' @param x Prepared inputs, an `ae_prepared_inputs`.
+#' @param ... Unused.
+#' @return The existing `ae_prepared_inputs`, as returned by
+#'   [prepare_allocation()]. `format()` returns the printed lines as a character
+#'   vector and `print()` returns its argument invisibly.
+#' @family allocation interface
+#' @examples
+#' # Mainland Cornwall: registered residents, GP FTE and travel minutes
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' demand <- stats::setNames(areas$registered, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' prep_data(demand, supply, travel,
+#'           metadata = list(demand_units = "registered residents",
+#'                           supply_units = "GP FTE", travel_units = "minutes"))
+#' @export
+#' @md
+prep_data <- function(demand, supply, travel,
+                      origin_ids = NULL,
+                      facility_ids = NULL,
+                      included = NULL,
+                      missing_demand = c("error", "exclude"),
+                      missing_travel = c("error", "legacy_zero"),
+                      spatial = NULL, metadata = list()) {
+  prepare_allocation(demand, supply, distance = travel, origin_ids = origin_ids,
+    facility_ids = facility_ids, included = included, missing_demand = missing_demand,
+    missing_travel = missing_travel, spatial = spatial, metadata = metadata)
+}
+
+#' @rdname prep_data
+#' @method format ae_prepared_inputs
+#' @export
+#' @md
+format.ae_prepared_inputs <- function(x, ...) {
+  line <- function(label, text) sprintf("  %-10s  %s", label, text)
+  active <- length(x$origin_ids)
+  total <- length(if (is.null(x$all_origin_ids)) x$origin_ids else x$all_origin_ids)
+  # The origins that are not active, by why: zero demand, unknown demand, invalid
+  # demand or left out by `included`.
+  status <- x$origin_status
+  count <- function(what) if (is.null(status)) 0L else sum(status == what)
+  other <- c(count("zero"), count("unknown"), count("invalid_omitted"), count("excluded"))
+  if (is.null(status)) other[4L] <- total - active
+  why <- paste0(.format_total(other), c(" with zero demand", " with unknown demand",
+                                        " with invalid demand", " excluded"))[other > 0L]
+  origins <- paste0(.format_total(total), " origins (", .format_total(active), " active",
+                    if (length(why)) paste0("; ", paste(why, collapse = ", ")), ")")
+  meta <- x$input_metadata
+  # A label that was given; unit labels are caller declarations, never converted.
+  given <- function(value) {
+    if (is.character(value) && length(value) == 1L && !is.na(value)) value
+  }
+  labelled <- function(units, period) {
+    period <- given(period)
+    c(given(units), if (!is.null(period)) paste0("(", period, ")"))
+  }
+  unknown <- sum(x$active_unknown_travel)
+  policy <- x$input_policy
+  policy_text <- function(value) if (is.character(value) && length(value) == 1L) value else "unknown"
+  supply <- labelled(meta$supply_units, meta$supply_period)
+  c(paste0("<spax data> ", origins, " x ", .format_total(length(x$facility_ids)), " facilities"),
+    if (!is.null(x$group_ids)) line("groups", paste(x$group_ids, collapse = ", ")),
+    line("demand", paste(c(.format_total(sum(x$D_active)),
+                           labelled(meta$demand_units, meta$demand_period)), collapse = " ")),
+    if (length(supply)) line("supply", paste(supply, collapse = " ")),
+    line("travel", paste0(if (!is.null(given(meta$travel_units))) paste0(meta$travel_units, "; "),
+                          "unknown for ", unknown, " active ",
+                          if (unknown == 1L) "origin" else "origins")),
+    line("policies", paste0("missing demand: ", policy_text(policy$missing_demand),
+                            "; missing travel: ", policy_text(policy$missing_travel))))
+}
+
+#' @rdname prep_data
+#' @method print ae_prepared_inputs
+#' @export
+#' @md
+print.ae_prepared_inputs <- function(x, ...) {
+  cat(format(x), sep = "\n")
+  invisible(x)
 }
 
 #' Declare corrected static CLM over checked allocation inputs
@@ -122,7 +223,7 @@ prepare_allocation <- function(demand, supply, distance,
 #'   Parameter order is sigma, then v0 and beta when their flags are true. With
 #'   demand groups sigma and v0 are `sigma.<group>` and `v0.<group>` for the
 #'   parameters in `by_group`.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"),
@@ -197,7 +298,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' Huff DL (1963). A probabilistic analysis of shopping center trade areas.
 #' *Land Economics* 39(1):81-90. \doi{10.2307/3144521}
 #' @seealso [clm_allocation()] for the general model with an outside option.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @examples
 #' # Mainland Cornwall: small areas share their registered residents among the
 #' # practices in proportion to attractiveness times travel-time decay.
@@ -235,7 +336,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
                             fit_beta = TRUE, by_group = character(),
                             fixed = NULL) {
-  no_outside <- paste0("the Huff model has no outside option; use ",
+  no_outside <- paste0("the Huff model has no outside option; use spec_clm() or ",
                        "clm_allocation(fit_v0 = TRUE) for one")
   if (is.character(by_group) && "v0" %in% by_group) {
     stop(no_outside, call. = FALSE)
@@ -281,34 +382,136 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
   invisible(TRUE)
 }
 
-#' Calibrate a declared allocation model from explicit starting points
+#' Calibrate a declared allocation model, by default from starts found in the data
 #'
 #' Count targets and loss choice are separate. Weighted SSE retains the existing
-#' default; Poisson is explicit. Custom loss/gradient functions pass through.
-#' Observation-indexed loss arguments must be in canonical order. Starts,
-#' boundaries, failed runs and disagreement retain the existing multistart
-#' result; a selected fit is not a claim of identification or global optimality.
+#' default when `starts` are given; Poisson is explicit. Custom loss/gradient
+#' functions pass through. Observation-indexed loss arguments must be in
+#' canonical order. Starts, boundaries, failed runs and disagreement retain the
+#' existing multistart result; a selected fit is not a claim of identification or
+#' global optimality.
 #'
 #' A model whose decay kernel was declared with `smooth = FALSE` (see
 #' [decay_kernel()]) is refused, because fitting needs a kernel that is smooth in
 #' sigma. Evaluate such a kernel at fixed parameters with [evaluate_allocation()],
 #' for example over a grid of sigma and v0.
+#'
+#' **Outside counts.** The outputs `flow_outside`, `utilization_outside` and
+#' `utilization_outside_by_group` are `flow`, `utilization` and
+#' `utilization_by_group` with the modelled outside count added: the demand of
+#' the active origins that goes to the outside option, that is, to facilities
+#' that are not in the data or to none. For `flow_outside` the outside count of
+#' origin `i` is `D_i * outside_share_i`, one more column (each row then adds up
+#' to the demand of the origin); `utilization_outside` adds the sum of these over
+#' the origins as one more element, and `utilization_outside_by_group` adds, for
+#' each group, the sum of its demand times its outside share as one more row.
+#' They are available for a model with an outside option (a fitted `v0`, or a
+#' held `v0` above 0) and are refused as targets for any other model, such as
+#' the Huff model: "outside counts need a model with an outside option". They are
+#' fitted like the other count outputs, with the built-in Poisson loss
+#' (`loss = "poisson"`) and no further argument; any other loss, the default
+#' weighted SSE and custom loss functions included, is refused: "outside counts
+#' are fitted with loss = \"poisson\"". The observed
+#' counts carry the outside counts under the name
+#' `"(outside)"`: a column of the flow matrix, an element of the totals vector, a
+#' row of the facility-by-group matrix, matched by name like the facility IDs and
+#' in any order. `NA` is allowed: an origin or group whose outside count is not
+#' known carries no outside term, and its facility counts are used as before. A
+#' facility cannot have the ID `"(outside)"`.
+#'
+#' What an outside count means depends on how the counts were recorded. It is
+#' the demand of the data's active origins that went to facilities outside the
+#' data or to none, so for flows it is known by subtraction, `y0_i = D_i -
+#' sum_j y_ij`, only when demand counts the same people as the observations (for
+#' example registrations by residence from the same extract and date). It is not
+#' a population estimate: list sizes and population differ by several percent,
+#' and the gap goes straight into the outside count. For an origin whose outside
+#' count is known and `y0_i + sum_j y_ij = D_i`, the Poisson loss on its cells
+#' (facilities and outside) is the multinomial likelihood of its choices up to
+#' constants. When this holds for every origin of a flow fit and `v0` is free and
+#' inside its bounds, the fitted model's total outside count equals the observed
+#' one (the score equation of `log v0`). This is not claimed for totals or for
+#' models with demand groups: there the total outside count is not guaranteed to
+#' match. Fits to different outputs, or with and without outside counts, are fits
+#' to different data, so [compare_allocations()] gives no loss difference between
+#' them;
+#' compare models on the same observation, and a model without an outside option
+#' (Huff) on the observation without outside counts. [bootstrap_allocation()]
+#' refuses these fits: the facility-case bootstrap is defined for facility
+#' totals without outside counts.
+#'
+#' **Default search.** For the count outputs `starts`, `lower` and `upper` are
+#' optional. When `starts` is `NULL` they come from the data (`loss` must then be
+#' named, because the estimator is not chosen silently):
+#' 1. the decay kernel is probed at the nearest, a far and the largest travel
+#'    time of the data for the range of sigma over which it still decays over the
+#'    travel times, whatever the unit of the travel times;
+#' 2. sigma takes 15 log-spaced values over that range, from the steepest to the
+#'    flattest kernel (group-specific sigmas walk together);
+#' 3. a fitted outside weight `v0` is seeded from the observed outside share,
+#'    times 0.1, 1 and 10, and a fitted `beta` starts at 1 (for the outside-count
+#'    outputs the seed reads the facility counts only, the `"(outside)"` entries
+#'    dropped, as for `flow` and `utilization`);
+#' 4. the loss is evaluated at every point, by the code the fit itself uses;
+#' 5. the fit starts from the best point of up to three sigma values (local
+#'    minima along the grid first), named `scan1`, `scan2`, ...
+#'
+#' The default bounds are the probed range for sigma; for `v0`, from a thousandth
+#' of the smallest to a thousand times the largest of the best values on the grid;
+#' and 0.05 to 5 for `beta`. Bounds you give replace the default ones one by one,
+#' and starts you give widen the default bounds to include them (the scan then
+#' runs only to find a default bound of `v0`). The search is recorded in the
+#' `default_search` element of the result.
+#'
+#' When the starts come from the search, `gradient` and `control` default (each
+#' unless you give it) to analytic gradients, when the loss has one, and strict
+#' optimizer settings, `control = list(maxit = 300, factr = 1e3, pgtol = 1e-2)`,
+#' because the optimizer defaults can stop early at a different outside weight.
+#' Given `starts` keep the earlier defaults.
+#'
+#' A model in which every sigma is held (demand groups with `fixed`) has no sigma to
+#' probe or scan: the starts are the three `v0` seeds at the held values, or, with
+#' only `beta` free, `beta` = 0.5, 1 and 2.
+#'
+#' A fully observed target whose counts reach the total demand has no outside
+#' share for `v0` to explain: the search stops with an error (use no outside
+#' option: `fit_v0 = FALSE`), and
+#' warns when the counts are within 0.1% of the total demand (for the
+#' outside-count outputs these are the facility counts, without the `"(outside)"`
+#' entries). Starts and bounds
+#' remain required for any output other than `utilization`, `flow`,
+#' `utilization_by_group` and the three outside-count outputs, and calls that
+#' give `starts`, `lower` and `upper` run exactly as before.
+#'
+#' The cost is about one solve of the model per grid point, 15 to 45 solves: about
+#' a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins
+#' and 400 facilities, which is roughly the cost of one strict start. Give your own
+#' starts to skip it.
 #' @param model A corrected CLM declared over checked prepared inputs. A kernel
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
-#'   use NA for unobserved entries. The count-valued `utilization`, `flow` and
-#'   `utilization_by_group` targets reject negative nonmissing observations;
-#'   fractional counts are allowed. Other output domains pass through to the
-#'   existing fitter. For `utilization_by_group` (a model with demand groups) a
-#'   facility-by-group matrix of observed counts with both axes named (group
-#'   columns by group ID, facility rows by facility ID, any order).
-#' @param starts A finite positive matrix, one explicit independent start per
-#'   row, with exactly the named model parameter columns. No random starts are
-#'   added. Each start must lie inside the supplied positive bounds.
-#' @param lower,upper Complete named positive parameter bounds with lower < upper.
-#'   For a declared kernel, the starts and bounds of sigma must lie within the
-#'   bounds of the declaration.
+#'   use NA for unobserved entries. The count-valued `utilization`, `flow`,
+#'   `utilization_by_group` and outside-count targets reject negative nonmissing
+#'   observations; fractional counts are allowed. Other output domains pass
+#'   through to the existing fitter. For `utilization_by_group` (a model with
+#'   demand groups) a facility-by-group matrix of observed counts with both axes
+#'   named (group columns by group ID, facility rows by facility ID, any order).
+#'   For the outside-count outputs the same shapes with the outside count added
+#'   under the name `"(outside)"`: for `flow_outside` an extra column of the
+#'   origin-by-facility matrix, for `utilization_outside` an extra element of the
+#'   named vector, for `utilization_outside_by_group` an extra row of the
+#'   facility-by-group matrix. The names are matched to the IDs in any order, the
+#'   outside entry included, and `NA` leaves an outside count unobserved.
+#' @param starts `NULL` (default) for the default search, or a finite positive
+#'   matrix, one explicit independent start per row, with exactly the named model
+#'   parameter columns. No random starts are added. Each start must lie inside the
+#'   bounds. Given starts with `lower` or `upper` missing or partial use default
+#'   bounds for the missing entries, widened to include every start.
+#' @param lower,upper `NULL` (default), or named positive parameter bounds with
+#'   lower < upper: complete, or for some of the parameters only (the default
+#'   bounds replace the missing entries). For a declared kernel, the starts and
+#'   bounds of sigma must lie within the bounds of the declaration.
 #' @param output Exact model output to calibrate; default facility utilization.
 #'   `flow` is expected origin-facility counts, while `allocation` is an inside
 #'   probability operator. Requesting counts does not select a likelihood.
@@ -318,8 +521,14 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   `by_group`) can be fitted only to this output, with observed counts for
 #'   every group that has one and positive demand in that group; aggregated
 #'   targets leave them multimodal and weakly identified, so the fit is refused
-#'   (before any start) with a message naming the parameters. Fix them with
-#'   `clm_allocation(fixed = )`, or fit shared parameters to any target.
+#'   (before any start) with a message naming the parameters. Hold them
+#'   (`clm_allocation(fixed = )`, or numbers in the decay and outside slots of
+#'   [spec_clm()]), or fit shared parameters to any target.
+#'   `flow_outside`, `utilization_outside` and `utilization_outside_by_group` are
+#'   the three count outputs above with the modelled outside count added as one
+#'   more column, element or row named `"(outside)"` (see the section on outside
+#'   counts); they need a model with an outside option. The group-specific
+#'   parameters can also be fitted to `utilization_outside_by_group`.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
 #'   with eta=1 by default. Poisson omits the data-only log-factorial constant.
@@ -328,7 +537,10 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   below the floor are reported with a warning, because the loss is capped
 #'   there. Fits made before this default used 1e-9; pass
 #'   `loss_args = list(eps = 1e-9)` to reproduce them. Joint fitting does not
-#'   force total matching.
+#'   force total matching. The default is `"weighted_sse"` when `starts` are
+#'   given; without `starts` the loss must be named. The outside-count outputs
+#'   accept `"poisson"` only (not the default weighted SSE and not a custom
+#'   function).
 #' @param loss_args Named auxiliary arguments passed to loss callbacks. For
 #'   `loss = "poisson"` an `eps` of 1e-250 is added when none is given; other
 #'   arguments pass unchanged. Any observation-indexed values must already
@@ -337,19 +549,29 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   choices supply their existing analytic loss-gradient adapters. A custom
 #'   loss requires its own loss_grad when gradient=TRUE; none is invented.
 #' @param gradient Logical; use the existing implicit sensitivity route when
-#'   TRUE. FALSE retains the underlying fitter's default behavior.
+#'   TRUE. FALSE retains the underlying fitter's default behavior. When `starts`
+#'   is `NULL` and `gradient` is not given, it is `TRUE` if the loss has a gradient
+#'   (the built-in losses, or a custom loss with `loss_grad`).
 #' @param ... Named multistart or fitting controls, including solver tolerances,
 #'   optimizer `control`, `keep_fits` and descriptive disagreement tolerances.
+#'   When `starts` is `NULL` and `control` is not given it is
+#'   `list(maxit = 300, factr = 1e3, pgtol = 1e-2)`.
 #' @return The existing `ae_multistart_fit`, retaining selected fit, all per-start
-#'   diagnostics, boundaries, warnings/errors and descriptive disagreement.
+#'   diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
+#'   whose starts came from the default search also has a `default_search`
+#'   element: the rule, the sigma range, the number of grid points and of finite
+#'   ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
+#'   the loss.
 #' @seealso [allocation-fit-methods] for methods on saved fits.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
-fit_allocation <- function(model, observed, starts, lower, upper,
+fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper = NULL,
                             output = "utilization", loss = "weighted_sse",
                             loss_args = list(), loss_grad = NULL,
                             gradient = FALSE, ...) {
+  loss_missing <- missing(loss)
+  gradient_missing <- missing(gradient)
   .check_allocation_model(model)
   for (kernel in .allocation_kernels(model$metadata$spec)) {
     if (isFALSE(kernel$smooth)) {
@@ -358,9 +580,32 @@ fit_allocation <- function(model, observed, starts, lower, upper,
     }
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
-      output %in% c("utilization", "flow", "utilization_by_group") && is.numeric(observed) &&
+      output %in% .default_count_outputs && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {
     stop("observed expected counts must be nonnegative for output '", output, "'")
+  }
+  # Starts and bounds that are not given come from the default search (SPAX-058).
+  expected <- model$theta$names
+  searching <- is.null(starts) || !.default_bounds_cover(lower, expected) ||
+    !.default_bounds_cover(upper, expected)
+  if (searching) {
+    counts <- is.character(output) && length(output) == 1L && !is.na(output) &&
+      output %in% .default_count_outputs &&
+      output %in% names(model$metadata$spec$output_axes)
+    if (!counts) {
+      # An outside-count output the model cannot carry is refused with its own message.
+      .check_outside_target(model, output)
+      stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
+           "'")
+    }
+    if (is.null(starts) && loss_missing) stop(.default_search_message$loss)
+  }
+  loss_name <- if (is.character(loss)) match.arg(loss, c("weighted_sse", "poisson")) else "custom"
+  # Outside counts are fitted with the built-in Poisson loss only: the weighted SSE
+  # (also the default when starts are given) and custom losses are refused.
+  if (is.character(output) && length(output) == 1L && !is.na(output) &&
+      output %in% names(.outside_outputs) && !identical(loss_name, "poisson")) {
+    stop("outside counts are fitted with loss = \"poisson\"")
   }
   if (is.character(loss)) {
     loss <- match.arg(loss, c("weighted_sse", "poisson"))
@@ -373,14 +618,49 @@ fit_allocation <- function(model, observed, starts, lower, upper,
   } else if (!is.function(loss)) {
     stop("loss must be 'weighted_sse', 'poisson' or a function")
   }
-  result <- .fit_problem_multistart(model, observed, starts, lower, upper,
-    output = output, loss = loss, loss_args = loss_args, loss_grad = loss_grad,
-    gradient = gradient, ...)
+  if (!searching) {
+    result <- .fit_problem_multistart(model, observed, starts, lower, upper,
+      output = output, loss = loss, loss_args = loss_args, loss_grad = loss_grad,
+      gradient = gradient, ...)
+  } else {
+    dots <- list(...)
+    target <- .bind_problem_target(model, observed, output)
+    search <- .allocation_default_search(model, target, output, loss, loss_args,
+      lower = lower, upper = upper, starts = starts,
+      solver_args = dots[names(dots) %in% .default_solver_args])
+    starts_searched <- is.null(starts)
+    # The gradient and strict optimizer controls come with the searched starts only,
+    # and only where the caller gave none; given starts keep today's defaults.
+    control_given <- "control" %in% names(dots)
+    if (starts_searched) {
+      if (gradient_missing) gradient <- is.function(loss_grad)
+      if (!control_given) dots$control <- .default_search_control
+    }
+    if (starts_searched) starts <- search$starts
+    search_lower <- search$lower
+    search_upper <- search$upper
+    # The call is built from symbols and evaluated here, so that an error from the
+    # fit shows `.fit_problem_multistart(model, observed, ...)` and not the function
+    # and the values written out (as do.call() with the function itself would).
+    dots <- lapply(dots, function(v) if (is.language(v)) call("quote", v) else v)
+    fit_call <- as.call(c(list(quote(.fit_problem_multistart), quote(model), quote(observed),
+      quote(starts), quote(search_lower), quote(search_upper), output = quote(output),
+      loss = quote(loss), loss_args = quote(loss_args), loss_grad = quote(loss_grad),
+      gradient = quote(gradient)), dots))
+    result <- eval(fit_call)
+    if (starts_searched && inherits(result, "ae_multistart_fit")) {
+      record <- search$record
+      record$loss <- loss_name
+      record$controls <- list(gradient = isTRUE(gradient), gradient_default = gradient_missing,
+                              control = dots$control, control_default = !control_given)
+      result$default_search <- record
+    }
+  }
   # A binding floor caps the loss: report it rather than return a capped fit silently.
   if (inherits(result, "ae_multistart_fit") && !is.null(result$best)) {
     floor_info <- .poisson_floor(result$best)
     if (!is.null(floor_info) && floor_info[["positive_below"]] > 0) {
-      warning(.poisson_floor_message(floor_info), call. = FALSE)
+      warning(.poisson_floor_message(floor_info, result$best$output), call. = FALSE)
     }
   }
   result
@@ -478,12 +758,22 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   "outside_share_by_group")`; the other outputs are pooled over the groups
 #'   (demand-weighted). A group's own access and outside share are `NA` on rows
 #'   where that group has no demand and its travel there is not usable.
+#'
+#'   The expected counts that can be requested with `requested_outputs` are
+#'   `flow` (origins by facilities), `flow_outside` (`flow` with one more column,
+#'   `"(outside)"`, holding each origin's expected outside count `D_i *
+#'   outside_share_i`), `utilization_outside` (`utilization` with one more
+#'   element, `"(outside)"`, the expected outside count of all origins) and, with
+#'   demand groups, `utilization_by_group` and `utilization_outside_by_group`
+#'   (with one more row, `"(outside)"`, the expected outside count of each group).
+#'   The outside counts are zero for a model without an outside option; they
+#'   are the outputs that [fit_allocation()] fits to observed outside counts.
 #' @return The existing `ae_equilibrium` with its portable prediction snapshot
 #'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
 #'   hard constraint on expected utilization.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
@@ -513,8 +803,10 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' overrides are deliberately absent. A changed system requires reevaluation.
 #' @param source A selected multistart result, NFXP fit or fixed evaluation with
 #'   a valid CLM prediction snapshot, for a built-in decay kernel or one declared
-#'   with [decay_kernel()]. Older objects need regeneration. The snapshot of a
-#'   declared kernel carries its code and predicting runs it, so use saved
+#'   with [decay_kernel()]; or a result of [spax()], which supplies its fit (or
+#'   its evaluation when every parameter had a value). A result whose search
+#'   selected no fit is refused. Older objects need regeneration. The snapshot of
+#'   a declared kernel carries its code and predicting runs it, so use saved
 #'   results only from sources you trust.
 #' @param distance Numeric requested-origin-by-facility travel matrix with
 #'   complete facility column IDs. Named axes align independently; requested
@@ -546,13 +838,14 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #'   but makes unqualified A/abar unknown; explicitly named supported-only outputs
 #'   retain the existing zero-contribution convention. Zero-denominator rows
 #'   retain guarded zero mass and a false probability-valid flag.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 predict_allocation <- function(source, distance, origin_ids = rownames(distance),
                                 demand = NULL, outputs = c("rho", "A", "abar"),
                                 missing_travel = c("unknown", "legacy_zero"),
                                 spatial = NULL, type = c("numeric", "raster")) {
+  if (.is_allocation_result(source)) source <- .allocation_unbundle(source, "source")
   type <- match.arg(type)
   .refuse_grouped("predict_allocation()", source)
   if (type == "raster" && (length(outputs) != 1L ||

@@ -624,7 +624,8 @@ test_that("v0 constants by group with fit_v0 = FALSE", {
   expect_identical(s$metadata$spec$v0, 2)
   expect_null(s$metadata$spec$v0_groups)
   expect_error(clm_allocation(p, v0 = c(a = 1, b = 2), fit_v0 = TRUE),
-               "constants")
+               paste0("v0 given by group is held: use fit_v0 = FALSE, or fit_v0 = TRUE ",
+                      "with by_group = \"v0\" to fit one per group"), fixed = TRUE)
   expect_error(clm_allocation(p, v0 = c(a = 1)), "v0: give one element per group: a, b")
   expect_error(clm_allocation(p, v0 = c(a = 1, b = -2)), "nonnegative")
 })
@@ -708,7 +709,7 @@ test_that("grouped spec, problem and contract names and order", {
   expect_identical(names(um$theta), c("names", "lower", "upper"))
   expect_identical(names(um$metadata$spec$output_axes), c("target", "utilization",
     "attractiveness", "access", "outside_share", "allocation", "huff_share",
-    "opportunity", "flow"))
+    "opportunity", "flow", "flow_outside", "utilization_outside"))
   expect_identical(names(.huff_theta_contract(TRUE, TRUE)), c("names", "lower", "upper"))
   expect_identical(.huff_theta_contract(TRUE, TRUE)$names, c("sigma", "v0", "beta"))
   # grouped
@@ -726,8 +727,9 @@ test_that("grouped spec, problem and contract names and order", {
   expect_true("v0_groups" %in% names(spec))
   expect_null(spec$v0_groups)
   expect_identical(names(spec$output_axes), c("target", "utilization", "attractiveness",
-    "access", "outside_share", "allocation", "huff_share", "flow",
-    "utilization_by_group", "access_by_group", "outside_share_by_group"))
+    "access", "outside_share", "allocation", "huff_share", "flow", "flow_outside",
+    "utilization_outside", "utilization_by_group", "access_by_group",
+    "outside_share_by_group", "utilization_outside_by_group"))
   expect_identical(spec$output_axes[["utilization_by_group"]], "facility_group")
   expect_identical(spec$output_axes[["access_by_group"]], "origin_group")
   expect_identical(spec$output_axes[["outside_share_by_group"]], "origin_group")
@@ -741,7 +743,8 @@ test_that("grouped spec, problem and contract names and order", {
   # the problem passes the output declarations
   step <- .bind_theta(gm, c(sigma.a = 2, sigma.b = 3, v0 = 1))
   expect_identical(step$state_independent_outputs,
-    c("flow", "utilization_by_group", "access_by_group", "outside_share_by_group"))
+    c("flow", "utilization_by_group", "access_by_group", "outside_share_by_group",
+      "flow_outside", "utilization_outside", "utilization_outside_by_group"))
   expect_null(step$clm_prediction)
   # the default outputs do not carry the per-group matrices
   expect_false(any(c("utilization_by_group", "access_by_group", "outside_share_by_group",
@@ -795,7 +798,9 @@ test_that("clm_allocation refuses invalid grouped arguments", {
   u <- prepare_allocation(f$demand$a, f$supply, f$M, missing_demand = "exclude")
   expect_error(clm_allocation(u, by_group = "sigma"), "need prepared inputs with demand groups")
   expect_error(clm_allocation(u, fixed = c(sigma = 2)), "need prepared inputs with demand groups")
-  expect_error(clm_allocation(p, by_group = "v0"), "requires fit_v0 = TRUE")
+  expect_error(clm_allocation(p, by_group = "v0"),
+               paste0("a group-specific v0 (by_group = \"v0\") must be fitted: ",
+                      "outside = \"fit\" (fit_v0 = TRUE in clm_allocation())"), fixed = TRUE)
   expect_error(clm_allocation(p, by_group = "beta"), "must be a subset")
   expect_error(clm_allocation(p, by_group = c("sigma", "sigma")), "must be a subset")
   expect_error(clm_allocation(p, family = list(a = "gaussian")),
@@ -956,8 +961,9 @@ test_that("grouped evaluation reuses kernels of equal groups without changing re
 
 .gfit_msg <- function(names) {
   paste0("group-specific parameters (", paste(names, collapse = ", "), ") need ",
-         "group-labelled targets: fit output = \"utilization_by_group\" with observed ",
-         "counts for every group, or fix them with clm_allocation(fixed = )")
+         "group-labelled targets: fit them to counts recorded by group (obs_totals() ",
+         "by group, or output = \"utilization_by_group\" in fit_allocation()), or ",
+         "hold them")
 }
 
 .gfit_error <- function(expr) {

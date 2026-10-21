@@ -18,11 +18,19 @@ bootstrap_allocation(
 outside mass (\code{fit_v0 = TRUE}), a decay kernel that is smooth in sigma (built
 in, or declared with \code{\link[=decay_kernel]{decay_kernel()}} and \code{smooth = TRUE}), and known travel
 on its retained demand support. The supply elasticity beta may be fixed or
-fitted; \code{kappa} and a fixed \code{beta} may be any positive values.}
+fitted; \code{kappa} and a fixed \code{beta} may be any positive values. It can instead
+be a result of \code{\link[=spax]{spax()}} that fitted such a model to facility totals: the
+result supplies its bound model and its fit, so leave \code{fit} out and give
+\code{observation} by name. A Huff model, a fit to flows and an evaluated result
+are refused as for the model and fit given separately.}
 
 \item{fit}{A matching multistart fit of complete whole facility counts using
 the unweighted built-in Poisson objective. Fractional or partial observations,
-flow targets and custom objectives are outside this method.}
+flow targets, fits with observed outside counts (\code{flow_outside},
+\code{utilization_outside}: the facility-case bootstrap is defined for facility
+totals without outside counts) and custom objectives are outside this
+method. Not given when
+\code{model} is a result of \code{\link[=spax]{spax()}}.}
 
 \item{observation}{Named list declaring nonblank \code{event}, \code{period} (including
 an explicit unresolved reference date), and \code{sampling="independent_facilities"}.
@@ -60,14 +68,16 @@ in the allocation network. Need, travel, capacity and included-network inputs
 remain fixed. Facility independence is a caller-declared working assumption.
 }
 \details{
-The model is a static CLM with a fitted outside mass (\code{fit_v0 = TRUE}) and a
+The model is a static CLM with a fitted outside mass (\code{outside = "fit"} in
+\code{\link[=spec_clm]{spec_clm()}}, or \code{fit_v0 = TRUE} in \code{\link[=clm_allocation]{clm_allocation()}}) and a
 decay kernel that is smooth in sigma: the Gaussian, exponential or power
 kernel, or a kernel declared with \code{\link[=decay_kernel]{decay_kernel()}} (not with
 \code{smooth = FALSE}). The supply elasticity beta may be fixed or fitted. Every
 fitted parameter gets its own interval.
 
-Exactly 399 attempts use the original explicit starts and positive bounds,
-with fixed numerical controls. Failed attempts are retained without replacement.
+Exactly 399 attempts use the starts and positive bounds of the original fit
+(given, or found by the default search of \code{\link[=fit_allocation]{fit_allocation()}}), with fixed
+numerical controls. Failed attempts are retained without replacement.
 Successful inner boundary estimates remain in the distribution. Original mean
 boundaries, local rank deficiency (fewer identified directions than fitted
 parameters) or insufficient fit precision, including a score that cannot be
@@ -89,7 +99,7 @@ facility, as a cutoff or bisquare kernel can be beyond its range, and also
 when Gaussian weights underflow to zero.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
 \code{\link{check_allocation}()},
@@ -102,4 +112,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

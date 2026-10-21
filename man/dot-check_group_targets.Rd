@@ -14,7 +14,9 @@
 \description{
 A model with demand groups fitted with free group-specific parameters
 (\verb{sigma.<g>}, \verb{v0.<g>}) needs group-labelled targets: \code{utilization_by_group}
-with observed counts for every group that has such a parameter, and positive
+(or \code{utilization_outside_by_group}, whose outside row does not count as an
+observed facility cell) with observed counts for every group that has such a
+parameter, and positive
 demand in that group. Aggregated targets leave the group parameters
 multimodal and weakly identified (SPAX-057, D2). Fixed group parameters and
 shared parameters are allowed with any target; ungrouped problems return at

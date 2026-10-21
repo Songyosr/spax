@@ -41,7 +41,7 @@
 #' demand <- calc_demand(groups, c(age_0_14 = 0, age_15_plus = 0.005),
 #'                       scale = 0.8, total = pop)
 #' attr(demand, "implied_rate")
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 calc_demand <- function(groups, rates, scale = 1, total = NULL,

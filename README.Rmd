@@ -29,7 +29,7 @@ so you can:
 - compute accessibility surfaces with the FCA family: 2SFCA, E2SFCA, M2SFCA,
   3SFCA and Huff-2SFCA;
 - model where people go with a static conditional logit allocation
-  (`clm_allocation()`) that includes the Huff model (`huff_allocation()`) and
+  (`spec_clm()`) that includes the Huff model (`spec_huff()`) and
   extends it with an outside option for demand that goes elsewhere: evaluate it
   at chosen parameters, fit it to observed use (facility totals or
   origin-to-facility flows), predict for new areas and test supply scenarios;
@@ -51,15 +51,14 @@ versions.
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor for
-spax 0.4.0. FCA calls from earlier versions keep working; a few inputs that
-gave meaningless surfaces are now refused (see the NEWS).
+spax 0.5.0. Calls from earlier versions keep working (see the NEWS).
 
-Install version 0.4.0 by its release tag rather than from the repository's
+Install version 0.5.0 by its release tag rather than from the repository's
 default branch:
 
 ```{r install, eval=FALSE}
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.4.0")
+pak::pak("Songyosr/spax@v0.5.0")
 ```
 
 The allocation interface is experimental and may change in later versions. For
@@ -68,7 +67,7 @@ observation declaration and saved results. Development continues on the
 `develop` branch (`pak::pak("Songyosr/spax@develop")`).
 
 Each release is archived on Zenodo; doi:10.5281/zenodo.23438611 refers to all
-versions (version 0.3.1 is doi:10.5281/zenodo.23446335). Cite the version you
+versions (version 0.4.0 is doi:10.5281/zenodo.23495125). Cite the version you
 used with `citation("spax")`.
 
 Package and function help are available from an installed package. Installations
@@ -157,13 +156,13 @@ the result.
 
 ### A static CLM fitted to registrations
 
-The CLM route takes numeric vectors and an origin-by-facility travel matrix,
-and fits where people choose to go. Here demand is the residents of each small
-area registered with any GP practice in England, supply is GP FTE, and the
-target is the observed small area × practice registrations. The model includes
-an outside option, which here stands for registration with a practice outside
-mainland Cornwall (for example in Devon or on the Isles of Scilly); it is not
-unmet need.
+The allocation model takes numeric vectors and an origin-by-facility travel
+matrix, and fits where people choose to go. Here demand is the residents of
+each small area registered with any GP practice in England, supply is GP FTE,
+and the target is the observed small area × practice registrations. The model
+includes an outside option, which here stands for registration with a practice
+outside mainland Cornwall (for example in Devon or on the Isles of Scilly); it
+is not unmet need.
 
 ```{r clm-inputs}
 mainland_lsoa <- cornwall_lsoa |>
@@ -175,25 +174,11 @@ travel <- cornwall_travel[mainland_lsoa$lsoa, mainland_gp$practice]
 demand <- setNames(mainland_lsoa$registered, mainland_lsoa$lsoa)
 supply <- setNames(mainland_gp$gp_fte_extg, mainland_gp$practice)
 
-# Observed registrations as a small area x practice matrix (zero if none)
-observed <- matrix(
-  0,
-  nrow = nrow(travel),
-  ncol = ncol(travel),
-  dimnames = dimnames(travel)
-)
-keep <- cornwall_flows$lsoa %in% rownames(travel) &
-  cornwall_flows$practice %in% colnames(travel)
-observed[cbind(cornwall_flows$lsoa[keep], cornwall_flows$practice[keep])] <-
-  cornwall_flows$patients[keep]
-```
-
-```{r clm-fit}
-# Check and align the inputs once; unit labels are recorded, not converted
-inputs <- prepare_allocation(
+# Align the inputs once; unit labels are recorded, not converted
+d <- prep_data(
   demand = demand,
   supply = supply,
-  distance = travel,
+  travel = travel,
   metadata = list(
     demand_units = "registered residents",
     demand_period = "July 2026",
@@ -202,65 +187,71 @@ inputs <- prepare_allocation(
     travel_units = "minutes"
   )
 )
+d
 
-# Gaussian travel decay with a fitted outside weight v0
-model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
-
-# Fit the flows from three explicit starts with a Poisson loss
-starts <- rbind(
-  near = c(sigma = 3, v0 = 0.05),
-  middle = c(sigma = 6, v0 = 0.01),
-  far = c(sigma = 12, v0 = 0.002)
+# Observed registrations: one row per small area and practice
+flows <- obs_flows(
+  cornwall_flows,
+  origin = "lsoa",
+  facility = "practice",
+  count = "patients"
 )
-fit <- fit_allocation(
-  model = model,
-  observed = observed,
-  starts = starts,
-  lower = c(sigma = 0.5, v0 = 1e-6),
-  upper = c(sigma = 60, v0 = 10),
-  output = "flow",
-  loss = "poisson",
-  gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
-)
-coef(fit)
 ```
 
+```{r clm-fit, message = TRUE}
+# Gaussian travel decay and a fitted outside weight v0 (the defaults),
+# fitted to the flows
+clm <- spax(d, spec_clm(), observed = flows)
+clm
+```
+
+`spax()` lines the registrations up with the data. The message says what it
+dropped: the counts of the Isles of Scilly small area, which is not in the
+data, and the few mainland residents registered at the Scilly practice, who
+count towards the outside option. No starts were given, so `spax()` found
+them from the data: it scans a grid of travel scales and outside weights and
+fits from the best points, as the last line of the print says. The loss is
+Poisson, the default of `obs_flows()`. Registrations are a stock rather than
+independent events, so treat the loss as a fitting criterion. `summary(clm)`
+lists every start; give `starts`, `lower` and `upper` to choose them yourself.
+
 ```{r clm-check}
+coef(clm)
+
+# The observed counts as aligned with the data (small areas x practices)
+observed <- clm$observed$target
+
 # Per cent registered outside mainland Cornwall: observed and modelled
 outside <- c(
   observed = 1 - sum(observed) / sum(demand),
-  modelled = 1 - sum(fitted(fit)) / sum(demand)
+  modelled = 1 - sum(fitted(clm)) / sum(demand)
 )
 round(100 * outside, 2)
 
 # Practice totals: modelled against observed
-cor(colSums(fitted(fit)), colSums(observed))
+cor(colSums(fitted(clm)), colSums(observed))
 ```
 
 ```{r clm-check-values, include = FALSE}
-sigma_hat <- round(coef(fit)[["sigma"]], 1)
-r_totals <- round(cor(colSums(fitted(fit)), colSums(observed)), 2)
+sigma_hat <- round(coef(clm)[["sigma"]], 1)
+r_totals <- round(cor(colSums(fitted(clm)), colSums(observed)), 2)
 ```
 
 The fitted Gaussian scale is about `r sigma_hat` minutes: registration is
-very local. The printed shares are percentages of registered residents. Practice totals of the fitted flows correlate at
-`r r_totals` with the observed ones. One constant outside weight
-understates registration outside mainland Cornwall, which is concentrated in
-a few areas near the Devon border. Poisson fitting is chosen explicitly (the
-fitting default is weighted SSE); inspect `summary(fit)` for all starts,
-failures and boundaries.
+very local. The printed shares are percentages of registered residents.
+Practice totals of the fitted flows correlate at `r r_totals` with the
+observed ones. One constant outside weight understates registration outside
+mainland Cornwall, which is concentrated in a few areas near the Devon border.
 
-`predict_allocation()` returns choice probabilities for requested areas. For
-the practice with the largest list, St Austell Health Group, the modelled
-probability can be set beside the observed share of each area's registered
-residents:
+`predict()` returns choice probabilities for requested areas. For the practice
+with the largest list, St Austell Health Group, the modelled probability can
+be set beside the observed share of each area's registered residents:
 
 ```{r clm-map, fig.width = 8, fig.height = 3.6, fig.alt = "Two maps of small areas around St Austell: the observed share of residents registered with St Austell Health Group and the modelled probability; the modelled catchment is centred on the same place but spreads more widely."}
 # Choice probabilities for every small area
-prediction <- predict_allocation(
-  source = fit,
-  distance = travel,
+prediction <- predict(
+  clm,
+  travel = travel,
   demand = demand,
   outputs = "allocation"
 )
@@ -310,16 +301,116 @@ registered, not how often they visit. The population grid (WorldPop 2020) and th
 2026) are different sources and dates. Data sources and licences are listed in
 `system.file("COPYRIGHTS", package = "spax")`.
 
+### Known outside counts
+
+The fit above sees only the counts at the mainland practices, so the outside
+option is fitted without any count of its own. Here the outside count of every
+small area is known. Demand is the residents registered with any GP practice
+in England, and every registered resident is registered somewhere, so the
+residents of a small area who are not registered at a mainland practice are
+exactly its outside count: its demand less its counts at the mainland
+practices, including the few mainland residents registered at the Scilly
+practice. `outside = "known"` declares this, and `spax()` fits the outside
+count as one more cell of each small area.
+
+```{r clm-known}
+clm_known <- spax(
+  d,
+  spec_clm(),
+  observed = obs_flows(
+    cornwall_flows,
+    origin = "lsoa",
+    facility = "practice",
+    count = "patients",
+    outside = "known"
+  )
+)
+coef(clm_known)
+
+# Per cent registered outside mainland Cornwall: observed and modelled
+areas_known <- as.data.frame(clm_known, type = "origins")
+known_shares <- c(
+  observed = sum(areas_known$outside_observed),
+  modelled = sum(areas_known$outside_modelled)
+) / sum(areas_known$demand)
+round(100 * known_shares, 2)
+```
+
+```{r clm-known-values, include = FALSE}
+v0_known <- format(round(coef(clm_known)[["v0"]], 3), nsmall = 3)
+v0_before <- format(round(coef(clm)[["v0"]], 3), nsmall = 3)
+```
+
+The travel scale hardly moves, but the outside weight rises from
+`r v0_before` to `r v0_known`, and the modelled outside share now equals the
+observed one: with every outside count known by subtraction (demand minus
+the counts), the fit is the multinomial likelihood of each small area's
+choices, and a constant outside weight reproduces the total outside count.
+Use `outside = "known"` only when demand counts the same people as the
+observations, as here: registrations by residence from the same extract and
+date. It is not a population estimate; list sizes and population differ by
+several percent, and the gap would go straight into the outside counts. The Huff
+comparison below uses the flows without outside counts, because the Huff model
+has no outside option.
+
+### The Huff model on the same data
+
+The Huff model is the conditional logit without the outside option.
+`spec_huff()` specifies it; by default it uses power decay and a fitted
+attractiveness exponent `beta`, the usual form of the Huff model. Here it takes
+the same Gaussian decay and `beta = 1` as the conditional logit above, so the two
+fits differ only in the outside option. Without one, the model sends every
+registered resident to a mainland practice, and the counts at the Scilly
+practice are dropped.
+
+```{r huff, message = TRUE}
+huff <- spax(d, spec_huff(decay = decay_gaussian(), beta = 1), observed = flows)
+coef(huff)
+
+# Same flows, loss and inputs; loss differences are measured from the Huff fit
+comparison <- compare_allocations(list(huff = huff, clm = clm))
+as.data.frame(comparison)[
+  c("specification", "parameters", "loss_difference", "count_correlation")
+]
+```
+
+```{r huff-values, include = FALSE}
+compared <- as.data.frame(comparison)
+outside_gain <- format(round(-compared$loss_difference[2], 1), nsmall = 1)
+```
+
+The outside option moves the travel scale very little (from
+`r format(round(coef(huff)[["sigma"]], 3), nsmall = 3)` to
+`r format(round(coef(clm)[["sigma"]], 3), nsmall = 3)`
+minutes) and lowers the Poisson loss by `r outside_gain`. It lets the model
+send `r round(100 * outside[["modelled"]], 2)`% of registered residents outside
+mainland Cornwall, against `r round(100 * outside[["observed"]], 2)`% observed.
+The Huff model is nested in the conditional logit, so this comparison measures
+what the outside option adds on these registrations; it does not by itself
+show how residents choose practices.
+
 ## Continue the allocation workflow
 
 | Function | Purpose |
 |:--|:--|
-| `prepare_allocation()` | Align IDs, validate inputs, record units and support, and prepare compact numeric inputs. |
+| `prep_data()` | Align demand, supply and travel by ID once, and record units. |
+| `spec_clm()`, `spec_huff()` | Specify a model without data; each parameter is a number (held) or `"fit"` (estimated). |
+| `decay_gaussian()`, `decay_exponential()`, `decay_power()`, `decay_custom()` | Declare the decay kernel of a specification, with its `sigma`. |
+| `obs_flows()`, `obs_totals()` | Declare observed flows or facility totals, and the loss that fits them. |
+| `spax()`, `spax_clm()`, `spax_huff()` | Fit the model, or evaluate it at given values; `coef()`, `fitted()`, `summary()`, `as.data.frame()` and `predict()` read the result. |
+
+For full control, the step functions run the same model one step at a time,
+and they accept a result of `spax()`:
+
+| Function | Purpose |
+|:--|:--|
+| `prepare_allocation()` | Align IDs, record units and support, and prepare compact numeric inputs (`prep_data()` returns the same object). |
 | `clm_allocation()` | Declare corrected static CLM with Gaussian, exponential or power travel decay, or a kernel declared with `decay_kernel()`. |
 | `huff_allocation()` | Declare the Huff model: the same allocation model without an outside option, with power decay and a fitted attractiveness exponent by default. |
-| `fit_allocation()` | Fit a selected output from explicit starts and retain diagnostics. |
+| `fit_allocation()` | Fit a selected output from given starts, or from starts found in the data, and retain diagnostics. |
 | `evaluate_allocation()` | Evaluate supplied parameters, including a newly prepared supply scenario. |
 | `predict_allocation()` | Predict requested origins against saved facility loads; maps are explicit. |
+| `check_allocation()`, `compare_allocations()` | Compare a fit with simpler models, or fits with each other, on the same loss. |
 | `bootstrap_allocation()` | Run the separately supported conditional facility-case bootstrap. |
 
 `vignette("model-choice", package = "spax")` compares an FCA index and the

@@ -25,8 +25,10 @@ test_that("declared axes disambiguate coincident origin and facility lengths", {
     theta <- case$theta
     state <- p$state$init
     out <- .problem_outputs_at(p, theta, state)
-    # Declared axes include optional outputs even when the default omits them.
-    expect_setequal(names(p$metadata$spec$output_axes), union(names(out), "flow"))
+    # Declared axes include optional outputs even when the default omits them
+    # (the corrected CLM also declares its outside-count outputs, SPAX-059).
+    optional <- c("flow", if (identical(p$model, "huff")) c("flow_outside", "utilization_outside"))
+    expect_setequal(names(p$metadata$spec$output_axes), union(names(out), optional))
     expect_setequal(.problem_available_surfaces(p, out), c("access", "outside_share"))
     expect_error(.problem_output_surface(p, theta, state, "utilization"),
                  "not an origin-side")

@@ -13,10 +13,14 @@ check_allocation(model, fit, trip_breaks = c(30, 60, 120))
 \method{as.data.frame}{ae_allocation_check}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{model}{The corrected CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted.}
+\item{model}{The corrected CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
+result of \code{\link[=spax]{spax()}} that fitted a model; the result supplies its bound model
+and its fit, so leave \code{fit} out. A result that was evaluated at given values
+has no fit and is refused.}
 
 \item{fit}{The \code{ae_multistart_fit} returned by \code{\link[=fit_allocation]{fit_allocation()}} for
-\code{model}. A search with no selected fit cannot be checked.}
+\code{model}. A search with no selected fit cannot be checked. Not given when
+\code{model} is a result of \code{\link[=spax]{spax()}}.}
 
 \item{trip_breaks}{Positive travel times (in the prepared travel units) for
 which the share of expected trips longer than each value is reported.}
@@ -61,8 +65,14 @@ re-optimized when the model fits it. Its reported parameters leave out the
 decay parameter \code{sigma}, which this allocation does not use.
 \item \code{capacity_only}: facility loads proportional to attractiveness, ignoring
 travel entirely, with one fitted scale factor. Available for facility
-\code{utilization} targets only.
+\code{utilization} targets only: it applies to facility totals without outside
+counts, and is not reported (\code{NA}) for any other output.
 }
+
+For the outside-count outputs (\code{flow_outside}, \code{utilization_outside}), the loss
+of every comparator is scored on the whole target, the \code{"(outside)"} cells
+included, as is the count correlation that \code{\link[=compare_allocations]{compare_allocations()}} reports for
+such fits.
 
 When the model fits the attractiveness exponent \code{beta}, it is re-optimized in
 both comparators. Comparator searches start from the fit's own scale and widen
@@ -77,7 +87,7 @@ share is reported separately. To see how the fit depends on a catchment limit, p
 again with travel beyond the limit set to \code{Inf}, refit, and check each fit.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -90,4 +100,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

@@ -102,7 +102,7 @@
 #' plateau
 #'
 #' calc_decay(c(0, 5, 10, 20, NA), plateau, sigma = 8)
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 decay_kernel <- function(fun, name = NULL, parameter = NULL, lower = 0, upper = Inf,

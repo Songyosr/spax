@@ -50,3 +50,87 @@
   }
   allocation * as.numeric(demand)
 }
+
+# Outside counts as model outputs (SPAX-059) -------------------------------------
+# The corrected CLM with an outside option declares three more count outputs: the
+# inside count output (`flow`, `utilization`, `utilization_by_group`) extended by
+# the modelled outside count. The outside entry is named "(outside)" on its axis,
+# which is why no facility may carry that ID when one of them is requested. They
+# are ordinary expected counts (Poisson fits use the ordinary loss); the names map
+# each one to the inside output it extends.
+.outside_label <- "(outside)"
+.outside_outputs <- c(flow_outside = "flow", utilization_outside = "utilization",
+                      utilization_outside_by_group = "utilization_by_group")
+
+# `flow` with the modelled outside count of each origin (`D_i * outside_share_i`)
+# as one more column.
+.clm_flow_outside <- function(flow, outside) {
+  if (!is.matrix(flow) || nrow(flow) != length(outside)) {
+    stop("CLM flow rows must match the outside counts")
+  }
+  out <- cbind(flow, as.numeric(outside))
+  columns <- colnames(flow)
+  if (!is.null(columns)) {
+    dimnames(out) <- list(rownames(flow), c(columns, .outside_label))
+  } else if (!is.null(rownames(flow))) {
+    dimnames(out) <- list(rownames(flow), NULL)
+  }
+  out
+}
+
+# `utilization` with the modelled outside count of all origins as one more element.
+.clm_utilization_outside <- function(utilization, outside_total) {
+  out <- c(as.numeric(utilization), as.numeric(outside_total))
+  if (!is.null(names(utilization))) names(out) <- c(names(utilization), .outside_label)
+  out
+}
+
+# `utilization_by_group` (facilities by groups) with the modelled outside count
+# of each group as one more row. A group's outside share is `NA` where it has no
+# demand and no usable travel; there it carries no count.
+.clm_group_outside <- function(utilization_by_group, D_groups, outside_share_by_group) {
+  share <- outside_share_by_group
+  share[is.na(share)] <- 0
+  outside <- colSums(D_groups * share)
+  out <- rbind(utilization_by_group, as.numeric(outside))
+  rows <- rownames(utilization_by_group)
+  if (!is.null(rows)) {
+    dimnames(out) <- list(c(rows, .outside_label), colnames(utilization_by_group))
+  } else {
+    dimnames(out) <- list(NULL, colnames(utilization_by_group))
+  }
+  out
+}
+
+# Whether a built-in static CLM specification has an outside option: a fitted
+# outside weight, or a positive held one (by group too).
+.spec_has_outside_option <- function(spec) {
+  isTRUE(spec$fit_v0) || isTRUE(spec$v0 > 0) ||
+    any(spec[["v0_groups", exact = TRUE]] > 0)
+}
+
+# Refuse an outside-count target the model cannot carry. Models without an
+# outside option have no outside count to fit (the Huff model, and any CLM whose
+# outside weight is held at zero): the check is the earliest common place of every
+# fitting path (target binding). A model built by an earlier version of spax does
+# not declare the outputs: it must be rebuilt.
+.check_outside_target <- function(problem, output) {
+  if (!is.character(output) || length(output) != 1L ||
+      !output %in% names(.outside_outputs)) return(invisible(TRUE))
+  spec <- problem$metadata$spec
+  if (identical(spec$model, "huff") && !.spec_has_outside_option(spec)) {
+    stop("outside counts need a model with an outside option", call. = FALSE)
+  }
+  if (!output %in% names(spec$output_axes)) {
+    why <- if (!identical(spec$allocation, "clm")) {
+      ": it needs the corrected CLM allocation"
+    } else if (output == "utilization_outside_by_group" &&
+               is.null(spec[["groups", exact = TRUE]])) {
+      ": it needs a model with demand groups"
+    } else if (identical(spec$model, "huff")) {
+      ": rebuild the model with this version of spax"
+    }
+    stop("output '", output, "' is not declared by this model", why, call. = FALSE)
+  }
+  invisible(TRUE)
+}

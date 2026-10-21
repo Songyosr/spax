@@ -26,11 +26,16 @@ compare_allocations(
 }
 \arguments{
 \item{fits}{A named list of \code{ae_multistart_fit} results from
-\code{\link[=fit_allocation]{fit_allocation()}}, each with a selected fit.}
+\code{\link[=fit_allocation]{fit_allocation()}}, each with a selected fit. An element can instead be a
+result of \code{\link[=spax]{spax()}} that fitted a model; it supplies its fit and its model.
+A result that was evaluated at given values has no fit and is refused.}
 
 \item{models}{Optional named list of the corresponding models from
 \code{\link[=clm_allocation]{clm_allocation()}}, with the same names, used to verify that travel times
-are identical before reporting loss differences.}
+are identical before reporting loss differences. The elements of \code{fits}
+that are results of \code{\link[=spax]{spax()}} bring their own models and must not be named
+here. When \code{fits} mixes results with plain fits, give \code{models} for the
+plain ones.}
 
 \item{reference}{Name or position of the reference fit.}
 
@@ -80,13 +85,20 @@ comes from the pooled outputs. Contact and capacity values remain comparable
 across specifications, but they are conditional on each specification's
 inputs.
 
+For fits to the outside-count outputs (\code{flow_outside}, \code{utilization_outside},
+\code{utilization_outside_by_group}), the \code{count_correlation} is over the whole
+target, the \code{"(outside)"} cells included, so it is not comparable with the
+correlation of a fit to facility counts without outside counts. The
+capacity-only comparator of \code{\link[=check_allocation]{check_allocation()}} applies to facility totals
+without outside counts only.
+
 With \code{zones}, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the reference
 are listed. Classes require an adequacy cut in \code{coverage_args}; each fit uses
 its own regional contact as the contact cut unless \code{contact_cut} is given.
 }
 \seealso{
-Other experimental allocation workflow: 
+Other allocation steps: 
 \code{\link{bootstrap_allocation}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
@@ -99,4 +111,4 @@ Other experimental allocation workflow:
 \code{\link{predict_allocation}()},
 \code{\link{prepare_allocation}()}
 }
-\concept{experimental allocation workflow}
+\concept{allocation steps}

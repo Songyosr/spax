@@ -41,8 +41,19 @@ reference:
       - spax_huff2sfca
       - compute_access
 
-  - title: "Experimental Allocation Workflow"
-    desc: "One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap"
+  - title: "Allocation Interface (experimental)"
+    desc: "Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters), declare observed counts, run the model and work with its result"
+    contents:
+      - prep_data
+      - decay_gaussian
+      - spec_clm
+      - obs_flows
+      - spax
+      - spax_huff
+      - spax_allocation-methods
+
+  - title: "Allocation Steps (experimental)"
+    desc: "The step functions under spax(), for full control: prepare inputs, declare the model, fit, evaluate, predict, check, compare and bootstrap. Prediction, check, compare and bootstrap also accept a result of spax()"
     contents:
       - prepare_allocation
       - clm_allocation

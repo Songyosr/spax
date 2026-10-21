@@ -171,6 +171,11 @@ print.ae_multistart_fit <- function(x, ...) {
   cat("<ae_multistart_fit>\n")
   cat("eligible starts: ", sum(x$table$eligible), " / ", nrow(x$table), "\n", sep = "")
   cat("selected start: ", if (is.null(x$best_start)) "none" else x$best_start, "\n", sep = "")
+  search <- x[["default_search", exact = TRUE]]
+  if (!is.null(search)) {
+    cat("starts: default search, ", search$n_finite, " of ", search$n_points,
+        " grid points, loss ", search$loss, "\n", sep = "")
+  }
   cat("loss disagreement: ", x$loss_disagreement,
       "; parameter disagreement: ", x$parameter_disagreement, "\n", sep = "")
   lines <- if (!is.null(x$best)) .group_lines(x$best) else character()

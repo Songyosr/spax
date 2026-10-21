@@ -20,7 +20,13 @@
 #'   decay parameter `sigma`, which this allocation does not use.
 #' * `capacity_only`: facility loads proportional to attractiveness, ignoring
 #'   travel entirely, with one fitted scale factor. Available for facility
-#'   `utilization` targets only.
+#'   `utilization` targets only: it applies to facility totals without outside
+#'   counts, and is not reported (`NA`) for any other output.
+#'
+#' For the outside-count outputs (`flow_outside`, `utilization_outside`), the loss
+#' of every comparator is scored on the whole target, the `"(outside)"` cells
+#' included, as is the count correlation that [compare_allocations()] reports for
+#' such fits.
 #'
 #' When the model fits the attractiveness exponent `beta`, it is re-optimized in
 #' both comparators. Comparator searches start from the fit's own scale and widen
@@ -34,9 +40,13 @@
 #' share is reported separately. To see how the fit depends on a catchment limit, prepare the inputs
 #' again with travel beyond the limit set to `Inf`, refit, and check each fit.
 #'
-#' @param model The corrected CLM from [clm_allocation()] that was fitted.
+#' @param model The corrected CLM from [clm_allocation()] that was fitted, or a
+#'   result of [spax()] that fitted a model; the result supplies its bound model
+#'   and its fit, so leave `fit` out. A result that was evaluated at given values
+#'   has no fit and is refused.
 #' @param fit The `ae_multistart_fit` returned by [fit_allocation()] for
-#'   `model`. A search with no selected fit cannot be checked.
+#'   `model`. A search with no selected fit cannot be checked. Not given when
+#'   `model` is a result of [spax()].
 #' @param trip_breaks Positive travel times (in the prepared travel units) for
 #'   which the share of expected trips longer than each value is reported.
 #' @return An `ae_allocation_check` with a `comparators` table (loss, loss
@@ -47,10 +57,16 @@
 #'   `search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson fit:
 #'   its floor `eps` and the number of cells with positive observed counts modelled below
 #'   it, which cap the loss; `NULL` otherwise). Use `print()` or `as.data.frame()`.
-#' @family experimental allocation workflow
+#' @family allocation steps
 #' @export
 #' @md
 check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
+  if (.is_allocation_result(model)) {
+    parts <- .allocation_unbundle(model, "model_fit", "check_allocation()",
+                                  fit_given = !missing(fit))
+    model <- parts$model
+    fit <- parts$fit
+  }
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
   .refuse_grouped("check_allocation()", model, fit)
@@ -320,7 +336,7 @@ print.ae_allocation_check <- function(x, digits = 4, ...) {
     cat("A comparator search ended at its widest range; its loss may be overstated.\n")
   }
   if (isTRUE(x$flags["positive_counts_below_poisson_floor"])) {   # absent in older objects
-    cat(strwrap(.poisson_floor_message(x$poisson_floor)), sep = "\n")
+    cat(strwrap(.poisson_floor_message(x$poisson_floor, x$output)), sep = "\n")
   }
   invisible(x)
 }
