@@ -1,5 +1,8 @@
 # spax (development version)
 
+* Version 0.5.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23527706.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 FCA indices join the experimental interface: `spec_2sfca()`, `spec_e2sfca()`,
 `spec_m2sfca()`, `spec_3sfca()` and `spec_huff2sfca()` specify an index without
 data, and `spax()` computes it. `prep_data()` now also holds raster data, on which

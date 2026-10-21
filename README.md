@@ -56,7 +56,7 @@ Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
 
 Each release is archived on Zenodo; <doi:10.5281/zenodo.23438611> refers
-to all versions (version 0.4.0 is <doi:10.5281/zenodo.23495125>). Cite
+to all versions (version 0.5.0 is <doi:10.5281/zenodo.23527706>). Cite
 the version you used with `citation("spax")`.
 
 Package and function help are available from an installed package.
