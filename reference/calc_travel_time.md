@@ -103,7 +103,7 @@ uniform friction exceeds the straight-line time by up to about 8%.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),

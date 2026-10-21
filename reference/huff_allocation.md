@@ -113,7 +113,7 @@ Huff DL (1963). A probabilistic analysis of shopping center trade areas.
 [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
 for the general model with an outside option.
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,7 @@
       <h1>Preparing your own data: counts, facility IDs and travel</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/vignettes/data-prep.Rmd" class="external-link"><code>vignettes/data-prep.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/data-prep.Rmd" class="external-link"><code>vignettes/data-prep.Rmd</code></a></small>
       <div class="d-none name"><code>data-prep.Rmd</code></div>
     </div>
 
@@ -407,7 +407,10 @@ mainland, matching IDs by name:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">inputs</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>[1] "ae_prepared_inputs"</code></pre>
-<p>The unit declarations are recorded, not converted. See the <a href="allocation-workflow.html">allocation workflow</a> for what the
+<p><code><a href="../reference/prep_data.html">prep_data()</a></code> is the same preparation with
+<code>travel</code> in place of <code>distance</code>, the first step of
+<code><a href="../reference/spax.html">spax()</a></code> (see the <a href="allocation-workflow.html">allocation workflow</a>). The unit
+declarations are recorded, not converted. See the <a href="allocation-workflow.html">allocation workflow</a> for what the
 prepared inputs feed into.</p>
 </div>
 <div class="section level2">

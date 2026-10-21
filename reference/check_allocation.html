@@ -11,7 +11,7 @@ The check reports only: it never changes or replaces the fit."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,7 +54,7 @@ The check reports only: it never changes or replaces the fit."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Check what fitted facility counts identify in an allocation model</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/R/07-allocation_check.R" class="external-link"><code>R/07-allocation_check.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/07-allocation_check.R" class="external-link"><code>R/07-allocation_check.R</code></a></small>
       <div class="d-none name"><code>check_allocation.Rd</code></div>
     </div>
 
@@ -80,12 +80,16 @@ The check reports only: it never changes or replaces the fit.</p>
 
 
 <dl><dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
-<dd><p>The corrected CLM from <code><a href="clm_allocation.html">clm_allocation()</a></code> that was fitted.</p></dd>
+<dd><p>The corrected CLM from <code><a href="clm_allocation.html">clm_allocation()</a></code> that was fitted, or a
+result of <code><a href="spax.html">spax()</a></code> that fitted a model; the result supplies its bound model
+and its fit, so leave <code>fit</code> out. A result that was evaluated at given values
+has no fit and is refused.</p></dd>
 
 
 <dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
 <dd><p>The <code>ae_multistart_fit</code> returned by <code><a href="fit_allocation.html">fit_allocation()</a></code> for
-<code>model</code>. A search with no selected fit cannot be checked.</p></dd>
+<code>model</code>. A search with no selected fit cannot be checked. Not given when
+<code>model</code> is a result of <code><a href="spax.html">spax()</a></code>.</p></dd>
 
 
 <dt id="arg-trip-breaks">trip_breaks<a class="anchor" aria-label="anchor" href="#arg-trip-breaks"></a></dt>
@@ -136,8 +140,13 @@ re-optimized when the model fits it. Its reported parameters leave out the
 decay parameter <code>sigma</code>, which this allocation does not use.</p></li>
 <li><p><code>capacity_only</code>: facility loads proportional to attractiveness, ignoring
 travel entirely, with one fitted scale factor. Available for facility
-<code>utilization</code> targets only.</p></li>
-</ul><p>When the model fits the attractiveness exponent <code>beta</code>, it is re-optimized in
+<code>utilization</code> targets only: it applies to facility totals without outside
+counts, and is not reported (<code>NA</code>) for any other output.</p></li>
+</ul><p>For the outside-count outputs (<code>flow_outside</code>, <code>utilization_outside</code>), the loss
+of every comparator is scored on the whole target, the <code>"(outside)"</code> cells
+included, as is the count correlation that <code><a href="compare_allocations.html">compare_allocations()</a></code> reports for
+such fits.</p>
+<p>When the model fits the attractiveness exponent <code>beta</code>, it is re-optimized in
 both comparators. Comparator searches start from the fit's own scale and widen
 while the optimum lies at the search edge; <code>flags</code> records any search that
 still ends at an edge.</p>
@@ -150,7 +159,7 @@ again with travel beyond the limit set to <code>Inf</code>, refit, and check eac
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other experimental allocation workflow:
+    <div class="dont-index"><p>Other allocation steps:
 <code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>,
 <code><a href="calc_demand.html">calc_demand()</a></code>,
 <code><a href="calc_travel_time.html">calc_travel_time()</a></code>,

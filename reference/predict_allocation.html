@@ -13,7 +13,7 @@ overrides are deliberately absent. A changed system requires reevaluation."></he
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,7 +56,7 @@ overrides are deliberately absent. A changed system requires reevaluation."></he
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Predict requested origins against a saved fitted or evaluated CLM</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/R/06-ae_workflow.R" class="external-link"><code>R/06-ae_workflow.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/06-ae_workflow.R" class="external-link"><code>R/06-ae_workflow.R</code></a></small>
       <div class="d-none name"><code>predict_allocation.Rd</code></div>
     </div>
 
@@ -88,8 +88,10 @@ overrides are deliberately absent. A changed system requires reevaluation.</p>
 <dl><dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
 <dd><p>A selected multistart result, NFXP fit or fixed evaluation with
 a valid CLM prediction snapshot, for a built-in decay kernel or one declared
-with <code><a href="decay_kernel.html">decay_kernel()</a></code>. Older objects need regeneration. The snapshot of a
-declared kernel carries its code and predicting runs it, so use saved
+with <code><a href="decay_kernel.html">decay_kernel()</a></code>; or a result of <code><a href="spax.html">spax()</a></code>, which supplies its fit (or
+its evaluation when every parameter had a value). A result whose search
+selected no fit is refused. Older objects need regeneration. The snapshot of
+a declared kernel carries its code and predicting runs it, so use saved
 results only from sources you trust.</p></dd>
 
 
@@ -149,7 +151,7 @@ retain guarded zero mass and a false probability-valid flag.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other experimental allocation workflow:
+    <div class="dont-index"><p>Other allocation steps:
 <code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>,
 <code><a href="calc_demand.html">calc_demand()</a></code>,
 <code><a href="calc_travel_time.html">calc_travel_time()</a></code>,

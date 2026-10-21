@@ -64,7 +64,7 @@ overall rate across all cells (`fallback = "mean"`) or stop
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),
 [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),

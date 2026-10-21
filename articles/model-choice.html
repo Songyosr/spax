@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,7 @@
       <h1>Choosing an FCA index or an allocation model</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/vignettes/model-choice.Rmd" class="external-link"><code>vignettes/model-choice.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/model-choice.Rmd" class="external-link"><code>vignettes/model-choice.Rmd</code></a></small>
       <div class="d-none name"><code>model-choice.Rmd</code></div>
     </div>
 
@@ -121,8 +121,9 @@ index</td>
 <td align="left">How are request opportunities allocated among
 facilities and an outside option?</td>
 <td align="left">
-<code><a href="../reference/prepare_allocation.html">prepare_allocation()</a></code> then
-<code><a href="../reference/clm_allocation.html">clm_allocation()</a></code>
+<code><a href="../reference/prep_data.html">prep_data()</a></code> and <code><a href="../reference/spec_clm.html">spec_clm()</a></code>
+with <code><a href="../reference/spax.html">spax()</a></code>, or the steps <code><a href="../reference/prepare_allocation.html">prepare_allocation()</a></code>
+then <code><a href="../reference/clm_allocation.html">clm_allocation()</a></code>
 </td>
 <td align="left">Choice probabilities and expected loads under a
 declared model</td>
@@ -131,8 +132,10 @@ declared model</td>
 <td align="left">Which parameters fit observed utilization or
 flows?</td>
 <td align="left">
-<code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> with an explicit loss and
-starts</td>
+<code><a href="../reference/spax.html">spax()</a></code> with <code><a href="../reference/obs_flows.html">obs_flows()</a></code> or
+<code><a href="../reference/obs_flows.html">obs_totals()</a></code>, or the step
+<code><a href="../reference/fit_allocation.html">fit_allocation()</a></code>
+</td>
 <td align="left">A calibrated mean model plus optimization
 diagnostics</td>
 </tr>
@@ -263,8 +266,11 @@ fitted attractiveness exponent by default. This guide uses
 to practices outside mainland Cornwall.</p>
 <p>Fitting needs a declared target. Here it is the observed small area ×
 practice registrations, a stock of who is registered where rather than a
-count of visits, fitted with a Poisson loss from three explicit
-starts.</p>
+count of visits, fitted with a Poisson loss from three explicit starts.
+The guide uses the step functions;
+<code>spax(prep_data(D, S, T), spec_clm(), observed = obs_flows(observed))</code>
+fits the same model in one call, with starts found in the data (see the
+<a href="allocation-workflow.html">allocation workflow</a>).</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Observed registrations as an area x practice matrix (zero if none)</span></span>
 <span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncol</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span><span class="op">)</span></span>
@@ -499,9 +505,13 @@ attraction; it is not a hard capacity limit.</p>
 <p>The six experimental verbs are <strong>prepare, declare, fit,
 evaluate, predict and bootstrap</strong>. They are separate steps so
 that a chosen fixed model can be evaluated without fitting, while an
-eligible fit can be inspected without refitting. An outside option does
-not automatically represent unmet need, and Poisson fitting does not
-impose exact total matching.</p>
+eligible fit can be inspected without refitting. <code><a href="../reference/spax.html">spax()</a></code>
+runs the first three in one call (or prepare, declare and evaluate, when
+every parameter has a value); <code><a href="../reference/predict_allocation.html">predict_allocation()</a></code>,
+<code><a href="../reference/bootstrap_allocation.html">bootstrap_allocation()</a></code>, <code><a href="../reference/check_allocation.html">check_allocation()</a></code> and
+<code><a href="../reference/compare_allocations.html">compare_allocations()</a></code> accept its result. An outside option
+does not automatically represent unmet need, and Poisson fitting does
+not impose exact total matching.</p>
 <p>This guide is not an uncertainty demonstration. The facility-case
 bootstrap needs a fit to whole facility counts, so the flow fit above is
 outside its scope. Continue to the <a href="allocation-workflow.html">full allocation workflow</a> for

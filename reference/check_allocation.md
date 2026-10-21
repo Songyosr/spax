@@ -23,13 +23,19 @@ as.data.frame(x, row.names = NULL, optional = FALSE, ...)
 
   The corrected CLM from
   [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
-  that was fitted.
+  that was fitted, or a result of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) that
+  fitted a model; the result supplies its bound model and its fit, so
+  leave `fit` out. A result that was evaluated at given values has no
+  fit and is refused.
 
 - fit:
 
   The `ae_multistart_fit` returned by
   [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
-  for `model`. A search with no selected fit cannot be checked.
+  for `model`. A search with no selected fit cannot be checked. Not
+  given when `model` is a result of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md).
 
 - trip_breaks:
 
@@ -88,7 +94,15 @@ travel times, rather than on the counts. The comparators are:
 
 - `capacity_only`: facility loads proportional to attractiveness,
   ignoring travel entirely, with one fitted scale factor. Available for
-  facility `utilization` targets only.
+  facility `utilization` targets only: it applies to facility totals
+  without outside counts, and is not reported (`NA`) for any other
+  output.
+
+For the outside-count outputs (`flow_outside`, `utilization_outside`),
+the loss of every comparator is scored on the whole target, the
+`"(outside)"` cells included, as is the count correlation that
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+reports for such fits.
 
 When the model fits the attractiveness exponent `beta`, it is
 re-optimized in both comparators. Comparator searches start from the
@@ -105,7 +119,7 @@ set to `Inf`, refit, and check each fit.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

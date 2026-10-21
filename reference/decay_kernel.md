@@ -152,7 +152,7 @@ function again, because the stored text can differ between R versions.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

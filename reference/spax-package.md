@@ -28,42 +28,70 @@ facilities. These take raster demand and facility travel layers.
 Multiple supply columns produce independent accessibility indicators,
 not interacting resource constraints.
 
-The six experimental allocation operations are
+The experimental allocation interface runs a model in one call:
+[`spax`](https://songyosr.github.io/spax/reference/spax.md) binds a
+model specification
+([`spec_clm`](https://songyosr.github.io/spax/reference/spec_clm.md) or
+[`spec_huff`](https://songyosr.github.io/spax/reference/spec_clm.md),
+with a decay such as
+[`decay_gaussian`](https://songyosr.github.io/spax/reference/decay_gaussian.md))
+to data from
+[`prep_data`](https://songyosr.github.io/spax/reference/prep_data.md),
+and fits it to counts declared with
+[`obs_flows`](https://songyosr.github.io/spax/reference/obs_flows.md) or
+[`obs_totals`](https://songyosr.github.io/spax/reference/obs_flows.md),
+or evaluates it when every parameter has a value.
+[`spax_clm`](https://songyosr.github.io/spax/reference/spax_huff.md) and
+[`spax_huff`](https://songyosr.github.io/spax/reference/spax_huff.md) do
+the same from raw inputs.
+
+Underneath, the six experimental allocation steps are
 [`prepare_allocation`](https://songyosr.github.io/spax/reference/prepare_allocation.md),
 [`clm_allocation`](https://songyosr.github.io/spax/reference/clm_allocation.md),
 [`fit_allocation`](https://songyosr.github.io/spax/reference/fit_allocation.md),
 [`evaluate_allocation`](https://songyosr.github.io/spax/reference/evaluate_allocation.md),
 [`predict_allocation`](https://songyosr.github.io/spax/reference/predict_allocation.md)
 and
-[`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md).
-They describe one static CLM system with one supply vector and an
-outside option;
+[`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md);
+use them for full control. They describe one static CLM system with one
+supply vector and an outside option;
 [`huff_allocation`](https://songyosr.github.io/spax/reference/huff_allocation.md)
 declares the same system without the outside option, the classic Huff
 model. The first five support Gaussian, exponential and power decay and
 kernels declared with
 [`decay_kernel`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 (fitting needs a kernel that is smooth in `sigma`); bootstrap has the
-narrower scope below. Broader feedback-model declarations and
+narrower scope below. Prediction, the bootstrap,
+[`check_allocation`](https://songyosr.github.io/spax/reference/check_allocation.md)
+and
+[`compare_allocations`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+accept a result of
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) in place
+of the model and its fit. Broader feedback-model declarations and
 general-purpose inference are not part of this experimental interface.
 
 ## Inputs, observations and support
 
 Preserve facility and origin IDs on numeric inputs. Named axes align
 independently; unnamed inputs are positional. For FCA, travel layer
-names identify facilities. In the checked allocation route, only
-included positive demand contributes to fitted facility loads. Known
-zero, unknown and excluded demand remain distinct. Requested predictions
-have their own support: unknown travel is not the same as a known absent
+names identify facilities. In the allocation route, only included
+positive demand contributes to fitted facility loads. Known zero,
+unknown and excluded demand remain distinct. Requested predictions have
+their own support: unknown travel is not the same as a known absent
 connection (`Inf`).
 
 Declare compatible demand, supply and travel units and reference
 periods. The interface records declarations without converting units.
 Specify whether observations are event counts over a period or a stock
 such as registered caseload at a reference date; a model output does not
-determine that meaning. The fitting default is weighted SSE. Choose the
-Poisson objective explicitly when appropriate; choosing it is not
-evidence for an observation law.
+determine that meaning.
+[`obs_flows`](https://songyosr.github.io/spax/reference/obs_flows.md)
+and
+[`obs_totals`](https://songyosr.github.io/spax/reference/obs_flows.md)
+fit with the Poisson loss by default;
+[`fit_allocation`](https://songyosr.github.io/spax/reference/fit_allocation.md)
+with given starts defaults to weighted SSE. Choosing the Poisson
+objective is not evidence for an observation law.
 
 ## Allocation outputs and scenarios
 

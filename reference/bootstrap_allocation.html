@@ -13,7 +13,7 @@ remain fixed. Facility independence is a caller-declared working assumption."></
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,7 +56,7 @@ remain fixed. Facility independence is a caller-declared working assumption."></
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Conditional facility-case bootstrap for a fitted allocation</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/R/07-allocation_bootstrap.R" class="external-link"><code>R/07-allocation_bootstrap.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/07-allocation_bootstrap.R" class="external-link"><code>R/07-allocation_bootstrap.R</code></a></small>
       <div class="d-none name"><code>bootstrap_allocation.Rd</code></div>
     </div>
 
@@ -88,13 +88,21 @@ remain fixed. Facility independence is a caller-declared working assumption.</p>
 outside mass (<code>fit_v0 = TRUE</code>), a decay kernel that is smooth in sigma (built
 in, or declared with <code><a href="decay_kernel.html">decay_kernel()</a></code> and <code>smooth = TRUE</code>), and known travel
 on its retained demand support. The supply elasticity beta may be fixed or
-fitted; <code>kappa</code> and a fixed <code>beta</code> may be any positive values.</p></dd>
+fitted; <code>kappa</code> and a fixed <code>beta</code> may be any positive values. It can instead
+be a result of <code><a href="spax.html">spax()</a></code> that fitted such a model to facility totals: the
+result supplies its bound model and its fit, so leave <code>fit</code> out and give
+<code>observation</code> by name. A Huff model, a fit to flows and an evaluated result
+are refused as for the model and fit given separately.</p></dd>
 
 
 <dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
 <dd><p>A matching multistart fit of complete whole facility counts using
 the unweighted built-in Poisson objective. Fractional or partial observations,
-flow targets and custom objectives are outside this method.</p></dd>
+flow targets, fits with observed outside counts (<code>flow_outside</code>,
+<code>utilization_outside</code>: the facility-case bootstrap is defined for facility
+totals without outside counts) and custom objectives are outside this
+method. Not given when
+<code>model</code> is a result of <code><a href="spax.html">spax()</a></code>.</p></dd>
 
 
 <dt id="arg-observation">observation<a class="anchor" aria-label="anchor" href="#arg-observation"></a></dt>
@@ -137,13 +145,15 @@ Scientific refusals are inspectable results; invalid inputs error.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The model is a static CLM with a fitted outside mass (<code>fit_v0 = TRUE</code>) and a
+    <p>The model is a static CLM with a fitted outside mass (<code>outside = "fit"</code> in
+<code><a href="spec_clm.html">spec_clm()</a></code>, or <code>fit_v0 = TRUE</code> in <code><a href="clm_allocation.html">clm_allocation()</a></code>) and a
 decay kernel that is smooth in sigma: the Gaussian, exponential or power
 kernel, or a kernel declared with <code><a href="decay_kernel.html">decay_kernel()</a></code> (not with
 <code>smooth = FALSE</code>). The supply elasticity beta may be fixed or fitted. Every
 fitted parameter gets its own interval.</p>
-<p>Exactly 399 attempts use the original explicit starts and positive bounds,
-with fixed numerical controls. Failed attempts are retained without replacement.
+<p>Exactly 399 attempts use the starts and positive bounds of the original fit
+(given, or found by the default search of <code><a href="fit_allocation.html">fit_allocation()</a></code>), with fixed
+numerical controls. Failed attempts are retained without replacement.
 Successful inner boundary estimates remain in the distribution. Original mean
 boundaries, local rank deficiency (fewer identified directions than fitted
 parameters) or insufficient fit precision, including a score that cannot be
@@ -165,7 +175,7 @@ when Gaussian weights underflow to zero.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other experimental allocation workflow:
+    <div class="dont-index"><p>Other allocation steps:
 <code><a href="calc_demand.html">calc_demand()</a></code>,
 <code><a href="calc_travel_time.html">calc_travel_time()</a></code>,
 <code><a href="check_allocation.html">check_allocation()</a></code>,

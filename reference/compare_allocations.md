@@ -36,14 +36,21 @@ as.data.frame(
 
   A named list of `ae_multistart_fit` results from
   [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
-  each with a selected fit.
+  each with a selected fit. An element can instead be a result of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) that
+  fitted a model; it supplies its fit and its model. A result that was
+  evaluated at given values has no fit and is refused.
 
 - models:
 
   Optional named list of the corresponding models from
   [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md),
   with the same names, used to verify that travel times are identical
-  before reporting loss differences.
+  before reporting loss differences. The elements of `fits` that are
+  results of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) bring
+  their own models and must not be named here. When `fits` mixes results
+  with plain fits, give `models` for the plain ones.
 
 - reference:
 
@@ -109,6 +116,14 @@ comes from the pooled outputs. Contact and capacity values remain
 comparable across specifications, but they are conditional on each
 specification's inputs.
 
+For fits to the outside-count outputs (`flow_outside`,
+`utilization_outside`, `utilization_outside_by_group`), the
+`count_correlation` is over the whole target, the `"(outside)"` cells
+included, so it is not comparable with the correlation of a fit to
+facility counts without outside counts. The capacity-only comparator of
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+applies to facility totals without outside counts only.
+
 With `zones`, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the
 reference are listed. Classes require an adequacy cut in
@@ -117,7 +132,7 @@ cut unless `contact_cut` is given.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

@@ -5,12 +5,14 @@ GP example
 data](https://songyosr.github.io/spax/articles/cornwall-data.md).
 
 This guide runs the experimental allocation workflow from start to
-finish: prepare inputs, declare a model, fit it to observed
-registrations, inspect the saved fit, predict at new locations, compare
-a change in one practice’s supply, declare a decay function of your own,
-and export the results and read them back in a fresh R session.
-Bootstrap intervals have their own guide, [Bootstrap intervals for a
-fitted allocation
+finish. It first fits the model in one call with
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md), then
+works through the steps one at a time: prepare inputs, declare a model,
+fit it to observed registrations, inspect the saved fit, predict at new
+locations, compare a change in one practice’s supply, declare a decay
+function of your own, and export the results and read them back in a
+fresh R session. Bootstrap intervals have their own guide, [Bootstrap
+intervals for a fitted allocation
 model](https://songyosr.github.io/spax/articles/facility-bootstrap.md),
 on generated data.
 
@@ -98,20 +100,20 @@ outside option stands for registration with a practice outside mainland
 Cornwall (in Devon, for example, or on the Isles of Scilly). It is not
 unmet need: almost everyone is registered with some practice.
 
-## Prepare, declare and fit
+## Fit in one call
 
-[`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
-aligns demand, supply and travel by their names and checks them once.
-Unit and period labels are declarations attached to the results; spax
-does not convert units.
-[`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
-then declares the model: a Gaussian travel kernel with scale σ (minutes)
-and a fitted outside weight v0.
-
-The Huff model is this model without the outside option, and
-[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
-declares it. The guide uses `clm_allocation(fit_v0 = TRUE)` because some
-registrations go to practices outside mainland Cornwall.
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) runs an
+allocation model in one call. It takes three pieces: the data from
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
+a model specification and the observed counts.
+[`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+specifies the conditional logit: here a Gaussian travel kernel with
+scale σ (minutes) and an outside weight v0, both `"fit"`, that is,
+estimated.
+[`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+declares the observed small area × practice matrix and the loss that
+fits it, Poisson by default. Unit and period labels are declarations
+attached to the results; spax does not convert units.
 
 ``` r
 
@@ -124,6 +126,86 @@ cornwall_units <- list(
   travel_units = "minutes"
 )
 
+d <- prep_data(
+  demand = demand,
+  supply = supply,
+  travel = travel,
+  metadata = cornwall_units
+)
+
+clm <- spax(
+  data = d,
+  model = spec_clm(decay = decay_gaussian(sigma = "fit"), outside = "fit"),
+  observed = obs_flows(observed)
+)
+clm
+```
+
+``` spax-output
+<spax allocation> conditional logit with an outside option
+  decay       gaussian (sigma = travel scale): fit
+  attraction  (kappa * supply)^beta: kappa = 1, beta = 1
+  outside     v0: fit
+  data        336 origins x 54 facilities
+
+  parameter  value    status
+  sigma      4.591    fitted
+  v0         0.02733  fitted
+  beta       1        held
+  kappa      1        held
+
+  selected    scan1 (start 1 of 3); 3 of 3 starts converged
+  boundary    none
+  starts      default search, 45 of 45 grid points, loss poisson
+```
+
+``` r
+
+coef(clm)
+```
+
+``` spax-output
+     sigma         v0 
+4.59099725 0.02733454 
+```
+
+No starts were given, so
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) found them
+from the data. It probes the Gaussian kernel for the range of σ over
+which it decays across these travel times, scans that range with outside
+weights seeded from the observed outside share, and fits from the best
+points of the scan. The last line of the print records the search, and
+`summary(clm)` shows every start. To choose the starts and bounds
+yourself, give `starts`, `lower` and `upper`, as in
+[`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md).
+
+## The same fit step by step
+
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) builds the
+objects of this section: the model bound to the data (`clm$model`, the
+same model that
+[`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
+declares below) and the multistart fit of
+[`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
+(`clm$fit`), from the starts it found. The step functions accept the
+result itself, for example `check_allocation(clm)`.
+
+[`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+aligns demand, supply and travel by their names and checks them once;
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+returns the same object.
+[`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
+then declares the model: a Gaussian travel kernel with scale σ (minutes)
+and a fitted outside weight v0.
+
+The Huff model is this model without the outside option, and
+[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
+declares it. The guide uses `clm_allocation(fit_v0 = TRUE)` because some
+registrations go to practices outside mainland Cornwall.
+
+``` r
+
+# The same inputs, with the labels declared above
 inputs <- prepare_allocation(
   demand = demand,
   supply = supply,
@@ -178,9 +260,9 @@ status: selected; selected start: near
 loss disagreement: FALSE; parameter disagreement: FALSE
 Supplied-start diagnostics (not a global-optimum or identification guarantee):
   start     loss eligible optim_convergence solver_converged residual seconds
-   near -3168000     TRUE                 0             TRUE        0   0.650
- middle -3168000     TRUE                 0             TRUE        0   0.236
-    far -3168000     TRUE                 0             TRUE        0   0.361
+   near -3168000     TRUE                 0             TRUE        0   0.319
+ middle -3168000     TRUE                 0             TRUE        0   0.213
+    far -3168000     TRUE                 0             TRUE        0   0.717
  boundary   status                                   optim_message
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
     FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
@@ -203,7 +285,7 @@ theta:
 
 fit:
      loss convergence seconds spectral_radius gradient
- -3168000           0   0.641               0     TRUE
+ -3168000           0   0.311               0     TRUE
 
 predicted:
         min       q25   median  mean      q75  max
@@ -230,15 +312,15 @@ as.data.frame(fit)
 ```
 
 The summary keeps every start, its convergence, boundaries and messages.
-The starts stop away from the bounds and very close to each other. With
-the strict tolerance used here (`factr = 10`), a start can end with a
-line-search message at practically the same loss, so judge agreement by
-the losses and parameters in the per-start table rather than by the
-convergence codes alone. The disagreement flag uses deliberately strict
-default tolerances, so read the gaps in the per-start table rather than
-the flag alone. Agreement among the supplied starts is a numerical
-check; it does not prove a global optimum or that the parameters are
-identified.
+The estimates agree with the one-call fit above. The starts stop away
+from the bounds and very close to each other. With the strict tolerance
+used here (`factr = 10`), a start can end with a line-search message at
+practically the same loss, so judge agreement by the losses and
+parameters in the per-start table rather than by the convergence codes
+alone. The disagreement flag uses deliberately strict default
+tolerances, so read the gaps in the per-start table rather than the flag
+alone. Agreement among the supplied starts is a numerical check; it does
+not prove a global optimum or that the parameters are identified.
 
 A σ of about 4.6 minutes means registration is very local: a practice 9
 minutes away keeps only about 15% of the pull it would have next door.
@@ -396,6 +478,94 @@ areas along the Devon border. A single constant outside weight cannot
 reproduce that pattern: the model spreads a small outside share
 everywhere and puts its largest values where practices are far away, so
 treat the modelled outside share as approximate.
+
+## Known outside counts
+
+The fits above see only the counts at the mainland practices, so the
+outside option has no count of its own. Here each small area’s outside
+count is known: demand counts every resident registered with any
+practice in England, so the residents of a small area who are not
+registered at a mainland practice are exactly its outside count, its
+demand less its counts at the mainland practices. `outside = "known"` in
+[`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+declares this, and
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) then fits
+the outside count as one more cell of each small area, with the same
+Poisson loss.
+
+``` r
+
+clm_known <- spax(
+  data = d,
+  model = spec_clm(),
+  observed = obs_flows(observed, outside = "known")
+)
+coef(clm_known)
+```
+
+``` spax-output
+     sigma         v0 
+4.61941762 0.04864483 
+```
+
+``` r
+
+# Observed and modelled outside share, in per cent of registered residents
+known_areas <- as.data.frame(clm_known, type = "origins")
+known_shares <- c(
+  observed = sum(known_areas$outside_observed),
+  `fit without outside counts` = sum(demand) - sum(fitted(clm)),
+  `fit with known outside counts` = sum(known_areas$outside_modelled)
+) / sum(demand)
+round(100 * known_shares, 2)
+```
+
+``` spax-output
+                     observed    fit without outside counts 
+                         0.91                          0.54 
+fit with known outside counts 
+                         0.91 
+```
+
+With every outside count known by subtraction (demand minus the counts),
+the fit is the multinomial likelihood of each small area’s choices, and
+a constant outside weight reproduces the total outside count: the
+modelled share equals the observed one, where the fit without outside
+counts understates it. The travel scale hardly moves. Per-area outside
+counts are in `as.data.frame(clm_known, type = "origins")`
+(`outside_observed` and `outside_modelled`), and `fitted(clm_known)` is
+the whole target, with the outside count as its last column,
+`"(outside)"`.
+
+Declare outside counts as known only when demand counts the same people
+as the observations, as here: registrations by residence from the same
+extract and date. They are not a population estimate. List sizes and
+population differ by several percent, and the gap would go straight into
+the outside counts. A model without an outside option, such as
+[`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md),
+cannot use them, and for facility totals the outside count is one number
+you give, never derived from the totals (see
+[`?obs_flows`](https://songyosr.github.io/spax/reference/obs_flows.md)).
+
+Fits are compared on the same observation. `clm` and `clm_known` are
+fits to different data, so
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+gives no loss difference between them; to compare the Huff model with
+the conditional logit, use the same observation without outside counts
+for both.
+
+``` r
+
+# Different observations: the loss difference is withheld
+compared_known <- compare_allocations(list(without = clm, with = clm_known))
+as.data.frame(compared_known)[c("specification", "comparable", "loss_difference")]
+```
+
+``` spax-output
+  specification comparable loss_difference
+1       without       TRUE               0
+2          with      FALSE              NA
+```
 
 ## Predict at new locations
 

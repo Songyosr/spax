@@ -28,10 +28,13 @@ predict_allocation(
   A selected multistart result, NFXP fit or fixed evaluation with a
   valid CLM prediction snapshot, for a built-in decay kernel or one
   declared with
-  [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md).
-  Older objects need regeneration. The snapshot of a declared kernel
-  carries its code and predicting runs it, so use saved results only
-  from sources you trust.
+  [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md);
+  or a result of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md), which
+  supplies its fit (or its evaluation when every parameter had a value).
+  A result whose search selected no fit is refused. Older objects need
+  regeneration. The snapshot of a declared kernel carries its code and
+  predicting runs it, so use saved results only from sources you trust.
 
 - distance:
 
@@ -93,7 +96,7 @@ probability-valid flag.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

@@ -436,6 +436,11 @@ class(inputs)
 [1] "ae_prepared_inputs"
 ```
 
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+is the same preparation with `travel` in place of `distance`, the first
+step of [`spax()`](https://songyosr.github.io/spax/reference/spax.md)
+(see the [allocation
+workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)).
 The unit declarations are recorded, not converted. See the [allocation
 workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)
 for what the prepared inputs feed into.

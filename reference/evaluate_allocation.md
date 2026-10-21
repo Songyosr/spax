@@ -44,6 +44,18 @@ evaluate_allocation(model, theta, coverage_args = list(), ...)
   group's own access and outside share are `NA` on rows where that group
   has no demand and its travel there is not usable.
 
+  The expected counts that can be requested with `requested_outputs` are
+  `flow` (origins by facilities), `flow_outside` (`flow` with one more
+  column, `"(outside)"`, holding each origin's expected outside count
+  `D_i * outside_share_i`), `utilization_outside` (`utilization` with
+  one more element, `"(outside)"`, the expected outside count of all
+  origins) and, with demand groups, `utilization_by_group` and
+  `utilization_outside_by_group` (with one more row, `"(outside)"`, the
+  expected outside count of each group). The outside counts are zero for
+  a model without an outside option; they are the outputs that
+  [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
+  fits to observed outside counts.
+
 ## Value
 
 The existing `ae_equilibrium` with its portable prediction snapshot
@@ -54,7 +66,7 @@ hard constraint on expected utilization.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

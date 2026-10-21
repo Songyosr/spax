@@ -30,14 +30,22 @@ bootstrap_allocation(
   [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md)
   and `smooth = TRUE`), and known travel on its retained demand support.
   The supply elasticity beta may be fixed or fitted; `kappa` and a fixed
-  `beta` may be any positive values.
+  `beta` may be any positive values. It can instead be a result of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) that
+  fitted such a model to facility totals: the result supplies its bound
+  model and its fit, so leave `fit` out and give `observation` by name.
+  A Huff model, a fit to flows and an evaluated result are refused as
+  for the model and fit given separately.
 
 - fit:
 
   A matching multistart fit of complete whole facility counts using the
   unweighted built-in Poisson objective. Fractional or partial
-  observations, flow targets and custom objectives are outside this
-  method.
+  observations, flow targets, fits with observed outside counts
+  (`flow_outside`, `utilization_outside`: the facility-case bootstrap is
+  defined for facility totals without outside counts) and custom
+  objectives are outside this method. Not given when `model` is a result
+  of [`spax()`](https://songyosr.github.io/spax/reference/spax.md).
 
 - observation:
 
@@ -81,16 +89,22 @@ error.
 
 ## Details
 
-The model is a static CLM with a fitted outside mass (`fit_v0 = TRUE`)
+The model is a static CLM with a fitted outside mass (`outside = "fit"`
+in
+[`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md),
+or `fit_v0 = TRUE` in
+[`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md))
 and a decay kernel that is smooth in sigma: the Gaussian, exponential or
 power kernel, or a kernel declared with
 [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md)
 (not with `smooth = FALSE`). The supply elasticity beta may be fixed or
 fitted. Every fitted parameter gets its own interval.
 
-Exactly 399 attempts use the original explicit starts and positive
-bounds, with fixed numerical controls. Failed attempts are retained
-without replacement. Successful inner boundary estimates remain in the
+Exactly 399 attempts use the starts and positive bounds of the original
+fit (given, or found by the default search of
+[`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)),
+with fixed numerical controls. Failed attempts are retained without
+replacement. Successful inner boundary estimates remain in the
 distribution. Original mean boundaries, local rank deficiency (fewer
 identified directions than fitted parameters) or insufficient fit
 precision, including a score that cannot be computed, refuse intervals;
@@ -113,7 +127,7 @@ beyond its range, and also when Gaussian weights underflow to zero.
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),
 [`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md),

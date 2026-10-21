@@ -22,8 +22,8 @@ remain valid; they do not need to be rewritten as allocation fits.
 | Question | Starting point | What the output means |
 |:---|:---|:---|
 | How is weighted supply distributed relative to weighted demand? | [`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md), [`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md), [`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md), [`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md), [`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md) | A model-specific supply-per-demand accessibility index |
-| How are request opportunities allocated among facilities and an outside option? | [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md) then [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Choice probabilities and expected loads under a declared model |
-| Which parameters fit observed utilization or flows? | [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md) with an explicit loss and starts | A calibrated mean model plus optimization diagnostics |
+| How are request opportunities allocated among facilities and an outside option? | [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md) and [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md) with [`spax()`](https://songyosr.github.io/spax/reference/spax.md), or the steps [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md) then [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Choice probabilities and expected loads under a declared model |
+| Which parameters fit observed utilization or flows? | [`spax()`](https://songyosr.github.io/spax/reference/spax.md) with [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md) or [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md), or the step [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md) | A calibrated mean model plus optimization diagnostics |
 | What changes under a supply scenario at the same parameters? | Reprepare and [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md) | A model-based contrast, not an estimated causal effect |
 | What can be predicted at additional locations? | [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md) | Requested outputs with probability, demand and capacity validity flags |
 | Are facility-count bootstrap intervals available? | [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md) after an eligible fit and observation declaration | Conditional pointwise intervals when the supported procedure’s gates pass |
@@ -145,6 +145,11 @@ registrations go to practices outside mainland Cornwall.
 Fitting needs a declared target. Here it is the observed small area ×
 practice registrations, a stock of who is registered where rather than a
 count of visits, fitted with a Poisson loss from three explicit starts.
+The guide uses the step functions;
+`spax(prep_data(D, S, T), spec_clm(), observed = obs_flows(observed))`
+fits the same model in one call, with starts found in the data (see the
+[allocation
+workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)).
 
 ``` r
 
@@ -379,9 +384,17 @@ not a hard capacity limit.
 The six experimental verbs are **prepare, declare, fit, evaluate,
 predict and bootstrap**. They are separate steps so that a chosen fixed
 model can be evaluated without fitting, while an eligible fit can be
-inspected without refitting. An outside option does not automatically
-represent unmet need, and Poisson fitting does not impose exact total
-matching.
+inspected without refitting.
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) runs the
+first three in one call (or prepare, declare and evaluate, when every
+parameter has a value);
+[`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
+[`check_allocation()`](https://songyosr.github.io/spax/reference/check_allocation.md)
+and
+[`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_allocations.md)
+accept its result. An outside option does not automatically represent
+unmet need, and Poisson fitting does not impose exact total matching.
 
 This guide is not an uncertainty demonstration. The facility-case
 bootstrap needs a fit to whole facility counts, so the flow fit above is

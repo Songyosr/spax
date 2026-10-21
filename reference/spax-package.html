@@ -23,7 +23,7 @@ remain model-specific."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,7 +66,7 @@ remain model-specific."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Spatial accessibility and allocation modeling</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/R/spax-package.R" class="external-link"><code>R/spax-package.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/spax-package.R" class="external-link"><code>R/spax-package.R</code></a></small>
       <div class="d-none name"><code>spax-package.Rd</code></div>
     </div>
 
@@ -94,17 +94,27 @@ remain model-specific.</p>
 weights that divide each origin's demand among the facilities. These take
 raster demand and facility travel layers. Multiple supply columns produce
 independent accessibility indicators, not interacting resource constraints.</p>
-<p>The six experimental allocation operations are
+<p>The experimental allocation interface runs a model in one call:
+<code><a href="spax.html">spax</a></code> binds a model specification (<code><a href="spec_clm.html">spec_clm</a></code> or
+<code><a href="spec_clm.html">spec_huff</a></code>, with a decay such as <code><a href="decay_gaussian.html">decay_gaussian</a></code>)
+to data from <code><a href="prep_data.html">prep_data</a></code>, and fits it to counts declared with
+<code><a href="obs_flows.html">obs_flows</a></code> or <code><a href="obs_flows.html">obs_totals</a></code>, or evaluates it when
+every parameter has a value. <code><a href="spax_huff.html">spax_clm</a></code> and
+<code><a href="spax_huff.html">spax_huff</a></code> do the same from raw inputs.</p>
+<p>Underneath, the six experimental allocation steps are
 <code><a href="prepare_allocation.html">prepare_allocation</a></code>, <code><a href="clm_allocation.html">clm_allocation</a></code>,
 <code><a href="fit_allocation.html">fit_allocation</a></code>, <code><a href="evaluate_allocation.html">evaluate_allocation</a></code>,
-<code><a href="predict_allocation.html">predict_allocation</a></code> and <code><a href="bootstrap_allocation.html">bootstrap_allocation</a></code>.
-They describe one static CLM system with one supply vector and an outside
-option; <code><a href="huff_allocation.html">huff_allocation</a></code> declares the same system without the
-outside option, the classic Huff model. The first five support Gaussian, exponential and power decay and
-kernels declared with <code><a href="decay_kernel.html">decay_kernel</a></code> (fitting needs a kernel that
-is smooth in <code>sigma</code>); bootstrap has the narrower scope below. Broader
-feedback-model declarations and general-purpose inference are not part of
-this experimental interface.</p>
+<code><a href="predict_allocation.html">predict_allocation</a></code> and <code><a href="bootstrap_allocation.html">bootstrap_allocation</a></code>;
+use them for full control. They describe one static CLM system with one
+supply vector and an outside option; <code><a href="huff_allocation.html">huff_allocation</a></code> declares
+the same system without the outside option, the classic Huff model. The
+first five support Gaussian, exponential and power decay and kernels
+declared with <code><a href="decay_kernel.html">decay_kernel</a></code> (fitting needs a kernel that is
+smooth in <code>sigma</code>); bootstrap has the narrower scope below. Prediction,
+the bootstrap, <code><a href="check_allocation.html">check_allocation</a></code> and
+<code><a href="compare_allocations.html">compare_allocations</a></code> accept a result of <code><a href="spax.html">spax()</a></code> in place
+of the model and its fit. Broader feedback-model declarations and
+general-purpose inference are not part of this experimental interface.</p>
     </div>
     <div class="section level2">
     <h2 id="inputs-observations-and-support">Inputs, observations and support<a class="anchor" aria-label="anchor" href="#inputs-observations-and-support"></a></h2>
@@ -112,7 +122,7 @@ this experimental interface.</p>
 
 <p>Preserve facility and origin IDs on numeric inputs. Named axes align
 independently; unnamed inputs are positional. For FCA, travel layer names
-identify facilities. In the checked allocation route, only included positive
+identify facilities. In the allocation route, only included positive
 demand contributes to fitted facility loads. Known zero, unknown and excluded
 demand remain distinct. Requested predictions have their own support:
 unknown travel is not the same as a known absent connection (<code>Inf</code>).</p>
@@ -120,8 +130,10 @@ unknown travel is not the same as a known absent connection (<code>Inf</code>).<
 The interface records declarations without converting units. Specify whether
 observations are event counts over a period or a stock such as registered
 caseload at a reference date; a model output does not determine that meaning.
-The fitting default is weighted SSE. Choose the Poisson objective explicitly
-when appropriate; choosing it is not evidence for an observation law.</p>
+<code><a href="obs_flows.html">obs_flows</a></code> and <code><a href="obs_flows.html">obs_totals</a></code> fit with the Poisson
+loss by default; <code><a href="fit_allocation.html">fit_allocation</a></code> with given starts defaults to
+weighted SSE. Choosing the Poisson objective is not evidence for an
+observation law.</p>
     </div>
     <div class="section level2">
     <h2 id="allocation-outputs-and-scenarios">Allocation outputs and scenarios<a class="anchor" aria-label="anchor" href="#allocation-outputs-and-scenarios"></a></h2>

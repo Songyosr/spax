@@ -15,7 +15,7 @@ refitted."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,7 @@ refitted."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Compare fitted allocations across model and input specifications</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.4.0/R/07-allocation_compare.R" class="external-link"><code>R/07-allocation_compare.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/07-allocation_compare.R" class="external-link"><code>R/07-allocation_compare.R</code></a></small>
       <div class="d-none name"><code>compare_allocations.Rd</code></div>
     </div>
 
@@ -99,13 +99,18 @@ refitted.</p>
 
 <dl><dt id="arg-fits">fits<a class="anchor" aria-label="anchor" href="#arg-fits"></a></dt>
 <dd><p>A named list of <code>ae_multistart_fit</code> results from
-<code><a href="fit_allocation.html">fit_allocation()</a></code>, each with a selected fit.</p></dd>
+<code><a href="fit_allocation.html">fit_allocation()</a></code>, each with a selected fit. An element can instead be a
+result of <code><a href="spax.html">spax()</a></code> that fitted a model; it supplies its fit and its model.
+A result that was evaluated at given values has no fit and is refused.</p></dd>
 
 
 <dt id="arg-models">models<a class="anchor" aria-label="anchor" href="#arg-models"></a></dt>
 <dd><p>Optional named list of the corresponding models from
 <code><a href="clm_allocation.html">clm_allocation()</a></code>, with the same names, used to verify that travel times
-are identical before reporting loss differences.</p></dd>
+are identical before reporting loss differences. The elements of <code>fits</code>
+that are results of <code><a href="spax.html">spax()</a></code> bring their own models and must not be named
+here. When <code>fits</code> mixes results with plain fits, give <code>models</code> for the
+plain ones.</p></dd>
 
 
 <dt id="arg-reference">reference<a class="anchor" aria-label="anchor" href="#arg-reference"></a></dt>
@@ -166,6 +171,12 @@ table then shows the free parameters, such as <code>sigma.&lt;group&gt;</code>, 
 comes from the pooled outputs. Contact and capacity values remain comparable
 across specifications, but they are conditional on each specification's
 inputs.</p>
+<p>For fits to the outside-count outputs (<code>flow_outside</code>, <code>utilization_outside</code>,
+<code>utilization_outside_by_group</code>), the <code>count_correlation</code> is over the whole
+target, the <code>"(outside)"</code> cells included, so it is not comparable with the
+correlation of a fit to facility counts without outside counts. The
+capacity-only comparator of <code><a href="check_allocation.html">check_allocation()</a></code> applies to facility totals
+without outside counts only.</p>
 <p>With <code>zones</code>, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the reference
 are listed. Classes require an adequacy cut in <code>coverage_args</code>; each fit uses
@@ -173,7 +184,7 @@ its own regional contact as the contact cut unless <code>contact_cut</code> is g
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other experimental allocation workflow:
+    <div class="dont-index"><p>Other allocation steps:
 <code><a href="bootstrap_allocation.html">bootstrap_allocation()</a></code>,
 <code><a href="calc_demand.html">calc_demand()</a></code>,
 <code><a href="calc_travel_time.html">calc_travel_time()</a></code>,

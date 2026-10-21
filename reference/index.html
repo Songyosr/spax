@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@
 
       <dl><dt>
 
-          <code><a href="spax-package.html">spax</a></code> <code><a href="spax-package.html">spax-package</a></code> <code><a href="spax-package.html">allocation-compatibility</a></code>
+          <code><a href="spax-package.html">spax-package</a></code> <code><a href="spax-package.html">allocation-compatibility</a></code>
 
         </dt>
         <dd>Spatial accessibility and allocation modeling</dd>
@@ -120,9 +120,67 @@
         </dt>
         <dd>Calculate spatial accessibility using weighted surfaces</dd>
       </dl></div><div class="section level2">
-      <h2 id="experimental-allocation-workflow">Experimental Allocation Workflow<a class="anchor" aria-label="anchor" href="#experimental-allocation-workflow"></a></h2>
+      <h2 id="allocation-interface-experimental-">Allocation Interface (experimental)<a class="anchor" aria-label="anchor" href="#allocation-interface-experimental-"></a></h2>
 
-      <div class="section-desc"><p>One static CLM system: checked inputs, fitting, saved-load prediction, supply scenarios and restricted conditional bootstrap</p></div>
+      <div class="section-desc"><p>Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters), declare observed counts, run the model and work with its result</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="prep_data.html">prep_data()</a></code> <code><a href="prep_data.html">format(<i>&lt;ae_prepared_inputs&gt;</i>)</a></code> <code><a href="prep_data.html">print(<i>&lt;ae_prepared_inputs&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Prepare data for an allocation model</dd>
+
+        <dt>
+
+          <code><a href="decay_gaussian.html">decay_gaussian()</a></code> <code><a href="decay_gaussian.html">decay_exponential()</a></code> <code><a href="decay_gaussian.html">decay_power()</a></code> <code><a href="decay_gaussian.html">decay_custom()</a></code> <code><a href="decay_gaussian.html">format(<i>&lt;spax_decay&gt;</i>)</a></code> <code><a href="decay_gaussian.html">print(<i>&lt;spax_decay&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Declare a decay for a model specification</dd>
+
+        <dt>
+
+          <code><a href="spec_clm.html">spec_clm()</a></code> <code><a href="spec_clm.html">spec_huff()</a></code> <code><a href="spec_clm.html">format(<i>&lt;spax_spec&gt;</i>)</a></code> <code><a href="spec_clm.html">print(<i>&lt;spax_spec&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Specify an allocation model without data</dd>
+
+        <dt>
+
+          <code><a href="obs_flows.html">obs_flows()</a></code> <code><a href="obs_flows.html">obs_totals()</a></code> <code><a href="obs_flows.html">print(<i>&lt;spax_obs&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Declare observed counts for an allocation model</dd>
+
+        <dt>
+
+          <code><a href="spax.html">spax()</a></code>
+
+        </dt>
+        <dd>Run an allocation model on prepared data</dd>
+
+        <dt>
+
+          <code><a href="spax_huff.html">spax_huff()</a></code> <code><a href="spax_huff.html">spax_clm()</a></code>
+
+        </dt>
+        <dd>Run the Huff or conditional logit model from raw inputs</dd>
+
+        <dt>
+
+          <code><a href="spax_allocation-methods.html">print(<i>&lt;spax_allocation&gt;</i>)</a></code> <code><a href="spax_allocation-methods.html">summary(<i>&lt;spax_allocation&gt;</i>)</a></code> <code><a href="spax_allocation-methods.html">print(<i>&lt;summary.spax_allocation&gt;</i>)</a></code> <code><a href="spax_allocation-methods.html">coef(<i>&lt;spax_allocation&gt;</i>)</a></code> <code><a href="spax_allocation-methods.html">fitted(<i>&lt;spax_allocation&gt;</i>)</a></code> <code><a href="spax_allocation-methods.html">as.data.frame(<i>&lt;spax_allocation&gt;</i>)</a></code> <code><a href="spax_allocation-methods.html">predict(<i>&lt;spax_allocation&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Methods for allocation results</dd>
+      </dl></div><div class="section level2">
+      <h2 id="allocation-steps-experimental-">Allocation Steps (experimental)<a class="anchor" aria-label="anchor" href="#allocation-steps-experimental-"></a></h2>
+
+      <div class="section-desc"><p>The step functions under spax(), for full control: prepare inputs, declare the model, fit, evaluate, predict, check, compare and bootstrap. Prediction, check, compare and bootstrap also accept a result of spax()</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -134,7 +192,7 @@
           <code><a href="prepare_allocation.html">prepare_allocation()</a></code>
 
         </dt>
-        <dd>Prepare checked numeric inputs for an experimental allocation workflow</dd>
+        <dd>Prepare numeric inputs for the allocation model</dd>
 
         <dt>
 
@@ -155,7 +213,7 @@
           <code><a href="fit_allocation.html">fit_allocation()</a></code>
 
         </dt>
-        <dd>Calibrate a declared allocation model from explicit starting points</dd>
+        <dd>Calibrate a declared allocation model, by default from starts found in the data</dd>
 
         <dt>
 

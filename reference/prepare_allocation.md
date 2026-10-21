@@ -1,4 +1,4 @@
-# Prepare checked numeric inputs for an experimental allocation workflow
+# Prepare numeric inputs for the allocation model
 
 Named axes align independently; unnamed axes are positional. Positive
 included demand enters facility-load support. Zero, unknown and
@@ -120,7 +120,7 @@ carries the group IDs and the demand and travel by group (`D_groups`,
 
 ## See also
 
-Other experimental allocation workflow:
+Other allocation steps:
 [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_allocation.md),
 [`calc_demand()`](https://songyosr.github.io/spax/reference/calc_demand.md),
 [`calc_travel_time()`](https://songyosr.github.io/spax/reference/calc_travel_time.md),

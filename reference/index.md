@@ -4,8 +4,7 @@
 
 Choose a workflow, preserve input meaning and reuse saved results safely
 
-- [`spax`](https://songyosr.github.io/spax/reference/spax-package.md)
-  [`spax-package`](https://songyosr.github.io/spax/reference/spax-package.md)
+- [`spax-package`](https://songyosr.github.io/spax/reference/spax-package.md)
   [`allocation-compatibility`](https://songyosr.github.io/spax/reference/spax-package.md)
   : Spatial accessibility and allocation modeling
 
@@ -32,20 +31,61 @@ independent supply indicators
 - [`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md)
   : Calculate spatial accessibility using weighted surfaces
 
-## Experimental Allocation Workflow
+## Allocation Interface (experimental)
 
-One static CLM system: checked inputs, fitting, saved-load prediction,
-supply scenarios and restricted conditional bootstrap
+Prepare data, specify an allocation model without data (decay kernels,
+fitted or held parameters), declare observed counts, run the model and
+work with its result
+
+- [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+  [`format(`*`<ae_prepared_inputs>`*`)`](https://songyosr.github.io/spax/reference/prep_data.md)
+  [`print(`*`<ae_prepared_inputs>`*`)`](https://songyosr.github.io/spax/reference/prep_data.md)
+  : Prepare data for an allocation model
+- [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  [`decay_custom()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  [`format(`*`<spax_decay>`*`)`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  [`print(`*`<spax_decay>`*`)`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+  : Declare a decay for a model specification
+- [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  [`format(`*`<spax_spec>`*`)`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  [`print(`*`<spax_spec>`*`)`](https://songyosr.github.io/spax/reference/spec_clm.md)
+  : Specify an allocation model without data
+- [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+  [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+  [`print(`*`<spax_obs>`*`)`](https://songyosr.github.io/spax/reference/obs_flows.md)
+  : Declare observed counts for an allocation model
+- [`spax()`](https://songyosr.github.io/spax/reference/spax.md) : Run an
+  allocation model on prepared data
+- [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md)
+  [`spax_clm()`](https://songyosr.github.io/spax/reference/spax_huff.md)
+  : Run the Huff or conditional logit model from raw inputs
+- [`print(`*`<spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  [`summary(`*`<spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  [`print(`*`<summary.spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  [`coef(`*`<spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  [`fitted(`*`<spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  [`as.data.frame(`*`<spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  [`predict(`*`<spax_allocation>`*`)`](https://songyosr.github.io/spax/reference/spax_allocation-methods.md)
+  : Methods for allocation results
+
+## Allocation Steps (experimental)
+
+The step functions under spax(), for full control: prepare inputs,
+declare the model, fit, evaluate, predict, check, compare and bootstrap.
+Prediction, check, compare and bootstrap also accept a result of spax()
 
 - [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
-  : Prepare checked numeric inputs for an experimental allocation
-  workflow
+  : Prepare numeric inputs for the allocation model
 - [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
   : Declare corrected static CLM over checked allocation inputs
 - [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
   : Declare the Huff model over checked allocation inputs
 - [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
-  : Calibrate a declared allocation model from explicit starting points
+  : Calibrate a declared allocation model, by default from starts found
+  in the data
 - [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md)
   : Evaluate a declared allocation model at supplied fixed parameters
 - [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
