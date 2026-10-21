@@ -12,7 +12,8 @@ obs_flows(
   facility = NULL,
   count = NULL,
   loss = c("poisson", "weighted_sse"),
-  loss_args = list()
+  loss_args = list(),
+  outside = "unknown"
 )
 
 obs_totals(
@@ -21,7 +22,8 @@ obs_totals(
   count = NULL,
   group = NULL,
   loss = c("poisson", "weighted_sse"),
-  loss_args = list()
+  loss_args = list(),
+  outside = "unknown"
 )
 
 \method{print}{spax_obs}(x, ...)
@@ -43,14 +45,24 @@ model to these counts.}
 \item{loss_args}{A named list of arguments for the loss. It is stored and
 passed on unchanged.}
 
+\item{outside}{The observed outside counts (see Details). For \code{obs_flows()}:
+\code{"unknown"} (the default), \code{"known"} (each origin's demand minus its counts at
+the facilities of the data) or a numeric vector named by origin ID. For
+\code{obs_totals()}: \code{"unknown"}, one number (facility totals) or a numeric vector
+named by group ID (totals by group). Used with the Poisson loss only, and by a
+model with an outside option (\code{\link[=spec_clm]{spec_clm()}}).}
+
 \item{...}{Not used.}
 }
 \value{
 An object of class \code{spax_obs}: a list with \code{type} (\code{"flow"},
-\code{"utilization"} or \code{"utilization_by_group"}, the output the counts are
-compared with), \code{x} (a double matrix, a named double vector, or for flows
+\code{"utilization"} or \code{"utilization_by_group"}, the kind of counts), \code{x} (a
+double matrix, a named double vector, or for flows
 given as a data frame, a frame with columns \code{origin}, \code{facility} and
-\code{count}), \code{loss} and \code{loss_args}.
+\code{count}), \code{loss}, \code{loss_args} and \code{outside} (\code{"unknown"}, \code{"known"}, or the
+given outside counts). With outside counts, \code{\link[=spax]{spax()}} compares the model with
+the output \code{"flow_outside"}, \code{"utilization_outside"} or
+\code{"utilization_outside_by_group"} instead of \code{type} (see \code{\link[=fit_allocation]{fit_allocation()}}).
 }
 \description{
 \code{obs_flows()} declares observed origin-facility counts and \code{obs_totals()}
@@ -105,6 +117,55 @@ IDs match the data as text. An ID that matches nothing is then matched by its
 numeric value when exactly one ID of the data has that value, with a message:
 R writes the number 100000 as \code{"1e+05"}, and codes read as numbers lose
 leading zeros (\code{1234} matches \code{"01234"}).
+
+\strong{Outside counts.} The outside option of a conditional logit model
+(\code{\link[=spec_clm]{spec_clm()}}) takes the demand of the active origins that goes to facilities
+outside the data or to none. By default (\code{outside = "unknown"}) a fit uses the
+counts at the facilities of the data only. \code{outside} declares the observed
+counts of the outside option, which then become one more cell per origin of a
+flow fit (one more element of the totals, one more row of the totals by group)
+and are fitted with the Poisson loss, so \code{outside} is refused with another loss.
+A model without an outside option (\code{\link[=spec_huff]{spec_huff()}}, or \code{\link[=spec_clm]{spec_clm()}} with
+\code{outside = 0}) cannot carry them: \code{\link[=spax]{spax()}} refuses the combination.
+\itemize{
+\item \code{obs_flows(outside = "known")} takes the outside count of an origin to be its
+demand minus its counts at the facilities of the data, \code{y0 = D - sum(y)}.
+Counts of the origin at facilities outside the data are part of \code{y0}. It is
+computed for an active origin that appears in the observations and has no
+\code{NA} count at the facilities of the data. Any other active origin has an
+unknown outside count (\code{NA}) and is fitted on its facility counts alone,
+as without outside counts. Counts that exceed the demand of an origin by
+more than 1e-8 of it are an error; a smaller excess is set to 0.
+\item \code{obs_flows(outside = y0)}, with \code{y0} a numeric vector named by origin ID,
+gives the outside counts: each name an active origin of the data once (the
+names of origins of the data that are not active are dropped with a message,
+any other name is an error), values nonnegative or \code{NA}. An active origin
+that is not named has an unknown outside count.
+\item \code{obs_totals(outside = y0)} gives the outside count of facility totals as one
+number, and of totals by group as a numeric vector named by group ID (all
+groups of the data, \code{NA} for an unknown one). It is never derived from the
+totals: it is the demand of the data's active origins that went to
+facilities outside the data or to none. Totals often include people from
+outside the data (list sizes, for instance), and a difference would be biased.
+}
+
+Declare outside counts as known only when the demand counts the same people
+as the observations, for example registrations by residence from the same
+extract and date, where every resident is registered somewhere. They are not a
+population estimate: list sizes and population differ by several percent, and
+the gap goes straight into the outside count.
+
+For an origin whose outside count is known and adds up, with its facility
+counts, to its demand (\code{y0 + sum(y) = D}, as for \code{"known"}), the Poisson loss
+on its cells is the multinomial likelihood of its choices up to constants. When this holds for every
+origin of an ungrouped flow fit and \code{v0} is fitted inside its search bounds,
+the fitted total outside count equals the observed one. That is not claimed for
+totals or for demand groups: there the loss is a Poisson working likelihood and
+the outside count is not matched. Fits with and without outside counts are
+fits to different data, so \code{\link[=compare_allocations]{compare_allocations()}} gives no loss difference
+between them: compare models on the same observation, and compare the
+Huff model (\code{\link[=spec_huff]{spec_huff()}}) with a conditional logit model on an observation
+with \code{outside = "unknown"}.
 }
 \examples{
 # Origin-facility flows from a long table of registrations
@@ -115,6 +176,13 @@ flows
 # Facility totals, from the same table
 totals <- tapply(cornwall_flows$patients, cornwall_flows$practice, sum)
 obs_totals(totals)
+
+# The same flows with the outside counts known: demand counts the residents
+# registered somewhere, so each origin's outside count is its demand minus
+# its counts at the facilities of the data (used by a model with an outside
+# option, see spax())
+obs_flows(cornwall_flows, origin = "lsoa", facility = "practice",
+          count = "patients", outside = "known")
 }
 \seealso{
 Other allocation interface: 

@@ -65,6 +65,22 @@ not solve the model again: it reads the selected fit. A search in which no
 start converged gives a warning and a result with no estimates;
 \code{summary()} shows the starts and \code{as.data.frame(type = "starts")} their table.
 
+\strong{Outside counts.} An observation that declares outside counts (the
+\code{outside} argument of \code{\link[=obs_flows]{obs_flows()}} and \code{\link[=obs_totals]{obs_totals()}}) is fitted with the
+outputs \code{"flow_outside"}, \code{"utilization_outside"} or
+\code{"utilization_outside_by_group"} of \code{\link[=fit_allocation]{fit_allocation()}}: the observed counts
+with the outside count as one more column, element or row named
+\code{"(outside)"}, and the Poisson loss. The model needs an outside option
+(\code{\link[=spec_clm]{spec_clm()}} with an outside weight above 0 somewhere): with a model without
+one (\code{\link[=spec_huff]{spec_huff()}}, or \code{outside = 0} everywhere) \code{spax()} stops with "outside
+counts need a model with an outside option (spec_clm())" before the fit. The
+loss arguments of the observation pass through unchanged. The printed result
+has a line \code{outside} that says for how many origins (or groups) the counts are used,
+or that the outside total is. \code{fitted()} returns the modelled counts
+for the full target, the \code{"(outside)"} entry included, and
+\code{as.data.frame(type = "origins")} adds \code{outside_observed} and
+\code{outside_modelled} for flows (see \link{spax_allocation-methods}).
+
 \strong{Evaluate mode.} Every parameter has a number. Nothing is fitted, so
 \code{observed}, \code{starts}, \code{lower} and \code{upper} are refused, and the model is
 evaluated once at the given values. In this version an ungrouped model with
@@ -110,6 +126,14 @@ d <- prep_data(stats::setNames(areas$registered, areas$lsoa), supply, travel)
 totals <- obs_totals(tapply(cornwall_flows$patients, cornwall_flows$practice, sum))
 clm <- spax(d, spec_clm(decay_gaussian(), outside = "fit"), observed = totals)
 summary(clm)
+
+# The same conditional logit fitted to the flows, with the outside counts known:
+# demand counts the registered residents, so each origin's outside count is its
+# demand minus its counts at the practices of the data
+known <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice",
+                   count = "patients", outside = "known")
+clm_known <- spax(d, spec_clm(), observed = known)
+clm_known
 
 # Nothing to fit: evaluate at given values, with no observations
 spax(d_huff, spec_huff(decay_power(sigma = 1.5), beta = 1))

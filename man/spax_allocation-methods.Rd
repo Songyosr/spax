@@ -74,7 +74,7 @@ still show the starts.
 \details{
 \itemize{
 \item \code{print()} shows the specification, the data, the parameters and, for a fit,
-the selected start and the default search.
+the selected start, the outside counts used (if any) and the default search.
 \item \code{summary()} returns a \code{summary.spax_allocation} with the specification
 lines (\code{spec}), the parameters table (\code{parameters}), the fit summary of
 \code{\link[=fit_allocation]{fit_allocation()}} (\code{fit}, \code{NULL} when evaluated) and the \code{mode}; its print
@@ -86,7 +86,9 @@ parameter the evaluation takes as free; the other numbers (\code{v0}, \code{beta
 \code{kappa}) are listed as held in \code{as.data.frame(x, type = "parameters")}.
 \item \code{fitted()} returns the modelled counts for the observations of a fit (as
 \link[=allocation-fit-methods]{fitted.ae_multistart_fit()} does), and the modelled
-facility utilization, named by facility, for an evaluation.
+facility utilization, named by facility, for an evaluation. For a fit with
+outside counts (see \code{\link[=obs_flows]{obs_flows()}}) this is the full target, including the
+modelled outside count as the column, element or row \code{"(outside)"}.
 \item \code{as.data.frame()} returns one of the tables below.
 \item \code{predict()} predicts requested origins from the saved fit or evaluation
 with \code{\link[=predict_allocation]{predict_allocation()}}. Models with demand groups are refused, as there.
@@ -95,8 +97,8 @@ with \code{\link[=predict_allocation]{predict_allocation()}}. Models with demand
 \strong{Tables of \code{as.data.frame()}:}\tabular{ll}{
    \code{type} \tab rows and columns \cr
    \code{"parameters"} \tab \code{parameter}, \code{value}, \code{status}: the free parameters (\code{"fitted"} or \code{"given"}), then the held values (\code{"held"}) \cr
-   \code{"facilities"} \tab the facilities of the data: \code{facility_id}, \code{supply}, \code{attractiveness}, \code{utilization}, and \code{observed} for a fit to facility totals (the sum over groups for totals by group, \code{NA} when a group is unobserved) \cr
-   \code{"origins"} \tab the active origins: \code{origin_id}, \code{demand}, \code{access} (the share of demand that goes to a facility of the data), \code{outside_share} (pooled over the groups) \cr
+   \code{"facilities"} \tab the facilities of the data: \code{facility_id}, \code{supply}, \code{attractiveness}, \code{utilization}, and \code{observed} for a fit to facility totals (the sum over groups for totals by group, \code{NA} when a group is unobserved); the \code{"(outside)"} entry of a fit with outside counts is not a facility and is left out \cr
+   \code{"origins"} \tab the active origins: \code{origin_id}, \code{demand}, \code{access} (the share of demand that goes to a facility of the data), \code{outside_share} (pooled over the groups), and for a flow fit with outside counts \code{outside_observed} (\code{NA} where unknown) and \code{outside_modelled} (demand times the outside share) \cr
    \code{"flows"} \tab the origin-facility cells with modelled flow or observed count above 0: \code{origin_id}, \code{facility_id}, \code{flow} (demand times allocation), and \code{observed} for a fit to flows (\code{NA} where unobserved) \cr
    \code{"starts"} \tab the table of starts of the fit (\code{seconds} is the time each took) \cr
 }
