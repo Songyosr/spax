@@ -10,7 +10,9 @@
 # loss); nothing re-implements a kernel.
 
 .default_search_rule <- "probe+scan v1"
-.default_count_outputs <- c("utilization", "flow", "utilization_by_group")
+.default_count_outputs <- c("utilization", "flow", "utilization_by_group",
+                            "flow_outside", "utilization_outside",
+                            "utilization_outside_by_group")
 .default_probe_grid <- 10^seq(-8, 8, by = 1 / 8)
 .default_grid_points <- 15L
 .default_v0_multipliers <- c(0.1, 1, 10)
@@ -35,8 +37,9 @@
                 "for counts, or \"weighted_sse\""),
   no_travel = "no finite travel times among the active origins",
   outside_zero = paste0("the observed counts reach the total demand, so the outside ",
-                        "weight would go to zero; use no outside option (outside = 0, ",
-                        "or fit_v0 = FALSE in clm_allocation()) or check the targets"),
+                        "weight would go to zero; use a model without an outside option ",
+                        "(spec_huff() or outside = 0, without outside counts; fit_v0 = FALSE ",
+                        "in clm_allocation()) or check the targets"),
   outside_small = paste0("the observed counts are within 0.1% of the total demand; ",
                          "the outside weight is barely identified"),
   no_v0 = "no positive outside weight in the default search; give starts",
@@ -126,6 +129,33 @@
           if ("sigma" %in% by_group) paste0("sigma.", g) else "sigma",
           if ("v0" %in% by_group) paste0("v0.", g) else "v0")
   })
+}
+
+# The inside part of the target the search reads: the observed counts, their mask
+# (an array of the shape of the inside output) and the inside output they belong
+# to. For the outside outputs (SPAX-059) the "(outside)" entries are dropped (the
+# last column, element or row), so that the seed and the guard read the facility
+# counts exactly as for `flow`, `utilization` and `utilization_by_group`; every
+# other output is its own inside part.
+.default_inside_target <- function(target, output) {
+  observed <- as.numeric(target$observed)
+  n_rows <- if (is.null(target$dim)) target$length else target$dim[1L]
+  mask <- matrix(target$mask, nrow = n_rows)
+  base <- if (output %in% names(.outside_outputs)) .outside_outputs[[output]] else output
+  if (!identical(base, output)) {
+    values <- matrix(observed, nrow = n_rows)
+    if (identical(output, "flow_outside")) {
+      keep <- seq_len(ncol(mask) - 1L)
+      mask <- mask[, keep, drop = FALSE]
+      values <- values[, keep, drop = FALSE]
+    } else {
+      keep <- seq_len(n_rows - 1L)
+      mask <- mask[keep, , drop = FALSE]
+      values <- values[keep, , drop = FALSE]
+    }
+    observed <- as.numeric(values)
+  }
+  list(output = base, observed = observed, mask = mask)
 }
 
 .default_kernel_weights <- function(unit, sigma) {
@@ -284,7 +314,9 @@
   scan <- is.null(starts) || any(!v0_names %in% names(lower_given)) ||
     any(!v0_names %in% names(upper_given))
 
-  if (!length(target$values) || !(sum(target$values) > 0)) {
+  inside <- .default_inside_target(target, output)
+  if (!length(target$values) || !any(inside$mask) ||
+      !(sum(inside$observed[as.vector(inside$mask)]) > 0)) {
     stop("the observed counts are all zero or unobserved, so there is nothing to ",
          "calibrate against", call. = FALSE)
   }
@@ -416,10 +448,11 @@
   } else {
     list(list(m = 1, beta = beta_start))
   }
-  fully_observed <- all(target$mask)
-  observed <- as.numeric(target$observed)
-  n_rows <- if (is.null(target$dim)) target$length else target$dim[1L]
-  mask <- matrix(target$mask, nrow = n_rows)
+  # The seeds and the guard read the inside part of the target (the facility counts).
+  inside <- .default_inside_target(target, output)
+  fully_observed <- all(inside$mask)
+  observed <- inside$observed
+  mask <- inside$mask
   guarded <- FALSE
   first_error <- NULL
   remember <- function(e) {
@@ -493,12 +526,12 @@
   seeds_at <- function(states) {
     pooled <- Reduce(`+`, lapply(states, `[[`, "F0"))
     live <- Reduce(`|`, lapply(states, function(s) s$W > 0 & s$D > 0))
-    modelled <- switch(output,
+    modelled <- switch(inside$output,
       flow = pooled,
       utilization = colSums(pooled),
       utilization_by_group = vapply(states, function(s) colSums(s$F0), numeric(n_facility)))
     shared_mask <- mask
-    if (identical(output, "flow")) shared_mask[!live, ] <- FALSE
+    if (identical(inside$output, "flow")) shared_mask[!live, ] <- FALSE
     out <- med <- stats::setNames(numeric(length(v0_names)), v0_names)
     for (nm in v0_names) {
       one <- if (!is.null(groups) && nm != "v0") {

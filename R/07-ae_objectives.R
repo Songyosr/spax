@@ -118,13 +118,20 @@
   !below(a) && !below(b)
 }
 
-# Warning text for a selected Poisson fit with positive counts under its floor.
-.poisson_floor_message <- function(floor_info) {
+# Warning text for a selected Poisson fit with positive counts under its floor. For an
+# outside-count output the causes include an outside count where the outside weight is 0.
+.poisson_floor_message <- function(floor_info, output = NULL) {
   n <- floor_info[["positive_below"]]
+  outside <- is.character(output) && length(output) == 1L && !is.na(output) &&
+    output %in% names(.outside_outputs)
   sprintf(paste0("%d %s with positive observed counts %s modelled below the Poisson floor ",
                  "(eps = %g, zero included); the loss is capped there, so the fit is not the ",
-                 "Poisson maximum likelihood estimate. Look for observed counts on absent edges ",
-                 "or at facilities with zero supply, or use a kernel with a heavier tail."),
+                 "Poisson maximum likelihood estimate. Look for observed counts on absent edges",
+                 if (outside) {
+                   paste0(", at facilities with zero supply or on an outside count where ",
+                          "the outside weight is 0, ")
+                 } else " or at facilities with zero supply, ",
+                 "or use a kernel with a heavier tail."),
           n, if (n == 1) "cell" else "cells", if (n == 1) "is" else "are", floor_info[["eps"]])
 }
 

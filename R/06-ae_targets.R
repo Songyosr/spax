@@ -25,22 +25,36 @@
   }
   axis <- declared[[output]]
   if (is.na(axis) || !axis %in% c("origin", "facility", "origin_facility",
-                                  "facility_group", "origin_group")) {
+                                  "facility_group", "origin_group",
+                                  "facility_outside", "origin_facility_outside",
+                                  "facility_outside_group")) {
     stop("unsupported declared output axis for `", output, "`")
   }
-  # The group axis (demand groups) takes its IDs from `substrate$group_ids`.
+  # The group axis (demand groups) takes its IDs from `substrate$group_ids`; the
+  # outside axis (SPAX-059) is the facility axis with the outside entry "(outside)"
+  # added last.
   axes <- switch(axis,
     origin_facility = c("origin", "facility"),
     facility_group = c("facility", "group"),
     origin_group = c("origin", "group"),
+    facility_outside = "facility_outside",
+    origin_facility_outside = c("origin", "facility_outside"),
+    facility_outside_group = c("facility_outside", "group"),
     axis)
   ids <- lapply(axes, function(a) {
-    value <- problem$substrate[[paste0(a, "_ids")]]
+    value <- problem$substrate[[if (a == "facility_outside") "facility_ids" else paste0(a, "_ids")]]
     if (a == "origin" && is.null(value) &&
         !is.null(problem$substrate$demand_kept_index)) {
       value <- as.character(problem$substrate$demand_kept_index)
     }
     if (is.null(value)) return(NULL)
+    if (a == "facility_outside") {
+      if (.outside_label %in% value) {
+        stop("a facility ID is \"", .outside_label, "\", which names the outside column",
+             call. = FALSE)
+      }
+      value <- c(value, .outside_label)
+    }
     if (!is.atomic(value) || !is.null(dim(value)) || anyNA(value)) {
       stop("declared ", a, " IDs must be a nonmissing vector")
     }
@@ -71,6 +85,7 @@
 #' @keywords internal
 #' @md
 .bind_problem_target <- function(problem, observed, output = "utilization") {
+  .check_outside_target(problem, output)
   identity <- .problem_output_identity(problem, output)
   if (inherits(observed, "ae_bound_target")) {
     if (!identical(observed$identity, identity)) {
@@ -140,7 +155,9 @@
 #'
 #' A model with demand groups fitted with free group-specific parameters
 #' (`sigma.<g>`, `v0.<g>`) needs group-labelled targets: `utilization_by_group`
-#' with observed counts for every group that has such a parameter, and positive
+#' (or `utilization_outside_by_group`, whose outside row does not count as an
+#' observed facility cell) with observed counts for every group that has such a
+#' parameter, and positive
 #' demand in that group. Aggregated targets leave the group parameters
 #' multimodal and weakly identified (SPAX-057, D2). Fixed group parameters and
 #' shared parameters are allowed with any target; ungrouped problems return at
@@ -171,13 +188,17 @@
          "fit_allocation()), or hold them", extra, call. = FALSE)
   }
   identity <- target$identity
-  if (!identical(identity$output, "utilization_by_group") ||
+  # The outside variant (SPAX-059) is a group-labelled target as well; its extra
+  # last row is the outside count, not an observed facility cell of the group.
+  with_outside <- identical(identity$output, "utilization_outside_by_group")
+  if (!(identical(identity$output, "utilization_by_group") || with_outside) ||
       !setequal(identity$ids$group, groups)) {
     fail(specific)
   }
   observed <- target$observed
+  inside <- seq_len(nrow(observed) - with_outside)
   unobserved <- owners[vapply(owners, function(g) {
-    all(is.na(observed[, match(g, identity$ids$group)]))
+    all(is.na(observed[inside, match(g, identity$ids$group)]))
   }, logical(1))]
   if (length(unobserved)) {
     fail(specific, paste0(" (group(s) with no observed cell: ",

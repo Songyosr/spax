@@ -57,6 +57,36 @@
 * Messages about the outside weight, group-specific parameters and the bootstrap now name
   the arguments of the new interface (for example `outside = "fit"` and `obs_totals()` by
   group) beside those of `clm_allocation()`.
+* Outside counts are model outputs. A conditional logit model with an outside option
+  declares `flow_outside` (`flow` with one more column, `"(outside)"`: each origin's expected
+  count at the outside option, so each row adds up to its demand), `utilization_outside`
+  (`utilization` with the expected outside count of all origins as one more element) and, with
+  demand groups, `utilization_outside_by_group` (one more row per group). `fit_allocation()`
+  fits them with the Poisson loss and no new argument: the observed counts carry the outside
+  count as the entry `"(outside)"`, `NA` where it is unknown. They need a model with an
+  outside option, and `bootstrap_allocation()` refuses them. Fits to the other outputs are
+  unchanged. Models and fits saved by earlier versions keep working; bootstrap checkpoints
+  written by earlier versions cannot be resumed with a model built by this version.
+* `obs_flows(outside = )` and `obs_totals(outside = )` declare observed outside counts, and
+  `spax()` then fits the outside outputs above. The default stays `"unknown"`: the fit uses
+  the counts at the facilities of the data only. `outside = "known"` takes each origin's
+  outside count to be its demand minus its counts at the facilities of the data, for origins
+  that the observations mention and that have no `NA` count there; a numeric vector named by
+  origin ID gives the counts instead. For facility totals the outside count is one number
+  (a vector named by group for totals by group), never derived from the totals. Use
+  `"known"` only when demand counts the same people as the observations, for example
+  registrations by residence from the same extract and date: it is not a population estimate.
+  With `outside = "known"` (each origin's outside count plus its counts equals its demand),
+  ungrouped flows and `v0` fitted inside its bounds, the fit is the multinomial likelihood of
+  the origins' choices and the fitted total outside count equals the observed one; on
+  Cornwall with registered demand, `sigma` is 4.619 and `v0` 0.0486 (4.591 and 0.0273 without
+  the outside counts). For totals and demand groups the loss is a Poisson working likelihood
+  and no match is claimed. `spax()` refuses a model
+  without an outside option (`spec_huff()`), and `compare_allocations()` gives no loss
+  difference between fits with and without outside counts. The printed result has a line
+  `outside`, `as.data.frame(type = "origins")` adds `outside_observed` and
+  `outside_modelled`, and `fitted()` returns the whole target, the `"(outside)"` entry
+  included.
 * Version 0.4.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23495125.
   doi:10.5281/zenodo.23438611 refers to all versions.
 

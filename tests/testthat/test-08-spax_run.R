@@ -95,7 +95,7 @@
 .run_steps <- function(data, spec, obs, starts = NULL, lower = NULL, upper = NULL) {
   bound <- .bind_spax_spec(spec, data)
   target <- .canonical_observed(obs, data, outside_option = .spec_has_outside(spec))
-  fit_allocation(bound$problem, target, starts, lower, upper, output = obs$type,
+  fit_allocation(bound$problem, target, starts, lower, upper, output = .obs_output(obs),
                  loss = obs$loss, loss_args = obs$loss_args, gradient = TRUE,
                  control = .run_strict)
 }
@@ -1082,4 +1082,390 @@ test_that("the result holds its pieces and the methods are registered", {
                    c("parameters", "facilities", "origins", "flows", "starts"))
   expect_identical(names(formals(spax)), c("data", "model", "observed", "starts", "lower",
                                            "upper", "..."))
+})
+
+# Outside counts (SPAX-059, T2) ------------------------------------------------------------
+# An observation with outside counts is fitted with flow_outside, utilization_outside or
+# utilization_outside_by_group (loss: Poisson); the results, their tables and the
+# refusals. Oracles are written out in this file.
+
+# The flows of the generated case with an outside count known by subtraction, and the
+# multinomial maximum likelihood estimate computed by an optimizer written here.
+.run_outside_case <- function() {
+  .run_memo("outside_case", {
+    case <- .run_case()
+    y0 <- case$demand - rowSums(case$flow)
+    loglik <- function(par) {
+      o <- clm_oracle(case$distance, case$demand, case$supply, exp(par[1]), exp(par[2]))
+      -(sum(case$flow * log(o$probability)) + sum(y0 * log(o$outside_share)))
+    }
+    oracle <- exp(stats::optim(log(c(7, 20)), loglik, method = "BFGS",
+                               control = list(reltol = 1e-14, maxit = 1000))$par)
+    list(case = case, y0 = y0, oracle = stats::setNames(oracle, c("sigma", "v0")))
+  })
+}
+
+test_that("flows with known outside counts give the multinomial estimate, and the step fit", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  expect_true(all(oc$y0 > 0))
+  obs <- obs_flows(case$flow, outside = "known")
+  x <- spax(case$data, spec_clm(), observed = obs)
+  expect_equal(coef(x), oc$oracle, tolerance = 1e-3)
+  expect_identical(x$observed$output, "flow_outside")
+  expect_identical(x$fit$best$output, "flow_outside")
+  expect_identical(x$fit$best$loss_fn, .poisson_loss)
+  expect_identical(x$observed$spec, obs)
+  expect_identical(dim(x$observed$target), c(18L, 25L))
+  expect_identical(x$observed$target[, "(outside)"], oc$y0)
+  expect_identical(x$observed$target[, 1:24], case$flow)
+  # the modelled total outside count equals the observed one (the score equation of log v0)
+  expect_equal(sum(fitted(x)[, "(outside)"]), sum(oc$y0), tolerance = 1e-3)
+  # from given starts, spax() is the step workflow
+  y <- spax(case$data, spec_clm(), observed = obs, starts = case$starts,
+            lower = case$lower, upper = case$upper)
+  ref <- .run_steps(case$data, spec_clm(), obs, case$starts, case$lower, case$upper)
+  expect_identical(.run_strip(y$fit), .run_strip(ref))
+  expect_identical(coef(y), coef(ref))
+  # and from the default search, the fit that fit_allocation() gives for the same target
+  searched <- fit_allocation(x$model, x$observed$target, output = "flow_outside",
+                             loss = "poisson", gradient = TRUE, control = .run_strict)
+  expect_identical(coef(x), coef(searched))
+  # a given set of counts is the same fit when it equals the derived one
+  given <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = oc$y0))
+  expect_identical(coef(given), coef(x))
+  expect_identical(given$observed$target, x$observed$target)
+})
+
+test_that("fits without outside counts are the fits they were", {
+  case <- .run_case()
+  x <- spax(case$data, spec_clm(), observed = obs_flows(case$flow), starts = case$starts,
+            lower = case$lower, upper = case$upper)
+  expect_identical(x$observed$output, "flow")
+  expect_identical(x$fit$best$output, "flow")
+  expect_identical(dim(x$observed$target), c(18L, 24L))
+  expect_identical(x$fit$best$loss_args, list(eps = 1e-250))
+  expect_identical(as.data.frame(x, type = "origins")$origin_id, rownames(case$distance))
+  expect_identical(names(as.data.frame(x, type = "origins")),
+                   c("origin_id", "demand", "access", "outside_share"))
+  # "unknown" is the default
+  y <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = "unknown"),
+            starts = case$starts, lower = case$lower, upper = case$upper)
+  expect_identical(.run_strip(y$fit), .run_strip(x$fit))
+})
+
+test_that("a model without an outside option refuses outside counts before the fit", {
+  case <- .run_case()
+  refusal <- "outside counts need a model with an outside option (spec_clm())"
+  messages <- character()
+  ask <- function(expr) {
+    withCallingHandlers(.run_error(expr), message = function(m) {
+      messages <<- c(messages, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+  }
+  flows <- obs_flows(case$flow, outside = "known")
+  expect_identical(ask(spax(case$data, spec_huff(), observed = flows)), refusal)
+  expect_identical(ask(spax(case$data, spec_clm(outside = 0), observed = flows)), refusal)
+  expect_identical(ask(spax(case$data, spec_huff(), observed = obs_flows(case$flow, outside =
+    c(origin1 = 3)))), refusal)
+  expect_identical(ask(spax(case$data, spec_huff(), observed = obs_totals(case$y, outside = 5))),
+                   refusal)
+  expect_identical(ask(spax(case$data, spec_clm(outside = 0), observed = obs_totals(case$y,
+                                                                                    outside = 5))),
+                   refusal)
+  # nothing was aligned or fitted first
+  expect_identical(messages, character())
+  # the one-shots too
+  expect_identical(ask(spax_huff(case$demand, case$supply, case$distance, observed = flows)),
+                   refusal)
+  # a model with an outside option, held, is fine
+  held <- spax(case$data, spec_clm(outside = 25), observed = obs_totals(case$y, outside = 900))
+  expect_identical(held$observed$output, "utilization_outside")
+  # without outside counts the Huff model is as before
+  expect_s3_class(spax(case$data, spec_huff(), observed = obs_flows(case$flow),
+                       starts = rbind(a = c(sigma = 1, beta = 0.5)),
+                       lower = c(sigma = 0.1, beta = 0.05), upper = c(sigma = 10, beta = 5)),
+                  "spax_allocation")
+})
+
+test_that("the loss arguments of the observation reach the fit unchanged", {
+  case <- .run_case()
+  obs <- obs_flows(case$flow, outside = "known", loss_args = list(eps = 1e-9))
+  x <- spax(case$data, spec_clm(), observed = obs, starts = case$starts,
+            lower = case$lower, upper = case$upper)
+  expect_identical(x$fit$best$loss_args, list(eps = 1e-9))
+  expect_identical(x$observed$spec$loss_args, list(eps = 1e-9))
+  ref <- .run_steps(case$data, spec_clm(), obs, case$starts, case$lower, case$upper)
+  expect_identical(.run_strip(x$fit), .run_strip(ref))
+  # the default floor otherwise
+  plain <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = "known"),
+                starts = case$starts, lower = case$lower, upper = case$upper)
+  expect_identical(plain$fit$best$loss_args, list(eps = 1e-250))
+})
+
+test_that("a result with outside counts prints a line, and its tables keep the facilities", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  flows <- case$flow
+  flows["origin3", "facility2"] <- NA
+  x <- spax(case$data, spec_clm(), observed = obs_flows(flows, outside = "known"),
+            starts = case$starts, lower = case$lower, upper = case$upper)
+  lines <- capture.output(print(x))
+  n <- nrow(x$fit$table)
+  expect_identical(lines[13:15], c(
+    sprintf("  selected    %s (start %d of %d); %d of %d starts converged", x$fit$best_start,
+            match(x$fit$best_start, x$fit$table$start), n, sum(x$fit$table$eligible), n),
+    "  boundary    none",
+    "  outside     counts used for 17 of 18 origins"))
+  expect_length(lines, 15L)
+  # with the default search the line comes before the search line
+  y <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = "known"))
+  ylines <- capture.output(print(y))
+  expect_identical(ylines[15:16], c(
+    "  outside     counts used for 18 of 18 origins",
+    sprintf("  starts      default search, %d of %d grid points, loss poisson",
+            y$fit$default_search$n_finite, y$fit$default_search$n_points)))
+  # the outside option of the specification keeps its own line above
+  expect_identical(ylines[4], "  outside     v0: fit")
+  # origins: the observed and modelled outside count of each origin
+  o <- as.data.frame(x, type = "origins")
+  expect_identical(names(o), c("origin_id", "demand", "access", "outside_share",
+                               "outside_observed", "outside_modelled"))
+  expect_identical(o$outside_observed, c(oc$y0[1:2], NA, oc$y0[4:18]) |> unname())
+  expect_equal(o$outside_modelled, o$demand * o$outside_share, tolerance = 1e-12)
+  expect_equal(o$outside_modelled, unname(fitted(x)[, "(outside)"]), tolerance = 1e-12)
+  expect_identical(o$origin_id, rownames(case$distance))
+  # facilities: the 24 facilities, no outside row, nothing new
+  f <- as.data.frame(x, type = "facilities")
+  expect_identical(names(f), c("facility_id", "supply", "attractiveness", "utilization"))
+  expect_identical(f$facility_id, colnames(case$distance))
+  expect_identical(nrow(f), 24L)
+  # flows: the cells, no outside column
+  fl <- as.data.frame(x, type = "flows")
+  expect_identical(names(fl), c("origin_id", "facility_id", "flow", "observed"))
+  expect_false("(outside)" %in% fl$facility_id)
+  expect_identical(fl$observed, as.numeric(flows[cbind(match(fl$origin_id, rownames(flows)),
+                                                       match(fl$facility_id, colnames(flows)))]))
+  # fitted(): the whole target, the outside column included
+  fv <- fitted(x)
+  expect_identical(dim(fv), c(18L, 25L))
+  expect_identical(colnames(fv), c(colnames(case$distance), "(outside)"))
+  expect_identical(rownames(fv), rownames(case$distance))
+  expect_equal(unname(rowSums(fv)), unname(case$demand), tolerance = 1e-10)
+  # the parameters and the starts are as for any fit
+  expect_identical(names(as.data.frame(x)), c("parameter", "value", "status"))
+  expect_identical(as.data.frame(x, type = "starts"), x$fit$table)
+  # a result of the other fits keeps its summary
+  expect_s3_class(summary(x), "summary.spax_allocation")
+})
+
+test_that("facility totals with an outside total are fitted with the pooled Poisson loss", {
+  case <- .run_case()
+  y0 <- 0.8 * (sum(case$demand) - sum(case$y))
+  obs <- obs_totals(case$y, outside = y0)
+  x <- spax(case$data, spec_clm(), observed = obs)
+  loss <- function(par) {
+    mu <- clm_oracle(case$distance, case$demand, case$supply, exp(par[1]), exp(par[2]))$utilization
+    mu0 <- sum(case$demand) - sum(mu)
+    sum(mu - case$y * log(mu)) + (mu0 - y0 * log(mu0))
+  }
+  oracle <- exp(stats::optim(log(c(7, 20)), loss, method = "BFGS",
+                             control = list(reltol = 1e-14, maxit = 1000))$par)
+  expect_equal(unname(coef(x)), oracle, tolerance = 1e-3)
+  expect_identical(x$observed$output, "utilization_outside")
+  expect_identical(x$observed$target, c(case$y, "(outside)" = y0))
+  ref <- .run_steps(case$data, spec_clm(), obs, case$starts, case$lower, case$upper)
+  y <- spax(case$data, spec_clm(), observed = obs, starts = case$starts, lower = case$lower,
+            upper = case$upper)
+  expect_identical(.run_strip(y$fit), .run_strip(ref))
+  lines <- capture.output(print(x))
+  expect_identical(lines[length(lines) - 1L], "  outside     the outside total is used")
+  # the tables: 24 facilities with their observed totals, the origins table unchanged
+  f <- as.data.frame(x, type = "facilities")
+  expect_identical(nrow(f), 24L)
+  expect_identical(f$observed, unname(case$y[f$facility_id]))
+  expect_identical(names(as.data.frame(x, type = "origins")),
+                   c("origin_id", "demand", "access", "outside_share"))
+  fv <- fitted(x)
+  expect_identical(names(fv), c(colnames(case$distance), "(outside)"))
+  expect_equal(sum(fv), sum(case$demand), tolerance = 1e-8)
+  # the outside total is not derived: another number, another fit
+  other <- spax(case$data, spec_clm(), observed = obs_totals(case$y, outside = 3 * y0))
+  expect_gt(abs(coef(other)[["v0"]] / coef(x)[["v0"]] - 1), 0.01)
+})
+
+test_that("totals by group with outside counts by group are fitted and reported", {
+  case <- .run_group_case()
+  truth <- .run_group_truth
+  e <- evaluate_allocation(case$model, truth,
+    requested_outputs = "utilization_outside_by_group")$outputs$utilization_outside_by_group
+  outside <- round(e["(outside)", ])
+  obs <- obs_totals(case$counts, outside = outside[c(3, 1, 2)])
+  x <- spax(case$data, spec_clm(by_group = "sigma"), observed = obs, starts = case$starts,
+            lower = case$lower, upper = case$upper)
+  ref <- .run_steps(case$data, spec_clm(by_group = "sigma"), obs, case$starts, case$lower,
+                    case$upper)
+  expect_identical(.run_strip(x$fit), .run_strip(ref))
+  expect_identical(x$observed$output, "utilization_outside_by_group")
+  expect_identical(dim(x$observed$target), c(25L, 3L))
+  expect_identical(x$observed$target["(outside)", ], outside)
+  expect_true(all(abs(coef(x) / truth - 1) < 0.15))
+  lines <- capture.output(print(x))
+  expect_identical(lines[length(lines)], "  outside     counts used for 3 of 3 groups")
+  # the facilities table: the sum over the groups of the facility counts only
+  tab <- as.data.frame(x, type = "facilities")
+  expect_identical(nrow(tab), 24L)
+  expect_identical(tab$observed, as.numeric(rowSums(case$counts)))
+  # NA for a group whose outside count is unknown: that group's count is not used
+  na <- obs_totals(case$counts, outside = c("0-15" = NA, "16-64" = outside[[2]],
+                                            "65+" = outside[[3]]))
+  y <- spax(case$data, spec_clm(by_group = "sigma"), observed = na, starts = case$starts,
+            lower = case$lower, upper = case$upper)
+  ylines <- capture.output(print(y))
+  expect_identical(ylines[length(ylines)], "  outside     counts used for 2 of 3 groups")
+  # outside counts named by other groups are refused
+  expect_identical(.run_error(spax(case$data, spec_clm(by_group = "sigma"),
+                                   observed = obs_totals(case$counts, outside = c(a = 1, b = 2)))),
+                   "outside counts must be named by the groups of the data (0-15, 16-64, 65+), each once")
+})
+
+test_that("fits with and without outside counts are not compared by their loss", {
+  case <- .run_case()
+  without <- spax(case$data, spec_clm(), observed = obs_flows(case$flow), starts = case$starts,
+                  lower = case$lower, upper = case$upper)
+  with <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = "known"),
+               starts = case$starts, lower = case$lower, upper = case$upper)
+  mixed <- compare_allocations(list(inside = without, outside = with))
+  expect_false(mixed$table$comparable[2])
+  expect_true(is.na(mixed$table$loss_difference[2]))
+  expect_identical(mixed$table$not_comparable[2], "observed, loss")
+  # on the same observation the comparison is made
+  exponential <- spax(case$data, spec_clm(decay_exponential()),
+                      observed = obs_flows(case$flow, outside = "known"),
+                      starts = rbind(a = c(sigma = 0.2, v0 = 20)), lower = c(sigma = 0.01, v0 = 1),
+                      upper = c(sigma = 5, v0 = 200))
+  same <- compare_allocations(list(gaussian = with, exponential = exponential))
+  expect_true(all(same$table$comparable))
+  expect_equal(same$table$loss_difference[2], exponential$fit$best$loss - with$fit$best$loss,
+               tolerance = 1e-10)
+  # the other steps accept the result, also after saving it
+  check <- check_allocation(with)
+  expect_s3_class(check, "ae_allocation_check")
+  path <- tempfile(fileext = ".rds")
+  on.exit(unlink(path), add = TRUE)
+  saveRDS(with, path)
+  back <- readRDS(path)
+  expect_equal(as.data.frame(check_allocation(back)), as.data.frame(check), tolerance = 1e-8)
+  expect_identical(capture.output(print(back)), capture.output(print(with)))
+  expect_identical(coef(back), coef(with))
+})
+
+test_that("Cornwall with known outside counts gives sigma 4.6194 and v0 0.04864", {
+  skip_on_cran()
+  areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+  gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+  travel <- cornwall_travel[areas$lsoa, gp$practice]
+  supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+  d <- prep_data(stats::setNames(areas$registered, areas$lsoa), supply, travel)
+  obs <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients",
+                   outside = "known")
+  x <- suppressMessages(spax(d, spec_clm(), observed = obs))
+  expect_equal(unname(coef(x)), c(4.6194, 0.04864), tolerance = 5e-4)
+  # the fit that fit_allocation() gives for the same target: identical coefficients
+  ref <- fit_allocation(clm_allocation(d, fit_v0 = TRUE), x$observed$target,
+                        output = "flow_outside", loss = "poisson", gradient = TRUE,
+                        control = .run_strict)
+  expect_identical(coef(x), coef(ref))
+  expect_identical(x$observed$output, "flow_outside")
+  # the outside share of the model is the observed one
+  o <- as.data.frame(x, type = "origins")
+  expect_equal(sum(o$outside_modelled), sum(o$outside_observed), tolerance = 1e-6)
+  expect_equal(sum(o$outside_observed), 5497)
+  expect_equal(sum(o$outside_observed) / sum(o$demand), 0.009094, tolerance = 1e-3)
+  expect_equal(sum(o$outside_modelled) / sum(o$demand), 0.009094, tolerance = 1e-3)
+  expect_match(capture.output(print(x)), "  outside     counts used for 336 of 336 origins",
+               fixed = TRUE, all = FALSE)
+  # without the outside counts: the fit that leaves them out
+  plain <- suppressMessages(spax(d, spec_clm(), observed = obs_flows(
+    cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")))
+  expect_equal(unname(coef(plain)), c(4.591, 0.02733), tolerance = 1e-3)
+})
+
+test_that("known outside counts with no complete origin are refused, and the bootstrap refuses outside fits", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  # every origin has an unobserved cell: no outside count can be known
+  flows <- case$flow
+  flows[, 1] <- NA
+  expect_error(spax(case$data, spec_clm(), observed = obs_flows(flows, outside = "known")),
+               "no origin has a known outside count", fixed = TRUE)
+  # a fit to totals with an outside total is refused by the facility-case bootstrap
+  totals <- obs_totals(colSums(case$flow), outside = sum(oc$y0))
+  x <- spax(case$data, spec_clm(), observed = totals)
+  expect_identical(x$observed$output, "utilization_outside")
+  expect_error(bootstrap_allocation(x, observation = alloc_bootstrap_observation(), seed = 1L),
+               "the facility-case bootstrap is defined for facility totals without outside counts",
+               fixed = TRUE)
+})
+
+test_that("a raw matrix with an (outside) column is refused with the way to declare outside counts", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  refusal <- paste0("a facility is named \"(outside)\": declare outside counts with ",
+                    "obs_flows(outside = ) or obs_totals(outside = )")
+  raw <- cbind(case$flow, "(outside)" = oc$y0)
+  expect_identical(.run_error(spax(case$data, spec_clm(), observed = raw)), refusal)
+  expect_identical(.run_error(spax(case$data, spec_clm(), observed = obs_flows(raw))), refusal)
+  expect_identical(.run_error(spax(case$data, spec_clm(),
+    observed = obs_totals(c(colSums(case$flow), "(outside)" = sum(oc$y0))))), refusal)
+  expect_identical(.run_error(spax(case$data, spec_huff(), observed = raw)), refusal)
+})
+
+test_that("print() says that an outside weight on its lower bound is a limit of the search", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  boundary_line <- function(x) {
+    lines <- capture.output(print(x))
+    lines[grepl("^  boundary", lines)]
+  }
+  said <- "  boundary    v0 at the lower bound of the search: give a smaller lower bound"
+  starts <- rbind(a = c(sigma = 9, v0 = 70), b = c(sigma = 12, v0 = 90))
+  lower <- c(sigma = 2, v0 = 60)
+  upper <- c(sigma = 40, v0 = 200)
+  # flows with known outside counts, and totals with an outside total
+  flows <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = "known"),
+                starts = starts, lower = lower, upper = upper)
+  expect_identical(flows$observed$output, "flow_outside")
+  expect_true(flows$fit$boundary[flows$fit$best_start, "v0"])
+  expect_identical(boundary_line(flows), said)
+  totals <- spax(case$data, spec_clm(), observed = obs_totals(case$y, outside = sum(oc$y0)),
+                 starts = starts, lower = lower, upper = upper)
+  expect_identical(totals$observed$output, "utilization_outside")
+  expect_identical(boundary_line(totals), said)
+  # the same weight on its lower bound for a fit without outside counts keeps its text
+  plain <- spax(case$data, spec_clm(), observed = obs_totals(case$y), starts = starts,
+                lower = lower, upper = upper)
+  expect_identical(plain$observed$output, "utilization")
+  expect_identical(boundary_line(plain), paste0("  boundary    v0 at its lower bound: the ",
+    "outside option adds almost nothing (compare spec_huff())"))
+  # group-specific weights, and the other parameters on a bound come first
+  fit <- structure(list(
+    best = list(), best_start = "scan1", table = data.frame(start = "scan1", eligible = TRUE),
+    boundary = matrix(c(FALSE, TRUE, TRUE, FALSE), 1, 4,
+      dimnames = list("scan1", c("sigma", "v0.a", "v0.b", "beta"))),
+    theta = matrix(c(5, 1e-3, 40, 1), 1, 4,
+      dimnames = list("scan1", c("sigma", "v0.a", "v0.b", "beta"))),
+    bounds = list(lower = c(sigma = 1, v0.a = 1e-3, v0.b = 1e-6, beta = 0.05),
+                  upper = c(sigma = 10, v0.a = 100, v0.b = 40, beta = 5))),
+    class = "ae_multistart_fit")
+  target <- matrix(c(1, 2, 3, 4), 2, 2, dimnames = list(c("f1", "(outside)"), c("a", "b")))
+  lines <- .result_fit_lines(list(fit = fit, observed = list(
+    output = "utilization_outside_by_group", target = target)))
+  expect_identical(lines[2L], paste0("  boundary    v0.b at a search bound; v0.a at the lower ",
+    "bound of the search: give a smaller lower bound"))
+  # ... and for the same fit without outside counts
+  lines <- .result_fit_lines(list(fit = fit, observed = list(output = "utilization_by_group")))
+  expect_identical(lines[2L], paste0("  boundary    v0.b at a search bound; v0.a at its lower ",
+    "bound: the outside option adds almost nothing (compare spec_huff())"))
 })

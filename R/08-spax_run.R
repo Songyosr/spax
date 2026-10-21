@@ -22,6 +22,22 @@
 #' start converged gives a warning and a result with no estimates;
 #' `summary()` shows the starts and `as.data.frame(type = "starts")` their table.
 #'
+#' **Outside counts.** An observation that declares outside counts (the
+#' `outside` argument of [obs_flows()] and [obs_totals()]) is fitted with the
+#' outputs `"flow_outside"`, `"utilization_outside"` or
+#' `"utilization_outside_by_group"` of [fit_allocation()]: the observed counts
+#' with the outside count as one more column, element or row named
+#' `"(outside)"`, and the Poisson loss. The model needs an outside option
+#' ([spec_clm()] with an outside weight above 0 somewhere): with a model without
+#' one ([spec_huff()], or `outside = 0` everywhere) `spax()` stops with "outside
+#' counts need a model with an outside option (spec_clm())" before the fit. The
+#' loss arguments of the observation pass through unchanged. The printed result
+#' has a line `outside` that says for how many origins (or groups) the counts are used,
+#' or that the outside total is. `fitted()` returns the modelled counts
+#' for the full target, the `"(outside)"` entry included, and
+#' `as.data.frame(type = "origins")` adds `outside_observed` and
+#' `outside_modelled` for flows (see [spax_allocation-methods]).
+#'
 #' **Evaluate mode.** Every parameter has a number. Nothing is fitted, so
 #' `observed`, `starts`, `lower` and `upper` are refused, and the model is
 #' evaluated once at the given values. In this version an ungrouped model with
@@ -90,6 +106,14 @@
 #' clm <- spax(d, spec_clm(decay_gaussian(), outside = "fit"), observed = totals)
 #' summary(clm)
 #'
+#' # The same conditional logit fitted to the flows, with the outside counts known:
+#' # demand counts the registered residents, so each origin's outside count is its
+#' # demand minus its counts at the practices of the data
+#' known <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice",
+#'                    count = "patients", outside = "known")
+#' clm_known <- spax(d, spec_clm(), observed = known)
+#' clm_known
+#'
 #' # Nothing to fit: evaluate at given values, with no observations
 #' spax(d_huff, spec_huff(decay_power(sigma = 1.5), beta = 1))
 #' @family allocation interface
@@ -123,6 +147,8 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
            "; or give their values", call. = FALSE)
     }
     obs <- .as_spax_obs(observed, data)
+    # Outside counts need an outside option: refused before any alignment or fit.
+    .obs_check_outside_option(obs, .spec_has_outside(model))
     target <- .canonical_observed(obs, data, outside_option = .spec_has_outside(model))
     # The strict controls apply whether or not starts are given, each unless the
     # caller gives it. The losses of an observation are the built-in ones, which
@@ -131,7 +157,8 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
     if (!"control" %in% names(dots)) dots$control <- .default_search_control
     loss <- obs$loss
     loss_args <- obs$loss_args
-    output <- obs$type
+    # The kind of counts, or with outside counts the kind with the outside count.
+    output <- .obs_output(obs)
     fit_call <- as.call(c(list(quote(fit_allocation), quote(problem), quote(target),
                                quote(starts), quote(lower), quote(upper),
                                output = quote(output), loss = quote(loss),
@@ -157,7 +184,7 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
 
   structure(list(model = problem, spec = model,
                  observed = if (!is.null(obs)) list(spec = obs, target = target,
-                                                    output = obs$type),
+                                                    output = output),
                  fit = fit, evaluation = evaluation, theta = theta, held = bound$held,
                  mode = bound$mode, call = call),
             class = c("spax_allocation", "spax_result"))
@@ -366,7 +393,7 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 #' still show the starts.
 #'
 #' * `print()` shows the specification, the data, the parameters and, for a fit,
-#'   the selected start and the default search.
+#'   the selected start, the outside counts used (if any) and the default search.
 #' * `summary()` returns a `summary.spax_allocation` with the specification
 #'   lines (`spec`), the parameters table (`parameters`), the fit summary of
 #'   [fit_allocation()] (`fit`, `NULL` when evaluated) and the `mode`; its print
@@ -378,7 +405,9 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 #'   `kappa`) are listed as held in `as.data.frame(x, type = "parameters")`.
 #' * `fitted()` returns the modelled counts for the observations of a fit (as
 #'   [fitted.ae_multistart_fit()][allocation-fit-methods] does), and the modelled
-#'   facility utilization, named by facility, for an evaluation.
+#'   facility utilization, named by facility, for an evaluation. For a fit with
+#'   outside counts (see [obs_flows()]) this is the full target, including the
+#'   modelled outside count as the column, element or row `"(outside)"`.
 #' * `as.data.frame()` returns one of the tables below.
 #' * `predict()` predicts requested origins from the saved fit or evaluation
 #'   with [predict_allocation()]. Models with demand groups are refused, as there.
@@ -388,8 +417,8 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 #' | `type` | rows and columns |
 #' |---|---|
 #' | `"parameters"` | `parameter`, `value`, `status`: the free parameters (`"fitted"` or `"given"`), then the held values (`"held"`) |
-#' | `"facilities"` | the facilities of the data: `facility_id`, `supply`, `attractiveness`, `utilization`, and `observed` for a fit to facility totals (the sum over groups for totals by group, `NA` when a group is unobserved) |
-#' | `"origins"` | the active origins: `origin_id`, `demand`, `access` (the share of demand that goes to a facility of the data), `outside_share` (pooled over the groups) |
+#' | `"facilities"` | the facilities of the data: `facility_id`, `supply`, `attractiveness`, `utilization`, and `observed` for a fit to facility totals (the sum over groups for totals by group, `NA` when a group is unobserved); the `"(outside)"` entry of a fit with outside counts is not a facility and is left out |
+#' | `"origins"` | the active origins: `origin_id`, `demand`, `access` (the share of demand that goes to a facility of the data), `outside_share` (pooled over the groups), and for a flow fit with outside counts `outside_observed` (`NA` where unknown) and `outside_modelled` (demand times the outside share) |
 #' | `"flows"` | the origin-facility cells with modelled flow or observed count above 0: `origin_id`, `facility_id`, `flow` (demand times allocation), and `observed` for a fit to flows (`NA` where unobserved) |
 #' | `"starts"` | the table of starts of the fit (`seconds` is the time each took) |
 #'
@@ -526,22 +555,55 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
                       supply = as.vector(substrate$S[, 1L]),
                       attractiveness = as.numeric(out$attractiveness),
                       utilization = as.numeric(out$utilization), stringsAsFactors = FALSE)
-  target <- x$observed$target
-  if (identical(x$observed$output, "utilization")) {
+  # The "(outside)" element or row of a fit with outside counts is not a facility.
+  target <- .result_inside_target(x)
+  kind <- .result_observed_kind(x)
+  if (identical(kind, "utilization")) {
     table$observed <- as.numeric(target)
-  } else if (identical(x$observed$output, "utilization_by_group")) {
+  } else if (identical(kind, "utilization_by_group")) {
     # The total over the groups; unknown when a group count is.
     table$observed <- as.numeric(rowSums(target))
   }
   table
 }
 
+# The kind of the observed counts of a result ("flow", "utilization",
+# "utilization_by_group"; NULL when evaluated): the output they are compared with, without
+# the outside count of a fit with outside counts.
+.result_observed_kind <- function(x) {
+  output <- x$observed$output
+  if (!is.null(output) && output %in% names(.outside_outputs)) {
+    .outside_outputs[[output]]
+  } else {
+    output
+  }
+}
+
+# The observed counts at the facilities of the data: the aligned target without the
+# "(outside)" column, element or row of a fit with outside counts.
+.result_inside_target <- function(x) {
+  target <- x$observed$target
+  output <- x$observed$output
+  if (is.null(target) || !output %in% names(.outside_outputs)) return(target)
+  switch(output,
+    flow_outside = target[, colnames(target) != .outside_label, drop = FALSE],
+    utilization_outside = target[names(target) != .outside_label],
+    utilization_outside_by_group = target[rownames(target) != .outside_label, , drop = FALSE])
+}
+
 .result_origins <- function(x) {
   out <- .result_outputs(x, c("access", "outside_share"))
   substrate <- x$model$substrate
-  data.frame(origin_id = substrate$origin_ids, demand = as.numeric(substrate$D_active),
-             access = as.numeric(out$access), outside_share = as.numeric(out$outside_share),
-             stringsAsFactors = FALSE)
+  table <- data.frame(origin_id = substrate$origin_ids, demand = as.numeric(substrate$D_active),
+                      access = as.numeric(out$access),
+                      outside_share = as.numeric(out$outside_share), stringsAsFactors = FALSE)
+  # A flow fit with outside counts: the observed and modelled count of each origin.
+  if (identical(x$observed$output, "flow_outside")) {
+    modelled <- .result_outputs(x, "flow_outside")$flow_outside
+    table$outside_observed <- as.numeric(x$observed$target[, .outside_label])
+    table$outside_modelled <- as.numeric(modelled[, .outside_label])
+  }
+  table
 }
 
 # Origin-facility cells with a modelled flow, or an observed count, above 0, in the
@@ -549,7 +611,7 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
 .result_flows <- function(x) {
   flow <- .result_outputs(x, "flow")$flow
   substrate <- x$model$substrate
-  observed <- if (identical(x$observed$output, "flow")) x$observed$target
+  observed <- if (identical(.result_observed_kind(x), "flow")) .result_inside_target(x)
   keep <- !is.na(flow) & flow > 0
   if (!is.null(observed)) keep <- keep | (!is.na(observed) & observed > 0)
   cells <- which(keep, arr.ind = TRUE)
@@ -585,6 +647,27 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
   as.vector(log(theta[at]) <= log(lower[at]) + edge_tol[at])
 }
 
+# The line about the outside counts of a fit that uses them: how many origins (or
+# groups) carry an outside count; NULL for a fit without.
+.result_outside_line <- function(x) {
+  output <- x$observed$output
+  if (is.null(output) || !output %in% names(.outside_outputs)) return(NULL)
+  target <- x$observed$target
+  text <- switch(output,
+    flow_outside = {
+      y0 <- target[, .outside_label]
+      paste0("counts used for ", .format_total(sum(!is.na(y0))), " of ",
+             .obs_count(length(y0), "origin", "origins"))
+    },
+    utilization_outside = "the outside total is used",
+    utilization_outside_by_group = {
+      y0 <- target[.outside_label, ]
+      paste0("counts used for ", .format_total(sum(!is.na(y0))), " of ",
+             .obs_count(length(y0), "group", "groups"))
+    })
+  sprintf("  %-10s  %s", "outside", text)
+}
+
 # The selected start, its boundary flag and the default search of a fit.
 .result_fit_lines <- function(x) {
   fit <- x$fit
@@ -607,17 +690,25 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
       low <- .result_at_lower(fit, i, at)
       v0_low <- at[low & (at == "v0" | startsWith(at, "v0."))]
       other <- setdiff(at, v0_low)
+      # With outside counts the weight cannot be read that way: the counts say how many
+      # people choose the outside option, so the bound is a limit of the search.
+      with_outside <- isTRUE(x$observed$output %in% names(.outside_outputs))
       paste(c(
         if (length(other)) paste0(paste(other, collapse = ", "), " at a search bound"),
-        if (length(v0_low)) paste0(paste(v0_low, collapse = ", "),
-          if (length(v0_low) == 1L) " at its lower bound" else " at their lower bounds",
-          ": the outside option adds almost nothing (compare spec_huff())")),
+        if (length(v0_low) && with_outside) {
+          paste0(paste(v0_low, collapse = ", "),
+                 " at the lower bound of the search: give a smaller lower bound")
+        } else if (length(v0_low)) {
+          paste0(paste(v0_low, collapse = ", "),
+                 if (length(v0_low) == 1L) " at its lower bound" else " at their lower bounds",
+                 ": the outside option adds almost nothing (compare spec_huff())")
+        }),
         collapse = "; ")
     } else {
       "none"
     })
   }
-  c(selected, boundary,
+  c(selected, boundary, .result_outside_line(x),
     if (!is.null(search)) {
       line("starts", paste0("default search, ", search$n_finite, " of ", search$n_points,
                             " grid points, loss ", search$loss))

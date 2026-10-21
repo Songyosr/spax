@@ -272,6 +272,9 @@
     (length(selected$loss_args) == 1L && identical(names(selected$loss_args), "eps") &&
       is.numeric(selected$loss_args$eps) && length(selected$loss_args$eps) == 1L &&
       is.finite(selected$loss_args$eps) && selected$loss_args$eps > 0))
+  if (isTRUE(selected$output %in% names(.outside_outputs))) {
+    stop("the facility-case bootstrap is defined for facility totals without outside counts")
+  }
   if (!identical(selected$output, "utilization") ||
       !.same_function(selected$loss_fn, .poisson_loss) || !arguments_ok) {
     stop("bootstrap requires an unweighted Poisson facility-utilization fit")
@@ -581,7 +584,10 @@
 #'   are refused as for the model and fit given separately.
 #' @param fit A matching multistart fit of complete whole facility counts using
 #'   the unweighted built-in Poisson objective. Fractional or partial observations,
-#'   flow targets and custom objectives are outside this method. Not given when
+#'   flow targets, fits with observed outside counts (`flow_outside`,
+#'   `utilization_outside`: the facility-case bootstrap is defined for facility
+#'   totals without outside counts) and custom objectives are outside this
+#'   method. Not given when
 #'   `model` is a result of [spax()].
 #' @param observation Named list declaring nonblank `event`, `period` (including
 #'   an explicit unresolved reference date), and `sampling="independent_facilities"`.

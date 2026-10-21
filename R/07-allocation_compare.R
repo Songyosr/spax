@@ -22,6 +22,13 @@
 #' across specifications, but they are conditional on each specification's
 #' inputs.
 #'
+#' For fits to the outside-count outputs (`flow_outside`, `utilization_outside`,
+#' `utilization_outside_by_group`), the `count_correlation` is over the whole
+#' target, the `"(outside)"` cells included, so it is not comparable with the
+#' correlation of a fit to facility counts without outside counts. The
+#' capacity-only comparator of [check_allocation()] applies to facility totals
+#' without outside counts only.
+#'
 #' With `zones`, each fit is also summarized by zone using contact-weighted
 #' aggregation, and the zones whose reporting class differs from the reference
 #' are listed. Classes require an adequacy cut in `coverage_args`; each fit uses

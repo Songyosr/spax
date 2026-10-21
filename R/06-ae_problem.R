@@ -230,13 +230,16 @@
                     attractiveness = "facility", access = "origin",
                     outside_share = "origin", allocation = "origin_facility",
                     huff_share = "origin_facility", opportunity = "origin_facility",
-                    if (allocation == "clm") c(flow = "origin_facility")),
+                    if (allocation == "clm") c(flow = "origin_facility",
+                      flow_outside = "origin_facility_outside",
+                      utilization_outside = "facility_outside")),
     output_meanings = if (allocation == "clm") c(
       allocation = "inside_choice_probability",
       huff_share = "inside_choice_probability",
       access = "inside_probability_mass",
       outside_share = "outside_choice_probability",
-      utilization = "expected_count", flow = "expected_count"
+      utilization = "expected_count", flow = "expected_count",
+      flow_outside = "expected_count", utilization_outside = "expected_count"
     ) else NULL,
     allocation = allocation,
     kappa = as.numeric(kappa),
@@ -277,13 +280,15 @@
   axes <- spec$output_axes[names(spec$output_axes) != "opportunity"]
   spec$output_axes <- c(axes, utilization_by_group = "facility_group",
                         access_by_group = "origin_group",
-                        outside_share_by_group = "origin_group")
+                        outside_share_by_group = "origin_group",
+                        utilization_outside_by_group = "facility_outside_group")
   if (!is.null(spec$output_meanings)) {
     keep <- names(spec$output_meanings) != "opportunity"
     spec$output_meanings <- c(spec$output_meanings[keep],
       utilization_by_group = "expected_count",
       access_by_group = "inside_probability_mass",
-      outside_share_by_group = "outside_choice_probability")
+      outside_share_by_group = "outside_choice_probability",
+      utilization_outside_by_group = "expected_count")
   }
   # c() keeps a NULL `v0_groups`, which `$<-` would drop.
   spec <- c(spec, list(groups = grouped$groups, by_group = grouped$by_group,
@@ -760,6 +765,12 @@
   sigma_by <- "sigma" %in% spec$by_group
   v0_by <- "v0" %in% spec$by_group
   per_group <- c("utilization_by_group", "access_by_group", "outside_share_by_group")
+  # The outputs the step promises not to depend on the state are those the
+  # specification declares: a model saved before the outside outputs (SPAX-059) has
+  # a specification without them, and a step rebuilt from it (the checks and the
+  # bootstrap do) must not name an output it does not declare.
+  independent <- intersect(c("flow", per_group, names(.outside_outputs)),
+                           names(spec$output_axes))
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     full <- c(theta, spec$fixed)
@@ -809,13 +820,27 @@
       outputs = function(x) state,
       outputs_requested = function(x, requested_outputs) {
         out <- state
-        if ("flow" %in% requested_outputs) {
-          out$flow <- .clm_flow(state$allocation, substrate$D_active)
+        wanted <- function(name) name %in% requested_outputs
+        if (wanted("flow") || wanted("flow_outside")) {
+          flow <- .clm_flow(state$allocation, substrate$D_active)
+          if (wanted("flow")) out$flow <- flow
+          if (wanted("flow_outside")) {
+            out$flow_outside <- .clm_flow_outside(
+              flow, substrate$D_active * state$outside_share)
+          }
+        }
+        if (wanted("utilization_outside")) {
+          out$utilization_outside <- .clm_utilization_outside(
+            state$utilization, sum(substrate$D_active * state$outside_share))
         }
         for (name in intersect(per_group, requested_outputs)) out[[name]] <- by[[name]]
+        if (wanted("utilization_outside_by_group")) {
+          out$utilization_outside_by_group <- .clm_group_outside(
+            by$utilization_by_group, D_groups, by$outside_share_by_group)
+        }
         out
       },
-      state_independent_outputs = c("flow", per_group),
+      state_independent_outputs = independent,
       clm_prediction = NULL,
       jac_state = function(x) {
         list(
@@ -851,6 +876,11 @@
   # and for a declared kernel (kept in the snapshot specification as plain data);
   # the internal no-decay family never has one.
   has_snapshot <- spec$allocation == "clm" && !identical(spec$family, "none")
+  # The outputs the step promises not to depend on the state are those the
+  # specification declares (a specification saved before the outside outputs of
+  # SPAX-059 does not declare them, and a step rebuilt from it must not name them).
+  independent <- intersect(c("flow", "flow_outside", "utilization_outside"),
+                           names(spec$output_axes))
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
@@ -873,12 +903,22 @@
       outputs = function(x) state,
       outputs_requested = if (spec$allocation == "clm") function(x, requested_outputs) {
         out <- state
-        if ("flow" %in% requested_outputs) {
-          out$flow <- .clm_flow(state$allocation, substrate$D_active)
+        wanted <- function(name) name %in% requested_outputs
+        if (wanted("flow") || wanted("flow_outside")) {
+          flow <- .clm_flow(state$allocation, substrate$D_active)
+          if (wanted("flow")) out$flow <- flow
+          if (wanted("flow_outside")) {
+            out$flow_outside <- .clm_flow_outside(
+              flow, substrate$D_active * state$outside_share)
+          }
+        }
+        if (wanted("utilization_outside")) {
+          out$utilization_outside <- .clm_utilization_outside(
+            state$utilization, sum(substrate$D_active * state$outside_share))
         }
         out
       } else NULL,
-      state_independent_outputs = if (spec$allocation == "clm") "flow" else NULL,
+      state_independent_outputs = if (spec$allocation == "clm") independent else NULL,
       clm_prediction = if (has_snapshot) list(
         spec = .clm_prediction_spec(spec), theta = theta
       ) else NULL,

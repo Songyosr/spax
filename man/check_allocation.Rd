@@ -65,8 +65,14 @@ re-optimized when the model fits it. Its reported parameters leave out the
 decay parameter \code{sigma}, which this allocation does not use.
 \item \code{capacity_only}: facility loads proportional to attractiveness, ignoring
 travel entirely, with one fitted scale factor. Available for facility
-\code{utilization} targets only.
+\code{utilization} targets only: it applies to facility totals without outside
+counts, and is not reported (\code{NA}) for any other output.
 }
+
+For the outside-count outputs (\code{flow_outside}, \code{utilization_outside}), the loss
+of every comparator is scored on the whole target, the \code{"(outside)"} cells
+included, as is the count correlation that \code{\link[=compare_allocations]{compare_allocations()}} reports for
+such fits.
 
 When the model fits the attractiveness exponent \code{beta}, it is re-optimized in
 both comparators. Comparator searches start from the fit's own scale and widen
