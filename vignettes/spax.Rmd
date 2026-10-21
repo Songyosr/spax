@@ -1,8 +1,8 @@
 ---
-title: "Getting started with spax"
+title: "Getting started: how accessible is GP care in Cornwall?"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting started with spax}
+  %\VignetteIndexEntry{Getting started: how accessible is GP care in Cornwall?}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,6 +18,17 @@ knitr::opts_chunk$set(
 )
 ```
 
+This guide measures how accessible general practice (GP) care is across
+mainland Cornwall and maps the answer. By the end you will understand the idea
+behind a floating catchment area (FCA) index, compute one from a population
+grid, a table of practices and travel times, and read its map. The
+data are the open Cornwall GP data that ship with spax, described in [The
+Cornwall GP example data](cornwall-data.html). The `spax()` interface and the
+allocation model are experimental and may change in later versions.
+
+The guide uses spax with terra for grids, sf and dplyr for tables and ggplot2
+for the practices map.
+
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
 library(terra)
@@ -26,96 +37,211 @@ library(dplyr)
 library(ggplot2)
 ```
 
-spax measures spatial access to services. You give it where people live
-(demand), what each facility offers (supply) and how long it takes to travel
-between them. It returns a floating catchment area (FCA) accessibility index:
-supply per resident, after discounting facilities that are further away. This
-guide computes one FCA index and maps it. spax also has an experimental
-allocation model that is fitted to where people actually go; the last section
-points to it.
+## The question
 
-## The example data
+Some residents live next to a practice with many GPs. Others live far from any
+practice, or near one that many people share. An accessibility index puts both
+into one number per place: the **supply** of a service (here GP full-time
+equivalents, FTE) relative to the **demand** that competes for it (here
+residents), with distant practices counting for less. Where in Cornwall is that
+number high, and where is it low?
 
-spax ships open data for general practice (GP) care in Cornwall and the Isles
-of Scilly, in south-west England: the 55 GP practices with their GP full-time
-equivalents (FTE), 337 small areas with their registered residents, who is
-registered at which practice, and travel times. Two grids cover the same area:
-a population grid and one layer of travel minutes per practice. Everything
-runs offline. The Isles of Scilly have no road link to the mainland, so this
-guide uses mainland Cornwall only. [The Cornwall GP example
+## The idea in two steps
+
+An FCA index answers the question in two steps. A
+tiny example with three areas and two practices shows both. The weights say how
+much each practice counts for each area: 1 next door, less further away.
+
+```{r toy-inputs}
+# Residents of three areas, and GP FTE at two practices
+demand <- c(village = 1000, town = 4000, coast = 2000)
+supply <- c(north = 3, south = 2)
+
+# Weight of each practice (columns) for each area (rows)
+weights <- rbind(
+  village = c(north = 1.0, south = 0.1),
+  town    = c(north = 0.5, south = 0.5),
+  coast   = c(north = 0.1, south = 1.0)
+)
+weights
+```
+
+The village is next to the north practice, the coast next to the south
+practice, and the town lies between the two.
+
+**Step 1.** Each practice gathers the residents around it, each counted with
+its weight, and divides its GP FTE by that weighted count.
+
+```{r toy-step-1}
+# For each practice: residents times weight, summed over the areas
+gathered <- colSums(weights * demand)
+gathered
+
+# GP FTE per 1,000 weighted residents
+ratio <- supply / gathered
+round(1000 * ratio, 2)
+```
+
+```{r toy-values, include = FALSE}
+per_1000 <- function(x) format(round(1000 * x, 2), nsmall = 2)
+# Travel minutes at which the Gaussian decay used below (sigma = 10) gives a weight
+minutes_at <- function(weight) {
+  round(uniroot(
+    function(minutes) calc_decay(minutes, method = "gaussian", sigma = 10) - weight,
+    c(0, 100)
+  )$root)
+}
+```
+
+The north practice has `r supply[["north"]]` GP FTE for
+`r format(gathered[["north"]], big.mark = ",")` weighted residents, about
+`r per_1000(ratio[["north"]])` per 1,000. The south practice has
+`r supply[["south"]]` for `r format(gathered[["south"]], big.mark = ",")`,
+about `r per_1000(ratio[["south"]])` per 1,000.
+
+**Step 2.** Each area adds up the ratios of the practices around it, weighted
+again.
+
+```{r toy-step-2}
+# For each area: practice ratios times weight, summed over the practices
+index <- drop(weights %*% ratio)
+round(1000 * index, 2)
+
+# Residents times the index, summed over the areas
+sum(index * demand)
+```
+
+The village leans on the better-supplied north practice and scores highest, at
+`r per_1000(index[["village"]])` GP FTE per 1,000 residents. The coast leans on
+the south practice and scores lowest, at `r per_1000(index[["coast"]])`.
+Residents times the index add up to the `r sum(supply)` GP FTE of the two
+practices: the index shares the supply out among residents and creates none.
+
+The weighted residents around a practice are its catchment, which floats with
+the practice instead of following area borders. With weights of only 1 within
+a travel-time limit and 0 beyond it, these two steps are the original two-step
+FCA (2SFCA). Graded weights, as here, give the enhanced two-step FCA, or
+**E2SFCA**. In a real study the weights come from travel times through a decay
+curve, and spax computes them for every place and every practice. With the
+curve used below, a weight of 0.5 means about `r minutes_at(0.5)` minutes away
+and 0.1 about `r minutes_at(0.1)` minutes.
+
+## The Cornwall data
+
+spax ships open data for GP care in Cornwall and the Isles of Scilly: the
+`r nrow(cornwall_gp)` practices with their GP FTE, `r nrow(cornwall_lsoa)` small
+areas with their registered residents, who is registered at which practice,
+and travel times. A population grid of about 1 km cells and one layer of
+travel minutes per practice cover the same area. The Isles of Scilly have no
+road link to the mainland, so the guides use mainland Cornwall only, with its
+`r sum(!cornwall_gp$scilly)` practices. [The Cornwall GP example
 data](cornwall-data.html) describes each object, its sources and its limits.
+The map shows the mainland practices, sized by their GP FTE, with a few towns
+named for reference.
 
-```{r practices-map, fig.alt = "Map of mainland Cornwall's small areas in grey, with the 54 mainland GP practices as orange circles sized by GP full-time equivalents."}
-# Mainland practices and small areas
-mainland_gp <- filter(cornwall_gp, !scilly)
-mainland_areas <- filter(cornwall_lsoa, !scilly)
+```{r practices-map, fig.alt = paste0("Map of mainland Cornwall's small areas in light grey, with the ", sum(!cornwall_gp$scilly), " mainland GP practices as orange circles sized by GP full-time equivalents, and eight towns named: Penzance, Helston, Redruth, Truro, Falmouth, Bodmin, Bude and Launceston.")}
+# Mainland practices and small areas, with their geometry
+practices <- filter(cornwall_gp, !scilly)
+small_areas <- filter(cornwall_lsoa, !scilly)
+
+# A few towns, by longitude and latitude, to find places on the maps
+towns <- st_as_sf(
+  data.frame(
+    town = c("Penzance", "Helston", "Redruth", "Truro", "Falmouth", "Bodmin", "Bude", "Launceston"),
+    lon = c(-5.54, -5.27, -5.23, -5.05, -5.07, -4.72, -4.54, -4.36),
+    lat = c(50.12, 50.10, 50.23, 50.26, 50.15, 50.47, 50.83, 50.64)
+  ),
+  coords = c("lon", "lat"),
+  crs = 4326
+)
 
 ggplot() +
   geom_sf(
-    data = mainland_areas,
+    data = small_areas,
     fill = "grey95",
-    colour = "grey70",
+    color = "grey70",
     linewidth = 0.1
   ) +
   geom_sf(
-    data = mainland_gp,
+    data = practices,
     aes(size = gp_fte_extg),
     shape = 21,
     fill = "orange",
     alpha = 0.8
   ) +
+  geom_sf_text(data = towns, aes(label = town), size = 3, vjust = -0.9) +
   scale_size_area(name = "GP FTE") +
   labs(title = "GP practices in mainland Cornwall") +
   theme_void()
 ```
 
-## Compute an E2SFCA surface
+Practices are densest in the west, around Redruth, Truro and Falmouth. The
+largest has `r round(max(practices$gp_fte_extg), 1)` GP FTE.
+Bodmin Moor, the upland north-east of Bodmin, has none.
 
-An FCA calculation needs three aligned inputs. Demand is a population grid of
-residents per cell, supply is a table of practices, and travel is a grid of
-minutes with one layer per practice, named by practice code.
+## Compute the index
+
+An FCA index needs three inputs that line up: a population grid of residents
+per cell (demand), a table of practices with their GP FTE (supply), and a stack
+of travel-time grids with one layer of minutes per practice, named by practice
+code. These lines read them and keep the mainland cells that have a travel
+time to every practice. Every FCA guide starts from them.
 
 ```{r inputs}
-# Residents per grid cell, and travel minutes with one layer per practice
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
 pop <- read_spax_example("cornwall_pop.tif")
-travel <- read_spax_example("cornwall_gp_travel.tif")
-
-# Mainland practices as a plain table, and their travel layers
-gp <- st_drop_geometry(mainland_gp)
-travel <- travel[[gp$practice]]
-
-# Keep cells with a travel time to every mainland practice, then drop the
-# empty margin the islands leave behind
-pop <- trim(mask(pop, sum(travel)))
-travel <- crop(travel, pop)
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")[[gp$practice]]
+# Keep cells with a travel time to every mainland practice
+pop <- trim(mask(pop, sum(travel_grid)))
+travel_grid <- crop(travel_grid, pop)
+grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 ```
 
-The enhanced two-step FCA (E2SFCA) first lets each practice gather the
-residents around it, weighted by travel time, and divides its GP FTE by that
-weighted count. It then gives each cell the weighted sum of the ratios of the
-practices it can reach. Here the weight is a Gaussian curve with a scale of 10
-minutes: a practice 10 minutes away keeps about 61% of its weight and one 20
-minutes away about 14%. The scale is a choice for this guide, not an estimate.
+`gp` is the practices table without its map geometry. `prep_data()` takes the
+table and holds the three inputs together. `id_col` names the column of
+practice codes that matches the travel layers, and `supply_cols` the column of
+supply.
+
+```{r decay-values, include = FALSE}
+# Gaussian weights, in percent, with a 10-minute travel scale
+weight_at <- function(minutes) round(100 * calc_decay(minutes, method = "gaussian", sigma = 10))
+```
+
+`spec_e2sfca()` says which index to compute and how. `spax()` then computes it
+on `grid_data`. The decay turns travel minutes into weights. Here it is a
+Gaussian curve whose travel scale σ, in minutes, sets how fast the weights
+fall. With σ = 10, a practice 10 minutes away counts about `r weight_at(10)`%
+as much as one next door, and one 20 minutes away about `r weight_at(20)`%.
+The scale is a choice for this guide. [Where do residents
+register?](allocation-workflow.html) estimates a travel scale from observed
+registrations. This line computes the index on the Cornwall data and prints a
+summary.
 
 ```{r e2sfca}
-e2sfca <- spax_e2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
-  id_col = "practice",  # matches supply rows to travel layers
-  supply_cols = "gp_fte_extg"
-)
+e2sfca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 e2sfca
 ```
 
-The result is a `spax` object. Its `accessibility` member is a raster of GP
-FTE per resident; we map it per 1,000 residents.
+```{r grid-values, include = FALSE}
+grid_arcsec <- round(3600 * res(e2sfca$accessibility)[1])
+```
 
-```{r e2sfca-map, fig.alt = "Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses; values are highest in the west between Camborne, Redruth, Truro and Falmouth and lowest on Bodmin Moor and at the western and southern tips."}
-# Practice locations in the grid's coordinates (longitude/latitude)
-practices <- st_transform(mainland_gp, 4326)
+The print gives the grid: `r nrow(e2sfca$accessibility)` rows by
+`r ncol(e2sfca$accessibility)` columns of cells about 1 km across (the
+resolution is in degrees, `r grid_arcsec` arc-seconds). It also gives the
+supply column it used (`gp_fte_extg`), the `r nrow(gp)` practices and the settings: the
+Gaussian decay with σ = 10, and the default normalization `identity`, which
+uses the weights unchanged when practices gather residents. The
+`accessibility` member is the index on the grid, a raster in GP FTE per
+resident. We map it per 1,000 residents, with the practices as red crosses and
+the same towns named.
+
+```{r e2sfca-map, fig.alt = "Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses and eight towns named; values are highest in the west between Redruth, Truro and Falmouth, lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas, and lower in the far north-east."}
+# Practice and town locations in the grid's coordinates (longitude and latitude)
+practice_points <- vect(st_transform(practices, 4326))
+town_points <- vect(towns)
 
 plot(
   1000 * e2sfca$accessibility,
@@ -123,29 +249,55 @@ plot(
   col = hcl.colors(50, "viridis"),
   main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)"
 )
-points(vect(practices), pch = 3, cex = 0.5, col = "red")
+points(practice_points, pch = 3, cex = 0.5, col = "red")
+text(town_points, labels = town_points$town, pos = 3, cex = 0.7, halo = TRUE)
 ```
 
-## Read the result
+```{r map-values, include = FALSE}
+# Index and residents of each grid cell
+both <- na.omit(cbind(
+  index = values(1000 * e2sfca$accessibility, mat = FALSE),
+  residents = values(pop, mat = FALSE)
+))
+index_range <- format(round(range(both[, "index"]), 2), nsmall = 2)
+index_resident <- weighted.mean(both[, "index"], both[, "residents"])
+# Total GP FTE per 1,000 residents of the grid
+fte_per_1000 <- 1000 * sum(gp$gp_fte_extg) / sum(both[, "residents"])
+stopifnot(isTRUE(all.equal(index_resident, fte_per_1000)))
+index_resident <- format(round(index_resident, 2), nsmall = 2)
+grid_residents <- format(round(sum(both[, "residents"]), -3), big.mark = ",")
+total_fte <- format(round(sum(gp$gp_fte_extg)))
+```
 
-Each cross is a practice. The index is highest in the west of the county, from
-around Camborne and Redruth towards Truro and Falmouth, where several practices
-with many GP FTE lie within a short drive. It is lowest on Bodmin Moor and at
-the tips of the Land's End and Lizard peninsulas, where the nearest practices
-are further away. The index is GP supply relative to nearby demand; it is not
-the share of people who use a practice, a waiting time or a rate of care.
+## Read the map
 
-## Where next
+The index runs from `r index_range[1]` to `r index_range[2]` GP FTE per 1,000
+residents. Averaged over residents it is `r index_resident`, the same as the
+mainland's `r total_fte` GP FTE for its `r grid_residents` residents on the
+grid. As in the small example, the index shares out the supply and creates
+none.
 
-- **The data.** [The Cornwall GP example data](cornwall-data.html) introduces
-  every bundled object, and [Preparing your own data](data-prep.html) shows how
-  to line up counts, facility IDs and travel times for your own study area.
-- **FCA indices.** [Comparing FCA methods](fca-methods.html) sets E2SFCA beside
-  2SFCA, M2SFCA, 3SFCA and Huff-2SFCA, [The E2SFCA calculation step by
-  step](e2sfca-steps.html) rebuilds this surface by hand, and [Grid
-  resolution](grid-resolution.html) weighs resolution against cost.
-- **Allocation model.** To model where residents register rather than score
-  supply, start with [Choosing an FCA index or an allocation
-  model](model-choice.html), then continue to the [allocation
-  workflow](allocation-workflow.html) and [facility bootstrap
-  intervals](facility-bootstrap.html).
+It is highest in the bright band between Redruth, Truro and Falmouth, where
+several practices with many GP FTE lie within a short drive. It is lowest on
+Bodmin Moor, the dark patch north-east of Bodmin, and at the tips of the
+Land's End peninsula, west of Penzance, and the Lizard, south of Helston. There
+the nearest practices are further away. Read the values along the border with
+Devon, at the right edge of the map, with care: the data cover Cornwall only,
+so the index leaves out the Devon practices that some residents there use, and
+the Devon residents who compete for Cornish practices.
+
+The index compares GP supply with nearby demand and says nothing about who
+uses a practice, waiting times or the care received ([Reading
+results](reading-results.html) explains).
+
+## Next
+
+- [Which FCA index?](fca-methods.html): set E2SFCA beside 2SFCA, M2SFCA, 3SFCA
+  and Huff-2SFCA on the same grid, and see what changes.
+- [Bringing your own data](data-prep.html): line up your own counts, facility
+  IDs and travel times.
+- [Where do residents register?](allocation-workflow.html): model which
+  practice the residents of each area register with, and estimate the travel
+  scale from those registrations instead of choosing it.
+- [An FCA index or an allocation model?](model-choice.html): choose between
+  the two for your question.

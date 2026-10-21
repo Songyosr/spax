@@ -1,8 +1,8 @@
 ---
-title: "The E2SFCA calculation step by step"
+title: "Inside the E2SFCA calculation"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{The E2SFCA calculation step by step}
+  %\VignetteIndexEntry{Inside the E2SFCA calculation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,8 +18,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-This guide uses the bundled Cornwall GP data, described in [The Cornwall GP
-example data](cornwall-data.html).
+The enhanced two-step floating catchment area (E2SFCA) index gives each place
+the GP supply per resident within reach, with weights that fall with travel
+time. This guide rebuilds the index of [Getting started](spax.html) one step
+at a time from the building blocks of spax, and compares the result with
+`spax()`. By the end you can say where each cell's number comes from, swap
+one set of weights to get another index, and see why the calculation has to
+cover the whole study area. The inputs are the mainland grids of [The Cornwall
+GP example data](cornwall-data.html). The `spax()` interface and the
+allocation model are experimental and may change in later versions.
 
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
@@ -28,111 +35,137 @@ library(sf)
 library(dplyr)
 ```
 
-An FCA calculation has two kernels: one decides how much demand each facility
-gathers, the other spreads each facility's supply-to-demand ratio back to
-origins. Let demand at cell $i$ be $D_i$, supply at practice $j$ be $S_j$,
-and the demand-side and access-side weights be $G_{ij}$ and $H_{ij}$. Then
+## The formula
+
+A floating catchment area (FCA) index has two steps. First each facility
+gathers the demand around it and divides its supply by that demand. Then each
+place adds up the ratios of the facilities it can reach. Here demand is the
+residents of a grid cell and supply is a practice's GP full-time equivalents
+(FTE).
+
+Let demand at cell $i$ be $D_i$ and supply at practice $j$ be $S_j$. The
+weights $G_{ij}$ decide how much of cell $i$'s demand practice $j$ gathers,
+and the weights $H_{ij}$ how much of practice $j$'s ratio cell $i$ receives.
+Then
 
 \[
 L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 \]
 
-This guide rebuilds the E2SFCA surface of [Getting started](spax.html) one
-step at a time and checks each step against `spax_e2sfca()`, with the same
-inputs and the same 10-minute Gaussian decay. The calculation covers all of
-mainland Cornwall; the maps zoom in on the area around Truro so that
-individual cells stay visible.
+$L_j$ is the demand practice $j$ gathers, $R_j$ its supply-to-demand ratio
+and $A_i$ the index at cell $i$. E2SFCA uses the same decay weights $W_{ij}$,
+which fall with the travel time from cell $i$ to practice $j$ (step 1), for
+both: $G = H = W$.
+
+## The inputs
+
+The setup code shared by every grid guide, explained in [The Cornwall GP
+example data](cornwall-data.html), reads the population grid, the mainland
+practices and one layer of travel minutes per practice. The supply is also
+kept as a vector named by practice code, and a small helper maps a layer
+around Truro so that single cells stay visible.
 
 ```{r inputs}
-pop <- read_spax_example("cornwall_pop.tif")
-travel <- read_spax_example("cornwall_gp_travel.tif")
-
-# Mainland only, as in the other guides
 gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
-travel <- travel[[gp$practice]]
-pop <- trim(mask(pop, sum(travel)))
-travel <- crop(travel, pop)
+pop <- read_spax_example("cornwall_pop.tif")
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")[[gp$practice]]
+# Keep cells with a travel time to every mainland practice
+pop <- trim(mask(pop, sum(travel_grid)))
+travel_grid <- crop(travel_grid, pop)
+grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 
 # GP FTE named by practice code
 supply <- setNames(gp$gp_fte_extg, gp$practice)
 
 # Map helper: a layer within the Truro display window, with practices
-truro <- ext(-5.30, -4.80, 50.12, 50.42)  # display window only
+truro_window <- ext(-5.30, -4.80, 50.12, 50.42)
 practices <- cornwall_gp |>
   filter(!scilly) |>
   st_transform(crs(pop)) |>
   vect()
-show <- function(x, title) {
+show <- function(layer, title) {
   plot(
-    crop(x, truro),
+    crop(layer, truro_window),
     axes = FALSE,
     main = title,
     col = hcl.colors(50, "viridis")
   )
-  points(crop(practices, truro), pch = 3, col = "red")
+  points(crop(practices, truro_window), pch = 3, col = "red")
 }
 ```
 
+The calculation covers all of mainland Cornwall. Only the maps zoom in.
+
 ## Step 1: decay weights
 
-With Gaussian decay, $W_{ij}=\exp(-d_{ij}^2/2\sigma^2)$, where $d_{ij}$ is the
-travel time. We use $\sigma = 10$ minutes, a choice rather than an estimate.
-`calc_decay()` works on plain numbers and on rasters alike.
+With Gaussian decay, $W_{ij}=\exp\!\left(-d_{ij}^2/(2\sigma^2)\right)$, where
+$d_{ij}$ is the
+travel time and σ is the travel scale. We use σ = 10 minutes, a choice for
+this guide. `calc_decay()` works on plain numbers and on rasters alike.
 
-```{r kernel}
+```{r kernel, fig.alt = "Raster map of the area around Truro showing the Gaussian decay weight of one central Truro practice, from 0 to 1: close to 1 near the practice and fading with travel time, with gaps along the estuaries; red crosses mark the practices."}
 # The weight left after a few travel times
 minutes <- c(0, 5, 10, 15, 20, 30)
-kernel <- calc_decay(minutes, method = "gaussian", sigma = 10)
-round(setNames(kernel, minutes), 3)
+weight_left <- calc_decay(minutes, method = "gaussian", sigma = 10)
+round(setNames(weight_left, minutes), 3)
 
 # The same decay applied to every travel layer
-weights <- calc_decay(travel, method = "gaussian", sigma = 10)
+weights <- calc_decay(travel_grid, method = "gaussian", sigma = 10)
 show(
   weights[["L82001"]],
   "Step 1: weight of one Truro practice (L82001), 0 to 1"
 )
 ```
 
-Each practice has one weight layer. The map shows the layer for a practice in
-central Truro (the red crosses are practices): the weight is close to 1 near
-it and fades with travel time. The shape follows the travel-time surface, not
-straight-line distance; the gaps are estuaries.
+A practice 10 minutes away keeps `r round(100 * weight_left[3])`% of the
+weight it would have next door, and one 30 minutes away about
+`r round(100 * weight_left[6])`%. Each practice has one weight layer. The map
+shows the layer for L82001, a practice in central Truro: it is the red cross
+at the center of the bright area (the other crosses are other practices). The
+weight is close to 1 near it and fades with travel time. The shape follows the
+travel-time surface rather than straight-line distance, and the gaps are
+estuaries.
 
 ## Step 2 (optional): normalize the demand-side weights
 
-The weights of all practices at one cell need not sum to 1. Where many
-practices are close, each of them counts the same resident.
-`calc_normalize()` offers alternatives: `"standard"` divides each cell's
-weights by their sum, and `"semi"` does so only where the sum exceeds 1.
+The weights of all practices at one cell can add up to more than 1. Where
+many practices are close, each of them counts the same resident.
+`calc_normalize()` can rescale them: `"standard"` (its default) divides each
+cell's weights by their sum, and `"semi"` does so only where the sum exceeds
+1. `"identity"`, the default of `spec_e2sfca()`, leaves them as they are. The
+table gives cell quantiles of the summed weights, before and after.
 
 ```{r normalize}
 # Sum of all practices' weights at each cell
-row_sum <- function(w) values(sum(w), mat = FALSE)
+cell_sum <- function(layers) values(sum(layers), mat = FALSE)
 probs <- c(0.05, 0.5, 0.95)
 
 standard <- calc_normalize(weights, method = "standard")
 semi <- calc_normalize(weights, method = "semi")
 
-# Cell quantiles of those sums, before and after normalizing
 round(
   rbind(
-    identity = quantile(row_sum(weights), probs, na.rm = TRUE),
-    standard = quantile(row_sum(standard), probs, na.rm = TRUE),
-    semi = quantile(row_sum(semi), probs, na.rm = TRUE)
+    identity = quantile(cell_sum(weights), probs, na.rm = TRUE),
+    standard = quantile(cell_sum(standard), probs, na.rm = TRUE),
+    semi = quantile(cell_sum(semi), probs, na.rm = TRUE)
   ),
   2
 )
 ```
 
-In mainland Cornwall the weights at the median cell sum to about 4, and even
-the 5th percentile is above 1, so `"standard"` and `"semi"` give almost the
-same result here and both differ from `"identity"`. The choice changes the
-demand each practice gathers and so the index: normalization is a model
-choice, not a correction. In `spax_e2sfca()` the `demand_normalize` argument
-(`normalize` in `spec_e2sfca()`) applies it to the demand side only. We keep
-`"identity"`, so $G = H = W$.
+```{r normalize-values, include = FALSE}
+identity_sums <- quantile(cell_sum(weights), probs, na.rm = TRUE)
+```
+
+At the median cell the weights sum to `r sprintf("%.2f", identity_sums[[2]])`, and
+even at the 5th percentile they sum to `r sprintf("%.2f", identity_sums[[1]])`. So
+`"standard"` and `"semi"` give almost the same result here, and both differ
+from `"identity"`. The choice changes the demand each practice gathers and so
+the index: normalization is part of the model you choose.
+`spec_e2sfca(normalize = )` applies it to the demand side only. We keep
+`"identity"`, the default, so $G = H = W$.
 
 ## Step 3: gather demand to practices
 
@@ -141,21 +174,29 @@ $L_j=\sum_i D_iW_{ij}$. With `simplify = TRUE` it returns a vector named by the
 weight layers.
 
 ```{r gather}
-load <- gather_weighted(
+gathered <- gather_weighted(
   values = pop,
   weights = weights,
   simplify = TRUE  # one named value per practice
 )
-stopifnot(identical(names(load), gp$practice))
+round(head(gathered))
 ```
+
+The names are the practice codes, which step 4 uses to line up the supply.
+Each value is the weighted number of residents a practice gathers. A resident
+within reach of several practices counts toward each of them, so these values,
+over all `r length(gathered)` practices, add up to
+`r round(sum(gathered) / sum(values(pop), na.rm = TRUE), 1)` times the
+mainland's residents.
 
 ## Step 4: supply-to-demand ratios
 
 Each practice's ratio is its supply over the demand it gathered, $R_j=S_j/L_j$.
-Index supply by the names of `load`, not by position.
+Index the supply by the names of `gathered`, not by position. The table shows
+six practices near Truro.
 
 ```{r ratio}
-ratio <- supply[names(load)] / load
+ratio <- supply[names(gathered)] / gathered
 
 # Supply, gathered demand and ratio for six practices near Truro
 near_truro <- c("L82001", "L82028", "L82015", "L82061", "L82045", "L82048")
@@ -163,18 +204,17 @@ data.frame(practice = near_truro) |>
   left_join(select(gp, practice, name), by = "practice") |>
   mutate(
     gp_fte = round(supply[practice], 1),
-    weighted_residents = round(load[practice]),
+    weighted_residents = round(gathered[practice]),
     fte_per_1000 = round(1000 * ratio[practice], 2)
   )
 ```
 
 The ratios look small because, with identity weights, each resident is
-counted by several practices; step 5 adds them back up. The two central Truro
-practices share one site, so they gather the same demand.
-
-`spax_e2sfca()` uses a ratio of zero for a practice whose gathered demand is
-zero. That is a computational convention, not evidence of anything; with
-Gaussian weights every practice here gathers some demand, so it is not used.
+counted by several practices. Step 5 adds them back up. The two central Truro
+practices share one site, so they gather the same demand. With a decay that
+reaches zero, such as a fixed catchment, a practice can gather no demand.
+spax gives it a ratio of zero, but the division above gives `Inf`, so set
+those ratios to 0 when you calculate by hand.
 
 ## Step 5: spread the ratios back to cells
 
@@ -182,7 +222,7 @@ Gaussian weights every practice here gathers some demand, so it is not used.
 sums over practices: $A_i=\sum_j W_{ij}R_j$. It matches values to layers by
 position, so pass the ratios in layer order.
 
-```{r spread}
+```{r spread, fig.alt = "Raster map of the E2SFCA index around Truro in GP FTE per 1,000 residents, with practices as red crosses; values are highest in a band from Truro towards the south-west and lower in the east of the window."}
 # Ratios in layer order, without names: matching is by position
 access <- spread_weighted(
   values = unname(ratio[names(weights)]),
@@ -191,8 +231,11 @@ access <- spread_weighted(
 show(1000 * access, "Step 5: E2SFCA, GP FTE per 1,000 residents")
 ```
 
-A cell's index is a sum of contributions from every practice. For the cell
-containing the central Truro practice, the largest contributions are:
+The index is highest in a band west and south-west of Truro and falls towards
+the east of the window, where fewer practices are close. A cell's index is a sum
+of contributions from every practice. For the cell
+that contains the central Truro practice, the largest contributions are, in GP
+FTE per 1,000 residents:
 
 ```{r contributions}
 # The grid cell that contains practice L82001
@@ -200,37 +243,54 @@ site <- geom(practices[practices$practice == "L82001", ])
 cell <- cellFromXY(pop, site[, c("x", "y"), drop = FALSE])
 
 # Each practice's contribution: its weight at the cell times its ratio
-w_cell <- unlist(extract(weights, cell))
-parts <- sort(1000 * w_cell * ratio[names(w_cell)], decreasing = TRUE)
+weights_at_cell <- unlist(extract(weights, cell))
+contributions <- sort(
+  1000 * weights_at_cell * ratio[names(weights_at_cell)],
+  decreasing = TRUE
+)
 
 round(
   c(
-    head(parts, 5),
-    all_others = sum(parts[-(1:5)]),
-    total = sum(parts)
+    head(contributions, 5),
+    all_others = sum(contributions[-(1:5)]),
+    total = sum(contributions)
   ),
   3
 )
 ```
 
-## Check against the packaged functions
+```{r contribution-values, include = FALSE}
+others_share <- round(100 * sum(contributions[-(1:5)]) / sum(contributions))
+```
 
-The step-by-step surface, the `spax_e2sfca()` wrapper, the more general
-`compute_access()` and a plain matrix calculation all agree:
+The two practices at the central Truro site contribute most. The other
+`r length(contributions) - 5` practices beyond the top five still add
+`r others_share`% of the cell's index.
+
+## The same index from `spax()`
+
+The surface built by hand, `access`, should match the index from `spax()`,
+the one-call function `spax_e2sfca()` and the more general
+`compute_access()`. `compute_access()` takes the two weight sets $G$ and $H$
+of the formula as `demand_weights` and `access_weights`, so it can build any
+index of this form. Each comparison below prints `TRUE` when the two surfaces
+agree, cell by cell and in which cells are empty.
 
 ```{r check}
-# The packaged wrapper
-e2sfca <- spax_e2sfca(
+# The index from a specification
+by_spec <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
+
+# The one-call function
+one_call <- spax_e2sfca(
   demand = pop,
   supply = gp,
-  distance = travel,
+  distance = travel_grid,
   decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
   id_col = "practice",
   supply_cols = "gp_fte_extg"
 )
 
-# The general function, with the same weights on both sides
+# The general function, with the decay weights on both sides
 general <- compute_access(
   demand = pop,
   supply = supply,
@@ -238,109 +298,133 @@ general <- compute_access(
   access_weights = weights
 )
 
-# The same formula with plain matrices: cells in rows, practices in columns
-W <- values(weights)
-D <- values(pop, mat = FALSE)
-ok <- !is.na(D)
-manual <- rep(NA_real_, length(D))
-manual[ok] <- drop(W[ok, ] %*% (supply / colSums(W[ok, ] * D[ok])))
-
-# All three surfaces match the matrix calculation, and so do the loads
-for (answer in list(access, e2sfca$accessibility, general)) {
-  stopifnot(isTRUE(all.equal(
-    values(answer, mat = FALSE),
-    manual,
-    tolerance = 1e-10,
-    check.attributes = FALSE
-  )))
+# Compare a surface with the one built by hand
+same_as_by_hand <- function(surface) {
+  all.equal(values(surface, mat = FALSE), values(access, mat = FALSE))
 }
-stopifnot(isTRUE(all.equal(
-  drop(load),
-  colSums(W[ok, ] * D[ok]),
-  check.attributes = FALSE
-)))
-```
-
-The check verifies this calculation with these inputs; it does not make
-different accessibility models equivalent.
-
-`spax()` computes the same index from a specification without data,
-`spec_e2sfca()`, on data prepared once with `prep_data()`; this interface is
-experimental. Its surface is identical to that of the wrapper:
-
-```{r check-spec}
-by_spec <- spax(
-  prep_data(pop, gp, travel, id_col = "practice", supply_cols = "gp_fte_extg"),
-  spec_e2sfca(decay = decay_gaussian(sigma = 10), normalize = "identity")
+c(
+  spax = same_as_by_hand(by_spec$accessibility),
+  spax_e2sfca = same_as_by_hand(one_call$accessibility),
+  compute_access = same_as_by_hand(general)
 )
-stopifnot(identical(
-  values(by_spec$accessibility),
-  values(e2sfca$accessibility)
-))
 ```
+
+`all.equal()` allows for rounding error in the last digits, and every route
+agrees. Each computes the same three quantities: gathered demand, ratios and
+the weighted sum of ratios.
+
+## Change the access-side weights: M2SFCA
+
+The modified 2SFCA (M2SFCA) keeps $W$ on the demand side but uses $W^2$ on
+the access side, so $G = W$ and $H = W^2$. $W^2$ is below $W$ except at zero
+travel time, and far below it for distant practices, so M2SFCA discounts
+cells whose practices are far away. Swap the access-side weights for their
+squares and `compute_access()` gives M2SFCA.
+
+```{r m2sfca}
+m2sfca <- spax(grid_data, spec_m2sfca(decay = decay_gaussian(sigma = 10)))
+
+# M2SFCA from the blocks: squared weights on the access side only
+m2sfca_by_blocks <- compute_access(
+  demand = pop,
+  supply = supply,
+  demand_weights = weights,
+  access_weights = weights^2
+)
+all.equal(
+  values(m2sfca_by_blocks, mat = FALSE),
+  values(m2sfca$accessibility, mat = FALSE)
+)
+```
+
+The two agree: M2SFCA differs from E2SFCA only in the weights of step 5.
+
+## Other indices from the same blocks
+
+The three-step FCA (3SFCA) and Huff-2SFCA share each cell's demand among its
+practices before the two steps. `calc_choice()` turns the decay weights into **selection
+weights**: each practice's share of the cell's weights, which add up to 1 at
+every cell. With an attractiveness, here GP FTE, each weight is first
+multiplied by it, as in the Huff model. Both indices then use the decay weight
+times the selection weight in both steps, and `compute_access()` does the
+rest.
+
+```{r selection-blocks}
+# 3SFCA: each cell's weights divided by their sum
+selection <- calc_choice(weights)
+range(values(sum(selection), mat = FALSE), na.rm = TRUE)
+sfca3_weights <- weights * selection
+sfca3_by_blocks <- compute_access(pop, supply, sfca3_weights, sfca3_weights)
+
+# Huff-2SFCA: the same, with each weight times the practice's GP FTE
+huff_selection <- calc_choice(weights, attractiveness = supply)
+huff_weights <- weights * huff_selection
+huff_by_blocks <- compute_access(pop, supply, huff_weights, huff_weights)
+
+# The same indices from spax()
+sfca3 <- spax(grid_data, spec_3sfca(decay = decay_gaussian(sigma = 10)))
+huff2sfca <- spax(grid_data, spec_huff2sfca(decay = decay_gaussian(sigma = 10)))
+c(
+  `3SFCA` = all.equal(
+    values(sfca3_by_blocks, mat = FALSE),
+    values(sfca3$accessibility, mat = FALSE)
+  ),
+  `Huff-2SFCA` = all.equal(
+    values(huff_by_blocks, mat = FALSE),
+    values(huff2sfca$accessibility, mat = FALSE)
+  )
+)
+```
+
+The selection weights add up to 1 at every cell, as the range shows, and both
+rebuilds agree with `spax()`. The same blocks build an index of your own:
+any two weight stacks on the grid of the demand can go into
+`compute_access()`. [Which FCA index?](fca-methods.html)
+maps these indices side by side.
 
 ## Why the calculation covers the whole mainland
 
-Cropping the inputs to the Truro window before calculating would be quicker,
-but every practice, including those outside the window, would then gather only
-the demand inside it.
+Cropping the inputs to the Truro window before calculating would be quicker.
+But every practice, including those outside the window, would then gather only
+the demand inside it. The output gives cell quantiles of the percentage
+difference between the cropped and the full calculation, for cells in the
+window.
 
 ```{r crop-effect}
 # Calculate on the Truro window only
-cropped <- spax_e2sfca(
-  demand = crop(pop, truro),
-  supply = gp,
-  distance = crop(travel, truro),
-  decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
+truro_data <- prep_data(
+  crop(pop, truro_window),
+  gp,
+  crop(travel_grid, truro_window),
   id_col = "practice",
   supply_cols = "gp_fte_extg"
 )
+cropped <- spax(truro_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 
 # Compare with the full calculation over the same cells
-in_window <- values(crop(e2sfca$accessibility, truro), mat = FALSE)
+in_window <- values(crop(by_spec$accessibility, truro_window), mat = FALSE)
 relative <- values(cropped$accessibility, mat = FALSE) / in_window - 1
 round(quantile(100 * relative, c(0, 0.5, 1), na.rm = TRUE), 1)
 ```
 
-These are percentage differences between the cropped and the full calculation
-for cells in the window. Every cell's index rises: by about half at the median
-and about fifty-fold at the worst cell, on the window's edge, which picks up
-practices outside the window whose small remaining demand gives them very high
-ratios. Calculate on the full study area and crop
-only for display.
-
-## Change the access-side weights
-
-`spax_m2sfca()` keeps $W$ on the demand side but uses $W^2$ on the access side,
-so $G = W$ and $H = W^2$. $W^2$ is below $W$ except at zero travel time, and
-far below it for distant practices, so M2SFCA discounts cells whose practices
-are far away. The same matrix formula reproduces it:
-
-```{r m2sfca}
-m2sfca <- spax_m2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
-
-# M2SFCA by hand: squared weights on the access side only
-m2_manual <- rep(NA_real_, length(D))
-m2_manual[ok] <- drop(W[ok, ]^2 %*% (supply / colSums(W[ok, ] * D[ok])))
-stopifnot(isTRUE(all.equal(
-  values(m2sfca$accessibility, mat = FALSE),
-  m2_manual,
-  tolerance = 1e-10,
-  check.attributes = FALSE
-)))
+```{r crop-values, include = FALSE}
+median_rise <- round(100 * median(relative, na.rm = TRUE), 1)
+smallest_rise <- round(100 * min(relative, na.rm = TRUE), 1)
+worst_ratio <- round(1 + max(relative, na.rm = TRUE))
 ```
 
-[Comparing FCA methods](fca-methods.html) maps E2SFCA, 2SFCA, M2SFCA, 3SFCA and
-Huff-2SFCA side by side and explains why only M2SFCA loses part of the supply.
-None of these indices is a fitted statistical model. An allocation model instead
-defines choice probabilities with an outside option; see [Choosing an FCA index
-or an allocation model](model-choice.html).
+Every cell's index rises: by `r smallest_rise`% at the least affected cell
+and `r median_rise`% at the median. The worst cell, on the window's edge,
+rises to about `r worst_ratio` times its full value. It picks up practices
+outside the window, whose small remaining demand gives them very high ratios.
+Calculate on the full study area and crop only for display.
+
+## Next
+
+- [Which FCA index?](fca-methods.html): the five indices mapped side by side,
+  and how much supply each hands back.
+- [Grid resolution and computational cost](grid-resolution.html): what the
+  cell size does to the index and the run time.
+- [An FCA index or an allocation model?](model-choice.html): when the
+  question is where people go rather than supply per resident.
+- [Reading results](reading-results.html): what an FCA index measures.
