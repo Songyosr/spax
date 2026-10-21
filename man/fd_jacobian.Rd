@@ -12,7 +12,8 @@ fd_jacobian(
   method = c("central", "forward"),
   check = TRUE,
   lower = -Inf,
-  upper = Inf
+  upper = Inf,
+  lazy_f0 = FALSE
 )
 }
 \arguments{
@@ -30,6 +31,9 @@ fd_jacobian(
 
 \item{lower, upper}{Inclusive bounds of the evaluation points, recycled to the
 length of \code{x}.}
+
+\item{lazy_f0}{If \code{TRUE}, \code{fn(x)} is evaluated (and checked as usual) only
+when a coordinate needs a one-sided or room step; the result is identical.}
 }
 \description{
 Column \code{j} is a central difference with step \code{eps * max(abs(x[j]), 1)}. With

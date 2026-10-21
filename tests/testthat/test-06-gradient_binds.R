@@ -21,9 +21,9 @@
 .gradient_binds <- function(cap, shift = 0) {
   counter <- 0L
   original <- .bind_theta
-  local_mocked_bindings(.bind_theta = function(problem, theta) {
+  local_mocked_bindings(.bind_theta = function(problem, theta, keep = NULL) {
     counter <<- counter + 1L
-    original(problem, theta)
+    original(problem, theta, keep = keep)
   })
   x <- cap$par + shift
   cap$fn(x)

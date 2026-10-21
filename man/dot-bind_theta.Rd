@@ -4,9 +4,13 @@
 \alias{.bind_theta}
 \title{Bind theta once and return the state-only inner-loop step}
 \usage{
-.bind_theta(problem, theta)
+.bind_theta(problem, theta, keep = NULL)
 }
 \description{
+\code{keep} (CLM providers only) makes a lean step that holds just the vectors
+and the named count outputs; see \code{.lean_keep()}.
+}
+\details{
 Providers keep the required \code{outputs(x)} callback. An optional
 \code{outputs_requested(x, requested_outputs)} callback adds requested outputs
 while retaining \code{target} and \code{utilization}. Without it, requests read the

@@ -777,8 +777,9 @@
   # bootstrap do) must not name an output it does not declare.
   independent <- intersect(c("flow", per_group, names(.outside_outputs)),
                            names(spec$output_axes))
-  bind <- function(theta) {
+  bind <- function(theta, keep = NULL) {
     theta <- .coerce_problem_theta(theta, spec$theta)
+    lean <- !is.null(keep)
     full <- c(theta, spec$fixed)
     pick <- function(base, by) {
       vapply(groups, function(g) {
@@ -808,7 +809,13 @@
           finite_plan = finite_plans[[as.character(dist_id[i])]])
       }
     }
-    state <- .clm_group_state(a, kernels, D_groups, v0)
+    if (lean) {
+      state <- .clm_group_state_lean(a, kernels, D_groups, v0, keep = keep,
+                                     demand = substrate$D_active)
+      rm(kernels)
+    } else {
+      state <- .clm_group_state(a, kernels, D_groups, v0)
+    }
     by <- state[per_group]
     state[per_group] <- NULL
     for (i in seq_len(G)) {
@@ -822,13 +829,14 @@
     plan$S <- S
     plan$kappa_supply <- .allocation_supply(substrate, spec$kappa)
     class(plan) <- c("huff_compact_plan", "fca_compact_plan")
-    list(
+    res <- list(
       map = function(x) state$target,
-      outputs = function(x) state,
+      outputs = if (lean) function(x) .lean_missing("outputs", keep) else function(x) state,
       outputs_requested = function(x, requested_outputs) {
+        if (lean) .lean_check(requested_outputs, keep)
         out <- state
         wanted <- function(name) name %in% requested_outputs
-        if (wanted("flow") || wanted("flow_outside")) {
+        if (!lean && (wanted("flow") || wanted("flow_outside"))) {
           flow <- .clm_flow(state$allocation, substrate$D_active)
           if (wanted("flow")) out$flow <- flow
           if (wanted("flow_outside")) {
@@ -861,6 +869,8 @@
       theta = theta,
       plan = plan
     )
+    if (lean) res$kept <- keep
+    res
   }
   list(bind = bind)
 }
@@ -889,8 +899,12 @@
   # SPAX-059 does not declare them, and a step rebuilt from it must not name them).
   independent <- intersect(c("flow", "flow_outside", "utilization_outside"),
                            names(spec$output_axes))
-  bind <- function(theta) {
+  bind <- function(theta, keep = NULL) {
     theta <- .coerce_problem_theta(theta, spec$theta)
+    # A lean step (SPAX-061; `keep` names the count outputs to keep, CLM form
+    # only) holds the vectors and nothing matrix-sized: every closure below has
+    # this frame as its environment, so the frame itself must lose the matrices.
+    lean <- !is.null(keep) && spec$allocation == "clm"
     K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
                             kernel = kernel, fun = kernel_fun, plan = kernel_plan,
                             finite_plan = finite_plan)
@@ -906,14 +920,22 @@
     # State-independent: the full state is fixed by theta (kernel, outside
     # option, supply elasticity) and the exogenous attractiveness, so compute
     # it once at bind time. Optional flow is materialized only when requested.
-    state <- .huff_state(a, plan = plan, v0 = v0, allocation = spec$allocation)
-    list(
+    if (lean) {
+      state <- .huff_state_lean(a, plan = plan, v0 = v0, keep = keep,
+                                demand = substrate$D_active)
+      rm(K)
+      plan$Kd_active <- NULL
+    } else {
+      state <- .huff_state(a, plan = plan, v0 = v0, allocation = spec$allocation)
+    }
+    res <- list(
       map = function(x) state$target,
-      outputs = function(x) state,
+      outputs = if (lean) function(x) .lean_missing("outputs", keep) else function(x) state,
       outputs_requested = if (spec$allocation == "clm") function(x, requested_outputs) {
+        if (lean) .lean_check(requested_outputs, keep)
         out <- state
         wanted <- function(name) name %in% requested_outputs
-        if (wanted("flow") || wanted("flow_outside")) {
+        if (!lean && (wanted("flow") || wanted("flow_outside"))) {
           flow <- .clm_flow(state$allocation, substrate$D_active)
           if (wanted("flow")) out$flow <- flow
           if (wanted("flow_outside")) {
@@ -943,11 +965,16 @@
       theta = theta,
       plan = plan
     )
+    if (lean) res$kept <- keep
+    res
   }
   list(bind = bind)
 }
 
 #' Bind theta once and return the state-only inner-loop step
+#'
+#' `keep` (CLM providers only) makes a lean step that holds just the vectors
+#' and the named count outputs; see `.lean_keep()`.
 #'
 #' Providers keep the required `outputs(x)` callback. An optional
 #' `outputs_requested(x, requested_outputs)` callback adds requested outputs
@@ -958,9 +985,15 @@
 #' is the provider's responsibility and is never inferred from a model name.
 #' @keywords internal
 #' @md
-.bind_theta <- function(problem, theta) {
+.bind_theta <- function(problem, theta, keep = NULL) {
   .chck_class(problem, "ae_problem", "problem")
-  bound <- problem$bind(theta)
+  # `keep` goes only to a bind that declares it: saved models and the other
+  # providers bind exactly as before.
+  bound <- if (!is.null(keep) && "keep" %in% names(formals(problem$bind))) {
+    problem$bind(theta, keep = keep)
+  } else {
+    problem$bind(theta)
+  }
   if (!is.function(bound$map)) {
     stop("bound AE step must provide a `map` function")
   }
@@ -1030,6 +1063,8 @@
 #' @param keep_step If `TRUE`, the bound step is returned as `$step`, so a
 #'   gradient at the same theta need not bind again. Only the optimizer asks
 #'   for it, never the final fresh solve.
+#' @param keep Lean evaluation (see `.bind_theta()`); only the optimizer and
+#'   the default scan pass it, never the final fresh solve.
 #' @keywords internal
 #' @md
 .solve_problem <- function(problem, theta, x0 = NULL, lambda = 1,
@@ -1038,9 +1073,9 @@
                            keep_history = TRUE, warn = TRUE,
                            check = TRUE, diagnostics = TRUE,
                            keep_state_history = FALSE, requested_outputs = NULL,
-                           keep_step = FALSE) {
+                           keep_step = FALSE, keep = NULL) {
   .chck_class(problem, "ae_problem", "problem")
-  step <- .bind_theta(problem, theta)
+  step <- .bind_theta(problem, theta, keep = keep)
   if (is.null(x0)) {
     x0 <- problem$state$init
   }
@@ -1061,6 +1096,7 @@
     step, fit$x_star, requested_outputs
   ))
   fit$utilization <- fit$outputs$utilization
+  if (!is.null(step[["kept", exact = TRUE]])) fit$kept <- step$kept
   fit$prediction_snapshot <- .new_clm_prediction_snapshot(problem, step, fit)
   if (!is.null(fit$prediction_snapshot)) {
     fit$evaluated_clm <- fit$prediction_snapshot[c("spec", "theta", "facility_ids", "supply")]
@@ -1175,6 +1211,8 @@
   }
 
   observed_values <- target$values
+  # Inside the optimizer a bind keeps only what the fit compares.
+  keep <- .lean_keep(problem, output)
   warm <- NULL
   paired <- NULL
   reused_solves <- 0L
@@ -1199,7 +1237,8 @@
       check = check,
       diagnostics = diagnostics,
       requested_outputs = output,
-      keep_step = reuse && gradient_step
+      keep_step = reuse && gradient_step,
+      keep = keep
     )
     if (!isTRUE(fit$converged)) {
       return(NULL)
@@ -1234,7 +1273,10 @@
       }
       if (reuse) paired <<- list(log_theta = as.numeric(log_theta), fit = evaluated$fit)
       evaluated$loss
-    }, error = function(e) penalty)
+    }, error = function(e) {
+      if (inherits(e, "spax_lean_missing")) stop(e)
+      penalty
+    })
   }
 
   objective_grad <- NULL
@@ -1267,7 +1309,8 @@
           x = evaluated$fit$x_star,
           output = output,
           fd_eps = fd_eps,
-          step = step
+          step = step,
+          keep = keep
         )
         if (nrow(sensitivity) != target$length) {
           return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
@@ -1292,6 +1335,7 @@
         }
         as.numeric(grad) * exp(log_theta)
       }, error = function(e) {
+        if (inherits(e, "spax_lean_missing")) stop(e)
         .nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
                               fd_eps = fd_eps)
       })
@@ -1646,7 +1690,7 @@
 }
 
 .problem_map_jac_param <- function(problem, theta, x, step = NULL,
-                                   fd_eps = 1e-6) {
+                                   fd_eps = 1e-6, keep = NULL) {
   if (is.null(step)) {
     step <- .bind_theta(problem, theta)
   }
@@ -1659,7 +1703,7 @@
     return(.coerce_numeric_matrix(jac))
   }
   fn <- function(theta_value) {
-    .bind_theta(problem, theta_value)$map(x)
+    .bind_theta(problem, theta_value, keep = keep)$map(x)
   }
   bounds <- .problem_theta_bounds(problem, theta)
   fd_jacobian(fn, theta, eps = fd_eps, check = FALSE,
@@ -1712,7 +1756,7 @@
 
 .problem_output_jac_param <- function(problem, theta, x, output,
                                       fd_eps = 1e-6, step = NULL,
-                                      lazy_f0 = FALSE) {
+                                      lazy_f0 = FALSE, keep = NULL) {
   if (is.null(step)) step <- .bind_theta(problem, theta)
   if (is.function(step$jac_output_param)) {
     jac <- step$jac_output_param(x, output = output)
@@ -1723,7 +1767,7 @@
     }
   }
   fn <- function(theta_value) {
-    step <- .bind_theta(problem, theta_value)
+    step <- .bind_theta(problem, theta_value, keep = keep)
     .problem_output_from_step(step, x, output, required = TRUE)
   }
   bounds <- .problem_theta_bounds(problem, theta)
@@ -1735,15 +1779,17 @@
 # fresh bind is made, and fn(theta) is evaluated only if a one-sided step needs it.
 .problem_output_sensitivity <- function(problem, theta, x,
                                         output = "utilization",
-                                        fd_eps = 1e-6, step = NULL) {
+                                        fd_eps = 1e-6, step = NULL, keep = NULL) {
   given <- !is.null(step)
+  # Lean evaluations only where the step is reused (the optimizer's reuse path).
+  if (!given) keep <- NULL
   if (!given) step <- .bind_theta(problem, theta)
   if (output %in% step[["state_independent_outputs", exact = TRUE]]) {
     # The provider explicitly promises no dependence on the solved state.
     # Avoid constructing an output-by-state matrix of structural zeros.
     return(.problem_output_jac_param(problem, theta, x, output, fd_eps,
                                      step = if (given) step,
-                                     lazy_f0 = given))
+                                     lazy_f0 = given, keep = keep))
   }
   jac_state_result <- if (is.function(step$jac_state)) step$jac_state(x) else NULL
   jac_state <- if (is.null(jac_state_result)) {
@@ -1752,7 +1798,7 @@
     .problem_jac_state_matrix(jac_state_result)
   }
   jac_param <- .problem_map_jac_param(problem, theta, x, step = step,
-                                      fd_eps = fd_eps)
+                                      fd_eps = fd_eps, keep = keep)
   state_sensitivity <- implicit_gradient(jac_state, jac_param)
   output_jac_state <- .problem_output_jac_state(
     step, x, output = output, fd_eps = fd_eps,
@@ -1760,7 +1806,7 @@
   )
   output_jac_param <- .problem_output_jac_param(
     problem, theta, x, output = output, fd_eps = fd_eps, step = step,
-    lazy_f0 = given
+    lazy_f0 = given, keep = keep
   )
   output_jac_state %*% state_sensitivity + output_jac_param
 }
@@ -1769,6 +1815,8 @@
   outputs <- .problem_step_outputs(step, x, requested_outputs = output,
                                    required = required)
   if (!is.list(outputs) || !output %in% names(outputs)) {
+    kept <- step[["kept", exact = TRUE]]
+    if (!is.null(kept)) .lean_missing(output, kept)
     if (required) {
       stop("problem outputs do not include requested output `", output, "`")
     }
@@ -1906,6 +1954,8 @@
 
 .problem_fit_output <- function(fit, output, required = TRUE) {
   if (!is.list(fit$outputs) || !output %in% names(fit$outputs)) {
+    kept <- fit[["kept", exact = TRUE]]
+    if (!is.null(kept)) .lean_missing(output, kept)
     if (required) {
       stop("problem outputs do not include requested output `", output, "`")
     }

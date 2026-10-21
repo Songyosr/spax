@@ -462,8 +462,10 @@
     NULL
   }
 
+  # The scan compares only `output`: a lean bind keeps no other matrix.
   solve_args <- c(list(problem = problem, x0 = NULL, keep_history = FALSE, warn = FALSE,
-                       diagnostics = FALSE, requested_outputs = output), solver_args)
+                       diagnostics = FALSE, requested_outputs = output,
+                       keep = .lean_keep(problem, output)), solver_args)
   loss_at <- function(theta) {
     tryCatch({
       fit <- suppressWarnings(do.call(.solve_problem, c(solve_args, list(theta = theta))))
@@ -474,6 +476,7 @@
                                                      observed = target$values), loss_args)))
       if (is.numeric(value) && length(value) == 1L && is.finite(value)) as.numeric(value) else Inf
     }, error = function(e) {
+      if (inherits(e, "spax_lean_missing")) stop(e)
       remember(e)
       Inf
     })
