@@ -106,6 +106,7 @@
          upper = if (is.null(kernel)) Inf else kernel$upper,
          fun = if (!is.null(kernel)) .decay_kernel_function(kernel),
          plan = if (!is.null(kernel)) .decay_kernel_plan(sub$distance_active),
+         finite_plan = if (is.null(kernel)) .finite_plan(sub$distance_active),
          D = as.numeric(demand), sigma_name = sigma_name, v0_name = v0_name, sub = sub)
   }
   if (is.null(groups)) {
@@ -160,7 +161,8 @@
 
 .default_kernel_weights <- function(unit, sigma) {
   .allocation_kernel(unit$sub, unit$family, sigma, kernel = unit$kernel,
-                     fun = unit$fun, plan = unit$plan)
+                     fun = unit$fun, plan = unit$plan,
+                     finite_plan = unit$finite_plan)
 }
 
 # Domain check before any scan: a kernel undefined at zero travel with a zero

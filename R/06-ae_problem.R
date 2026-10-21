@@ -759,6 +759,12 @@
       plans[[as.character(dist_id[i])]] <- .decay_kernel_plan(clean[[i]])
     }
   }
+  finite_plans <- list()
+  for (i in seq_len(G)) {
+    if (is.null(info[[i]]$kernel) && is.null(finite_plans[[as.character(dist_id[i])]])) {
+      finite_plans[[as.character(dist_id[i])]] <- .finite_plan(clean[[i]])
+    }
+  }
   inputs <- lapply(seq_len(G), function(i) {
     list(distance_active = clean[[i]], input_policy = substrate$input_policy)
   })
@@ -798,7 +804,8 @@
       kernels[[i]] <- if (length(same)) kernels[[same[1L]]] else {
         .allocation_kernel(inputs[[i]], info[[i]]$family, sigma[[i]],
           kernel = info[[i]]$kernel, fun = info[[i]]$fun,
-          plan = plans[[as.character(dist_id[i])]])
+          plan = plans[[as.character(dist_id[i])]],
+          finite_plan = finite_plans[[as.character(dist_id[i])]])
       }
     }
     state <- .clm_group_state(a, kernels, D_groups, v0)
@@ -872,6 +879,7 @@
   kernel_fun <- if (!is.null(kernel)) .decay_kernel_function(kernel)
   # Which travel entries are finite does not change with the parameters: record it once.
   kernel_plan <- if (!is.null(kernel)) .decay_kernel_plan(substrate$distance_active)
+  finite_plan <- if (is.null(kernel)) .finite_plan(substrate$distance_active)
   # Corrected CLM models declare a prediction snapshot for the built-in kernels
   # and for a declared kernel (kept in the snapshot specification as plain data);
   # the internal no-decay family never has one.
@@ -884,7 +892,8 @@
   bind <- function(theta) {
     theta <- .coerce_problem_theta(theta, spec$theta)
     K <- .allocation_kernel(substrate, spec$family, theta[["sigma"]],
-                            kernel = kernel, fun = kernel_fun, plan = kernel_plan)
+                            kernel = kernel, fun = kernel_fun, plan = kernel_plan,
+                            finite_plan = finite_plan)
     v0 <- if (isTRUE(spec$fit_v0)) theta[["v0"]] else spec$v0
     beta <- if (isTRUE(spec$fit_beta)) theta[["beta"]] else spec$beta
     a <- .allocation_supply(substrate, spec$kappa, beta)

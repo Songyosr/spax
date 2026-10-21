@@ -432,11 +432,18 @@
 # inputs, as for the power kernel. With a `plan` from .decay_kernel_plan(), a
 # declared kernel is evaluated on the finite entries only; the weights are the
 # same as without it.
+#
+# `finite_plan` (from .finite_plan(), built-in families only) records once which
+# entries are absent, so the strict validity check scans the weights without
+# building logical or subset copies of the matrix; results and refusals are the
+# same as without it, which is what a model saved by an earlier version uses.
 .allocation_kernel <- function(substrate, family, sigma, kernel = NULL, fun = NULL,
-                               plan = NULL) {
+                               plan = NULL, finite_plan = NULL) {
   distance <- substrate$distance_active
   strict <- identical(substrate$input_policy$kernel_domain, "strict")
-  if (strict && family == "power" && any(distance == 0, na.rm = TRUE)) {
+  planned <- is.null(kernel) && !is.null(finite_plan)
+  if (strict && family == "power" &&
+      (if (planned) finite_plan$any_zero else any(distance == 0, na.rm = TRUE))) {
     stop("power decay requires strictly positive finite travel distances")
   }
   if (strict && family == "gaussian" && sigma <= 0) {
@@ -459,7 +466,17 @@
   }
   K <- .decay_weights(family, kernel, distance, sigma, fun)
   if (!strict) {
-    K[!is.finite(K)] <- 0
+    # Zero the non-finite weights; scan first so the usual all-finite matrix is
+    # not copied (the assignment would coerce to double, which K already is).
+    if (!is.double(K) || (length(K) && (anyNA(K) || min(K) == -Inf || max(K) == Inf))) {
+      K[!is.finite(K)] <- 0
+    }
+  } else if (planned) {
+    if (!is.double(K)) storage.mode(K) <- "double"
+    if (length(finite_plan$absent)) K[finite_plan$absent] <- 0
+    if (length(K) && (anyNA(K) || min(K) < 0 || max(K) == Inf)) {
+      stop("decay kernel is invalid on finite travel distances")
+    }
   } else {
     finite <- is.finite(distance)
     if (any(!is.finite(K[finite]) | K[finite] < 0)) {
@@ -469,6 +486,13 @@
     K[!finite] <- 0
   }
   K
+}
+
+# Which travel entries are absent (not finite) and whether any is zero, which
+# does not change with the parameters: the built-in kernels record it once per
+# problem. See .allocation_kernel().
+.finite_plan <- function(distance) {
+  list(absent = which(!is.finite(distance)), any_zero = any(distance == 0, na.rm = TRUE))
 }
 
 # A declared kernel on the finite travel entries described by `plan`: on the
