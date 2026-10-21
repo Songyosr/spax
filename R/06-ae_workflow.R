@@ -132,8 +132,8 @@ prepare_allocation <- function(demand, supply, distance,
 #' value. On a synthetic grid of 400 x 500 cells with demand in half of them and 250
 #' facilities (100,000 origins), the matrix is 200 MB; converting takes 2 seconds and
 #' peaks at about 0.5 GB of R memory (0.85 GB of process memory above the data), 2.5 to
-#' 4 times the matrix. A fit to facility totals from one start peaks at about 3 GB of R
-#' memory (3.4 GB of process memory), 15 to 17 times the matrix, and takes about 5
+#' 4 times the matrix. A fit to facility totals from one start peaks at about 1.6 GB of
+#' R memory (2.6 GB of process memory), about 8 times the matrix, and takes about 2.5
 #' minutes. That is the memory of the fit, the same as for numeric inputs of that size,
 #' so a much larger grid is better cropped or coarsened first.
 #'

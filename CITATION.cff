@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "spax: Spatial Accessibility and Allocation Modeling"
-version: 0.5.0
+version: 0.6.0
 date-released: 2026-10-21
 authors:
   - family-names: Rajborirug

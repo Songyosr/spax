@@ -1,16 +1,12 @@
-# spax (development version)
-
-* Version 0.5.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23527706.
-  doi:10.5281/zenodo.23438611 refers to all versions.
-* Allocation fits need less memory and time, with the same results: about half the
-  memory and less than half the time for a fit to facility totals (one start on
-  100,000 origins and 250 facilities: 141 s instead of 318 s).
+# spax 0.6.0
 
 FCA indices join the experimental interface: `spec_2sfca()`, `spec_e2sfca()`,
 `spec_m2sfca()`, `spec_3sfca()` and `spec_huff2sfca()` specify an index without
 data, and `spax()` computes it. `prep_data()` now also holds raster data, on which
-`spax()` computes FCA indices and fits allocation models. The one-call FCA functions
-keep their arguments and their results.
+`spax()` computes FCA indices and fits allocation models. The step functions gain the
+general names `check_fit()`, `compare_fits()` and `bootstrap_fit()`, and allocation fits
+need less memory and time, with the same results. Calls from 0.5.x keep working and give
+the same values; printed results start with new plain headers (see below).
 
 * New experimental FCA specifications. `spec_2sfca(threshold)`, `spec_e2sfca()` and
   `spec_m2sfca()` (with `normalize`), `spec_3sfca()` (with `selection`) and
@@ -46,7 +42,7 @@ keep their arguments and their results.
   `obs_flows()` is keyed by cell number. The model uses one supply measure. The travel of
   the origins is held as a dense matrix: on a synthetic grid with 100,000 origins and 250
   facilities it is 200 MB, the conversion peaks at about 0.5 GB of R memory and a fit to
-  facility totals from one start at about 3 GB, in about 5 minutes (see `?prep_data`).
+  facility totals from one start at about 1.6 GB, in about 2.5 minutes (see `?prep_data`).
 * New general step names `check_fit()`, `compare_fits()` and `bootstrap_fit()`. They are
   the same functions as `check_allocation()`, `compare_allocations()` and
   `bootstrap_allocation()`, which stay, and differ only in the name that a message gives
@@ -69,6 +65,11 @@ keep their arguments and their results.
   specifications have class `c("spax_fca_spec", "spax_spec")`. Test the specific class.
   Specifications and results saved with spax 0.5.0 keep working: `spax()` and
   `print()` take their old class.
+* Allocation fits need less memory and time, with the same results: about half the
+  memory and less than half the time for a fit to facility totals (one start on
+  100,000 origins and 250 facilities: 141 s instead of 318 s).
+* Version 0.5.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23527706.
+  doi:10.5281/zenodo.23438611 refers to all versions.
 
 # spax 0.5.0
 
