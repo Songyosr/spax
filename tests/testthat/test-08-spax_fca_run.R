@@ -912,7 +912,7 @@ test_that("the result of spax() on raster data is the object of the one-shot", {
   expect_null(x$iterations)
   expect_null(x$variations)
   # its methods work
-  expect_output(print(x), "Spatial Accessibility Analysis (E2SFCA)", fixed = TRUE)
+  expect_output(print(x), "<spax access> E2SFCA, 1 layer on 3 x 3 cells", fixed = TRUE)
   expect_s3_class(summary(x), "summary.spax")
 })
 

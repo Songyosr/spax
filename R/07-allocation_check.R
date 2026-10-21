@@ -324,7 +324,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
 #' @export
 #' @md
 print.ae_allocation_check <- function(x, digits = 4, ...) {
-  cat("<ae_allocation_check>\n")
+  cat("<allocation check>\n")
   units <- x$travel_units
   if (is.null(units) || is.na(units)) units <- "travel units"
   tab <- x$comparators

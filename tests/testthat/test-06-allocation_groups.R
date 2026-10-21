@@ -1315,7 +1315,7 @@ test_that("grouped fits, summaries and evaluations print their groups and parame
   u <- capture.output(print(alloc_generated_fit()$best))
   expect_false(any(grepl("^(groups|by_group|fixed)", u)))
   expect_match(format(evaluate_allocation(alloc_generated_case()$model,
-    c(sigma = 8, v0 = 25))$coverage), "^<ae_coverage> huff/gaussian \\(sigma=8, v0=25\\)")
+    c(sigma = 8, v0 = 25))$coverage), "^<allocation coverage> gaussian \\(sigma=8, v0=25\\)")
 })
 
 test_that("a family by group is labelled by group", {

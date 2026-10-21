@@ -103,7 +103,8 @@ as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional 
 #' @export
 #' @md
 print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
-  cat("<summary.ae_multistart_fit>\n")
+  cat(if (.is_public_allocation(x$selected)) "<allocation fit summary>" else
+        "<summary.ae_multistart_fit>", "\n", sep = "")
   cat("status: ", x$status, "; selected start: ",
     if (is.null(x$selected_start)) "none" else x$selected_start, "\n", sep = "")
   cat("loss disagreement: ", x$disagreement$loss,
@@ -189,7 +190,7 @@ summary.ae_allocation_bootstrap <- function(object, ...) {
 #' @export
 #' @md
 print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
-  cat("<ae_allocation_bootstrap>\n")
+  cat("<allocation bootstrap>\n")
   cat("status: ", x$status, "\n", sep = "")
   if (length(x$reasons)) cat("reasons: ", paste(x$reasons, collapse = "; "), "\n", sep = "")
   print.data.frame(x$counts, row.names = FALSE)

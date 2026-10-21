@@ -1030,7 +1030,7 @@ test_that("summary() returns one class and prints the specification, the paramet
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = 1",
     "  outside     v0: fit"))
   expect_identical(lines[5:6], c("", "  parameter  value  status"))
-  expect_identical(lines[11:12], c("", "<summary.ae_multistart_fit>"))
+  expect_identical(lines[11:12], c("", "<allocation fit summary>"))
   expect_identical(lines[11:length(lines)], c("", capture.output(print(s$fit))))
   expect_identical(capture.output(print(s))[7:8], .result_parameter_lines(p)[2:3])
   expect_identical(capture.output(invisible(print(s))), lines)

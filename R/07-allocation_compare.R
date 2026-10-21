@@ -217,7 +217,7 @@ compare_allocations <- function(fits, models = NULL, reference = 1L, zones = NUL
 #' @export
 #' @md
 print.ae_allocation_comparison <- function(x, digits = 4, ...) {
-  cat("<ae_allocation_comparison> reference: ", x$reference, "\n", sep = "")
+  cat("<allocation comparison> reference: ", x$reference, "\n", sep = "")
   cols <- intersect(c("specification", "contact", "capacity_per_contact", "cv_contact",
                       "count_correlation", "loss_difference", "zones_changed"), names(x$table))
   print(format(x$table[, cols], digits = digits), row.names = FALSE)

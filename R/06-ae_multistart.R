@@ -168,7 +168,14 @@
 #' @export
 #' @md
 print.ae_multistart_fit <- function(x, ...) {
-  cat("<ae_multistart_fit>\n")
+  if (.is_public_allocation(x$best)) {
+    # k starts, and the name of the selected one
+    k <- nrow(x$table)
+    cat("<allocation fit> ", k, if (k == 1L) " start" else " starts", ", selected ",
+        if (is.null(x$best_start)) "none" else x$best_start, "\n", sep = "")
+  } else {
+    cat("<ae_multistart_fit>\n")
+  }
   cat("eligible starts: ", sum(x$table$eligible), " / ", nrow(x$table), "\n", sep = "")
   cat("selected start: ", if (is.null(x$best_start)) "none" else x$best_start, "\n", sep = "")
   search <- x[["default_search", exact = TRUE]]

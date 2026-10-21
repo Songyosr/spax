@@ -266,7 +266,8 @@ format.ae_coverage <- function(x, digits = 4, ...) {
   h <- x$regional
   groups <- x[["groups", exact = TRUE]]
   fixed <- x[["fixed", exact = TRUE]]
-  paste0("<ae_coverage> ", x$model, "/", x$family,
+  paste0(if (.is_public_allocation(x)) paste0("<allocation coverage> ", x$family) else
+           paste0("<ae_coverage> ", x$model, "/", x$family),
          if (!is.null(groups)) paste0(" [groups ", paste(groups, collapse = ", "), "]"),
          " (", paste(names(x$theta), signif(x$theta, digits), sep = "=", collapse = ", "),
          if (length(fixed)) paste0("; fixed ", paste(names(fixed), signif(fixed, digits),
