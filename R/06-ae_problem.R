@@ -1211,6 +1211,7 @@
   }
 
   observed_values <- target$values
+  all_observed <- all(target$mask)
   # Inside the optimizer a bind keeps only what the fit compares.
   keep <- .lean_keep(problem, output)
   warm <- NULL
@@ -1247,7 +1248,8 @@
     if (is.null(predicted_full) || !.fit_target_shape_ok(predicted_full, target)) {
       return(NULL)
     }
-    predicted <- as.numeric(predicted_full)[target$mask]
+    predicted <- as.numeric(predicted_full)
+    if (!all_observed) predicted <- predicted[target$mask]
     value <- do.call(
       loss,
       c(list(predicted = predicted, observed = observed_values), loss_args)
@@ -1316,7 +1318,7 @@
           return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
                                        fd_eps = fd_eps))
         }
-        sensitivity <- sensitivity[target$mask, , drop = FALSE]
+        if (!all_observed) sensitivity <- sensitivity[target$mask, , drop = FALSE]
         grad <- do.call(
           loss_grad,
           c(
@@ -1886,7 +1888,7 @@
   if (!is.null(dim(x)) && length(dim(x)) != 2L) {
     stop(sprintf("%s must be a numeric vector or matrix", name))
   }
-  if (any(!is.finite(x))) {
+  if (.any_nonfinite(x)) {
     stop(sprintf("%s must contain only finite values", name))
   }
   invisible(TRUE)

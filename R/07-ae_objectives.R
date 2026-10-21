@@ -62,10 +62,14 @@
   if (nrow(sensitivity) != length(predicted)) {
     stop("`sensitivity` must have one row per prediction")
   }
+  # Nothing is copied for the floor unless a cell is floored: one logical vector, then
+  # a copy of `predicted` and a zeroing of those cells only when there are any. The
+  # values are those of 1 - observed / pmax(predicted, eps), zero where floored.
   floored <- predicted < eps
-  predicted <- pmax(predicted, eps)
+  any_floored <- any(floored)
+  if (any_floored) predicted[floored] <- eps
   weights <- 1 - observed / predicted          # d NLL / d mu_j
-  weights[floored] <- 0                        # the floored loss is flat there
+  if (any_floored) weights[floored] <- 0       # the floored loss is flat there
   as.vector(crossprod(sensitivity, weights))
 }
 
