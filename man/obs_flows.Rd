@@ -189,6 +189,7 @@ Other allocation interface:
 \code{\link{decay_gaussian}()},
 \code{\link{prep_data}()},
 \code{\link{spax}()},
+\code{\link{spax_access_values-methods}},
 \code{\link{spax_allocation-methods}},
 \code{\link{spax_huff}()},
 \code{\link{spec_clm}()}

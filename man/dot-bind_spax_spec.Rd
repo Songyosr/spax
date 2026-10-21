@@ -7,7 +7,7 @@
 .bind_spax_spec(spec, data)
 }
 \arguments{
-\item{spec}{A \code{spax_spec} from \code{\link[=spec_clm]{spec_clm()}} or \code{\link[=spec_huff]{spec_huff()}}.}
+\item{spec}{A \code{spax_allocation_spec} from \code{\link[=spec_clm]{spec_clm()}} or \code{\link[=spec_huff]{spec_huff()}}.}
 
 \item{data}{An \code{ae_prepared_inputs}, from \code{\link[=prep_data]{prep_data()}}.}
 }
@@ -21,7 +21,7 @@ sigma is in \code{theta_given}), \code{v0} or \verb{v0.<group>} (\code{v0 = 0} f
 model), \code{beta} when it is a number and \code{kappa}.
 }
 \description{
-The private step inside \code{spax()} that turns a data-free \code{spax_spec} (see
+The private step inside \code{spax()} that turns a data-free \code{spax_allocation_spec} (see
 \code{\link[=spec_clm]{spec_clm()}}) and checked \code{ae_prepared_inputs} into the existing \code{ae_problem},
 built through \code{\link[=clm_allocation]{clm_allocation()}}. It checks the demand groups, translates the
 specification into the arguments of \code{clm_allocation()}, decides whether the

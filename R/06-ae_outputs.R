@@ -42,6 +42,43 @@
   outputs
 }
 
+# Lean model evaluations (SPAX-061) ------------------------------------------
+# Inside the optimizer and the default scan a bind keeps only what the fit
+# compares. `keep` is derived from the fit's own output by an allow-list, never
+# from `requested_outputs`; NULL is today's full state.
+.lean_outputs <- c("allocation", "huff_share", "opportunity", "flow", "flow_outside")
+
+.lean_keep <- function(problem, output) {
+  spec <- problem$metadata$spec
+  if (!identical(spec[["allocation", exact = TRUE]], "clm") ||
+      !"keep" %in% names(formals(problem$bind))) {
+    return(NULL)
+  }
+  switch(output,
+    utilization = , utilization_by_group = , utilization_outside = ,
+    utilization_outside_by_group = character(),
+    flow = "flow",
+    flow_outside = "flow_outside",
+    NULL)
+}
+
+# Reading an output a lean step did not keep is a programming error that must
+# reach the caller: the handlers on the optimizer path re-raise this class.
+.lean_missing <- function(output, kept) {
+  stop(errorCondition(
+    paste0("output `", paste(output, collapse = "`, `"),
+           "` was not kept by this lean model evaluation (kept: ",
+           if (length(kept)) paste(kept, collapse = ", ") else "none",
+           "); evaluate without `keep`"),
+    class = "spax_lean_missing", call = NULL))
+}
+
+.lean_check <- function(requested, kept) {
+  missing <- setdiff(intersect(requested, .lean_outputs), kept)
+  if (length(missing)) .lean_missing(missing, kept)
+  invisible(TRUE)
+}
+
 # Expected origin-by-facility counts for corrected CLM only. Demand supplies
 # the denominator and count unit; this helper does not infer an event or period.
 .clm_flow <- function(allocation, demand) {

@@ -10,7 +10,8 @@
   supply,
   normalize = "identity",
   snap = FALSE,
-  groups = NULL
+  groups = NULL,
+  block = NULL
 )
 }
 \arguments{
@@ -34,9 +35,18 @@ TRUE such cells are not active. Weight checks (D1) live in the kernels.}
 
 \item{groups}{`NULL` for one ungrouped demand raster, or the character
 vector of group IDs (also for a single group).}
+
+\item{block}{`NULL` (the rasters are read in blocks), or the whole input as
+one in-memory block: a list with the keys that `rasters` would hold (`demand`,
+or `demand.<group>` with `groups`, and whatever the kernels read, such as
+`distance`), each a matrix with one row per origin and one column per layer
+(a plain vector is one column). `rasters` is then ignored and nothing is
+opened or read; both passes, the NA rule and the overall layer are the same
+code as for rasters (SPAX-060, FCA on numeric data).}
 }
 \value{
-A matrix with one row per cell of the grid. Ungrouped, one column
+A matrix with one row per cell of the grid (per origin of `block`).
+  Ungrouped, one column
   per supply measure. Grouped, `M * (G + 1)` columns in measure-major order:
   for each measure the groups in the order of `groups`, then the overall
   layer.

@@ -2,7 +2,7 @@
 
 #' Bind a model specification to prepared inputs
 #'
-#' The private step inside `spax()` that turns a data-free `spax_spec` (see
+#' The private step inside `spax()` that turns a data-free `spax_allocation_spec` (see
 #' [spec_clm()]) and checked `ae_prepared_inputs` into the existing `ae_problem`,
 #' built through [clm_allocation()]. It checks the demand groups, translates the
 #' specification into the arguments of `clm_allocation()`, decides whether the
@@ -16,7 +16,7 @@
 #' bound as a free parameter and its value is returned as `theta_given`, for
 #' `evaluate_allocation()`; nothing goes into `fixed`.
 #'
-#' @param spec A `spax_spec` from [spec_clm()] or [spec_huff()].
+#' @param spec A `spax_allocation_spec` from [spec_clm()] or [spec_huff()].
 #' @param data An `ae_prepared_inputs`, from [prep_data()].
 #' @return A list: `problem` (the `ae_problem`), `mode` (`"fit"` or
 #'   `"evaluate"`), `theta_given` (`NULL` in fit mode; in evaluate mode the

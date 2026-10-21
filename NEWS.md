@@ -1,3 +1,76 @@
+# spax 0.6.0
+
+FCA indices join the experimental interface: `spec_2sfca()`, `spec_e2sfca()`,
+`spec_m2sfca()`, `spec_3sfca()` and `spec_huff2sfca()` specify an index without
+data, and `spax()` computes it. `prep_data()` now also holds raster data, on which
+`spax()` computes FCA indices and fits allocation models. The step functions gain the
+general names `check_fit()`, `compare_fits()` and `bootstrap_fit()`, and allocation fits
+need less memory and time, with the same results. Calls from 0.5.x keep working and give
+the same values; printed results start with new plain headers (see below).
+
+* New experimental FCA specifications. `spec_2sfca(threshold)`, `spec_e2sfca()` and
+  `spec_m2sfca()` (with `normalize`), `spec_3sfca()` (with `selection`) and
+  `spec_huff2sfca()` (with `selection`, `attractiveness` and `alpha`) are the data-free
+  counterparts of `spax_2sfca()` and the other one-call functions. An index is computed,
+  not fitted: every decay needs its `sigma`, and `spax()` refuses `observed`, `starts`,
+  `lower`, `upper` and fitting controls with an FCA specification. With demand groups,
+  `decay` and `selection` can be named lists by group and `threshold` a named vector.
+* `spax()` computes FCA indices. On raster data it returns the `spax` object of the
+  matching one-call function, with the same `type`, `parameters` and layers; its `call`
+  is the `spax()` call. On numeric data (demand, supply and a travel matrix) it returns a
+  `spax_access_values`, the index at each active origin with one column per layer,
+  computed by the same engine and rules, with `print()`, `summary()` and
+  `as.data.frame()` methods. Numeric data has one supply measure, and an origin with zero
+  or unknown demand has no row.
+* New decays for FCA specifications: `decay_step(threshold)`, a binary catchment, and
+  `decay_inverse()`, the weight `1 / (d + 1)`. In an FCA specification,
+  `decay_gaussian()`, `decay_exponential()` and `decay_power()` also take a `SpatRaster`
+  of `sigma` values, a catchment that varies in space. Allocation specifications refuse
+  all three, and numeric data refuses a raster `sigma`.
+* `prep_data()` has a raster mode. With a `SpatRaster` as `demand` (or a named list of
+  them for demand groups), a travel stack with one layer per facility and a supply table
+  named by the new arguments `id_col` and `supply_cols`, it returns a `spax_raster_data`.
+  It reads no raster values. The object does not survive `saveRDS()`: `spax()` then asks
+  for the data to be prepared again. `id_col` and `supply_cols` come after the existing
+  arguments, so positional calls keep working.
+* `spax()` fits and evaluates allocation models (`spec_huff()`, `spec_clm()`) on raster
+  data. It converts the data to origins on each call and keeps nothing: the cells with
+  finite, positive demand are the origins, named by their cell numbers, a missing or
+  infinite travel time is an absent pair, and a cell that reaches no facility stays an
+  origin (with `spec_clm()` its demand goes to the outside option; `spec_huff()` has no
+  outside option and allocates none of it). `obs_totals()` works as it is, and
+  `obs_flows()` is keyed by cell number. The model uses one supply measure. The travel of
+  the origins is held as a dense matrix: on a synthetic grid with 100,000 origins and 250
+  facilities it is 200 MB, the conversion peaks at about 0.5 GB of R memory and a fit to
+  facility totals from one start at about 1.6 GB, in about 2.5 minutes (see `?prep_data`).
+* New general step names `check_fit()`, `compare_fits()` and `bootstrap_fit()`. They are
+  the same functions as `check_allocation()`, `compare_allocations()` and
+  `bootstrap_allocation()`, which stay, and differ only in the name that a message gives
+  for the step. Given an FCA result, all of them stop: an FCA index has no fit to check,
+  compare or bootstrap.
+* Printed results of the workflow start with a plain line in place of the class name:
+  `<allocation fit> 3 starts, selected scan1` for a fit with several starts and
+  `<allocation fit summary>` for its summary, `<allocation fit result>` for one fit,
+  `<allocation evaluation>`, `<allocation coverage> gaussian`, `<allocation check>`,
+  `<allocation comparison> reference: ...`, `<allocation bootstrap>`, and for FCA results
+  `<spax access> E2SFCA, 1 layer on 132 x 223 cells` and
+  `<spax access summary> E2SFCA`. Only the printed lines change: classes and fields are
+  the same, and saved objects keep working. Legacy SAE, HAAE and `huff_decay` objects
+  keep their headers.
+* FCA results have the parent class `spax_result`, as allocation results do. The `call`
+  of a `spax_2sfca()` result is now the `spax_2sfca()` call; it was the inner
+  `spax_e2sfca()` call.
+* Allocation specifications from `spec_huff()` and `spec_clm()` now have class
+  `c("spax_allocation_spec", "spax_spec")`; they had class `"spax_spec"`. FCA
+  specifications have class `c("spax_fca_spec", "spax_spec")`. Test the specific class.
+  Specifications and results saved with spax 0.5.0 keep working: `spax()` and
+  `print()` take their old class.
+* Allocation fits need less memory and time, with the same results: about half the
+  memory and less than half the time for a fit to facility totals (one start on
+  100,000 origins and 250 facilities: 141 s instead of 318 s).
+* Version 0.5.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23527706.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 # spax 0.5.0
 
 A new experimental interface fits and evaluates allocation models in one call:

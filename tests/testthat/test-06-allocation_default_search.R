@@ -1137,7 +1137,8 @@ test_that("the default_search field and its print line", {
   out <- capture.output(print(f))
   line <- "starts: default search, 45 of 45 grid points, loss poisson"
   expect_identical(sum(out == line), 1L)
-  expect_identical(out[1:3], c("<ae_multistart_fit>", "eligible starts: 3 / 3",
+  expect_identical(out[1:3], c(paste0("<allocation fit> 3 starts, selected ", f$best_start),
+                               "eligible starts: 3 / 3",
                                paste0("selected start: ", f$best_start)))
   expect_identical(out[4], line)
   # the record
@@ -1160,7 +1161,9 @@ test_that("the default_search field and its print line", {
   expect_false(any(startsWith(old_out, "starts:")))
   small <- capture.output(print(alloc_small_fit()))
   expect_false(any(startsWith(small, "starts:")))
-  expect_identical(small[1:2], c("<ae_multistart_fit>", "eligible starts: 2 / 2"))
+  expect_identical(small[1:2], c(paste0("<allocation fit> 2 starts, selected ",
+                                        alloc_small_fit()$best_start),
+                                 "eligible starts: 2 / 2"))
   expect_match(small[3], "^selected start: ")
   expect_match(small[4], "^loss disagreement: ")
   # the summary and the methods do not need the field

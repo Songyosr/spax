@@ -106,6 +106,7 @@
          upper = if (is.null(kernel)) Inf else kernel$upper,
          fun = if (!is.null(kernel)) .decay_kernel_function(kernel),
          plan = if (!is.null(kernel)) .decay_kernel_plan(sub$distance_active),
+         finite_plan = if (is.null(kernel)) .finite_plan(sub$distance_active),
          D = as.numeric(demand), sigma_name = sigma_name, v0_name = v0_name, sub = sub)
   }
   if (is.null(groups)) {
@@ -160,7 +161,8 @@
 
 .default_kernel_weights <- function(unit, sigma) {
   .allocation_kernel(unit$sub, unit$family, sigma, kernel = unit$kernel,
-                     fun = unit$fun, plan = unit$plan)
+                     fun = unit$fun, plan = unit$plan,
+                     finite_plan = unit$finite_plan)
 }
 
 # Domain check before any scan: a kernel undefined at zero travel with a zero
@@ -460,8 +462,10 @@
     NULL
   }
 
+  # The scan compares only `output`: a lean bind keeps no other matrix.
   solve_args <- c(list(problem = problem, x0 = NULL, keep_history = FALSE, warn = FALSE,
-                       diagnostics = FALSE, requested_outputs = output), solver_args)
+                       diagnostics = FALSE, requested_outputs = output,
+                       keep = .lean_keep(problem, output)), solver_args)
   loss_at <- function(theta) {
     tryCatch({
       fit <- suppressWarnings(do.call(.solve_problem, c(solve_args, list(theta = theta))))
@@ -472,6 +476,7 @@
                                                      observed = target$values), loss_args)))
       if (is.numeric(value) && length(value) == 1L && is.finite(value)) as.numeric(value) else Inf
     }, error = function(e) {
+      if (inherits(e, "spax_lean_missing")) stop(e)
       remember(e)
       Inf
     })

@@ -494,7 +494,7 @@ test_that("D8 grouped: the zero is read in the group's own travel", {
 test_that("prep_data() is prepare_allocation() with travel for distance", {
   expect_identical(names(formals(prep_data)),
     c("demand", "supply", "travel", "origin_ids", "facility_ids", "included",
-      "missing_demand", "missing_travel", "spatial", "metadata"))
+      "missing_demand", "missing_travel", "spatial", "metadata", "id_col", "supply_cols"))
   expect_identical(formals(prep_data)$missing_demand, quote(c("error", "exclude")))
   expect_identical(formals(prep_data)$missing_travel, quote(c("error", "legacy_zero")))
   f <- alloc_small_case()

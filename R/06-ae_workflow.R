@@ -75,30 +75,104 @@ prepare_allocation <- function(demand, supply, distance,
     missing_travel = missing_travel, spatial = spatial, metadata = metadata)
 }
 
-#' Prepare data for an allocation model
+#' Prepare data for a spax model
 #'
-#' Experimental. `prep_data()` checks and aligns the demand, supply and travel
-#' time inputs of an allocation model once, so that model specifications such
-#' as [spec_clm()] and [spec_huff()] can be bound to them with `spax()`. In
-#' this version it is [prepare_allocation()] under another name, with `travel`
-#' for `distance`: it returns the identical object, an `ae_prepared_inputs`,
-#' and every argument is passed through. The step functions
+#' Experimental. `prep_data()` checks and aligns the inputs of a model once, so
+#' that model specifications can be bound to them with [spax()]. It has two
+#' modes, chosen by `demand`.
+#'
+#' **Numeric data** (`demand` is a numeric vector, or a named list of numeric
+#' vectors for demand groups) are the inputs of an allocation model
+#' ([spec_clm()], [spec_huff()]): demand by origin, supply by facility and the
+#' origin-by-facility travel matrix. In this mode `prep_data()` is
+#' [prepare_allocation()] under another name, with `travel` for `distance`: it
+#' returns the identical object, an `ae_prepared_inputs`, and every argument but
+#' `id_col` and `supply_cols` is passed through. The step functions
 #' ([clm_allocation()] and the others) accept the object too.
 #'
 #' Printing the object lists its origins and facilities, the demand groups, the
 #' unit labels when they were given, the active origins whose travel is unknown
 #' and the policies for missing demand and travel.
 #'
+#' **Raster data** (`demand` is a `SpatRaster`, or a named list of single-layer
+#' `SpatRaster`s for demand groups) are the inputs of the floating catchment area
+#' indices ([spec_e2sfca()] and its relatives): `demand` is the demand grid,
+#' `travel` the travel stack, one layer per facility named by the facility ID, and
+#' `supply` a data frame with `id_col` and `supply_cols`, a matrix or a vector, as
+#' in [spax_e2sfca()]. With demand groups, `travel` can be one stack or a named
+#' list of stacks, one per group. `prep_data()` checks the structure (the demand
+#' groups, one geometry, one layer per facility, the supply table) and reads no
+#' value of a raster; the demand rule of the indices (finite and nonnegative,
+#' `NA` for unknown) is applied when a model runs. The arguments `origin_ids`,
+#' `facility_ids`, `included`, `missing_demand`, `missing_travel` and `spatial`
+#' are for numeric data and are refused. `id_col` and `supply_cols` are for
+#' raster data and are refused for numeric data. The result holds the rasters as
+#' they are, so it does not survive [saveRDS()]: its pointers to the rasters are
+#' then empty, and `spax()` stops and asks for the data to be prepared again.
+#'
+#' **Allocation models on raster data.** `spax()` also runs [spec_clm()] and
+#' [spec_huff()] on raster data. It converts the data to origins on each call,
+#' behind the scenes, and keeps nothing: the origins are the cells with finite,
+#' positive demand (with demand groups, the cells where every group's demand is
+#' known and the total is positive), their IDs are the cell numbers of the grid
+#' as text (`"843"`), and the origin registry holds these cells only. The demand
+#' rule of the indices applies: negative or infinite demand is an error and `NA`
+#' is unknown. [obs_totals()] works directly. [obs_flows()] is keyed by cell
+#' number, and counts at cells that are not origins (no demand, or unknown) are
+#' dropped with a message. A missing or infinite travel time is an absent pair, and a
+#' cell with demand that reaches no facility stays an origin: with [spec_clm()] its
+#' demand goes to the outside option, while [spec_huff()] has no outside option and
+#' allocates none of it. The allocation model uses one supply measure: with several
+#' `supply_cols`, choose one with `prep_data(supply_cols = )`. The conversion is
+#' the same on every call, so fits to the same data share their travel matrix and
+#' can be compared with [compare_allocations()], and a result does not depend on the
+#' rasters after the call.
+#'
+#' The travel of the origins is held as a matrix of origins by facilities, 8 bytes per
+#' value. On a synthetic grid of 400 x 500 cells with demand in half of them and 250
+#' facilities (100,000 origins), the matrix is 200 MB; converting takes 2 seconds and
+#' peaks at about 0.5 GB of R memory (0.85 GB of process memory above the data), 2.5 to
+#' 4 times the matrix. A fit to facility totals from one start peaks at about 1.6 GB of
+#' R memory (2.6 GB of process memory), about 8 times the matrix, and takes about 2.5
+#' minutes. That is the memory of the fit, the same as for numeric inputs of that size,
+#' so a much larger grid is better cropped or coarsened first.
+#'
+#' **FCA indices on numeric data.** An FCA specification ([spec_e2sfca()] and its
+#' relatives) also runs on numeric data with [spax()]. It gives the index at the active
+#' origins only: an origin with zero or unknown demand, or left out, has no row in the
+#' result. The result is a `spax_access_values` (see [spax_access_values-methods]), not
+#' rasters, and numeric data has one supply measure, `"supply"`. A raster `sigma` (a
+#' variable catchment) needs raster data.
+#'
 #' @inheritParams prepare_allocation
+#' @param demand Numeric origin vector, or a named list of them for demand
+#'   groups (see [prepare_allocation()]); or a `SpatRaster` of demand, or a named
+#'   list of single-layer `SpatRaster`s, one per group. A list that mixes rasters
+#'   and other elements is an error.
+#' @param supply Numeric data: a finite nonnegative facility vector (see
+#'   [prepare_allocation()]). Raster data: a data frame with `id_col` and
+#'   `supply_cols`, a matrix or a vector (see [spax_e2sfca()]); several supply
+#'   measures give independent layers in an FCA result.
 #' @param travel Numeric origin-by-facility travel matrix. It is the
 #'   `distance` argument of [prepare_allocation()]: the same alignment by IDs
 #'   applies, and with demand groups it can be one matrix shared by the groups
-#'   or a named list of matrices with one element per group.
-#' @param x Prepared inputs, an `ae_prepared_inputs`.
+#'   or a named list of matrices with one element per group. For raster data, a
+#'   `SpatRaster` with one layer per facility (or a named list of them by demand
+#'   group) on the grid of `demand`.
+#' @param id_col,supply_cols Raster data with a data frame as `supply`: the
+#'   column of facility IDs and the character vector of supply columns. They are
+#'   refused for numeric data.
+#' @param x Prepared inputs, an `ae_prepared_inputs` or `spax_raster_data`.
 #' @param ... Unused.
-#' @return The existing `ae_prepared_inputs`, as returned by
-#'   [prepare_allocation()]. `format()` returns the printed lines as a character
-#'   vector and `print()` returns its argument invisibly.
+#' @return Numeric data: the existing `ae_prepared_inputs`, as returned by
+#'   [prepare_allocation()]. Raster data: a `spax_raster_data` (also a
+#'   `spax_data`), a list with `demand` and `travel` (as given), `supply` (the
+#'   object as given), `id_col`, `supply_cols`, `facility_ids` (the layer names of
+#'   the travel stack, or `facility_1`, ... by position), `groups` (the group
+#'   IDs, `NULL` without groups), `metadata` (the unit labels) and `grid` (a list
+#'   with `dim`, `res` and `crs` of the demand grid). `format()` returns the
+#'   printed lines as a character vector and `print()` returns its argument
+#'   invisibly.
 #' @family allocation interface
 #' @examples
 #' # Mainland Cornwall: registered residents, GP FTE and travel minutes
@@ -110,6 +184,42 @@ prepare_allocation <- function(demand, supply, distance,
 #' prep_data(demand, supply, travel,
 #'           metadata = list(demand_units = "registered residents",
 #'                           supply_units = "GP FTE", travel_units = "minutes"))
+#'
+#' # Raster data for a floating catchment area index
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel_grid <- read_spax_example("cornwall_gp_travel.tif")
+#' grid_data <- prep_data(pop, sf::st_drop_geometry(cornwall_gp), travel_grid,
+#'                        id_col = "practice", supply_cols = "gp_fte_extg")
+#' grid_data
+#' spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
+#'
+#' \donttest{
+#' # An allocation model on the mainland grid, fitted to practice totals. Demand
+#' # must count the same people as the totals: residents registered with a GP
+#' # practice. The grid estimates residents in 2020, fewer than the registered
+#' # residents of the mainland small areas, so it is scaled to them and gives
+#' # only where they live.
+#' mainland <- terra::ext(-6, terra::xmax(pop), terra::ymin(pop), terra::ymax(pop))
+#' pop <- terra::crop(pop, mainland)
+#' registered <- pop * sum(areas$registered) /
+#'   terra::global(pop, "sum", na.rm = TRUE)[[1]]
+#' d_mainland <- prep_data(registered, gp,
+#'                         terra::crop(travel_grid[[gp$practice]], mainland),
+#'                         id_col = "practice", supply_cols = "gp_fte_extg")
+#'
+#' # Registrations of mainland residents at the mainland practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+#'
+#' # The cells with residents become the origins. The Huff model (power decay,
+#' # fitted attractiveness exponent) is well determined by these totals.
+#' huff <- spax(d_mainland, spec_huff(), observed = totals)
+#' huff
+#'
+#' # What the totals say about travel: the fit against no decay
+#' check_fit(huff)
+#' }
 #' @export
 #' @md
 prep_data <- function(demand, supply, travel,
@@ -118,7 +228,21 @@ prep_data <- function(demand, supply, travel,
                       included = NULL,
                       missing_demand = c("error", "exclude"),
                       missing_travel = c("error", "legacy_zero"),
-                      spatial = NULL, metadata = list()) {
+                      spatial = NULL, metadata = list(),
+                      id_col = NULL, supply_cols = NULL) {
+  mode <- .prep_data_mode(demand)
+  if (mode == "raster") {
+    given <- c(origin_ids = !missing(origin_ids), facility_ids = !missing(facility_ids),
+               included = !missing(included), missing_demand = !missing(missing_demand),
+               missing_travel = !missing(missing_travel), spatial = !missing(spatial))
+    if (any(given)) {
+      stop(names(given)[given][1L], " is for numeric data", call. = FALSE)
+    }
+    return(.prep_raster_data(demand, supply, travel, id_col, supply_cols, metadata))
+  }
+  if (!is.null(id_col) || !is.null(supply_cols)) {
+    stop("id_col and supply_cols are for a supply table with raster data", call. = FALSE)
+  }
   prepare_allocation(demand, supply, distance = travel, origin_ids = origin_ids,
     facility_ids = facility_ids, included = included, missing_demand = missing_demand,
     missing_travel = missing_travel, spatial = spatial, metadata = metadata)
@@ -732,7 +856,9 @@ summary.ae_multistart_fit <- function(object, ...) {
        disagreement = list(loss = object$loss_disagreement,
                            parameter = object$parameter_disagreement,
                            tolerances = object$tolerances),
-       warnings = object$warnings, errors = object$errors),
+       warnings = object$warnings, errors = object$errors,
+       model = object[["model", exact = TRUE]],
+       allocation_form = object[["allocation_form", exact = TRUE]]),
     class = "summary.ae_multistart_fit")
 }
 

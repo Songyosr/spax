@@ -17,12 +17,21 @@
   check = TRUE,
   diagnostics = TRUE,
   keep_state_history = FALSE,
-  requested_outputs = NULL
+  requested_outputs = NULL,
+  keep_step = FALSE,
+  keep = NULL
 )
 }
 \arguments{
 \item{requested_outputs}{Optional output names to materialize in addition to
 the provider's default outputs. \code{NULL} retains the legacy output callback.}
+
+\item{keep_step}{If \code{TRUE}, the bound step is returned as \verb{$step}, so a
+gradient at the same theta need not bind again. Only the optimizer asks
+for it, never the final fresh solve.}
+
+\item{keep}{Lean evaluation (see \code{.bind_theta()}); only the optimizer and
+the default scan pass it, never the final fresh solve.}
 }
 \description{
 Successful built-in corrected CLM evaluations attach a plain O(J) prediction

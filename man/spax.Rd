@@ -17,7 +17,8 @@ spax(
 \arguments{
 \item{data}{Prepared inputs: the result of \code{\link[=prep_data]{prep_data()}}.}
 
-\item{model}{A model specification: \code{\link[=spec_huff]{spec_huff()}} or \code{\link[=spec_clm]{spec_clm()}}.}
+\item{model}{A model specification: \code{\link[=spec_huff]{spec_huff()}} or \code{\link[=spec_clm]{spec_clm()}}, or an FCA
+specification such as \code{\link[=spec_e2sfca]{spec_e2sfca()}}.}
 
 \item{observed}{Observed counts for a model with a parameter to fit: an
 \code{\link[=obs_flows]{obs_flows()}} or \code{\link[=obs_totals]{obs_totals()}} object, or raw counts (see Details).
@@ -33,7 +34,11 @@ nothing is fitted.}
 \code{\link[=evaluate_allocation]{evaluate_allocation()}}, for example \code{requested_outputs}.}
 }
 \value{
-An object of class \code{c("spax_allocation", "spax_result")}: a list
+For an FCA specification on raster data, a \code{spax} object (class
+\code{c("spax", "spax_result")}), see \code{\link[=spax_e2sfca]{spax_e2sfca()}}; on numeric data, a
+\code{spax_access_values} (class \code{c("spax_access_values", "spax_result")}), see
+\link{spax_access_values-methods}. For an allocation model, an object of class
+\code{c("spax_allocation", "spax_result")}: a list
 with \code{model} (the bound \code{ae_problem}), \code{spec}, \code{observed} (a list with
 \code{spec}, the observation as declared, \code{target}, the counts aligned to the
 data, and \code{output}; \code{NULL} in evaluate mode), \code{fit} (the
@@ -51,6 +56,38 @@ every parameter has a value, evaluates the model at those values.
 \code{spax_huff()} and \code{spax_clm()} do the same from raw inputs in one call.
 }
 \details{
+\strong{FCA indices.} With raster data (\code{\link[=prep_data]{prep_data()}} with a \code{SpatRaster} as demand)
+and an FCA specification (\code{\link[=spec_2sfca]{spec_2sfca()}}, \code{\link[=spec_e2sfca]{spec_e2sfca()}}, \code{\link[=spec_m2sfca]{spec_m2sfca()}},
+\code{\link[=spec_3sfca]{spec_3sfca()}}, \code{\link[=spec_huff2sfca]{spec_huff2sfca()}}), \code{spax()} computes the index and returns
+the same object as the matching one-shot (\code{\link[=spax_2sfca]{spax_2sfca()}}, \code{\link[=spax_e2sfca]{spax_e2sfca()}} and
+the others): the \code{type}, \code{parameters} and accessibility layers are identical,
+and \code{call} is the call of \code{spax()}. An index is computed, not fitted: \code{observed},
+\code{starts}, \code{lower}, \code{upper} and \code{...} are refused. Group lists of \code{decay} and
+\code{selection} and a \code{threshold} by group are matched to the demand groups of the data
+by name and put in their order.
+
+\strong{FCA indices on numeric data.} With numeric data (demand, supply and a travel
+matrix) an FCA specification gives the index at the active origins, computed by the
+same engine and the same rules (the cells that reach no facility are \code{NA}, and the
+overall layer of demand groups is the same). The result is a \code{spax_access_values}, a
+list with \code{access}, a matrix with one row per active origin and one column per layer,
+not a raster (see \link{spax_access_values-methods}). Numeric data has one supply
+measure, \code{"supply"}, so there is one measure, and an origin with zero or unknown
+demand has no row. A raster \code{sigma} (a variable catchment) is refused: "a raster
+sigma needs raster data".
+
+\strong{Allocation models on raster data.} With raster data and an allocation model
+(\code{\link[=spec_clm]{spec_clm()}}, \code{\link[=spec_huff]{spec_huff()}}), \code{spax()} first converts the data to origins, on each
+call and without keeping anything: the cells with finite, positive demand are the
+origins, their IDs are the cell numbers (\code{"843"}) and each has its travel to every
+facility; a missing or infinite travel time is an absent pair, and a cell that reaches
+no facility stays an origin: with \code{\link[=spec_clm]{spec_clm()}} its demand goes to the outside option,
+while \code{\link[=spec_huff]{spec_huff()}} has no outside option and allocates none of it. \code{\link[=obs_totals]{obs_totals()}}
+works as it is, and \code{\link[=obs_flows]{obs_flows()}} is keyed by cell number: counts at cells that are not
+origins are dropped with a message. The model then runs as on numeric data, so every
+step function accepts the result, and fits to the same data can be compared. See
+\code{\link[=prep_data]{prep_data()}} for the conversion and its memory.
+
 \strong{Fit mode.} Some parameter is \code{"fit"}. \code{observed} is needed. The counts
 are aligned with the data (see \code{\link[=obs_flows]{obs_flows()}}), the model is bound to the
 data and \code{\link[=fit_allocation]{fit_allocation()}} fits it. The loss is set by the observation and
@@ -145,6 +182,7 @@ Other allocation interface:
 \code{\link{decay_gaussian}()},
 \code{\link{obs_flows}()},
 \code{\link{prep_data}()},
+\code{\link{spax_access_values-methods}},
 \code{\link{spax_allocation-methods}},
 \code{\link{spax_huff}()},
 \code{\link{spec_clm}()}

@@ -794,7 +794,7 @@ test_that("3SFCA and Huff-2SFCA results print, summarise and plot", {
     expect_s3_class(result, "spax")
     label <- result$type
     expect_output(expect_invisible(print(result)),
-                  paste0("Spatial Accessibility Analysis \\(", label, "\\)(.|\n)*",
+                  paste0("^<spax access> ", label, ", 2 layers on 3 x 3 cells(.|\n)*",
                          "Decay function: gaussian \\(sigma = 2\\)"))
     expect_output(print(result), "Measures: 2(.|\n)*doctors(.|\n)*nurses")
     s <- summary(result)
@@ -802,8 +802,7 @@ test_that("3SFCA and Huff-2SFCA results print, summarise and plot", {
     expect_equal(s$type, label)
     expect_equal(s$facilities$count, 2)
     expect_equal(s$facilities$supply$doctors$total, 25)
-    expect_output(print(s), paste0("Summary of Spatial Accessibility Analysis \\(",
-                                   label, "\\)"))
+    expect_output(print(s), paste0("^<spax access summary> ", label, "\n"))
     expect_no_error(plot(result))
     expect_no_error(plot(result, y = "nurses", main = "Nurses"))
   }

@@ -281,7 +281,8 @@ test_that("the checks run in order and the messages are exact", {
   expect_identical(.run_error(spax(case$demand, spec_huff())),
                    "data must come from prep_data()")
   # 2. model, before the refusals and the binding
-  model_message <- "model must be a model specification such as spec_huff() or spec_clm()"
+  model_message <- paste0("model must be a model specification such as spec_e2sfca(), ",
+                          "spec_huff() or spec_clm()")
   expect_identical(.run_error(spax(d, "huff", loss = "poisson")), model_message)
   expect_identical(.run_error(spax(d, list(kind = "huff"))), model_message)
   expect_identical(.run_error(spax(d, decay_gaussian())), model_message)
@@ -1029,7 +1030,7 @@ test_that("summary() returns one class and prints the specification, the paramet
     "  attraction  (kappa * supply)^beta: kappa = 1, beta = 1",
     "  outside     v0: fit"))
   expect_identical(lines[5:6], c("", "  parameter  value  status"))
-  expect_identical(lines[11:12], c("", "<summary.ae_multistart_fit>"))
+  expect_identical(lines[11:12], c("", "<allocation fit summary>"))
   expect_identical(lines[11:length(lines)], c("", capture.output(print(s$fit))))
   expect_identical(capture.output(print(s))[7:8], .result_parameter_lines(p)[2:3])
   expect_identical(capture.output(invisible(print(s))), lines)

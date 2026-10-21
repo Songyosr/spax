@@ -474,6 +474,12 @@ extrapolation of the model, not a measure of unmet need. The grid population
 (WorldPop 2020) and the registrations (NHS England 2026) are different sources
 and dates, so the grid is used here only for locations.
 
+`spax()` can also fit the model on the grid itself: given the population
+raster and the travel stack, `prep_data()` holds raster data, and `spax()`
+turns the cells with demand into origins on each call. The examples of
+`?prep_data` fit the model to practice totals that way; demand must then count
+the same people as the totals.
+
 ## Change one practice's supply
 
 A scenario changes the system and evaluates it again at the same parameters.
