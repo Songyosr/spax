@@ -345,6 +345,62 @@ pattern: the model spreads a small outside share everywhere and puts its largest
 values where practices are far away, so treat the modelled outside share as
 approximate.
 
+## Known outside counts
+
+The fits above see only the counts at the mainland practices, so the outside
+option has no count of its own. Here each small area's outside count is known:
+demand counts every resident registered with any practice in England, so the
+residents of a small area who are not registered at a mainland practice are
+exactly its outside count, its demand less its counts at the mainland
+practices. `outside = "known"` in `obs_flows()` declares this, and `spax()`
+then fits the outside count as one more cell of each small area, with the same
+Poisson loss.
+
+```{r known-outside}
+clm_known <- spax(
+  data = d,
+  model = spec_clm(),
+  observed = obs_flows(observed, outside = "known")
+)
+coef(clm_known)
+
+# Observed and modelled outside share, in per cent of registered residents
+known_areas <- as.data.frame(clm_known, type = "origins")
+known_shares <- c(
+  observed = sum(known_areas$outside_observed),
+  `fit without outside counts` = sum(demand) - sum(fitted(clm)),
+  `fit with known outside counts` = sum(known_areas$outside_modelled)
+) / sum(demand)
+round(100 * known_shares, 2)
+```
+
+With every outside count known, the fit is the multinomial likelihood of each
+small area's choices, and a constant outside weight reproduces the total
+outside count: the modelled share equals the observed one, where the fit
+without outside counts understates it. The travel scale hardly moves.
+Per-area outside counts are in `as.data.frame(clm_known, type = "origins")`
+(`outside_observed` and `outside_modelled`), and `fitted(clm_known)` is the
+whole target, with the outside count as its last column, `"(outside)"`.
+
+Declare outside counts as known only when demand counts the same people as the
+observations, as here: registrations by residence from the same extract and
+date. They are not a population estimate. List sizes and population differ by
+several percent, and the gap would go straight into the outside counts. A model
+without an outside option, such as `spec_huff()`, cannot use them, and for
+facility totals the outside count is one number you give, never derived from
+the totals (see `?obs_flows`).
+
+Fits are compared on the same observation. `clm` and `clm_known` are fits to
+different data, so `compare_allocations()` gives no loss difference between
+them; to compare the Huff model with the conditional logit, use the same
+observation without outside counts for both.
+
+```{r known-compare}
+# Different observations: the loss difference is withheld
+compared_known <- compare_allocations(list(without = clm, with = clm_known))
+as.data.frame(compared_known)[c("specification", "comparable", "loss_difference")]
+```
+
 ## Predict at new locations
 
 Prediction does not need the fitted small areas. Each cell of the bundled

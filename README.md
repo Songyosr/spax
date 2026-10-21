@@ -336,6 +336,62 @@ are registered, not how often they visit. The population grid (WorldPop
 and dates. Data sources and licences are listed in
 `system.file("COPYRIGHTS", package = "spax")`.
 
+### Known outside counts
+
+The fit above sees only the counts at the mainland practices, so the
+outside option is fitted without any count of its own. Here the outside
+count of every small area is known. Demand is the residents registered
+with any GP practice in England, and every registered resident is
+registered somewhere, so the residents of a small area who are not
+registered at a mainland practice are exactly its outside count: its
+demand less its counts at the mainland practices, including the few
+mainland residents registered at the Scilly practice.
+`outside = "known"` declares this, and `spax()` fits the outside count
+as one more cell of each small area.
+
+``` r
+clm_known <- spax(
+  d,
+  spec_clm(),
+  observed = obs_flows(
+    cornwall_flows,
+    origin = "lsoa",
+    facility = "practice",
+    count = "patients",
+    outside = "known"
+  )
+)
+coef(clm_known)
+```
+
+         sigma         v0 
+    4.61941763 0.04864483 
+
+``` r
+# Per cent registered outside mainland Cornwall: observed and modelled
+areas_known <- as.data.frame(clm_known, type = "origins")
+known_shares <- c(
+  observed = sum(areas_known$outside_observed),
+  modelled = sum(areas_known$outside_modelled)
+) / sum(areas_known$demand)
+round(100 * known_shares, 2)
+```
+
+    observed modelled 
+        0.91     0.91 
+
+The travel scale hardly moves, but the outside weight rises from 0.027
+to 0.049, and the modelled outside share now equals the observed one:
+with every outside count known, the fit is the multinomial likelihood of
+each small area’s choices, and a constant outside weight reproduces the
+total outside count. Use `outside = "known"` only when demand counts the
+same people as the observations, as here: registrations by residence
+from the same extract and date. It is not a population estimate; list
+sizes and population differ by several percent, and the gap would go
+straight into the outside counts. The Huff comparison below uses the
+flows without outside counts, because the Huff model has no outside
+option.
+
 ### The Huff model on the same data
 
 The Huff model is the conditional logit without the outside option.
