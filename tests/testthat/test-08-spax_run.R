@@ -1408,3 +1408,64 @@ test_that("known outside counts with no complete origin are refused, and the boo
                "the facility-case bootstrap is defined for facility totals without outside counts",
                fixed = TRUE)
 })
+
+test_that("a raw matrix with an (outside) column is refused with the way to declare outside counts", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  refusal <- paste0("a facility is named \"(outside)\": declare outside counts with ",
+                    "obs_flows(outside = ) or obs_totals(outside = )")
+  raw <- cbind(case$flow, "(outside)" = oc$y0)
+  expect_identical(.run_error(spax(case$data, spec_clm(), observed = raw)), refusal)
+  expect_identical(.run_error(spax(case$data, spec_clm(), observed = obs_flows(raw))), refusal)
+  expect_identical(.run_error(spax(case$data, spec_clm(),
+    observed = obs_totals(c(colSums(case$flow), "(outside)" = sum(oc$y0))))), refusal)
+  expect_identical(.run_error(spax(case$data, spec_huff(), observed = raw)), refusal)
+})
+
+test_that("print() says that an outside weight on its lower bound is a limit of the search", {
+  oc <- .run_outside_case()
+  case <- oc$case
+  boundary_line <- function(x) {
+    lines <- capture.output(print(x))
+    lines[grepl("^  boundary", lines)]
+  }
+  said <- "  boundary    v0 at the lower bound of the search: give a smaller lower bound"
+  starts <- rbind(a = c(sigma = 9, v0 = 70), b = c(sigma = 12, v0 = 90))
+  lower <- c(sigma = 2, v0 = 60)
+  upper <- c(sigma = 40, v0 = 200)
+  # flows with known outside counts, and totals with an outside total
+  flows <- spax(case$data, spec_clm(), observed = obs_flows(case$flow, outside = "known"),
+                starts = starts, lower = lower, upper = upper)
+  expect_identical(flows$observed$output, "flow_outside")
+  expect_true(flows$fit$boundary[flows$fit$best_start, "v0"])
+  expect_identical(boundary_line(flows), said)
+  totals <- spax(case$data, spec_clm(), observed = obs_totals(case$y, outside = sum(oc$y0)),
+                 starts = starts, lower = lower, upper = upper)
+  expect_identical(totals$observed$output, "utilization_outside")
+  expect_identical(boundary_line(totals), said)
+  # the same weight on its lower bound for a fit without outside counts keeps its text
+  plain <- spax(case$data, spec_clm(), observed = obs_totals(case$y), starts = starts,
+                lower = lower, upper = upper)
+  expect_identical(plain$observed$output, "utilization")
+  expect_identical(boundary_line(plain), paste0("  boundary    v0 at its lower bound: the ",
+    "outside option adds almost nothing (compare spec_huff())"))
+  # group-specific weights, and the other parameters on a bound come first
+  fit <- structure(list(
+    best = list(), best_start = "scan1", table = data.frame(start = "scan1", eligible = TRUE),
+    boundary = matrix(c(FALSE, TRUE, TRUE, FALSE), 1, 4,
+      dimnames = list("scan1", c("sigma", "v0.a", "v0.b", "beta"))),
+    theta = matrix(c(5, 1e-3, 40, 1), 1, 4,
+      dimnames = list("scan1", c("sigma", "v0.a", "v0.b", "beta"))),
+    bounds = list(lower = c(sigma = 1, v0.a = 1e-3, v0.b = 1e-6, beta = 0.05),
+                  upper = c(sigma = 10, v0.a = 100, v0.b = 40, beta = 5))),
+    class = "ae_multistart_fit")
+  target <- matrix(c(1, 2, 3, 4), 2, 2, dimnames = list(c("f1", "(outside)"), c("a", "b")))
+  lines <- .result_fit_lines(list(fit = fit, observed = list(
+    output = "utilization_outside_by_group", target = target)))
+  expect_identical(lines[2L], paste0("  boundary    v0.b at a search bound; v0.a at the lower ",
+    "bound of the search: give a smaller lower bound"))
+  # ... and for the same fit without outside counts
+  lines <- .result_fit_lines(list(fit = fit, observed = list(output = "utilization_by_group")))
+  expect_identical(lines[2L], paste0("  boundary    v0.b at a search bound; v0.a at its lower ",
+    "bound: the outside option adds almost nothing (compare spec_huff())"))
+})

@@ -374,10 +374,11 @@ known_shares <- c(
 round(100 * known_shares, 2)
 ```
 
-With every outside count known, the fit is the multinomial likelihood of each
-small area's choices, and a constant outside weight reproduces the total
-outside count: the modelled share equals the observed one, where the fit
-without outside counts understates it. The travel scale hardly moves.
+With every outside count known by subtraction (demand minus the counts), the
+fit is the multinomial likelihood of each small area's choices, and a constant
+outside weight reproduces the total outside count: the modelled share equals the
+observed one, where the fit without outside counts understates it. The travel
+scale hardly moves.
 Per-area outside counts are in `as.data.frame(clm_known, type = "origins")`
 (`outside_observed` and `outside_modelled`), and `fitted(clm_known)` is the
 whole target, with the outside count as its last column, `"(outside)"`.

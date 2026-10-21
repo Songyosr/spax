@@ -579,6 +579,90 @@ test_that("a group whose outside weight is held at 0 reports its positive outsid
       c(sigma.old = 20, sigma.young = 20, v0.young = 100),
       output = "utilization_outside_by_group", loss = "poisson", gradient = TRUE))
   expect_true(any(grepl("below the Poisson floor", warned)))
+  # an outside count where the outside weight is 0 is among the causes it names
+  expect_true(any(grepl(paste0("Look for observed counts on absent edges, at facilities with ",
+    "zero supply or on an outside count where the outside weight is 0, or use a kernel ",
+    "with a heavier tail."), warned, fixed = TRUE)))
+})
+
+test_that("the Poisson floor message names an outside count only for the outside outputs", {
+  floor_info <- c(eps = 1e-250, positive_below = 2)
+  for (output in names(.outside_outputs)) {
+    expect_match(.poisson_floor_message(floor_info, output),
+                 "or on an outside count where the outside weight is 0", fixed = TRUE)
+  }
+  for (output in list("flow", "utilization", "utilization_by_group", NULL)) {
+    expect_identical(.poisson_floor_message(floor_info, output),
+      paste0("2 cells with positive observed counts are modelled below the Poisson floor ",
+             "(eps = 1e-250, zero included); the loss is capped there, so the fit is not the ",
+             "Poisson maximum likelihood estimate. Look for observed counts on absent edges ",
+             "or at facilities with zero supply, or use a kernel with a heavier tail."))
+  }
+  # the same text without an output, as before
+  expect_identical(.poisson_floor_message(floor_info), .poisson_floor_message(floor_info, "flow"))
+  # check_allocation() prints it with the output of the fit
+  case <- .oc_case()
+  model <- clm_allocation(case$inputs, fit_v0 = TRUE)
+  fit <- .oc_fit(model, .oc_target(case), "flow_outside")
+  check <- check_allocation(model, fit)
+  expect_identical(check$output, "flow_outside")
+  check$flags[["positive_counts_below_poisson_floor"]] <- TRUE
+  check$poisson_floor <- c(eps = 1e-250, positive_below = 2)
+  printed <- paste(capture.output(print(check)), collapse = " ")
+  expect_match(printed, "or on an outside count where the outside weight is 0", fixed = TRUE)
+})
+
+test_that("outside counts are fitted with the built-in Poisson loss only", {
+  case <- .oc_case()
+  model <- clm_allocation(case$inputs, fit_v0 = TRUE)
+  g <- .oc_group_case()
+  gmodel <- clm_allocation(g$inputs, fit_v0 = TRUE, by_group = c("sigma", "v0"))
+  gtheta <- g$truth[gmodel$theta$names]
+  msg <- "outside counts are fitted with loss = \"poisson\""
+  custom <- function(predicted, observed, ...) sum((predicted - observed)^2)
+  custom_grad <- function(predicted, observed, sensitivity, ...) {
+    as.vector(crossprod(sensitivity, 2 * (predicted - observed)))
+  }
+  setups <- list(
+    flow_outside = list(model = model, target = .oc_target(case), starts = .oc_starts,
+                        lower = .oc_lower, upper = .oc_upper),
+    utilization_outside = list(model = model,
+      target = c(colSums(case$flows), "(outside)" = sum(case$outside)), starts = .oc_starts,
+      lower = .oc_lower, upper = .oc_upper),
+    utilization_outside_by_group = list(model = gmodel, target = g$exact,
+      starts = rbind(a = gtheta * 1.3), lower = gtheta / 20, upper = gtheta * 20))
+  for (output in names(setups)) {
+    s <- setups[[output]]
+    # given starts and no loss: the default weighted SSE is refused
+    expect_error(fit_allocation(s$model, s$target, s$starts, s$lower, s$upper, output = output),
+                 msg, fixed = TRUE)
+    # a named weighted SSE, with and without starts
+    expect_error(fit_allocation(s$model, s$target, s$starts, s$lower, s$upper, output = output,
+                                loss = "weighted_sse"), msg, fixed = TRUE)
+    expect_error(fit_allocation(s$model, s$target, output = output, loss = "weighted_sse"),
+                 msg, fixed = TRUE)
+    # a custom loss function, with and without its gradient and starts
+    expect_error(fit_allocation(s$model, s$target, s$starts, s$lower, s$upper, output = output,
+                                loss = custom), msg, fixed = TRUE)
+    expect_error(fit_allocation(s$model, s$target, s$starts, s$lower, s$upper, output = output,
+                                loss = custom, loss_grad = custom_grad, gradient = TRUE),
+                 msg, fixed = TRUE)
+    expect_error(fit_allocation(s$model, s$target, output = output, loss = custom),
+                 msg, fixed = TRUE)
+    # the built-in Poisson loss is fitted, also named by a partial match
+    fit <- fit_allocation(s$model, s$target, s$starts, s$lower, s$upper, output = output,
+                          loss = "pois", gradient = TRUE, control = .oc_control)
+    expect_s3_class(fit, "ae_multistart_fit")
+    expect_false(is.null(fit$best))
+  }
+  # the other outputs keep the default weighted SSE and custom losses
+  expect_s3_class(fit_allocation(model, case$flows, .oc_starts, .oc_lower, .oc_upper,
+                                 output = "flow"), "ae_multistart_fit")
+  expect_s3_class(fit_allocation(model, case$flows, .oc_starts, .oc_lower, .oc_upper,
+                                 output = "flow", loss = custom), "ae_multistart_fit")
+  # without starts and without a named loss, the search asks for the loss first
+  expect_error(fit_allocation(model, .oc_target(case), output = "flow_outside"),
+               "choose the loss when starts are not given", fixed = TRUE)
 })
 
 # Cornwall -------------------------------------------------------------------

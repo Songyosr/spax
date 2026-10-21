@@ -157,12 +157,12 @@ the gap goes straight into the outside count.
 
 For an origin whose outside count is known and adds up, with its facility
 counts, to its demand (\code{y0 + sum(y) = D}, as for \code{"known"}), the Poisson loss
-on its cells is the multinomial likelihood of its choices up to constants. When this holds for every
-origin of an ungrouped flow fit and \code{v0} is fitted inside its search bounds,
-the fitted total outside count equals the observed one. That is not claimed for
-totals or for demand groups: there the loss is a Poisson working likelihood and
-the outside count is not matched. Fits with and without outside counts are
-fits to different data, so \code{\link[=compare_allocations]{compare_allocations()}} gives no loss difference
+on its cells is the multinomial likelihood of its choices up to constants.
+When this holds for every origin of an ungrouped flow fit and \code{v0} is fitted
+inside its search bounds, the fitted total outside count equals the observed
+one. That is not claimed for totals or for demand groups: there the total
+outside count is not guaranteed to match. Fits with and without outside counts
+are fits to different data, so \code{\link[=compare_allocations]{compare_allocations()}} gives no loss difference
 between them: compare models on the same observation, and compare the
 Huff model (\code{\link[=spec_huff]{spec_huff()}}) with a conditional logit model on an observation
 with \code{outside = "unknown"}.

@@ -205,7 +205,7 @@ flows <- obs_flows(
 clm <- spax(d, spec_clm(), observed = flows)
 ```
 
-    observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are treated as the outside option
+    observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted (outside = "known" uses them as outside counts)
 
 ``` r
 clm
@@ -382,15 +382,15 @@ round(100 * known_shares, 2)
 
 The travel scale hardly moves, but the outside weight rises from 0.027
 to 0.049, and the modelled outside share now equals the observed one:
-with every outside count known, the fit is the multinomial likelihood of
-each small area’s choices, and a constant outside weight reproduces the
-total outside count. Use `outside = "known"` only when demand counts the
-same people as the observations, as here: registrations by residence
-from the same extract and date. It is not a population estimate; list
-sizes and population differ by several percent, and the gap would go
-straight into the outside counts. The Huff comparison below uses the
-flows without outside counts, because the Huff model has no outside
-option.
+with every outside count known by subtraction (demand minus the counts),
+the fit is the multinomial likelihood of each small area’s choices, and
+a constant outside weight reproduces the total outside count. Use
+`outside = "known"` only when demand counts the same people as the
+observations, as here: registrations by residence from the same extract
+and date. It is not a population estimate; list sizes and population
+differ by several percent, and the gap would go straight into the
+outside counts. The Huff comparison below uses the flows without outside
+counts, because the Huff model has no outside option.
 
 ### The Huff model on the same data
 

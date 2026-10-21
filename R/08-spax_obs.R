@@ -92,12 +92,12 @@
 #'
 #' For an origin whose outside count is known and adds up, with its facility
 #' counts, to its demand (`y0 + sum(y) = D`, as for `"known"`), the Poisson loss
-#' on its cells is the multinomial likelihood of its choices up to constants. When this holds for every
-#' origin of an ungrouped flow fit and `v0` is fitted inside its search bounds,
-#' the fitted total outside count equals the observed one. That is not claimed for
-#' totals or for demand groups: there the loss is a Poisson working likelihood and
-#' the outside count is not matched. Fits with and without outside counts are
-#' fits to different data, so [compare_allocations()] gives no loss difference
+#' on its cells is the multinomial likelihood of its choices up to constants.
+#' When this holds for every origin of an ungrouped flow fit and `v0` is fitted
+#' inside its search bounds, the fitted total outside count equals the observed
+#' one. That is not claimed for totals or for demand groups: there the total
+#' outside count is not guaranteed to match. Fits with and without outside counts
+#' are fits to different data, so [compare_allocations()] gives no loss difference
 #' between them: compare models on the same observation, and compare the
 #' Huff model ([spec_huff()]) with a conditional logit model on an observation
 #' with `outside = "unknown"`.
@@ -571,7 +571,10 @@ print.spax_obs <- function(x, ...) {
 # matrix, all double and in the order of the data. `data` is the prepared inputs.
 # `outside_option` is FALSE for a model without an outside option (Huff); it
 # changes the wording of the message about counts at facilities outside the data,
-# and refuses an observation with outside counts.
+# and refuses an observation with outside counts. For a CLM without outside counts
+# (outside = "unknown") that message says the counts are not fitted; with outside
+# counts they are part of the outside option. An observed facility named "(outside)"
+# is refused: the label belongs to the outside entry of the target.
 #
 # With outside counts (SPAX-059; `obs$outside` is "known" or the counts given) the
 # target has the entry "(outside)" as its last column (flows), element (totals) or row
@@ -618,6 +621,7 @@ print.spax_obs <- function(x, ...) {
   frame <- is.data.frame(x)
   observed_origins <- if (frame) unique(x$origin) else rownames(x)
   observed_facilities <- if (frame) unique(x$facility) else colnames(x)
+  .obs_check_outside_label(observed_facilities)
   # 1. Key check: a swapped matrix matches neither axis.
   if (!any(observed_origins %in% data$all_origin_ids)) {
     stop("none of the observed origin IDs are in the data; are rows and columns swapped?",
@@ -643,7 +647,8 @@ print.spax_obs <- function(x, ...) {
   elsewhere <- .obs_outside_facilities(x, totals$id[active], data$facility_ids)
   # 4. One message for steps 2 and 3.
   .obs_message(sum(totals$total[dropped]), sum(dropped & totals$positive),
-               sum(elsewhere), sum(elsewhere > 0), outside_option)
+               sum(elsewhere), sum(elsewhere > 0), outside_option,
+               outside_used = !identical(outside, "unknown"))
   block <- .obs_flow_block(x, data$origin_ids, data$facility_ids)
   positive <- !is.na(block) & block > 0
   # 5. Nothing left to fit.
@@ -739,6 +744,7 @@ print.spax_obs <- function(x, ...) {
 }
 
 .canonical_totals <- function(x, data, outside_option, outside = "unknown") {
+  .obs_check_outside_label(names(x))
   .obs_check_facilities(names(x), data)
   elsewhere <- !names(x) %in% data$facility_ids
   .obs_message(0, 0, sum(x[elsewhere], na.rm = TRUE), sum(x[elsewhere] > 0, na.rm = TRUE),
@@ -761,6 +767,7 @@ print.spax_obs <- function(x, ...) {
          "groups of the data (", if (is.null(groups)) "none" else paste(groups, collapse = ", "),
          ")", call. = FALSE)
   }
+  .obs_check_outside_label(rownames(x))
   .obs_check_facilities(rownames(x), data)
   elsewhere <- !rownames(x) %in% data$facility_ids
   .obs_message(0, 0, sum(x[elsewhere, , drop = FALSE], na.rm = TRUE),
@@ -797,6 +804,16 @@ print.spax_obs <- function(x, ...) {
          .obs_count(length(facilities), "facility", "facilities"),
          " that no origin can reach (", .obs_head(facilities), "); set them to NA or ",
          "give their travel times", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+# The label of the outside entry of a target is not a facility ID: outside counts are
+# declared with `outside =`.
+.obs_check_outside_label <- function(facilities) {
+  if (.outside_label %in% facilities) {
+    stop("a facility is named \"", .outside_label, "\": declare outside counts with ",
+         "obs_flows(outside = ) or obs_totals(outside = )", call. = FALSE)
   }
   invisible(TRUE)
 }
@@ -839,7 +856,7 @@ print.spax_obs <- function(x, ...) {
 # `totals`: counts at facilities outside the data never enter a fit to facility
 # totals (there is no origin to send them to), so the model is not involved.
 .obs_message <- function(n_origin, k_origin, n_facility, k_facility, outside_option,
-                         totals = FALSE) {
+                         totals = FALSE, outside_used = TRUE) {
   parts <- character()
   if (n_origin > 0) {
     parts <- c(parts, paste0(.obs_count(n_origin, "count", "counts"), " from ",
@@ -852,8 +869,9 @@ print.spax_obs <- function(x, ...) {
     parts <- c(parts, paste0(.obs_count(n_facility, "count", "counts"), " at ",
       .obs_count(k_facility, "facility", "facilities"), " outside the data ", verb,
       if (totals) " left out"
-      else if (outside_option) " treated as the outside option"
-      else " dropped (the Huff model has no outside option)"))
+      else if (!outside_option) " dropped (the Huff model has no outside option)"
+      else if (outside_used) " treated as the outside option"
+      else " not fitted (outside = \"known\" uses them as outside counts)"))
   }
   if (length(parts)) message("observed: ", paste(parts, collapse = "; "))
   invisible(NULL)

@@ -85,6 +85,13 @@ comes from the pooled outputs. Contact and capacity values remain comparable
 across specifications, but they are conditional on each specification's
 inputs.
 
+For fits to the outside-count outputs (\code{flow_outside}, \code{utilization_outside},
+\code{utilization_outside_by_group}), the \code{count_correlation} is over the whole
+target, the \code{"(outside)"} cells included, so it is not comparable with the
+correlation of a fit to facility counts without outside counts. The
+capacity-only comparator of \code{\link[=check_allocation]{check_allocation()}} applies to facility totals
+without outside counts only.
+
 With \code{zones}, each fit is also summarized by zone using contact-weighted
 aggregation, and the zones whose reporting class differs from the reference
 are listed. Classes require an adequacy cut in \code{coverage_args}; each fit uses

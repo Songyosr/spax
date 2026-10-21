@@ -75,7 +75,9 @@ below the floor are reported with a warning, because the loss is capped
 there. Fits made before this default used 1e-9; pass
 \code{loss_args = list(eps = 1e-9)} to reproduce them. Joint fitting does not
 force total matching. The default is \code{"weighted_sse"} when \code{starts} are
-given; without \code{starts} the loss must be named.}
+given; without \code{starts} the loss must be named. The outside-count outputs
+accept \code{"poisson"} only (not the default weighted SSE and not a custom
+function).}
 
 \item{loss_args}{Named auxiliary arguments passed to loss callbacks. For
 \code{loss = "poisson"} an \code{eps} of 1e-250 is added when none is given; other
@@ -130,8 +132,11 @@ each group, the sum of its demand times its outside share as one more row.
 They are available for a model with an outside option (a fitted \code{v0}, or a
 held \code{v0} above 0) and are refused as targets for any other model, such as
 the Huff model: "outside counts need a model with an outside option". They are
-fitted like the other count outputs, with \code{loss = "poisson"} and no further
-argument. The observed counts carry the outside counts under the name
+fitted like the other count outputs, with the built-in Poisson loss
+(\code{loss = "poisson"}) and no further argument; any other loss, the default
+weighted SSE and custom loss functions included, is refused: "outside counts
+are fitted with loss = \"poisson\"". The observed
+counts carry the outside counts under the name
 \code{"(outside)"}: a column of the flow matrix, an element of the totals vector, a
 row of the facility-by-group matrix, matched by name like the facility IDs and
 in any order. \code{NA} is allowed: an origin or group whose outside count is not
@@ -149,10 +154,10 @@ count is known and \verb{y0_i + sum_j y_ij = D_i}, the Poisson loss on its cells
 constants. When this holds for every origin of a flow fit and \code{v0} is free and
 inside its bounds, the fitted model's total outside count equals the observed
 one (the score equation of \verb{log v0}). This is not claimed for totals or for
-models with demand groups: there the loss is a Poisson working likelihood and
-the total outside count is not matched. Fits to
-different outputs, or with and without outside counts, are fits to different
-data, so \code{\link[=compare_allocations]{compare_allocations()}} gives no loss difference between them;
+models with demand groups: there the total outside count is not guaranteed to
+match. Fits to different outputs, or with and without outside counts, are fits
+to different data, so \code{\link[=compare_allocations]{compare_allocations()}} gives no loss difference between
+them;
 compare models on the same observation, and a model without an outside option
 (Huff) on the observation without outside counts. \code{\link[=bootstrap_allocation]{bootstrap_allocation()}}
 refuses these fits: the facility-case bootstrap is defined for facility

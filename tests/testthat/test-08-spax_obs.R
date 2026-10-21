@@ -318,8 +318,8 @@ test_that("flows are aligned to the active origins and facilities of the data", 
   # one message for the dropped origins and the facilities outside the data; counts
   # at the outside facility of the dropped origins (o6: 2, zz: 7) are not in it
   expect_identical(r$messages, paste0("observed: 180 counts from 3 origins outside the data ",
-    "or left out by it are dropped; 1 count at 1 facility outside the data is treated ",
-    "as the outside option\n"))
+    "or left out by it are dropped; 1 count at 1 facility outside the data is not fitted ",
+    "(outside = \"known\" uses them as outside counts)\n"))
   # the long form of the same counts gives the same target
   long <- .obs_long(.obs_flow_matrix())
   r2 <- .obs_messages(.canonical_observed(
@@ -390,8 +390,8 @@ test_that("all counts dropped is an error", {
   expect_identical(msgs$error,
     "no observed count remains after dropping origins and facilities outside the data")
   expect_identical(msgs$messages, paste0("observed: 9 counts from 1 origin outside the data ",
-    "or left out by it are dropped; 1 count at 1 facility outside the data is treated ",
-    "as the outside option\n"))
+    "or left out by it are dropped; 1 count at 1 facility outside the data is not fitted ",
+    "(outside = \"known\" uses them as outside counts)\n"))
 })
 
 test_that("zero-demand origins: positive counts are an error, zeros are dropped silently", {
@@ -460,6 +460,10 @@ test_that("the Huff wording says that counts at facilities outside the data are 
     "are dropped (the Huff model has no outside option)\n"))
   r3 <- .obs_messages(.canonical_observed(obs_flows(m), data, TRUE))
   expect_identical(r3$messages, paste0("observed: 9 counts at 1 facility outside the data ",
+    "are not fitted (outside = \"known\" uses them as outside counts)\n"))
+  # with outside counts, those counts are part of the outside option
+  r4 <- .obs_messages(.canonical_observed(obs_flows(m, outside = "known"), data, TRUE))
+  expect_identical(r4$messages, paste0("observed: 9 counts at 1 facility outside the data ",
     "are treated as the outside option\n"))
   expect_identical(.obs_error(.canonical_observed(obs_flows(m), data, NA)),
     "outside_option must be TRUE or FALSE")
@@ -887,9 +891,15 @@ test_that("known outside counts are the demand less the counts at the facilities
   expect_identical(r$value, cbind(inside, "(outside)" = c(25, 37, 23)))
   expect_identical(colnames(r$value), c("f2", "f1", "f3", "(outside)"))
   expect_identical(rownames(r$value), c("o1", "o3", "o5"))
-  # the messages are the ones of the inside counts
+  # the messages are the ones of the inside counts, except that the counts at the
+  # facility outside the data are said to be part of the outside option
   plain <- .obs_messages(.canonical_observed(obs_flows(m), data, TRUE))
-  expect_identical(r$messages, plain$messages)
+  expect_identical(r$messages, paste0("observed: 180 counts from 3 origins outside the data ",
+    "or left out by it are dropped; 1 count at 1 facility outside the data is treated ",
+    "as the outside option\n"))
+  expect_identical(plain$messages, paste0("observed: 180 counts from 3 origins outside the ",
+    "data or left out by it are dropped; 1 count at 1 facility outside the data is not ",
+    "fitted (outside = \"known\" uses them as outside counts)\n"))
   expect_identical(r$value[, 1:3], plain$value)
   # the same from a long table, with the facilities in any order
   long <- .obs_long(m[, c("f1", "out", "f3", "f2")])
@@ -1078,6 +1088,39 @@ test_that("outside counts by group are appended as a row, in the order of the gr
   expect_identical(.obs_error(.canonical_observed(obs_totals(x, outside = c(a = 1, b = 2, c = 3)),
                                                   data, TRUE)),
     "outside counts must be named by the groups of the data (a, b), each once")
+})
+
+test_that("an observed facility named (outside) is refused, with the way to declare outside counts", {
+  data <- .obs_case()
+  refusal <- paste0("a facility is named \"(outside)\": declare outside counts with ",
+                    "obs_flows(outside = ) or obs_totals(outside = )")
+  # flows: a column of a matrix, or a facility of a long table, with or without outside
+  # counts and for either model
+  m <- cbind(.obs_flow_expected(), "(outside)" = c(25, 37, 23))
+  long <- .obs_long(m)
+  for (outside_option in c(TRUE, FALSE)) {
+    expect_identical(.obs_error(.canonical_observed(obs_flows(m), data, outside_option)), refusal)
+    expect_identical(.obs_error(.canonical_observed(obs_flows(long, "lsoa", "practice", "patients"),
+                                                    data, outside_option)), refusal)
+  }
+  expect_identical(.obs_error(.canonical_observed(obs_flows(m, outside = "known"), data, TRUE)),
+                   refusal)
+  # totals, and totals by group (a row)
+  y <- c(f2 = 3, f1 = 4, f3 = 5, "(outside)" = 8)
+  expect_identical(.obs_error(.canonical_observed(obs_totals(y), data, TRUE)), refusal)
+  expect_identical(.obs_error(.canonical_observed(obs_totals(y, outside = 8), data, TRUE)), refusal)
+  gdata <- .obs_case_groups()
+  g <- matrix(c(1, 6, 2, 9,  3, 4, 5, 4), 4, 2,
+              dimnames = list(c("f2", "f1", "f3", "(outside)"), c("a", "b")))
+  expect_identical(.obs_error(.canonical_observed(obs_totals(g), gdata, TRUE)), refusal)
+  # the same through the raw observed of spax(): a matrix with an outside column is a
+  # facility named "(outside)" and no longer treated as a facility outside the data
+  expect_identical(.obs_error(.canonical_observed(.as_spax_obs(m, data), data, TRUE)), refusal)
+  # the declared way works, and the entry of the target keeps its name
+  ok <- suppressMessages(.canonical_observed(obs_totals(y[1:3], outside = 8), data, TRUE))
+  expect_identical(names(ok), c("f2", "f1", "f3", "(outside)"))
+  ok_flows <- suppressMessages(.canonical_observed(obs_flows(m[, 1:3], outside = "known"), data, TRUE))
+  expect_identical(colnames(ok_flows), c("f2", "f1", "f3", "(outside)"))
 })
 
 test_that("canonical targets with outside counts are accepted by fit_allocation()", {
@@ -1291,8 +1334,8 @@ test_that("the long cornwall_flows table reproduces the counts of the review (D9
   obs <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")
   r <- .obs_messages(.canonical_observed(obs, cw$data, TRUE))
   expect_identical(r$messages, paste0("observed: 2,290 counts from 1 origin outside the data ",
-    "or left out by it are dropped; 5 counts at 1 facility outside the data are treated as ",
-    "the outside option\n"))
+    "or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted ",
+    "(outside = \"known\" uses them as outside counts)\n"))
   expected <- matrix(0, nrow(cw$travel), ncol(cw$travel), dimnames = dimnames(cw$travel))
   keep <- in_origin & in_facility
   expected[cbind(fl$lsoa[keep], fl$practice[keep])] <- fl$patients[keep]
@@ -1319,8 +1362,8 @@ test_that("xtabs and tapply input give the same counts as the long table on Corn
     obs_flows(xtabs(patients ~ lsoa + practice, cornwall_flows)), cw$data, TRUE))
   expect_identical(by_xtabs$value, by_long)
   expect_identical(by_xtabs$messages, paste0("observed: 2,290 counts from 1 origin outside the ",
-    "data or left out by it are dropped; 5 counts at 1 facility outside the data are treated ",
-    "as the outside option\n"))
+    "data or left out by it are dropped; 5 counts at 1 facility outside the data are not ",
+    "fitted (outside = \"known\" uses them as outside counts)\n"))
   totals <- tapply(cornwall_flows$patients, cornwall_flows$practice, sum)
   r <- .obs_messages(.canonical_observed(obs_totals(totals), cw$data, TRUE))
   expect_identical(r$value, stats::setNames(as.double(totals[colnames(cw$travel)]), colnames(cw$travel)))

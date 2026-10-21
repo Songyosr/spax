@@ -408,8 +408,11 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' They are available for a model with an outside option (a fitted `v0`, or a
 #' held `v0` above 0) and are refused as targets for any other model, such as
 #' the Huff model: "outside counts need a model with an outside option". They are
-#' fitted like the other count outputs, with `loss = "poisson"` and no further
-#' argument. The observed counts carry the outside counts under the name
+#' fitted like the other count outputs, with the built-in Poisson loss
+#' (`loss = "poisson"`) and no further argument; any other loss, the default
+#' weighted SSE and custom loss functions included, is refused: "outside counts
+#' are fitted with loss = \"poisson\"". The observed
+#' counts carry the outside counts under the name
 #' `"(outside)"`: a column of the flow matrix, an element of the totals vector, a
 #' row of the facility-by-group matrix, matched by name like the facility IDs and
 #' in any order. `NA` is allowed: an origin or group whose outside count is not
@@ -428,10 +431,10 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' constants. When this holds for every origin of a flow fit and `v0` is free and
 #' inside its bounds, the fitted model's total outside count equals the observed
 #' one (the score equation of `log v0`). This is not claimed for totals or for
-#' models with demand groups: there the loss is a Poisson working likelihood and
-#' the total outside count is not matched. Fits to
-#' different outputs, or with and without outside counts, are fits to different
-#' data, so [compare_allocations()] gives no loss difference between them;
+#' models with demand groups: there the total outside count is not guaranteed to
+#' match. Fits to different outputs, or with and without outside counts, are fits
+#' to different data, so [compare_allocations()] gives no loss difference between
+#' them;
 #' compare models on the same observation, and a model without an outside option
 #' (Huff) on the observation without outside counts. [bootstrap_allocation()]
 #' refuses these fits: the facility-case bootstrap is defined for facility
@@ -535,7 +538,9 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   there. Fits made before this default used 1e-9; pass
 #'   `loss_args = list(eps = 1e-9)` to reproduce them. Joint fitting does not
 #'   force total matching. The default is `"weighted_sse"` when `starts` are
-#'   given; without `starts` the loss must be named.
+#'   given; without `starts` the loss must be named. The outside-count outputs
+#'   accept `"poisson"` only (not the default weighted SSE and not a custom
+#'   function).
 #' @param loss_args Named auxiliary arguments passed to loss callbacks. For
 #'   `loss = "poisson"` an `eps` of 1e-250 is added when none is given; other
 #'   arguments pass unchanged. Any observation-indexed values must already
@@ -596,6 +601,12 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     if (is.null(starts) && loss_missing) stop(.default_search_message$loss)
   }
   loss_name <- if (is.character(loss)) match.arg(loss, c("weighted_sse", "poisson")) else "custom"
+  # Outside counts are fitted with the built-in Poisson loss only: the weighted SSE
+  # (also the default when starts are given) and custom losses are refused.
+  if (is.character(output) && length(output) == 1L && !is.na(output) &&
+      output %in% names(.outside_outputs) && !identical(loss_name, "poisson")) {
+    stop("outside counts are fitted with loss = \"poisson\"")
+  }
   if (is.character(loss)) {
     loss <- match.arg(loss, c("weighted_sse", "poisson"))
     if (loss == "poisson" && is.list(loss_args) && !"eps" %in% names(loss_args)) {
@@ -649,7 +660,7 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
   if (inherits(result, "ae_multistart_fit") && !is.null(result$best)) {
     floor_info <- .poisson_floor(result$best)
     if (!is.null(floor_info) && floor_info[["positive_below"]] > 0) {
-      warning(.poisson_floor_message(floor_info), call. = FALSE)
+      warning(.poisson_floor_message(floor_info, result$best$output), call. = FALSE)
     }
   }
   result

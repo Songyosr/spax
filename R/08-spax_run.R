@@ -690,11 +690,19 @@ predict.spax_allocation <- function(object, travel, demand = NULL,
       low <- .result_at_lower(fit, i, at)
       v0_low <- at[low & (at == "v0" | startsWith(at, "v0."))]
       other <- setdiff(at, v0_low)
+      # With outside counts the weight cannot be read that way: the counts say how many
+      # people choose the outside option, so the bound is a limit of the search.
+      with_outside <- isTRUE(x$observed$output %in% names(.outside_outputs))
       paste(c(
         if (length(other)) paste0(paste(other, collapse = ", "), " at a search bound"),
-        if (length(v0_low)) paste0(paste(v0_low, collapse = ", "),
-          if (length(v0_low) == 1L) " at its lower bound" else " at their lower bounds",
-          ": the outside option adds almost nothing (compare spec_huff())")),
+        if (length(v0_low) && with_outside) {
+          paste0(paste(v0_low, collapse = ", "),
+                 " at the lower bound of the search: give a smaller lower bound")
+        } else if (length(v0_low)) {
+          paste0(paste(v0_low, collapse = ", "),
+                 if (length(v0_low) == 1L) " at its lower bound" else " at their lower bounds",
+                 ": the outside option adds almost nothing (compare spec_huff())")
+        }),
         collapse = "; ")
     } else {
       "none"

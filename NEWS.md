@@ -66,7 +66,7 @@
   count as the entry `"(outside)"`, `NA` where it is unknown. They need a model with an
   outside option, and `bootstrap_allocation()` refuses them. Fits to the other outputs are
   unchanged. Models and fits saved by earlier versions keep working; bootstrap checkpoints
-  written by earlier versions cannot be resumed.
+  written by earlier versions cannot be resumed with a model built by this version.
 * `obs_flows(outside = )` and `obs_totals(outside = )` declare observed outside counts, and
   `spax()` then fits the outside outputs above. The default stays `"unknown"`: the fit uses
   the counts at the facilities of the data only. `outside = "known"` takes each origin's
@@ -76,11 +76,12 @@
   (a vector named by group for totals by group), never derived from the totals. Use
   `"known"` only when demand counts the same people as the observations, for example
   registrations by residence from the same extract and date: it is not a population estimate.
-  For ungrouped flows with every origin's outside count known, and `v0` fitted inside its
-  bounds, the fit is the multinomial likelihood of the origins' choices and the fitted total
-  outside count equals the observed one; on Cornwall with registered demand, `sigma` is 4.619
-  and `v0` 0.0486 (4.591 and 0.0273 without the outside counts). For totals and demand groups
-  the loss is a Poisson working likelihood and no match is claimed. `spax()` refuses a model
+  With `outside = "known"` (each origin's outside count plus its counts equals its demand),
+  ungrouped flows and `v0` fitted inside its bounds, the fit is the multinomial likelihood of
+  the origins' choices and the fitted total outside count equals the observed one; on
+  Cornwall with registered demand, `sigma` is 4.619 and `v0` 0.0486 (4.591 and 0.0273 without
+  the outside counts). For totals and demand groups the loss is a Poisson working likelihood
+  and no match is claimed. `spax()` refuses a model
   without an outside option (`spec_huff()`), and `compare_allocations()` gives no loss
   difference between fits with and without outside counts. The printed result has a line
   `outside`, `as.data.frame(type = "origins")` adds `outside_observed` and

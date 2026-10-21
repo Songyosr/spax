@@ -344,14 +344,15 @@ v0_before <- format(round(coef(clm)[["v0"]], 3), nsmall = 3)
 
 The travel scale hardly moves, but the outside weight rises from
 `r v0_before` to `r v0_known`, and the modelled outside share now equals the
-observed one: with every outside count known, the fit is the multinomial
-likelihood of each small area's choices, and a constant outside weight
-reproduces the total outside count. Use `outside = "known"` only when demand
-counts the same people as the observations, as here: registrations by
-residence from the same extract and date. It is not a population estimate;
-list sizes and population differ by several percent, and the gap would go
-straight into the outside counts. The Huff comparison below uses the flows
-without outside counts, because the Huff model has no outside option.
+observed one: with every outside count known by subtraction (demand minus
+the counts), the fit is the multinomial likelihood of each small area's
+choices, and a constant outside weight reproduces the total outside count.
+Use `outside = "known"` only when demand counts the same people as the
+observations, as here: registrations by residence from the same extract and
+date. It is not a population estimate; list sizes and population differ by
+several percent, and the gap would go straight into the outside counts. The Huff
+comparison below uses the flows without outside counts, because the Huff model
+has no outside option.
 
 ### The Huff model on the same data
 

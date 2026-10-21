@@ -20,7 +20,13 @@
 #'   decay parameter `sigma`, which this allocation does not use.
 #' * `capacity_only`: facility loads proportional to attractiveness, ignoring
 #'   travel entirely, with one fitted scale factor. Available for facility
-#'   `utilization` targets only.
+#'   `utilization` targets only: it applies to facility totals without outside
+#'   counts, and is not reported (`NA`) for any other output.
+#'
+#' For the outside-count outputs (`flow_outside`, `utilization_outside`), the loss
+#' of every comparator is scored on the whole target, the `"(outside)"` cells
+#' included, as is the count correlation that [compare_allocations()] reports for
+#' such fits.
 #'
 #' When the model fits the attractiveness exponent `beta`, it is re-optimized in
 #' both comparators. Comparator searches start from the fit's own scale and widen
@@ -330,7 +336,7 @@ print.ae_allocation_check <- function(x, digits = 4, ...) {
     cat("A comparator search ended at its widest range; its loss may be overstated.\n")
   }
   if (isTRUE(x$flags["positive_counts_below_poisson_floor"])) {   # absent in older objects
-    cat(strwrap(.poisson_floor_message(x$poisson_floor)), sep = "\n")
+    cat(strwrap(.poisson_floor_message(x$poisson_floor, x$output)), sep = "\n")
   }
   invisible(x)
 }
