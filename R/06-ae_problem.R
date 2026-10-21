@@ -1027,6 +1027,9 @@
 #' specification; the record then has a separate schema version.
 #' @param requested_outputs Optional output names to materialize in addition to
 #'   the provider's default outputs. `NULL` retains the legacy output callback.
+#' @param keep_step If `TRUE`, the bound step is returned as `$step`, so a
+#'   gradient at the same theta need not bind again. Only the optimizer asks
+#'   for it, never the final fresh solve.
 #' @keywords internal
 #' @md
 .solve_problem <- function(problem, theta, x0 = NULL, lambda = 1,
@@ -1034,7 +1037,8 @@
                            norm = c("max", "l2"),
                            keep_history = TRUE, warn = TRUE,
                            check = TRUE, diagnostics = TRUE,
-                           keep_state_history = FALSE, requested_outputs = NULL) {
+                           keep_state_history = FALSE, requested_outputs = NULL,
+                           keep_step = FALSE) {
   .chck_class(problem, "ae_problem", "problem")
   step <- .bind_theta(problem, theta)
   if (is.null(x0)) {
@@ -1078,6 +1082,7 @@
     fit$spectral_radius <- rho
     fit$contraction <- if (is.na(rho)) NA else rho < 1
   }
+  if (isTRUE(keep_step)) fit$step <- step
   fit
 }
 
@@ -1174,7 +1179,8 @@
   paired <- NULL
   reused_solves <- 0L
   evaluate <- function(log_theta, keep_history = FALSE, warn = FALSE,
-                       diagnostics = FALSE, update_warm = TRUE, solved = NULL) {
+                       diagnostics = FALSE, update_warm = TRUE, solved = NULL,
+                       gradient_step = FALSE) {
     # exp(log(x)) can round just outside x: keep trial values inside the
     # parameter contract, so a finite declared bound can be reached.
     theta <- stats::setNames(pmin(pmax(exp(log_theta), problem$theta$lower),
@@ -1192,7 +1198,8 @@
       warn = warn,
       check = check,
       diagnostics = diagnostics,
-      requested_outputs = output
+      requested_outputs = output,
+      keep_step = reuse && gradient_step
     )
     if (!isTRUE(fit$converged)) {
       return(NULL)
@@ -1220,7 +1227,8 @@
     paired <<- NULL
     tryCatch({
       evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
-                            diagnostics = FALSE, update_warm = TRUE)
+                            diagnostics = FALSE, update_warm = TRUE,
+                            gradient_step = TRUE)
       if (is.null(evaluated)) {
         return(penalty)
       }
@@ -1242,17 +1250,24 @@
       paired <<- NULL
       tryCatch({
         evaluated <- evaluate(log_theta, keep_history = FALSE, warn = FALSE,
-                              diagnostics = FALSE, update_warm = FALSE, solved = solved)
+                              diagnostics = FALSE, update_warm = FALSE, solved = solved,
+                              gradient_step = TRUE)
         if (is.null(evaluated)) {
           return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
                                        fd_eps = fd_eps))
         }
+        # The solve's bound step is the bind a fresh sensitivity would make
+        # (same theta); it is kept only under the reuse condition.
+        kept <- evaluated$fit[["step", exact = TRUE]]
+        step <- if (reuse && !is.null(kept) &&
+                    identical(kept$theta, evaluated$theta)) kept else NULL
         sensitivity <- .problem_output_sensitivity(
           problem = problem,
           theta = evaluated$theta,
           x = evaluated$fit$x_star,
           output = output,
-          fd_eps = fd_eps
+          fd_eps = fd_eps,
+          step = step
         )
         if (nrow(sensitivity) != target$length) {
           return(.nfxp_fd_log_gradient(objective, log_theta, log(lower), log(upper),
@@ -1696,7 +1711,8 @@
 }
 
 .problem_output_jac_param <- function(problem, theta, x, output,
-                                      fd_eps = 1e-6, step = NULL) {
+                                      fd_eps = 1e-6, step = NULL,
+                                      lazy_f0 = FALSE) {
   if (is.null(step)) step <- .bind_theta(problem, theta)
   if (is.function(step$jac_output_param)) {
     jac <- step$jac_output_param(x, output = output)
@@ -1712,17 +1728,22 @@
   }
   bounds <- .problem_theta_bounds(problem, theta)
   fd_jacobian(fn, theta, eps = fd_eps, check = FALSE,
-              lower = bounds$lower, upper = bounds$upper)
+              lower = bounds$lower, upper = bounds$upper, lazy_f0 = lazy_f0)
 }
 
+# With `step` (the bound step at `theta`, from the solve that produced `x`) no
+# fresh bind is made, and fn(theta) is evaluated only if a one-sided step needs it.
 .problem_output_sensitivity <- function(problem, theta, x,
                                         output = "utilization",
-                                        fd_eps = 1e-6) {
-  step <- .bind_theta(problem, theta)
+                                        fd_eps = 1e-6, step = NULL) {
+  given <- !is.null(step)
+  if (!given) step <- .bind_theta(problem, theta)
   if (output %in% step[["state_independent_outputs", exact = TRUE]]) {
     # The provider explicitly promises no dependence on the solved state.
     # Avoid constructing an output-by-state matrix of structural zeros.
-    return(.problem_output_jac_param(problem, theta, x, output, fd_eps))
+    return(.problem_output_jac_param(problem, theta, x, output, fd_eps,
+                                     step = if (given) step,
+                                     lazy_f0 = given))
   }
   jac_state_result <- if (is.function(step$jac_state)) step$jac_state(x) else NULL
   jac_state <- if (is.null(jac_state_result)) {
@@ -1738,7 +1759,8 @@
     jac_state_result = jac_state_result
   )
   output_jac_param <- .problem_output_jac_param(
-    problem, theta, x, output = output, fd_eps = fd_eps, step = step
+    problem, theta, x, output = output, fd_eps = fd_eps, step = step,
+    lazy_f0 = given
   )
   output_jac_state %*% state_sensitivity + output_jac_param
 }

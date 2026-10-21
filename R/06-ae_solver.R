@@ -123,11 +123,14 @@ spectral_radius <- function(jac) {
 #' @param check Whether to check that `fn` returns numeric vectors.
 #' @param lower,upper Inclusive bounds of the evaluation points, recycled to the
 #'   length of `x`.
+#' @param lazy_f0 If `TRUE`, `fn(x)` is evaluated (and checked as usual) only
+#'   when a coordinate needs a one-sided or room step; the result is identical.
 #' @keywords internal
 #' @md
 fd_jacobian <- function(fn, x, ..., eps = 1e-6,
                         method = c("central", "forward"),
-                        check = TRUE, lower = -Inf, upper = Inf) {
+                        check = TRUE, lower = -Inf, upper = Inf,
+                        lazy_f0 = FALSE) {
   if (!is.function(fn)) {
     stop("`fn` must be a function")
   }
@@ -143,10 +146,19 @@ fd_jacobian <- function(fn, x, ..., eps = 1e-6,
     stop("`lower` must not exceed `upper`")
   }
 
-  f0 <- .solver_function_value(fn(x, ...), "fn(x)", check = check)
-  n_out <- length(f0)
-  out <- matrix(NA_real_, nrow = n_out, ncol = n_in)
-  colnames(out) <- names(x)
+  f0 <- NULL
+  get_f0 <- function() {
+    if (is.null(f0)) {
+      f0 <<- .solver_function_value(fn(x, ...), "fn(x)", check = check)
+    }
+    f0
+  }
+  out <- NULL
+  alloc <- function(n_out) {
+    out <<- matrix(NA_real_, nrow = n_out, ncol = n_in)
+    colnames(out) <<- names(x)
+  }
+  if (!lazy_f0) alloc(length(get_f0()))
 
   # The function at x moved by `delta` in coordinate j, kept inside the bounds.
   at <- function(j, delta, label) {
@@ -164,24 +176,31 @@ fd_jacobian <- function(fn, x, ..., eps = 1e-6,
     if (method == "central" && up && down) {
       fp <- at(j, h, "fn(x + h)")
       fm <- at(j, -h, "fn(x - h)")
+      if (is.null(out)) alloc(length(fp))
       out[, j] <- (fp - fm) / (2 * h)
     } else if (up) {
-      out[, j] <- (at(j, h, "fn(x + h)") - f0) / h
+      fp <- at(j, h, "fn(x + h)")
+      if (is.null(out)) alloc(length(get_f0()))
+      out[, j] <- (fp - get_f0()) / h
     } else if (down) {
-      out[, j] <- (f0 - at(j, -h, "fn(x - h)")) / h
+      fm <- at(j, -h, "fn(x - h)")
+      if (is.null(out)) alloc(length(get_f0()))
+      out[, j] <- (get_f0() - fm) / h
     } else {
       # Neither side of the step fits: use the larger room that is left.
       room_up <- max(upper[j] - x[j], 0)
       room_down <- max(x[j] - lower[j], 0)
+      if (is.null(out)) alloc(length(get_f0()))
       if (room_up >= room_down && room_up > 0) {
-        out[, j] <- (at(j, room_up, "fn(x + h)") - f0) / room_up
+        out[, j] <- (at(j, room_up, "fn(x + h)") - get_f0()) / room_up
       } else if (room_down > 0) {
-        out[, j] <- (f0 - at(j, -room_down, "fn(x - h)")) / room_down
+        out[, j] <- (get_f0() - at(j, -room_down, "fn(x - h)")) / room_down
       } else {
         out[, j] <- 0
       }
     }
   }
+  if (is.null(out)) alloc(length(get_f0()))
 
   out
 }
