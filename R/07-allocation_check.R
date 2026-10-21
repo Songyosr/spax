@@ -4,6 +4,10 @@
 #' and observed targets, and summarizes the travel times the allocations imply.
 #' The check reports only: it never changes or replaces the fit.
 #'
+#' `check_fit()` is the general name of this step and `check_allocation()` its earlier
+#' name: the two are the same function, and they differ only in the name that a message
+#' gives for the step.
+#'
 #' Facility counts constrain where predicted loads fall but not where users
 #' live. When facility capacity closely tracks the observed counts, an
 #' allocation that ignores travel time can reproduce the counts as well as, or
@@ -43,7 +47,9 @@
 #' @param model The corrected CLM from [clm_allocation()] that was fitted, or a
 #'   result of [spax()] that fitted a model; the result supplies its bound model
 #'   and its fit, so leave `fit` out. A result that was evaluated at given values
-#'   has no fit and is refused.
+#'   has no fit and is refused, and so is an FCA index (a result of [spax()] with an
+#'   FCA specification, or of [spax_e2sfca()] and the other one-shots): an index is
+#'   computed, not fitted.
 #' @param fit The `ae_multistart_fit` returned by [fit_allocation()] for
 #'   `model`. A search with no selected fit cannot be checked. Not given when
 #'   `model` is a result of [spax()].
@@ -60,20 +66,31 @@
 #' @family allocation steps
 #' @export
 #' @md
+check_fit <- function(model, fit, trip_breaks = c(30, 60, 120)) {
+  .check_fit_run(model, fit, trip_breaks, "check_fit()")
+}
+
+#' @rdname check_fit
+#' @export
+#' @md
 check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
-  if (.is_allocation_result(model)) {
-    parts <- .allocation_unbundle(model, "model_fit", "check_allocation()",
-                                  fit_given = !missing(fit))
+  .check_fit_run(model, fit, trip_breaks, "check_allocation()")
+}
+
+# The body of both names; `caller` is the name the user called, which the messages repeat.
+.check_fit_run <- function(model, fit, trip_breaks, caller) {
+  if (.is_allocation_result(model) || .is_fca_result(model)) {
+    parts <- .allocation_unbundle(model, "model_fit", caller, fit_given = !missing(fit))
     model <- parts$model
     fit <- parts$fit
   }
   .check_allocation_model(model)
   .chck_class(fit, "ae_multistart_fit", "fit")
-  .refuse_grouped("check_allocation()", model, fit)
+  .refuse_grouped(caller, model, fit)
   best <- .selected_allocation_fit(fit)
   if (!is.numeric(trip_breaks) || !length(trip_breaks) || anyNA(trip_breaks) ||
       any(!is.finite(trip_breaks)) || any(trip_breaks <= 0)) {
-    stop("trip_breaks must be finite positive travel times")
+    stop("trip_breaks must be finite positive travel times", call. = FALSE)
   }
   trip_breaks <- sort(unique(trip_breaks))
   ctx <- .allocation_fit_context(model, best)
@@ -300,7 +317,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   else list(par = grid[k], value = values[k], at_edge = at_edge)
 }
 
-#' @rdname check_allocation
+#' @rdname check_fit
 #' @param x An `ae_allocation_check`.
 #' @param digits Significant digits for printed values.
 #' @param ... Unused.
@@ -341,7 +358,7 @@ print.ae_allocation_check <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-#' @rdname check_allocation
+#' @rdname check_fit
 #' @param row.names,optional Standard `as.data.frame()` arguments; unused.
 #' @exportS3Method base::as.data.frame
 #' @md

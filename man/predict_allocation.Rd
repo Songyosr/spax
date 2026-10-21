@@ -71,12 +71,12 @@ overrides are deliberately absent. A changed system requires reevaluation.
 }
 \seealso{
 Other allocation steps: 
-\code{\link{bootstrap_allocation}()},
+\code{\link{bootstrap_fit}()},
 \code{\link{calc_demand}()},
 \code{\link{calc_travel_time}()},
-\code{\link{check_allocation}()},
+\code{\link{check_fit}()},
 \code{\link{clm_allocation}()},
-\code{\link{compare_allocations}()},
+\code{\link{compare_fits}()},
 \code{\link{decay_kernel}()},
 \code{\link{evaluate_allocation}()},
 \code{\link{fit_allocation}()},

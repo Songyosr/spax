@@ -373,37 +373,61 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 
 .is_allocation_result <- function(x) inherits(x, "spax_allocation")
 
+# FCA results: the access of an index is computed, not fitted, so the fit steps
+# refuse them (class "spax" of the raster route, "spax_access_values" of numeric data).
+.is_fca_result <- function(x) inherits(x, c("spax", "spax_access_values"))
+
+# The verb of a step function name, for the refusal of an FCA result: "check_fit()" and
+# "check_allocation()" give "check", "compare_fits()" "compare", "bootstrap_fit()" "bootstrap".
+.step_verb <- function(caller) sub("_.*$", "", sub("\\(\\)$", "", caller))
+
+.fca_no_fit_message <- function(caller) {
+  paste0("FCA indices have no fit to ", .step_verb(caller))
+}
+
 # What a step function takes from one result of spax(). The step function calls this
 # first, before its class and group checks, so that it then checks the parts of the
-# result as it would the same objects given one by one.
+# result as it would the same objects given one by one. `caller` names the step the user
+# called ("check_fit()" or "check_allocation()"), which the messages repeat.
 # * `use = "source"` (predict_allocation()): the saved fit in fit mode, the saved
 #   evaluation in evaluate mode. A fit with no selected start has nothing to predict
 #   from.
-# * `use = "model_fit"` (check_allocation(), bootstrap_allocation()): the bound model
-#   and the fit, as list(model, fit). `fit_given` says the caller gave `fit` as well,
-#   which is refused; an evaluation has no fit.
-.allocation_unbundle <- function(x, use = c("source", "model_fit"), fn = NULL,
+# * `use = "model_fit"` (check and bootstrap steps): the bound model and the fit, as
+#   list(model, fit). `fit_given` says the caller gave `fit` as well, which is refused;
+#   an evaluation has no fit; an FCA result has none either.
+.allocation_unbundle <- function(x, use = c("source", "model_fit"), caller = NULL,
                                  fit_given = FALSE) {
   use <- match.arg(use)
   if (identical(use, "source")) {
     if (is.null(x$theta)) stop(.result_no_fit, call. = FALSE)
     return(if (identical(x$mode, "fit")) x$fit else x$evaluation)
   }
+  if (.is_fca_result(x)) stop(.fca_no_fit_message(caller), call. = FALSE)
   if (isTRUE(fit_given)) stop("give a result from spax() alone, without fit", call. = FALSE)
-  if (!identical(x$mode, "fit")) stop(fn, " needs a fitted model", call. = FALSE)
+  if (!identical(x$mode, "fit")) stop(caller, " needs a fitted model", call. = FALSE)
   list(model = x$model, fit = x$fit)
 }
 
-# The `fits` and `models` of compare_allocations() when some element of `fits` is a
-# result of spax(): each result supplies its fit and its model. The merged models are
+# The `fits` and `models` of the compare step when some element of `fits` is a result of
+# spax(): each result supplies its fit and its model. The merged models are
 # the models of the results and the caller's `models` (naming a result in both is an
 # error); they are used when they cover every fit, and otherwise the caller is asked
-# for the missing ones. Anything that is not a list of fits with results in it is
-# returned as it came, for the checks of compare_allocations().
-.allocation_unbundle_fits <- function(fits, models) {
+# for the missing ones. An FCA result, given as `fits` or as an element of it, is refused
+# (naming the element). Anything that is not a list of fits with results in it is
+# returned as it came, for the checks of the compare step. `caller` names the step the
+# user called.
+.allocation_unbundle_fits <- function(fits, models, caller) {
   unchanged <- list(fits = fits, models = models)
+  if (.is_fca_result(fits)) stop(.fca_no_fit_message(caller), call. = FALSE)
   if (!is.list(fits) || inherits(fits, c("ae_multistart_fit", "spax_allocation"))) {
     return(unchanged)
+  }
+  is_fca <- vapply(fits, .is_fca_result, logical(1))
+  if (any(is_fca)) {
+    first <- which(is_fca)[[1L]]
+    label <- names(fits)[first]
+    if (is.null(label) || is.na(label) || !nzchar(label)) label <- paste0("fits[[", first, "]]")
+    stop(label, " is an FCA index: ", .fca_no_fit_message(caller), call. = FALSE)
   }
   is_result <- vapply(fits, .is_allocation_result, logical(1))
   nms <- names(fits)
@@ -414,7 +438,7 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
   evaluated <- nms[is_result][vapply(fits[is_result], function(x) !identical(x$mode, "fit"),
                                      logical(1))]
   if (length(evaluated)) {
-    stop(evaluated[1L], " was evaluated, not fitted; compare_allocations() needs fits",
+    stop(evaluated[1L], " was evaluated, not fitted; ", caller, " needs fits",
          call. = FALSE)
   }
   doubled <- intersect(nms[is_result], names(models))

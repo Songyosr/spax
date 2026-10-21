@@ -67,9 +67,9 @@ reference:
       - fit_allocation
       - evaluate_allocation
       - predict_allocation
-      - bootstrap_allocation
-      - check_allocation
-      - compare_allocations
+      - check_fit
+      - compare_fits
+      - bootstrap_fit
       - allocation-fit-methods
       - allocation-result-tables
       - allocation-bootstrap-methods
