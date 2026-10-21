@@ -187,8 +187,37 @@ prepare_allocation <- function(demand, supply, distance,
 #' # Raster data for a floating catchment area index
 #' pop <- read_spax_example("cornwall_pop.tif")
 #' travel_grid <- read_spax_example("cornwall_gp_travel.tif")
-#' prep_data(pop, sf::st_drop_geometry(cornwall_gp), travel_grid,
-#'           id_col = "practice", supply_cols = "gp_fte_extg")
+#' grid_data <- prep_data(pop, sf::st_drop_geometry(cornwall_gp), travel_grid,
+#'                        id_col = "practice", supply_cols = "gp_fte_extg")
+#' grid_data
+#' spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
+#'
+#' \donttest{
+#' # An allocation model on the mainland grid, fitted to practice totals. Demand
+#' # must count the same people as the totals: residents registered with a GP
+#' # practice. The grid estimates residents in 2020, fewer than the registered
+#' # residents of the mainland small areas, so it is scaled to them and gives
+#' # only where they live.
+#' mainland <- terra::ext(-6, terra::xmax(pop), terra::ymin(pop), terra::ymax(pop))
+#' pop <- terra::crop(pop, mainland)
+#' registered <- pop * sum(areas$registered) /
+#'   terra::global(pop, "sum", na.rm = TRUE)[[1]]
+#' d_mainland <- prep_data(registered, gp,
+#'                         terra::crop(travel_grid[[gp$practice]], mainland),
+#'                         id_col = "practice", supply_cols = "gp_fte_extg")
+#'
+#' # Registrations of mainland residents at the mainland practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+#'
+#' # The cells with residents become the origins
+#' clm <- spax(d_mainland, spec_clm(), observed = totals)
+#' clm
+#'
+#' # What the totals say about travel: the fit against no decay
+#' check_fit(clm)
+#' }
 #' @export
 #' @md
 prep_data <- function(demand, supply, travel,

@@ -42,10 +42,11 @@ reference:
       - compute_access
 
   - title: "Access Interface (experimental)"
-    desc: "Specify a floating catchment area index without data: its decay (distance weights with a sigma, a step or an inverse decay), its normalization and its selection"
+    desc: "Specify a floating catchment area index without data: its decay (distance weights with a sigma, a step or an inverse decay), its normalization and its selection. spax() computes it on data from prep_data(): raster data give the spax object of the one-call functions, numeric data the index at each origin"
     contents:
       - spec_e2sfca
       - decay_step
+      - spax_access_values-methods
 
   - title: "Allocation Interface (experimental)"
     desc: "Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters), declare observed counts, run the model and work with its result"
