@@ -23,7 +23,11 @@ decay_custom(kernel, sigma = "fit")
 }
 \arguments{
 \item{sigma}{\code{"fit"}, or a single finite number greater than 0 that holds
-\code{sigma} at that value.}
+\code{sigma} at that value. For an FCA specification (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and its
+relatives), \code{decay_gaussian()}, \code{decay_exponential()} and \code{decay_power()}
+also accept a \code{SpatRaster} of \code{sigma} values (a variable catchment, with one
+layer or one per facility); it is not checked here, and an allocation model
+refuses it.}
 
 \item{kernel}{A kernel declared with \code{\link[=decay_kernel]{decay_kernel()}}.}
 
@@ -53,6 +57,9 @@ kernel is undefined at distance zero.
 \code{sigma = "fit"} (the default) lets the fit estimate it. A number holds it
 at that value. A number must be positive and must lie within the bounds the
 kernel declares for \code{sigma} (the built-in kernels allow any positive number).
+
+A raster \code{sigma} is for FCA specifications only. \code{decay_custom()} refuses
+it for a declared kernel.
 
 A model specification also accepts an exact built-in name (\code{"gaussian"},
 \code{"exponential"} or \code{"power"}) or a \code{\link[=decay_kernel]{decay_kernel()}} where it expects a decay;

@@ -163,11 +163,146 @@ test_that("decay objects print and format as one line", {
   expect_identical(result$value, x)
 })
 
+# decay_step() and decay_inverse() (FCA decays) ---------------------------------------
+
+test_that("decay_step() and decay_inverse() store the lists of the FCA functions", {
+  step <- decay_step(15)
+  expect_s3_class(step, "spax_fca_decay")
+  expect_identical(names(step), c("method", "sigma"))
+  expect_identical(unclass(step), list(method = "binary", sigma = 15))
+  # An integer or named threshold is stored as a plain double.
+  expect_identical(decay_step(15L)$sigma, 15)
+  expect_identical(decay_step(c(a = 15))$sigma, 15)
+  expect_identical(decay_step(threshold = 0.5)$sigma, 0.5)
+
+  inverse <- decay_inverse()
+  expect_s3_class(inverse, "spax_fca_decay")
+  # No sigma element, as the wrapper stores list(method = "inverse").
+  expect_identical(names(inverse), "method")
+  expect_identical(unclass(inverse), list(method = "inverse"))
+  expect_false(inherits(step, "spax_decay"))
+  expect_false(inherits(inverse, "spax_decay"))
+  expect_error(decay_inverse(1), "unused argument")
+})
+
+test_that("the threshold of decay_step() is a single finite number above 0", {
+  bad <- list(0, -1, -0.001, NA, NA_real_, NULL, TRUE, Inf, -Inf, NaN, c(1, 2), numeric(),
+              "5", "15", factor("5"), list(5), character())
+  for (value in bad) {
+    expect_message_exact(decay_step(value), "threshold must be a positive number")
+  }
+  expect_error(decay_step(), "threshold")
+})
+
+test_that("step and inverse decays print and format as one line", {
+  expect_identical(format(decay_step(15)), "<spax decay> step (threshold): 15")
+  expect_identical(format(decay_step(7.5)), "<spax decay> step (threshold): 7.5")
+  expect_identical(format(decay_step(1 / 3)), "<spax decay> step (threshold): 0.3333333")
+  expect_identical(format(decay_inverse()), "<spax decay> inverse: 1/(d + 1)")
+  expect_identical(capture.output(print(decay_step(15))),
+                   "<spax decay> step (threshold): 15")
+  expect_identical(capture.output(print(decay_inverse())),
+                   "<spax decay> inverse: 1/(d + 1)")
+  x <- decay_step(15)
+  shown <- capture.output(result <- withVisible(print(x)))
+  expect_false(result$visible)
+  expect_identical(result$value, x)
+})
+
+# raster sigma (FCA specifications only) ---------------------------------------------
+
+test_that("decay_gaussian(), decay_exponential() and decay_power() accept a raster sigma", {
+  one <- toy_rast(c(1, 2, 3))
+  several <- toy_rast(c(1, 2, 3), nlyr = 4)
+  for (constructor in list(decay_gaussian, decay_exponential, decay_power)) {
+    for (raster in list(one, several)) {
+      x <- constructor(raster)
+      expect_s3_class(x, "spax_decay")
+      expect_s4_class(x$sigma, "SpatRaster")
+      expect_identical(terra::nlyr(x$sigma), terra::nlyr(raster))
+      expect_identical(names(x), c("kernel", "sigma"))
+    }
+  }
+  expect_identical(decay_gaussian(one)$kernel, decay_kernel("gaussian"))
+  expect_identical(decay_power(sigma = one)$kernel, decay_kernel("power"))
+})
+
+test_that("a raster sigma is not checked here and is never \"fit\"", {
+  # Values are not read: negative, zero, missing and infinite values are accepted.
+  odd <- toy_rast(c(-1, 0, NA, Inf, 5))
+  x <- decay_gaussian(odd)
+  expect_s4_class(x$sigma, "SpatRaster")
+  expect_false(identical(x$sigma, "fit"))
+  # Its bounds are not compared with the kernel's.
+  expect_s4_class(decay_custom(decay_kernel("gaussian"), toy_rast(0))$sigma, "SpatRaster")
+  # A built-in kernel through decay_custom() is decay_gaussian().
+  one <- toy_rast(c(1, 2, 3))
+  expect_identical(decay_custom(decay_kernel("exponential"), one)$kernel,
+                   decay_exponential(one)$kernel)
+})
+
+test_that("a raster sigma prints as variable (raster)", {
+  one <- toy_rast(c(1, 2, 3))
+  expect_identical(format(decay_gaussian(one)),
+                   "<spax decay> gaussian (sigma = travel scale): variable (raster)")
+  expect_identical(format(decay_exponential(one)),
+                   "<spax decay> exponential (sigma = rate): variable (raster)")
+  expect_identical(format(decay_power(one)),
+                   "<spax decay> power (sigma = exponent): variable (raster)")
+  expect_identical(.decay_sigma_text(one), "variable (raster)")
+  expect_identical(.decay_sigma_text("fit"), "fit")
+  expect_identical(.decay_sigma_text(2.5), "2.5")
+})
+
+test_that("decay_custom() refuses a raster sigma for a declared kernel", {
+  msg <- "a raster sigma is not available with a declared kernel"
+  one <- toy_rast(c(1, 2, 3))
+  expect_message_exact(decay_custom(bounded_kernel(), one), msg)
+  expect_message_exact(decay_custom(bounded_kernel(), sigma = toy_rast(c(1, 2), nlyr = 2)), msg)
+  # The kernel is checked before sigma.
+  expect_message_exact(decay_custom("gaussian", sigma = one), "kernel must be a decay_kernel()")
+  # Any other non-number is still the sigma message.
+  expect_message_exact(decay_custom(bounded_kernel(), "5"), decay_text[["sigma"]])
+})
+
+test_that("an allocation specification refuses a raster sigma and step or inverse decays", {
+  raster_msg <- "a raster sigma is for FCA specifications"
+  fca_msg <- "decay_step() and decay_inverse() are for FCA specifications"
+  one <- toy_rast(c(1, 2, 3))
+  for (constructor in list(spec_clm, spec_huff)) {
+    expect_message_exact(constructor(decay_gaussian(one)), raster_msg)
+    expect_message_exact(constructor(decay_power(one)), raster_msg)
+    expect_message_exact(constructor(decay_step(10)), fca_msg)
+    expect_message_exact(constructor(decay_inverse()), fca_msg)
+    # Every element of a decay list is checked, and its order does not matter.
+    expect_message_exact(constructor(list(a = decay_gaussian(5), b = decay_gaussian(one))),
+                         raster_msg)
+    expect_message_exact(constructor(list(a = decay_gaussian(one), b = decay_gaussian(5))),
+                         raster_msg)
+    expect_message_exact(constructor(list(a = decay_gaussian(5), b = decay_step(10))), fca_msg)
+    expect_message_exact(constructor(list(a = decay_inverse(), b = decay_gaussian(5))), fca_msg)
+  }
+  # The decay is checked before the other arguments.
+  expect_message_exact(spec_clm(decay_step(10), outside = "bad"), fca_msg)
+  expect_message_exact(spec_clm(decay_gaussian(one), outside = "bad"), raster_msg)
+  # Numbers, "fit" and declared kernels are unchanged.
+  expect_identical(spec_clm(decay_gaussian(5))$decay, decay_gaussian(5))
+})
+
+test_that(".as_spax_decay() refuses an FCA decay, whatever the argument name", {
+  fca_msg <- "decay_step() and decay_inverse() are for FCA specifications"
+  expect_message_exact(.as_spax_decay(decay_step(5)), fca_msg)
+  expect_message_exact(.as_spax_decay(decay_inverse()), fca_msg)
+  expect_message_exact(.as_spax_decay(decay_inverse(), arg = "family"), fca_msg)
+  # Decay objects that are not for FCA specifications still pass.
+  expect_identical(.as_spax_decay(decay_gaussian(5)), decay_gaussian(5))
+})
+
 # spec_clm(): defaults and structure -----------------------------------------------
 
 test_that("spec_clm() and spec_huff() return the documented structure", {
   clm <- spec_clm()
-  expect_s3_class(clm, "spax_spec")
+  expect_identical(class(clm), c("spax_allocation_spec", "spax_spec"))
   expect_identical(names(clm), c("kind", "decay", "outside", "beta", "kappa", "by_group"))
   expect_identical(clm$kind, "clm")
   expect_identical(clm$decay, decay_gaussian())
@@ -177,7 +312,7 @@ test_that("spec_clm() and spec_huff() return the documented structure", {
   expect_identical(clm$by_group, character())
 
   huff <- spec_huff()
-  expect_s3_class(huff, "spax_spec")
+  expect_identical(class(huff), c("spax_allocation_spec", "spax_spec"))
   expect_identical(names(huff), names(clm))
   expect_identical(huff$kind, "huff")
   expect_identical(huff$decay, decay_power())

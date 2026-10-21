@@ -513,8 +513,8 @@
 }
 
 # The kernels of one demand group for the block engine. `type` is "e2sfca",
-# "m2sfca", "3sfca" or "huff"; it builds the kernel specification of the
-# wrapper. `attractiveness` is the vector from .fca_attractiveness() for
+# "m2sfca", "3sfca" or "huff" (any other is an error); it builds the kernel
+# specification of the wrapper. `attractiveness` is the vector from .fca_attractiveness() for
 # "huff". `suffix` ends every raster key of the group (see .fca_decay_spec()).
 # Returns `rasters`, the named SpatRasters the kernels read (the group's
 # distance first), and `kernels`, `list(demand, access)`.
@@ -546,7 +546,9 @@
         W * W
       }
     ),
-    list(demand = choice_kernel, access = choice_kernel)
+    `3sfca` = ,
+    huff = list(demand = choice_kernel, access = choice_kernel),
+    stop("unknown FCA type '", type, "'", call. = FALSE)
   )
   list(rasters = rasters, kernels = kernels)
 }

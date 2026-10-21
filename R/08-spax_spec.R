@@ -34,6 +34,9 @@
 #' Group-specific parameters can be fitted only to counts recorded by group;
 #' a held `sigma` cannot differ by group unless the decay is given by group.
 #'
+#' **FCA decays.** An allocation model refuses [decay_step()], [decay_inverse()]
+#' and a raster `sigma`, which are for the FCA specifications ([spec_e2sfca()]).
+#'
 #' @param decay A decay: [decay_gaussian()], [decay_exponential()],
 #'   [decay_power()], [decay_custom()], a [decay_kernel()] or one of
 #'   `"gaussian"`, `"exponential"` and `"power"` (the last two forms mean
@@ -53,8 +56,9 @@
 #'   number; hold values by group through a list or vector instead.
 #' @param x A model specification.
 #' @param ... Unused.
-#' @return A `spax_spec`: a list with `kind` (`"clm"` or `"huff"`), `decay`,
-#'   `outside` (`0` for `spec_huff()`), `beta`, `kappa` and `by_group`.
+#' @return A `spax_allocation_spec` (also a `spax_spec`): a list with `kind`
+#'   (`"clm"` or `"huff"`), `decay`, `outside` (`0` for `spec_huff()`), `beta`,
+#'   `kappa` and `by_group`.
 #' @examples
 #' # Huff: power decay and fitted exponent, no outside option
 #' spec_huff()
@@ -82,7 +86,8 @@ spec_clm <- function(decay = decay_gaussian(), outside = "fit", beta = 1, kappa 
   kappa <- .spec_kappa(kappa)
   by_group <- .spec_by_group(by_group, decay, outside, kind = "clm")
   structure(list(kind = "clm", decay = decay, outside = outside, beta = beta,
-                 kappa = kappa, by_group = by_group), class = "spax_spec")
+                 kappa = kappa, by_group = by_group),
+            class = c("spax_allocation_spec", "spax_spec"))
 }
 
 #' @rdname spec_clm
@@ -95,13 +100,14 @@ spec_huff <- function(decay = decay_power(), beta = "fit", kappa = 1,
   kappa <- .spec_kappa(kappa)
   by_group <- .spec_by_group(by_group, decay, outside = 0, kind = "huff")
   structure(list(kind = "huff", decay = decay, outside = 0, beta = beta,
-                 kappa = kappa, by_group = by_group), class = "spax_spec")
+                 kappa = kappa, by_group = by_group),
+            class = c("spax_allocation_spec", "spax_spec"))
 }
 
 #' @rdname spec_clm
 #' @export
 #' @md
-format.spax_spec <- function(x, ...) {
+format.spax_allocation_spec <- function(x, ...) {
   line <- function(label, text) sprintf("  %-10s  %s", label, text)
   c(paste0("<spax spec> ", .spec_model_line(x)),
     line("decay", .spec_decay_line(x)),
@@ -114,6 +120,7 @@ format.spax_spec <- function(x, ...) {
 #' @export
 #' @md
 print.spax_spec <- function(x, ...) {
+  # Shared by allocation and FCA specifications: each class formats itself.
   cat(format(x), sep = "\n")
   invisible(x)
 }
@@ -124,15 +131,24 @@ print.spax_spec <- function(x, ...) {
 .spec_decay <- function(decay) {
   # Both decay classes are named lists, so classes come before list-ness.
   if (inherits(decay, c("spax_decay", "spax_decay_kernel")) || is.character(decay)) {
-    return(.as_spax_decay(decay))
+    return(.spec_no_raster(.as_spax_decay(decay)))
   }
   if (is.list(decay) && !is.object(decay)) {
     if (!.has_group_names(names(decay), length(decay))) {
       stop("decay by group must be a named list with one decay per group", call. = FALSE)
     }
-    return(lapply(decay, .as_spax_decay))
+    return(lapply(decay, function(d) .spec_no_raster(.as_spax_decay(d))))
   }
+  # decay_step() and decay_inverse() are refused here, with every other value.
   .as_spax_decay(decay)
+}
+
+# A raster sigma is for FCA specifications: an allocation model never reads it as "fit".
+.spec_no_raster <- function(decay) {
+  if (inherits(decay$sigma, "SpatRaster")) {
+    stop("a raster sigma is for FCA specifications", call. = FALSE)
+  }
+  decay
 }
 
 # Unique, nonempty names for at least one element.

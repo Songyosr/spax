@@ -41,6 +41,12 @@ reference:
       - spax_huff2sfca
       - compute_access
 
+  - title: "Access Interface (experimental)"
+    desc: "Specify a floating catchment area index without data: its decay (distance weights with a sigma, a step or an inverse decay), its normalization and its selection"
+    contents:
+      - spec_e2sfca
+      - decay_step
+
   - title: "Allocation Interface (experimental)"
     desc: "Prepare data, specify an allocation model without data (decay kernels, fitted or held parameters), declare observed counts, run the model and work with its result"
     contents:

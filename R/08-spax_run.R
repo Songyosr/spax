@@ -125,7 +125,7 @@ spax <- function(data, model, observed = NULL, starts = NULL, lower = NULL, uppe
   if (!inherits(data, "ae_prepared_inputs")) {
     stop("data must come from prep_data()", call. = FALSE)
   }
-  if (!inherits(model, "spax_spec")) {
+  if (!inherits(model, "spax_allocation_spec")) {
     stop("model must be a model specification such as spec_huff() or spec_clm()",
          call. = FALSE)
   }
