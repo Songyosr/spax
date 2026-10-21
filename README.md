@@ -39,14 +39,14 @@ later versions.
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.5.0. Calls from earlier versions keep working (see the NEWS).
+for spax 0.6.0. Calls from earlier versions keep working (see the NEWS).
 
-Install version 0.5.0 by its release tag rather than from the
+Install version 0.6.0 by its release tag rather than from the
 repository’s default branch:
 
 ``` r
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.5.0")
+pak::pak("Songyosr/spax@v0.6.0")
 ```
 
 The allocation interface is experimental and may change in later
