@@ -85,6 +85,11 @@ practices <- cornwall_gp |>
   filter(!scilly) |>
   st_transform(crs(pop)) |>
   vect()
+coast <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  st_transform(crs(pop)) |>
+  vect()
 show <- function(layer, title) {
   plot(
     crop(layer, truro_window),
@@ -92,6 +97,7 @@ show <- function(layer, title) {
     main = title,
     col = hcl.colors(50, "viridis")
   )
+  lines(crop(coast, truro_window), lwd = 0.6)
   points(crop(practices, truro_window), pch = 3, col = "red")
 }
 ```

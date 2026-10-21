@@ -234,6 +234,7 @@ ggplot() +
     color = "white",
     linewidth = 0.05
   ) +
+  geom_sf(data = st_union(moved_map), fill = NA, color = "grey20", linewidth = 0.3) +
   geom_sf(data = gained, aes(size = change), shape = 21, fill = "orange") +
   geom_sf(
     data = filter(cornwall_gp, practice == "L82047"),

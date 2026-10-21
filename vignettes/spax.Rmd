@@ -143,6 +143,7 @@ named for reference.
 # Mainland practices and small areas, with their geometry
 practices <- filter(cornwall_gp, !scilly)
 small_areas <- filter(cornwall_lsoa, !scilly)
+outline <- st_union(small_areas)
 
 # A few towns, by longitude and latitude, to find places on the maps
 towns <- st_as_sf(
@@ -169,6 +170,7 @@ ggplot() +
     fill = "orange",
     alpha = 0.8
   ) +
+  geom_sf(data = outline, fill = NA, color = "grey20", linewidth = 0.3) +
   geom_sf_text(data = towns, aes(label = town), size = 3, vjust = -0.9) +
   scale_size_area(name = "GP FTE") +
   labs(title = "GP practices in mainland Cornwall") +
@@ -242,6 +244,7 @@ the same towns named.
 # Practice and town locations in the grid's coordinates (longitude and latitude)
 practice_points <- vect(st_transform(practices, 4326))
 town_points <- vect(towns)
+outline_lonlat <- vect(st_transform(outline, 4326))
 
 plot(
   1000 * e2sfca$accessibility,
@@ -249,6 +252,7 @@ plot(
   col = hcl.colors(50, "viridis"),
   main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)"
 )
+lines(outline_lonlat, lwd = 0.6)
 points(practice_points, pch = 3, cex = 0.5, col = "red")
 text(town_points, labels = town_points$town, pos = 3, cex = 0.7, halo = TRUE)
 ```

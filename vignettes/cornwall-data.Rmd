@@ -117,6 +117,7 @@ ggplot() +
     color = "white",
     linewidth = 0.1
   ) +
+  geom_sf(data = st_union(cornwall_lsoa), fill = NA, color = "grey20", linewidth = 0.3) +
   geom_sf(data = cornwall_gp, size = 1) +
   scale_fill_manual(
     name = "Rural-urban class",
@@ -199,6 +200,7 @@ nearest_map <- cornwall_lsoa |>
 
 ggplot(nearest_map) +
   geom_sf(aes(fill = minutes), color = "white", linewidth = 0.05) +
+  geom_sf(data = st_union(cornwall_lsoa), fill = NA, color = "grey20", linewidth = 0.3) +
   scale_fill_viridis_c(name = "Minutes", option = "magma", direction = -1) +
   labs(title = "Travel time to the nearest GP practice") +
   theme_void()
@@ -245,6 +247,12 @@ no residents, pairs with no road connection and journeys over 180 minutes. The
 map shows residents per cell in six classes.
 
 ```{r pop-map, fig.alt = "Raster map of the WorldPop 2020 population grid for Cornwall and the Isles of Scilly in residents per cell, in six classes; most cells hold fewer than 50 residents and the towns stand out with several hundred or more."}
+# The outline of Cornwall and the Isles of Scilly, in the grid's coordinates
+outline <- cornwall_lsoa |>
+  st_union() |>
+  st_transform(crs(pop)) |>
+  vect()
+
 plot(
   pop,
   breaks = c(0, 10, 50, 100, 500, 1000, 5000),
@@ -253,6 +261,7 @@ plot(
   main = "WorldPop 2020: residents per cell (about 1 km)",
   plg = list(title = "Residents")
 )
+lines(outline, lwd = 0.6)
 ```
 
 Of the populated cells, `r under_50`% hold fewer than 50 residents, and the

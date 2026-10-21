@@ -136,6 +136,12 @@ names(all_three) <- c(
   "M2SFCA, Gaussian 10 min"
 )
 shared_range <- range(values(all_three), na.rm = TRUE)
+# Mainland Cornwall's outline, in the grid's longitude and latitude
+outline <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  st_transform(crs(pop)) |>
+  vect()
 plot(
   all_three,
   nc = 3,
@@ -143,7 +149,8 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = shared_range,
   mar = c(1, 1, 2, 5),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 
@@ -292,7 +299,8 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = shared_range,
   mar = c(1, 1, 2, 5),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 
@@ -482,7 +490,8 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = range(values(group_maps), na.rm = TRUE),
   mar = c(1, 1, 2, 5),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 

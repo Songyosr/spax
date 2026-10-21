@@ -270,6 +270,7 @@ mapped <- cornwall_lsoa |>
 
 ggplot(mapped) +
   geom_sf(aes(fill = fca, color = fca), linewidth = 0.1) +
+  geom_sf(data = st_union(mapped), fill = NA, color = "grey20", linewidth = 0.3) +
   scale_fill_viridis_c(
     name = "GP FTE\nper 1,000",
     aesthetics = c("fill", "color")
@@ -279,6 +280,7 @@ ggplot(mapped) +
 
 ggplot(mapped) +
   geom_sf(aes(fill = clm_minutes, color = clm_minutes), linewidth = 0.1) +
+  geom_sf(data = st_union(mapped), fill = NA, color = "grey20", linewidth = 0.3) +
   scale_fill_viridis_c(
     name = "Minutes",
     option = "magma",

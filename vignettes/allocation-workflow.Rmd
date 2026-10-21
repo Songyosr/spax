@@ -279,6 +279,7 @@ outside_map <- cornwall_lsoa |>
 
 ggplot(outside_map) +
   geom_sf(aes(fill = 100 * share), color = NA) +
+  geom_sf(data = st_union(outside_map), fill = NA, color = "grey20", linewidth = 0.3) +
   facet_wrap(~source) +
   scale_fill_viridis_c(
     option = "mako",

@@ -332,6 +332,12 @@ grid_outside <- predict(clm, grid_travel,
   type = "raster"
 )
 
+# Mainland Cornwall's outline, in the grid's longitude and latitude
+outline <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  st_transform(crs(pop)) |>
+  vect()
 plot(
   100 * grid_outside,
   breaks = c(0, 1, 2, 5, 10, 20, 50, 100),
@@ -340,6 +346,7 @@ plot(
   main = "Modeled outside share, grid of about 1 km",
   plg = list(title = "Outside\nshare (%)")
 )
+lines(outline, lwd = 0.6)
 ```
 
 ```{r grid-predict-values, include = FALSE}

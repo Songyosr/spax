@@ -263,6 +263,12 @@ pair <- c(
   resample(1000 * results[[4]]$accessibility, pop, method = "near")
 )
 names(pair) <- c("Native grid", "Aggregated 4 x 4")
+# Mainland Cornwall's outline, in the grid's longitude and latitude
+outline <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  st_transform(crs(pop)) |>
+  vect()
 
 plot(
   pair,
@@ -270,7 +276,8 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = range(values(pair), na.rm = TRUE),
   mar = c(1, 1, 2, 6),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 

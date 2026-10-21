@@ -68,12 +68,20 @@ grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = 
 # The E2SFCA index with a Gaussian decay of travel scale 10 minutes
 fca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 
+# Mainland Cornwall's outline, in the grid's longitude and latitude
+outline <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  st_transform(crs(pop)) |>
+  vect()
+
 plot(
   1000 * fca$accessibility,
   axes = FALSE,
   col = hcl.colors(50, "viridis"),
   main = "E2SFCA index, GP FTE per 1,000 residents"
 )
+lines(outline, lwd = 0.6)
 ```
 
 <img src="man/figures/README-fca-1.png" alt="Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents; values are highest in the west between Redruth, Truro and Falmouth and lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas."  />
