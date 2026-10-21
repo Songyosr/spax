@@ -143,18 +143,22 @@ version from the \code{develop} branch.
 
 \section{Installed guides and status}{
 
-Version 0.3.0 is the first release that includes the experimental allocation
-interface, which may change in later versions. Package and function help are installed with the
-package. Use \code{help(package = "spax")} to browse them. Installations
+The \code{spax()} interface and the allocation model are experimental and
+may change in later versions. Package and function help are installed with
+the package; use \code{help(package = "spax")} to browse them. Installations
 with built articles also expose \code{browseVignettes("spax")}. Start with
-\code{vignette("spax", package = "spax")}, which computes one FCA surface;
-\code{vignette("cornwall-data", package = "spax")} describes the bundled
-Cornwall GP example data. The allocation workflow,
-\code{vignette("allocation-workflow", package = "spax")}, fits the model to
-the Cornwall GP registrations and covers prediction, a supply scenario,
-maps, export and fresh-session save/reload. The conditional bootstrap,
-\code{vignette("facility-bootstrap", package = "spax")}, uses a generated
-network.
+\code{vignette("spax", package = "spax")}, which computes one FCA index for
+Cornwall; \code{vignette("cornwall-data", package = "spax")} describes the
+bundled example data. \code{vignette("model-choice", package = "spax")}
+compares an FCA index with the allocation model,
+\code{vignette("allocation-workflow", package = "spax")} fits the model to
+the Cornwall GP registrations, \code{vignette("scenario", package = "spax")}
+compares a practice closure at the fitted values, and
+\code{vignette("extending", package = "spax")} covers your own decay curve,
+raster data and grid maps. \code{vignette("facility-bootstrap", package =
+"spax")} gives bootstrap intervals on a generated network, and
+\code{vignette("reading-results", package = "spax")} says what each result
+measures.
 }
 
 \seealso{
