@@ -104,7 +104,8 @@ observation multiplicities are resampled. Every physical facility remains
 in the allocation network.
 
 Conditional percentile intervals require an eligible original fit, a complete
-run of 399 attempts and at least 380 finite successful values per quantity.
+run (399 attempts by default) and finite successful values from at least 95
+percent of the attempts per quantity (380 of 399).
 Refused and incomplete results remain inspectable. Failed attempts are not
 replaced; successful inner-boundary estimates remain in the distribution.
 Coverage was evaluated for Gaussian decay with fitted \code{sigma} and

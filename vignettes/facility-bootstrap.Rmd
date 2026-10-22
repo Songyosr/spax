@@ -159,14 +159,16 @@ service slots and changes nothing else.
 
 ## Run the bootstrap
 
-`bootstrap_fit()` makes 399 attempts. Each attempt draws
+`bootstrap_fit()` makes 399 attempts by default. Each attempt draws
 `r ncol(travel)` facilities with replacement from the `r ncol(travel)`, refits
 the model to their totals and records the new estimates. A facility drawn twice
 counts twice in the fit, and one not drawn does not count. Every facility and
 its supply stay in the network: only the weight of each total in the fit
 changes. Each attempt uses its own seed, the given seed plus the attempt number,
 so a run repeats exactly. The function takes the fitted result, the observation,
-the scenario and a seed.
+the scenario and a seed. `attempts` sets another number of attempts, at least
+99: more make the interval endpoints depend less on the random draws, and take
+proportionally longer.
 
 ```{r paired-bootstrap, eval = rebuild_boot}
 boot <- bootstrap_fit(
@@ -286,12 +288,16 @@ has no interval.
 
 The intervals follow fixed rules:
 
-- There are exactly 399 attempts. A failed attempt stays in the record and is
-  not replaced. A refit that ends at a bound of its search range (an inner
+- A run makes all its attempts, 399 unless `attempts` says otherwise, and
+  cannot be extended once it is made. A failed attempt stays in the record and
+  is not replaced. A refit that ends at a bound of its search range (an inner
   boundary) stays in the distribution.
-- An interval needs all 399 attempts and at least 380 finite values. It also
-  needs a usable original fit: away from the bounds of its search, converged
-  precisely, and with each parameter pinned down by the totals.
+- An interval needs all the attempts and finite values from at least 95% of
+  them, rounded up: 380 of 399. It also needs a usable original fit: away from
+  the bounds of its search, converged precisely, and with each parameter pinned
+  down by the totals.
+- Coverage was studied with 399 attempts. A result with another number says so
+  in a note.
 - Each refit starts from the same starting values and search bounds as the
   original fit: the ones you gave, or the ones found from the data when you
   gave none. Facility totals can fit almost as well at quite different travel

@@ -1,11 +1,15 @@
 # Conditional facility-case bootstrap for the experimental CLM workflow ------
 
-.allocation_bootstrap_settings <- function() {
-  list(schema = "spax_pcase_v1", method = "Poisson facility-case bootstrap",
+# The settings of a run of `planned` attempts. The default run of 399 keeps the
+# settings of earlier versions exactly (they belong to the checkpoint contract);
+# another number of attempts needs 95% of them to succeed, rounded up, and
+# records the number.
+.allocation_bootstrap_settings <- function(planned = 399L) {
+  settings <- list(schema = "spax_pcase_v1", method = "Poisson facility-case bootstrap",
     control = list(maxit = 300, factr = 10, pgtol = 1e-8),
     score_tol = 1e-3, rank_tol = 1e-4, fd_eps = 1e-6,
     boundary_tol = c(absolute = 1e-6, log_span = 1e-3),
-    projected_bound_tol = 1e-7, minimum_successful = 380L,
+    projected_bound_tol = 1e-7, minimum_successful = .allocation_bootstrap_minimum(planned),
     probabilities = c(.025, .975), quantile_type = 7L,
     fixed_inputs = "demand, supply, travel, included network and support policy",
     capacity_identity = paste("regional_A is supported raw supply per retained need;",
@@ -15,6 +19,14 @@
       "limited to the SPAX-048 fixed 80-origin/40-facility generated design.",
       "Facility independence and the empirical observation law are assumptions.",
       "No simultaneous-map or causal coverage claim."))
+  if (planned != 399L) settings$planned <- planned
+  settings
+}
+
+# Successful finite values that an interval needs: 95% of the planned attempts,
+# rounded up (380 of the default 399).
+.allocation_bootstrap_minimum <- function(planned) {
+  as.integer(ceiling(0.95 * planned - 1e-9))
 }
 
 .allocation_case_values <- function(predicted, observed, weights, eps) {
@@ -220,19 +232,20 @@
   c(values, regional_A = sum(model$substrate$S[supported, , drop = FALSE]) / need)
 }
 
-.allocation_bootstrap_intervals <- function(original, point, draws) {
+.allocation_bootstrap_intervals <- function(original, point, draws, planned = 399L) {
   attempted <- nrow(draws)
   do.call(rbind, lapply(names(point), function(q) {
     use <- if (attempted) draws$success & is.finite(draws[[q]]) else logical()
     successful <- sum(use)
     status <- if (!identical(original$status, "eligible")) original$status else
-      if (attempted < 399L) "incomplete_bootstrap" else
-      if (successful < 380L) "insufficient_bootstrap_success" else "conditional_pointwise_bootstrap"
+      if (attempted < planned) "incomplete_bootstrap" else
+      if (successful < .allocation_bootstrap_minimum(planned)) "insufficient_bootstrap_success" else
+      "conditional_pointwise_bootstrap"
     if (q == "regional_A" && is.finite(point[q])) status <- "fixed_input_identity"
     endpoints <- if (status == "conditional_pointwise_bootstrap")
       stats::quantile(draws[[q]][use], c(.025, .975), type = 7, names = FALSE) else c(NA_real_, NA_real_)
     data.frame(quantity = q, estimate = unname(point[q]), lower = endpoints[1], upper = endpoints[2],
-      status = status, successful = successful, attempted = attempted, planned = 399L,
+      status = status, successful = successful, attempted = attempted, planned = planned,
       stringsAsFactors = FALSE)
   }))
 }
@@ -242,7 +255,7 @@
     all(abs(as.numeric(a) - as.numeric(b)) <= 1e-8 + 1e-8 * abs(as.numeric(b)), na.rm = TRUE)
 }
 
-.allocation_bootstrap_prepare <- function(model, fit, observation, scenario) {
+.allocation_bootstrap_prepare <- function(model, fit, observation, scenario, planned = 399L) {
   model <- .allocation_bootstrap_model(model)
   observation <- .allocation_bootstrap_observation(observation)
   .chck_class(fit, "ae_multistart_fit", "fit")
@@ -254,7 +267,7 @@
       .stop("scenario may change supply only; all other prepared inputs and settings must agree")
     }
   }
-  settings <- .allocation_bootstrap_settings()
+  settings <- .allocation_bootstrap_settings(planned)
   ids <- model$substrate$facility_ids
   parameters <- model$theta$names
   point <- stats::setNames(rep(NA_real_, length(parameters) + 1L + !is.null(scenario)),
@@ -391,20 +404,23 @@
   list(draw = draw, starts = table, multiplicities = weights)
 }
 
-.allocation_bootstrap_result <- function(context, records, seed, attempts, reason = NULL) {
+.allocation_bootstrap_result <- function(context, records, seed, attempts, reason = NULL,
+                                         planned = 399L) {
   draws <- if (length(records)) do.call(rbind, lapply(records, `[[`, "draw")) else
     .allocation_bootstrap_empty_draws(names(context$point), context$model$theta$names)
   starts <- if (length(records)) do.call(rbind, lapply(records, `[[`, "starts")) else data.frame()
   multiplicities <- if (length(records)) do.call(rbind, lapply(records, `[[`, "multiplicities")) else
     matrix(integer(), nrow = 0L, ncol = length(context$model$substrate$facility_ids),
       dimnames = list(NULL, context$model$substrate$facility_ids))
-  intervals <- .allocation_bootstrap_intervals(context$original, context$point, draws)
+  intervals <- .allocation_bootstrap_intervals(context$original, context$point, draws, planned)
   status <- if (!identical(context$original$status, "eligible")) "refused" else
-    if (!is.null(reason) || nrow(draws) < 399L) "incomplete" else
+    if (!is.null(reason) || nrow(draws) < planned) "incomplete" else
     if (any(intervals$status == "insufficient_bootstrap_success")) "insufficient_success" else "complete"
   reasons <- if (status == "refused") context$original$status else
     if (status == "insufficient_success") "insufficient_bootstrap_success" else
-    if (status == "incomplete" && is.null(reason)) "fewer than 399 completed attempts" else reason
+    if (status == "incomplete" && is.null(reason)) {
+      paste("fewer than", planned, "completed attempts")
+    } else reason
   if (status == "incomplete") {
     variable <- intervals$status != "fixed_input_identity"
     intervals$status[variable] <- "incomplete_bootstrap"
@@ -416,7 +432,7 @@
   result <- structure(list(status = status, reasons = reasons, original = context$original,
     intervals = intervals, draws = draws, starts = starts, multiplicities = multiplicities,
     settings = context$settings, observation = context$observation, seed = seed,
-    planned = 399L, attempted = nrow(draws), successful = sum(draws$success),
+    planned = planned, attempted = nrow(draws), successful = sum(draws$success),
     input_metadata = context$model$substrate$input_metadata,
     facility_ids = s$facility_ids,
     capacity_support = list(supported_facility_ids = s$facility_ids[supported],
@@ -424,40 +440,50 @@
       unsupported_supply = stats::setNames(as.numeric(s$S)[unsupported], s$facility_ids[unsupported]),
       total_supply = sum(s$S), attributed_supply = sum(s$S[supported, , drop = FALSE]))),
     class = "ae_allocation_bootstrap")
-  # Appended last, and only for a model whose coverage was not studied; `settings`
-  # belongs to the checkpoint contract and stays as it is.
-  note <- .allocation_bootstrap_coverage_note(context$model)
+  # Appended last, and only for a model or a number of attempts whose coverage was
+  # not studied; `settings` belongs to the checkpoint contract and stays as it is.
+  note <- .allocation_bootstrap_coverage_note(context$model, planned)
   if (!is.null(note)) result$coverage_note <- note
   result
 }
 
 # The coverage study (SPAX-048/049) used built-in Gaussian decay with fitted sigma
-# and v0 and kappa = beta = 1. Any other model uses the same procedure, and its
-# results say so; a result for the studied model carries no note.
-.allocation_bootstrap_coverage_note <- function(model) {
+# and v0, kappa = beta = 1 and 399 attempts. Any other model or number of attempts
+# uses the same procedure, and its results say so; a result for the studied case
+# carries no note.
+.allocation_bootstrap_coverage_note <- function(model, planned = 399L) {
   spec <- model$metadata$spec
   studied <- is.null(spec[["kernel", exact = TRUE]]) && identical(spec$family, "gaussian") &&
     identical(model$theta$names, c("sigma", "v0")) &&
     isTRUE(spec$kappa == 1) && isTRUE(spec$beta == 1)
-  if (studied) return(NULL)
-  paste("Coverage of these intervals was evaluated for Gaussian decay with fitted sigma and v0;",
-        "this model uses the same procedure without a separate coverage study.")
+  notes <- c(
+    if (!studied) paste("Coverage of these intervals was evaluated for Gaussian decay with",
+                        "fitted sigma and v0; this model uses the same procedure without a",
+                        "separate coverage study."),
+    if (planned != 399L) paste0("Coverage was evaluated with 399 attempts; this run used ",
+                                planned, "."))
+  if (length(notes)) paste(notes, collapse = " ") else NULL
 }
 
+# `planned` is the size of the run and `attempts` the number of attempts to make in
+# this call (fewer for a partial run, which then withholds intervals).
 .run_allocation_bootstrap <- function(model, fit, observation, scenario = NULL, seed,
-                                      checkpoint = NULL, attempts = 399L) {
+                                      checkpoint = NULL, attempts = planned, planned = 399L) {
+  planned <- as.integer(planned)
   if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed) || seed != floor(seed) ||
-      seed < 0 || seed > .Machine$integer.max - 399L) .stop("seed must be an explicit integer between 0 and integer.max - 399")
+      seed < 0 || seed > .Machine$integer.max - planned) {
+    .stop("seed must be an explicit integer between 0 and integer.max - ", planned)
+  }
   if (!is.numeric(attempts) || length(attempts) != 1L || !is.finite(attempts) ||
-      attempts != floor(attempts) || attempts < 1L || attempts > 399L) .stop("invalid internal attempt limit")
+      attempts != floor(attempts) || attempts < 1L || attempts > planned) .stop("invalid internal attempt limit")
   seed <- as.integer(seed); attempts <- as.integer(attempts)
   if (!is.null(checkpoint) && (!is.character(checkpoint) || length(checkpoint) != 1L ||
       is.na(checkpoint) || !nzchar(checkpoint) || !dir.exists(dirname(checkpoint)))) {
     .stop("checkpoint must name an RDS file in an existing directory")
   }
-  context <- .allocation_bootstrap_prepare(model, fit, observation, scenario)
+  context <- .allocation_bootstrap_prepare(model, fit, observation, scenario, planned)
   if (!identical(context$original$status, "eligible")) {
-    return(.allocation_bootstrap_result(context, list(), seed, attempts))
+    return(.allocation_bootstrap_result(context, list(), seed, attempts, planned = planned))
   }
   contract <- list(settings = context$settings, model = context$model$substrate,
     spec = context$model$metadata$spec, scenario = if (is.null(context$scenario)) NULL else context$scenario$substrate,
@@ -536,7 +562,7 @@
       }
     }
   }
-  .allocation_bootstrap_result(context, records, seed, attempts, reason)
+  .allocation_bootstrap_result(context, records, seed, attempts, reason, planned)
 }
 
 #' Conditional facility-case bootstrap for a fitted allocation
@@ -557,20 +583,22 @@
 #' `smooth = FALSE`). The supply elasticity beta may be fixed or fitted. Every
 #' fitted parameter gets its own interval.
 #'
-#' Exactly 399 attempts use the starts and positive bounds of the original fit
-#' (given, or found by the default search of [fit_allocation()]), with fixed
-#' numerical controls. Failed attempts are retained without replacement.
+#' A run makes `attempts` attempts, 399 by default, each from the starts and
+#' positive bounds of the original fit (given, or found by the default search of
+#' [fit_allocation()]), with fixed numerical controls. Failed attempts are
+#' retained without replacement.
 #' Successful inner boundary estimates remain in the distribution. Original mean
 #' boundaries, local rank deficiency (fewer identified directions than fitted
 #' parameters) or insufficient fit precision, including a score that cannot be
 #' computed, refuse intervals;
-#' percentile intervals require a complete run of 399 attempts and at least
-#' 380 finite successful values per quantity. Incomplete results retain their
-#' point estimates and diagnostics but withhold intervals.
-#' Coverage was evaluated for Gaussian decay with fitted sigma and v0, in
-#' generated 80-origin/40-facility designs under tested fixed-input laws; other
-#' kernels and a fitted beta use the same procedure without a separate coverage
-#' study. Coverage validation is not a universal guarantee of exact 95 percent
+#' percentile intervals require a complete run of all the attempts and finite
+#' successful values from at least 95 percent of them, rounded up (380 of the
+#' default 399). Incomplete results retain their point estimates and diagnostics
+#' but withhold intervals.
+#' Coverage was evaluated for Gaussian decay with fitted sigma and v0 and 399
+#' attempts, in generated 80-origin/40-facility designs under tested fixed-input
+#' laws; other kernels, a fitted beta and other numbers of attempts use the same
+#' procedure without a separate coverage study. Coverage validation is not a universal guarantee of exact 95 percent
 #' coverage or validation of an application's observation law.
 #'
 #' A facility with positive supply, a known finite travel time on retained
@@ -608,6 +636,11 @@
 #' @param checkpoint Optional RDS file in an existing directory. Completed attempts
 #'   are saved atomically and resumed after exact input/settings/version checks.
 #'   Completed failures are never retried; incomplete runs retain actual counts.
+#'   A checkpoint belongs to its number of attempts: a run cannot be extended to
+#'   more attempts once it has been made.
+#' @param attempts The number of bootstrap attempts, a whole number of at least
+#'   99; 399 by default. More attempts make the interval endpoints less dependent
+#'   on the random draws and take proportionally longer.
 #' @return An `ae_allocation_bootstrap` with compact draws, multiplicities, all
 #'   start diagnostics, assumptions, failure reasons and conditional percentile
 #'   intervals for each fitted parameter (sigma, v0 and, when fitted, beta),
@@ -617,33 +650,42 @@
 #'   on retained demand support. Unsupported positive supply is disclosed in
 #'   `capacity_support`; total supplied capacity can exceed attributed capacity.
 #'   For any model other than built-in Gaussian decay with fitted sigma and v0 and
-#'   `kappa` and `beta` equal to 1, the result also has a `coverage_note` saying
-#'   that coverage was evaluated for that case and not studied separately for the
-#'   model; it is printed with the result.
+#'   `kappa` and `beta` equal to 1, or a number of attempts other than 399, the
+#'   result also has a `coverage_note` saying that coverage was evaluated for that
+#'   case and not studied separately; it is printed with the result.
 #'   Scientific refusals are inspectable results; invalid inputs error.
 #' @family allocation steps
 #' @export
 #' @md
-bootstrap_fit <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL) {
-  .bootstrap_fit_run(model, fit, observation, scenario, seed, checkpoint, "bootstrap_fit()")
+bootstrap_fit <- function(model, fit, observation, scenario = NULL, seed, checkpoint = NULL,
+                          attempts = 399) {
+  .bootstrap_fit_run(model, fit, observation, scenario, seed, checkpoint, attempts,
+                     "bootstrap_fit()")
 }
 
 #' @rdname bootstrap_fit
 #' @export
 #' @md
 bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed,
-                                 checkpoint = NULL) {
-  .bootstrap_fit_run(model, fit, observation, scenario, seed, checkpoint,
+                                 checkpoint = NULL, attempts = 399) {
+  .bootstrap_fit_run(model, fit, observation, scenario, seed, checkpoint, attempts,
                      "bootstrap_allocation()")
 }
 
 # The body of both names; `caller` is the name the user called, which the messages repeat.
-.bootstrap_fit_run <- function(model, fit, observation, scenario, seed, checkpoint, caller) {
+.bootstrap_fit_run <- function(model, fit, observation, scenario, seed, checkpoint, attempts,
+                               caller) {
+  if (!is.numeric(attempts) || length(attempts) != 1L || !is.finite(attempts) ||
+      attempts != floor(attempts) || attempts < 99 || attempts > .Machine$integer.max) {
+    .stop("attempts must be a whole number of at least 99")
+  }
+  attempts <- as.integer(attempts)
   if (.is_allocation_result(model) || .is_fca_result(model)) {
     parts <- .allocation_unbundle(model, "model_fit", caller, fit_given = !missing(fit))
     model <- parts$model
     fit <- parts$fit
   }
   .refuse_grouped(caller, model, fit)
-  .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint, attempts = 399L)
+  .run_allocation_bootstrap(model, fit, observation, scenario, seed, checkpoint,
+                            attempts = attempts, planned = attempts)
 }

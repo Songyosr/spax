@@ -330,16 +330,17 @@ test_that("unsupported observations, altered systems and invalid fits cannot ent
   expect_error(run(fit, model = exp_model), "conflict")
 })
 
-test_that("the public operation always delegates exactly 399 attempted fits", {
+test_that("the public operation delegates 399 attempted fits by default", {
   observed <- NULL
   testthat::local_mocked_bindings(.run_allocation_bootstrap = function(...) {
-    observed <<- list(...)$attempts
+    observed <<- list(...)[c("attempts", "planned")]
     "delegated"
   })
   expect_identical(bootstrap_allocation(NULL, NULL, NULL, seed = 5L), "delegated")
-  expect_identical(observed, 399L)
-  expect_false("attempts" %in% names(formals(bootstrap_allocation)))
-  expect_error(bootstrap_allocation(NULL, NULL, NULL, seed = 5L, attempts = 1L), "unused")
+  expect_identical(observed, list(attempts = 399L, planned = 399L))
+  expect_identical(formals(bootstrap_allocation)$attempts, 399)
+  expect_error(bootstrap_allocation(NULL, NULL, NULL, seed = 5L, attempts = 1L),
+               "attempts must be a whole number of at least 99", fixed = TRUE)
 })
 
 test_that("bootstrap replay preserves the caller's RNG, inputs and paired scenario parameters", {
@@ -1309,4 +1310,87 @@ test_that("results for the studied model are unchanged and carry no note", {
   expect_identical(.allocation_bootstrap_coverage_note(
     clm_allocation(alloc_generated_case()$inputs, family = "exponential", fit_v0 = TRUE)),
     .coverage_note)
+})
+
+# The number of attempts ---------------------------------------------------------
+# 399 by default; another number of at least 99 needs 95% successes (rounded up),
+# is recorded on the result and noted as outside the coverage study, and a
+# checkpoint cannot be extended to more attempts.
+
+test_that("the success rule is 95% of the attempts, rounded up: 380 of 399", {
+  expect_identical(.allocation_bootstrap_minimum(c(99L, 399L, 999L, 1000L)),
+                   c(95L, 380L, 950L, 950L))
+  point <- c(sigma = 8, v0 = 25, regional_rho = .6, regional_A = 2)
+  original <- list(status = "eligible")
+  draws <- data.frame(success = rep(TRUE, 99L), sigma = seq(6, 10, length.out = 99L),
+    v0 = seq(20, 30, length.out = 99L), regional_rho = seq(.5, .7, length.out = 99L),
+    regional_A = rep(2, 99L))
+  draws$success[96:99] <- FALSE
+  tab <- .allocation_bootstrap_intervals(original, point, draws, planned = 99L)
+  expect_identical(tab$status[tab$quantity == "sigma"], "conditional_pointwise_bootstrap")
+  expect_true(all(tab$planned == 99L))
+  draws$success[95] <- FALSE
+  tab <- .allocation_bootstrap_intervals(original, point, draws, planned = 99L)
+  expect_identical(tab$status[tab$quantity == "sigma"], "insufficient_bootstrap_success")
+  # the default run keeps the settings of earlier versions exactly
+  expect_null(.allocation_bootstrap_settings()$planned)
+  expect_identical(.allocation_bootstrap_settings()$minimum_successful, 380L)
+  expect_identical(.allocation_bootstrap_settings(999L)$minimum_successful, 950L)
+  expect_identical(.allocation_bootstrap_settings(999L)$planned, 999L)
+})
+
+test_that("a run of another number of attempts is complete, recorded and noted", {
+  case <- alloc_generated_case()
+  fit <- alloc_generated_fit()
+  boot <- testthat::with_mocked_bindings(
+    .run_allocation_bootstrap(case$model, fit, alloc_bootstrap_observation(),
+                              seed = 31L, planned = 99L),
+    .allocation_case_fit = function(...) alloc_mock_case_fit(case))
+  expect_identical(boot$status, "complete")
+  expect_identical(boot$planned, 99L)
+  expect_equal(boot$attempted, 99)
+  expect_identical(boot$settings$minimum_successful, 95L)
+  expect_true(all(is.finite(boot$intervals$lower[boot$intervals$quantity != "regional_A"])))
+  expect_match(boot$coverage_note, "Coverage was evaluated with 399 attempts; this run used 99.",
+               fixed = TRUE)
+  # a default run carries no note for the studied model
+  expect_null(.allocation_bootstrap_coverage_note(case$model, 399L))
+})
+
+test_that("bootstrap_fit() takes the number of attempts and refuses fewer than 99", {
+  case <- alloc_generated_case()
+  fit <- alloc_generated_fit()
+  passed <- NULL
+  testthat::with_mocked_bindings(
+    bootstrap_fit(case$model, fit, alloc_bootstrap_observation(), seed = 1L,
+                  attempts = 120),
+    .run_allocation_bootstrap = function(..., attempts, planned) {
+      passed <<- c(attempts = attempts, planned = planned)
+    })
+  expect_identical(passed, c(attempts = 120L, planned = 120L))
+  testthat::with_mocked_bindings(
+    bootstrap_allocation(case$model, fit, alloc_bootstrap_observation(), seed = 1L),
+    .run_allocation_bootstrap = function(..., attempts, planned) {
+      passed <<- c(attempts = attempts, planned = planned)
+    })
+  expect_identical(passed, c(attempts = 399L, planned = 399L))
+  message <- "attempts must be a whole number of at least 99"
+  for (bad in list(50, 120.5, NA_real_, c(399, 999), "399")) {
+    expect_error(bootstrap_fit(case$model, fit, alloc_bootstrap_observation(), seed = 1L,
+                               attempts = bad), message, fixed = TRUE)
+  }
+})
+
+test_that("a checkpoint cannot be extended to more attempts", {
+  case <- alloc_generated_case()
+  fit <- alloc_generated_fit()
+  path <- withr::local_tempfile(fileext = ".rds")
+  run <- function(planned) testthat::with_mocked_bindings(
+    .run_allocation_bootstrap(case$model, fit, alloc_bootstrap_observation(),
+                              seed = 31L, checkpoint = path, planned = planned),
+    .allocation_case_fit = function(...) alloc_mock_case_fit(case))
+  expect_identical(run(99L)$status, "complete")
+  expect_error(run(199L), "bootstrap checkpoint does not match")
+  # the same run resumes from its own checkpoint
+  expect_identical(run(99L)$status, "complete")
 })
