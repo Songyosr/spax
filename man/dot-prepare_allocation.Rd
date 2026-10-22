@@ -12,7 +12,7 @@
   facility_ids = NULL,
   included = NULL,
   missing_demand = c("error", "exclude"),
-  missing_travel = c("error", "legacy_zero"),
+  missing_travel = c("error", "omit", "legacy_zero"),
   spatial = NULL,
   metadata = list()
 )
@@ -30,7 +30,7 @@ with demand. A named mask instead matches canonical origin IDs independently.
 Positive included demand enters load support; zero, unknown and explicitly
 excluded origins retain distinct registry statuses. Only active travel rows
 are validated and retained. Positive infinity is an absent edge; missing
-travel errors unless \code{legacy_zero} is explicitly selected. Negative travel
+travel errors unless \code{omit} is explicitly selected. Negative travel
 is invalid. Model-specific finite-distance domains are checked at binding.
 
 Optional \code{spatial} is a list with a one-layer raster \code{template} and a complete

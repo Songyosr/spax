@@ -10,7 +10,7 @@ predict_allocation(
   origin_ids = rownames(distance),
   demand = NULL,
   outputs = c("rho", "A", "abar"),
-  missing_travel = c("unknown", "legacy_zero"),
+  missing_travel = c("unknown", "omit", "legacy_zero"),
   spatial = NULL,
   type = c("numeric", "raster")
 )
@@ -44,8 +44,8 @@ allocation and flow are optional matrices. rho/outside are probabilities;
 flow has demand count units/period. A and abar have supply-per-demand units.}
 
 \item{missing_travel}{Default \code{"unknown"} makes a normalized row unknown when
-any alternative's travel is unknown. Explicit \code{"legacy_zero"} preserves its
-imputation flags; positive infinity remains known absence, while negative
+any alternative's travel is unknown. Explicit \code{"omit"} (older name
+\code{"legacy_zero"}) leaves unknown pairs out and flags them as imputed; positive infinity remains known absence, while negative
 travel and invalid finite kernel domains are rejected.}
 
 \item{spatial}{Optional one-layer raster template plus separately named

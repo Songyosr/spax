@@ -172,3 +172,27 @@ test_that("spatial mapping is independent of registry order and validates both z
                "one-layer")
   expect_error(.prepare_fixture(f, spatial = list(template = template)), "template and cell_index")
 })
+
+test_that("missing_travel = 'omit' is the same policy as 'legacy_zero'", {
+  f <- list(
+    demand = c(a = 10, b = 20),
+    supply = c(x = 1, y = 2),
+    travel = matrix(c(1, NA, 2, 3), 2, 2, dimnames = list(c("a", "b"), c("x", "y")))
+  )
+  expect_error(prep_data(f$demand, f$supply, f$travel),
+               "declare missing_travel = 'omit' to leave out unknown pairs", fixed = TRUE)
+  omit <- prep_data(f$demand, f$supply, f$travel, missing_travel = "omit")
+  legacy <- prep_data(f$demand, f$supply, f$travel, missing_travel = "legacy_zero")
+  # the stored data are identical, and the print names the policy "omit"
+  expect_identical(omit, legacy)
+  expect_true(any(grepl("missing travel: omit", capture.output(print(omit)), fixed = TRUE)))
+  expect_identical(
+    prepare_allocation(f$demand, f$supply, f$travel, missing_travel = "omit"),
+    prepare_allocation(f$demand, f$supply, f$travel, missing_travel = "legacy_zero"))
+  # prediction: the same values and flags under either name
+  model <- clm_allocation(omit, fit_v0 = FALSE, v0 = 1)
+  evaluated <- evaluate_allocation(model, c(sigma = 2))
+  expect_identical(
+    predict_allocation(evaluated, f$travel, outputs = "rho", missing_travel = "omit"),
+    predict_allocation(evaluated, f$travel, outputs = "rho", missing_travel = "legacy_zero"))
+})

@@ -2,6 +2,11 @@
 
 * Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.
   doi:10.5281/zenodo.23438611 refers to all versions.
+* `missing_travel = "omit"` in `prep_data()`, `prepare_allocation()` and
+  `predict_allocation()` leaves out pairs with unknown travel time. It is the new
+  name of `"legacy_zero"`, which still works and gives the same results; saved
+  data and fits are unchanged. The print of prepared data and the error for
+  unknown travel use the new name.
 
 # spax 0.6.0
 

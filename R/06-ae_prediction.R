@@ -181,7 +181,7 @@
 #' Requested rows do not change saved facility loads or rerun fitting/solving.
 #' Named travel axes and demand are aligned independently to complete IDs.
 #' Positive infinity is a known absent edge. Unknown travel makes the whole
-#' normalized row unknown unless explicit `legacy_zero` imputation is requested.
+#' normalized row unknown unless explicit `omit` imputation is requested.
 #' Legacy finite-kernel guards are used only with that explicit request and a
 #' compatible legacy source; their use is flagged. Negative travel always fails.
 #'
@@ -227,8 +227,10 @@
 #' @md
 .predict_clm <- function(source, distance, origin_ids = rownames(distance),
                          demand = NULL, outputs = c("rho", "A", "abar"),
-                         missing_travel = c("unknown", "legacy_zero"), spatial = NULL) {
+                         missing_travel = c("unknown", "omit", "legacy_zero"), spatial = NULL) {
   missing_travel <- match.arg(missing_travel)
+  # "legacy_zero" is the older name of "omit"; the stored policy keeps it
+  if (missing_travel == "omit") missing_travel <- "legacy_zero"
   s <- .clm_prediction_source(source)
   origins <- .allocation_ids(origin_ids, "origin_ids")
   facilities <- s$facility_ids

@@ -39,7 +39,9 @@
 #'   from known zero or explicit exclusion. Positive included demand remains
 #'   active even when every inside edge is absent.
 #' @param missing_travel Default `"error"` rejects NA/NaN on active fit rows.
-#'   `"legacy_zero"` explicitly omits unknown edges and records that policy.
+#'   `"omit"` leaves out unknown pairs (a facility with unknown travel is out of
+#'   reach from that origin) and records that policy; `"legacy_zero"` is its
+#'   older name and does the same.
 #'   Finite nonnegative travel is known, positive infinity is an absent edge,
 #'   and negative travel is invalid. Omitted rows are validated when requested
 #'   by prediction. Model-specific finite domains, such as positive power
@@ -68,7 +70,7 @@ prepare_allocation <- function(demand, supply, distance,
                                facility_ids = NULL,
                                included = NULL,
                                missing_demand = c("error", "exclude"),
-                               missing_travel = c("error", "legacy_zero"),
+                               missing_travel = c("error", "omit", "legacy_zero"),
                                spatial = NULL, metadata = list()) {
   .prepare_allocation(demand, supply, distance, origin_ids = origin_ids,
     facility_ids = facility_ids, included = included, missing_demand = missing_demand,
@@ -227,7 +229,7 @@ prep_data <- function(demand, supply, travel,
                       facility_ids = NULL,
                       included = NULL,
                       missing_demand = c("error", "exclude"),
-                      missing_travel = c("error", "legacy_zero"),
+                      missing_travel = c("error", "omit", "legacy_zero"),
                       spatial = NULL, metadata = list(),
                       id_col = NULL, supply_cols = NULL) {
   mode <- .prep_data_mode(demand)
@@ -277,7 +279,10 @@ format.ae_prepared_inputs <- function(x, ...) {
   }
   unknown <- sum(x$active_unknown_travel)
   policy <- x$input_policy
-  policy_text <- function(value) if (is.character(value) && length(value) == 1L) value else "unknown"
+  policy_text <- function(value) {
+    if (!is.character(value) || length(value) != 1L) return("unknown")
+    if (identical(value, "legacy_zero")) "omit" else value
+  }
   supply <- labelled(meta$supply_units, meta$supply_period)
   c(paste0("<spax data> ", origins, " x ", .format_total(length(x$facility_ids)), " facilities"),
     if (!is.null(x$group_ids)) line("groups", paste(x$group_ids, collapse = ", ")),
@@ -950,8 +955,8 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #'   allocation and flow are optional matrices. rho/outside are probabilities;
 #'   flow has demand count units/period. A and abar have supply-per-demand units.
 #' @param missing_travel Default `"unknown"` makes a normalized row unknown when
-#'   any alternative's travel is unknown. Explicit `"legacy_zero"` preserves its
-#'   imputation flags; positive infinity remains known absence, while negative
+#'   any alternative's travel is unknown. Explicit `"omit"` (older name
+#'   `"legacy_zero"`) leaves unknown pairs out and flags them as imputed; positive infinity remains known absence, while negative
 #'   travel and invalid finite kernel domains are rejected.
 #' @param spatial Optional one-layer raster template plus separately named
 #'   `cell_index` mapping for requested IDs, as in preparation. Saved metadata
@@ -969,7 +974,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' @md
 predict_allocation <- function(source, distance, origin_ids = rownames(distance),
                                 demand = NULL, outputs = c("rho", "A", "abar"),
-                                missing_travel = c("unknown", "legacy_zero"),
+                                missing_travel = c("unknown", "omit", "legacy_zero"),
                                 spatial = NULL, type = c("numeric", "raster")) {
   if (.is_allocation_result(source)) source <- .allocation_unbundle(source, "source")
   type <- match.arg(type)

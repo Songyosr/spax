@@ -13,7 +13,7 @@
 #' Positive included demand enters load support; zero, unknown and explicitly
 #' excluded origins retain distinct registry statuses. Only active travel rows
 #' are validated and retained. Positive infinity is an absent edge; missing
-#' travel errors unless `legacy_zero` is explicitly selected. Negative travel
+#' travel errors unless `omit` is explicitly selected. Negative travel
 #' is invalid. Model-specific finite-distance domains are checked at binding.
 #'
 #' Optional `spatial` is a list with a one-layer raster `template` and a complete
@@ -29,10 +29,12 @@
                                 facility_ids = NULL,
                                 included = NULL,
                                 missing_demand = c("error", "exclude"),
-                                missing_travel = c("error", "legacy_zero"),
+                                missing_travel = c("error", "omit", "legacy_zero"),
                                 spatial = NULL, metadata = list()) {
   missing_demand <- match.arg(missing_demand)
   missing_travel <- match.arg(missing_travel)
+  # "legacy_zero" is the older name of "omit"; the stored policy keeps it
+  if (missing_travel == "omit") missing_travel <- "legacy_zero"
   if (is.data.frame(demand)) {
     stop("give demand groups as a named list of numeric vectors (one per group), ",
          "not a data frame")
@@ -266,7 +268,7 @@
   if (policy$kernel_domain == "strict") {
     if (any(travel$invalid)) stop("travel must be nonnegative or positive infinity")
     if (policy$missing_travel == "error" && any(travel$unknown)) {
-      stop("active travel is missing; declare missing_travel = 'legacy_zero' to omit unknown edges")
+      stop("active travel is missing; declare missing_travel = 'omit' to leave out unknown pairs")
     }
   }
   status <- .allocation_origin_status(demand, included, keep)
@@ -345,8 +347,8 @@
       stop("travel must be nonnegative or positive infinity (group '", g, "')")
     }
     if (policy$missing_travel == "error" && any(state[[g]]$unknown)) {
-      stop("active travel is missing; declare missing_travel = 'legacy_zero' to omit ",
-           "unknown edges (group '", g, "')")
+      stop("active travel is missing; declare missing_travel = 'omit' to leave out ",
+           "unknown pairs (group '", g, "')")
     }
   }
   pick <- function(field) lapply(state, `[[`, field)
