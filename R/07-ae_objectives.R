@@ -1,5 +1,10 @@
 # AE outer-objective helpers --------------------------------------------------
 
+# Keep the bodies of .weighted_sse_loss() and .poisson_loss() unchanged, plain
+# stop() included: fits store their loss function and later steps compare it by
+# body (.same_function()), so a changed body would make saved fits look as if
+# they used another loss.
+
 #' Weighted sum of squared errors
 #'
 #' Computes sum((predicted - observed)^2 / (observed + eta)).

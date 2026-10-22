@@ -169,7 +169,7 @@ gather_demand <- function(demand, weights) {
   # Validate weights are probabilities
   w_range <- range(values(weights), na.rm = TRUE)
   if (w_range[1] < 0 || w_range[2] > 1) {
-    stop("weights must contain probability values between 0 and 1")
+    .stop("weights must contain probability values between 0 and 1")
   }
 
   # Use gather_weighted and rename columns appropriately

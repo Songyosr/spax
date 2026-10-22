@@ -55,23 +55,23 @@ calc_demand <- function(groups, rates, scale = 1, total = NULL,
     group_names <- colnames(groups)
     values <- groups
   } else {
-    stop("groups must be a multilayer SpatRaster or a numeric matrix")
+    .stop("groups must be a multilayer SpatRaster or a numeric matrix")
   }
   if (is.null(group_names) || anyNA(group_names) || any(!nzchar(group_names)) ||
       anyDuplicated(group_names)) {
-    stop("groups must have unique, nonempty names")
+    .stop("groups must have unique, nonempty names")
   }
   if (any(values < 0, na.rm = TRUE) || any(is.infinite(values))) {
-    stop("group populations must be finite and nonnegative")
+    .stop("group populations must be finite and nonnegative")
   }
   if (!is.numeric(rates) || is.null(names(rates)) || anyNA(rates) || any(!is.finite(rates)) ||
       any(rates < 0) || anyDuplicated(names(rates))) {
-    stop("rates must be a named vector of finite nonnegative values")
+    .stop("rates must be a named vector of finite nonnegative values")
   }
   if (!setequal(names(rates), group_names)) {
     missing <- setdiff(group_names, names(rates))
     extra <- setdiff(names(rates), group_names)
-    stop("rates must match the groups exactly",
+    .stop("rates must match the groups exactly",
          if (length(missing)) paste0("; no rate for: ", paste(missing, collapse = ", ")),
          if (length(extra)) paste0("; no group for: ", paste(extra, collapse = ", ")))
   }
@@ -89,26 +89,26 @@ calc_demand <- function(groups, rates, scale = 1, total = NULL,
     if (is_raster) {
       if (!inherits(total, "SpatRaster") || terra::nlyr(total) != 1L ||
           !terra::compareGeom(total, groups, stopOnError = FALSE)) {
-        stop("total must be a one-layer SpatRaster on the same grid as groups")
+        .stop("total must be a one-layer SpatRaster on the same grid as groups")
       }
       tot <- terra::values(total, mat = FALSE)
     } else {
       if (!is.numeric(total) || length(total) != nrow(values)) {
-        stop("total must be a numeric vector with one value per row of groups")
+        .stop("total must be a numeric vector with one value per row of groups")
       }
       tot <- as.numeric(total)
     }
     if (any(tot < 0, na.rm = TRUE) || any(is.infinite(tot))) {
-      stop("total must be finite and nonnegative")
+      .stop("total must be finite and nonnegative")
     }
     rate <- ifelse(group_sum > 0, weighted / group_sum, NA_real_)
     need_fallback <- !is.na(tot) & tot > 0 & is.na(rate)
     n_fallback <- sum(need_fallback)
     if (n_fallback && fallback == "error") {
-      stop(n_fallback, " cells have a total but no group population")
+      .stop(n_fallback, " cells have a total but no group population")
     }
     if (n_fallback && !is.finite(implied)) {
-      stop("no group population anywhere, so there is no overall rate to fall back on")
+      .stop("no group population anywhere, so there is no overall rate to fall back on")
     }
     rate[need_fallback] <- implied
     rate[!is.na(tot) & tot == 0] <- 0

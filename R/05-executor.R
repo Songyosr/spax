@@ -51,7 +51,7 @@
     return(K * rep(s, each = nrow(K)))     # scales each column
   }
   if (!requireNamespace("Matrix", quietly = TRUE)) {
-    stop("scaling a Matrix object needs the 'Matrix' package")
+    .stop("scaling a Matrix object needs the 'Matrix' package")
   }
   D <- Matrix::Diagonal(x = s)
   if (margin == "rows") D %*% K else K %*% D
@@ -167,7 +167,7 @@
   demand_is_batch <- ncol(D) > 1L
   supply_is_batch <- ncol(processed$values) > 1L
   if (demand_is_batch && supply_is_batch) {
-    stop("batching both demand layers and supply measures needs explicit product-axis semantics")
+    .stop("batching both demand layers and supply measures needs explicit product-axis semantics")
   }
   measures <- if (is.null(indicator_names)) {
     if (demand_is_batch) demand_batches else processed$cols
@@ -224,7 +224,7 @@
     !all(grepl("^lyr\\.[0-9]+$", layer_names))
   ids <- if (semantic) layer_names else paste0("facility_", seq_len(terra::nlyr(x)))
   if (anyDuplicated(ids)) {
-    stop("index$layer contains duplicate coordinate tuples")
+    .stop("index$layer contains duplicate coordinate tuples")
   }
   ids
 }
@@ -336,7 +336,7 @@
 .fca_kernel_rows <- function(kernel, b, rows, J) {
   K <- kernel(b, rows)
   if (!is.matrix(K) || nrow(K) != length(rows) || ncol(K) != J) {
-    stop("a kernel must return one row per cell and one column per facility")
+    .stop("a kernel must return one row per cell and one column per facility")
   }
   K
 }
@@ -413,7 +413,7 @@
   grouped <- !is.null(groups)
   if (grouped) {
     if (anyDuplicated(groups) || !setequal(names(kernels), groups)) {
-      stop("kernels must be a list with one element per group")
+      .stop("kernels must be a list with one element per group")
     }
     kernels <- kernels[groups]
     dkeys <- paste0("demand.", groups)

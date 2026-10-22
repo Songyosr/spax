@@ -44,7 +44,7 @@
   .chck_nonnegative_scalar(v0, "v0")
   a <- .coerce_numeric_vector(a)
   if (length(a) != ncol(plan$Kd_active)) {
-    stop("`a` must have one element per facility")
+    .stop("`a` must have one element per facility")
   }
   v0 <- as.numeric(v0)
 
@@ -84,7 +84,7 @@
   .chck_nonnegative_scalar(v0, "v0")
   a <- .coerce_numeric_vector(a)
   if (length(a) != ncol(plan$Kd_active)) {
-    stop("`a` must have one element per facility")
+    .stop("`a` must have one element per facility")
   }
   v0 <- as.numeric(v0)
 
@@ -143,14 +143,14 @@
   groups <- colnames(D_groups)
   G <- ncol(D_groups)
   if (length(kernels) != G || length(v0) != G) {
-    stop("`kernels` and `v0` must have one element per group")
+    .stop("`kernels` and `v0` must have one element per group")
   }
   K1 <- kernels[[1L]]
   if (length(a) != ncol(K1) || nrow(D_groups) != nrow(K1)) {
-    stop("`a` and `D_groups` must match the weights by facility and origin")
+    .stop("`a` and `D_groups` must match the weights by facility and origin")
   }
   v0 <- as.numeric(v0)
-  if (anyNA(v0) || any(v0 < 0)) stop("`v0` must be nonnegative")
+  if (anyNA(v0) || any(v0 < 0)) .stop("`v0` must be nonnegative")
   D <- rowSums(D_groups)
   weight <- D_groups * ifelse(D > 0, 1 / D, 0)
   pooled <- matrix(0, nrow(K1), ncol(K1), dimnames = dimnames(K1))
@@ -193,14 +193,14 @@
   groups <- colnames(D_groups)
   G <- ncol(D_groups)
   if (length(kernels) != G || length(v0) != G) {
-    stop("`kernels` and `v0` must have one element per group")
+    .stop("`kernels` and `v0` must have one element per group")
   }
   K1 <- kernels[[1L]]
   if (length(a) != ncol(K1) || nrow(D_groups) != nrow(K1)) {
-    stop("`a` and `D_groups` must match the weights by facility and origin")
+    .stop("`a` and `D_groups` must match the weights by facility and origin")
   }
   v0 <- as.numeric(v0)
-  if (anyNA(v0) || any(v0 < 0)) stop("`v0` must be nonnegative")
+  if (anyNA(v0) || any(v0 < 0)) .stop("`v0` must be nonnegative")
   D <- rowSums(D_groups)
   weight <- D_groups * ifelse(D > 0, 1 / D, 0)
   pooled <- matrix(0, nrow(K1), ncol(K1), dimnames = dimnames(K1))

@@ -65,10 +65,10 @@ as.data.frame.ae_coverage <- function(x, row.names = NULL, optional = FALSE,
   .chck_class(x, "ae_coverage", "x")
   type <- match.arg(type)
   if (type == "zones") {
-    if (is.null(zones)) stop("type = 'zones' requires a zones data frame")
+    if (is.null(zones)) .stop("type = 'zones' requires a zones data frame")
     out <- .allocation_saved_table(.coverage_aggregate(x, zones), row.names, optional, ...)
   } else {
-    if (!is.null(zones)) stop("zones applies only to type = 'zones'")
+    if (!is.null(zones)) .stop("zones applies only to type = 'zones'")
     out <- .allocation_saved_table(x[[type]], row.names, optional, ...)
   }
   attr(out, "support") <- x$support
@@ -88,7 +88,7 @@ as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional 
 }
 
 .allocation_saved_table <- function(x, row.names, optional, ...) {
-  if (!is.data.frame(x)) stop("saved result table is unavailable")
+  if (!is.data.frame(x)) .stop("saved result table is unavailable")
   base::as.data.frame.data.frame(x, row.names = row.names, optional = optional, ...)
 }
 
@@ -245,7 +245,7 @@ plot.ae_allocation_bootstrap <- function(x, quantity = NULL,
   estimates <- x$intervals
   if (is.null(quantity)) quantity <- estimates$quantity[1L]
   if (!is.character(quantity) || length(quantity) != 1L || is.na(quantity) ||
-      !quantity %in% estimates$quantity) stop("quantity must name one saved estimate")
+      !quantity %in% estimates$quantity) .stop("quantity must name one saved estimate")
   row <- estimates[match(quantity, estimates$quantity), , drop = FALSE]
   caption <- c(strwrap(paste0("run: ", .allocation_bootstrap_status_label(x$status),
     "; quantity: ", .allocation_bootstrap_status_label(row$status)), width = 62),
@@ -258,7 +258,7 @@ plot.ae_allocation_bootstrap <- function(x, quantity = NULL,
   }
   if (type == "draws") {
     values <- x$draws[[quantity]]
-    if (is.null(values) && nrow(x$draws)) stop("quantity has no saved draw column")
+    if (is.null(values) && nrow(x$draws)) .stop("quantity has no saved draw column")
     values <- values[x$draws$success %in% TRUE & is.finite(values)]
     if (!length(values)) empty("No finite successful draws") else {
       defaults <- list(x = values, xlab = quantity, main = paste("Saved bootstrap draws:", quantity))

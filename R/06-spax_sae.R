@@ -15,10 +15,10 @@
     supply_cols = supply_cols
   )
   if (!is.null(dim(plan$D_active))) {
-    stop("SAE currently supports one demand layer")
+    .stop("SAE currently supports one demand layer")
   }
   if (ncol(plan$S) != 1L) {
-    stop("SAE currently supports one supply measure")
+    .stop("SAE currently supports one supply measure")
   }
   plan$S <- as.vector(plan$S[, 1])
   plan$kappa_supply <- as.numeric(kappa) * plan$S
@@ -56,7 +56,7 @@
   .chck_positive_scalar(eps, "eps")
   c <- pmin(pmax(.coerce_numeric_vector(c), 0), 1)
   if (length(c) != ncol(plan$Kd_active)) {
-    stop("`c` must have one element per facility")
+    .stop("`c` must have one element per facility")
   }
 
   opportunity <- .scale(plan$Kd_active, c, margin = "cols")

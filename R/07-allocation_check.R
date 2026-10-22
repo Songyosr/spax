@@ -267,7 +267,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   grouped_spec <- !is.null(spec[["groups", exact = TRUE]])
   if (grouped_spec != !is.null(best[["groups", exact = TRUE]]) ||
       (grouped_spec && !identical(best[.group_marker_names], spec[.group_marker_names]))) {
-    stop("fit does not belong to this model")
+    .stop("fit does not belong to this model")
   }
   if (!identical(best$family, spec$family) || !identical(best$allocation_form, spec$allocation) ||
       !identical(as.character(best$coverage_meta$facility_ids),
@@ -277,7 +277,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
       (!is.null(best$prediction_snapshot) &&
          !identical(best$prediction_snapshot$spec[["kernel", exact = TRUE]],
                     spec[["kernel", exact = TRUE]]))) {
-    stop("fit does not belong to this model")
+    .stop("fit does not belong to this model")
   }
   output <- best$output
   mask <- if (is.null(best$target_mask)) rep(TRUE, length(best$observed)) else best$target_mask
@@ -291,7 +291,7 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
   fitted_outputs <- solve_at(best$theta)
   fitted_loss <- loss_of(fitted_outputs[[output]])
   if (!isTRUE(all.equal(fitted_loss, best$loss, tolerance = 1e-6))) {
-    stop("fit does not belong to this model: its loss cannot be reproduced")
+    .stop("fit does not belong to this model: its loss cannot be reproduced")
   }
   list(output = output, mask = mask, observed = observed, loss_of = loss_of,
        solve_at = solve_at, fitted_outputs = fitted_outputs, fitted_loss = fitted_loss)

@@ -16,27 +16,27 @@
   declaration <- list(event = event, exposure_units = exposure_units, period = period)
   if (!all(vapply(declaration, function(x) is.character(x) && length(x) == 1L &&
       !is.na(x) && nzchar(trimws(x)), logical(1)))) {
-    stop("event, exposure_units and period must be explicit nonblank strings")
+    .stop("event, exposure_units and period must be explicit nonblank strings")
   }
   declaration$exposure <- exposure
   declaration$mean_assumption <- "correct marginal mean conditional on fixed inputs and observation selection"
   target <- .bind_problem_target(model, observed, output)
   y <- target$values
   if (any(y < 0 | abs(y - round(y)) > 1e-8)) {
-    stop("this observation contract requires nonnegative whole counts")
+    .stop("this observation contract requires nonnegative whole counts")
   }
   ids <- model$substrate$facility_ids
   if (sampling == "independent_groups") {
     if (!is.character(groups) || !is.null(dim(groups)) || is.null(names(groups)) ||
         anyNA(groups) || any(!nzchar(trimws(groups))) || anyNA(names(groups)) ||
         anyDuplicated(names(groups)) || !setequal(names(groups), ids)) {
-      stop("groups must explicitly name every facility ID with a nonblank group")
+      .stop("groups must explicitly name every facility ID with a nonblank group")
     }
     groups <- groups[match(ids, names(groups))]
     names(groups) <- ids
     labels <- if (output == "flow") rep(groups, each = length(model$substrate$D_active)) else groups
   } else {
-    if (!is.null(groups)) stop("groups require independent_groups sampling")
+    if (!is.null(groups)) .stop("groups require independent_groups sampling")
     labels <- NULL
   }
   structure(list(target = target, output = output, sampling = sampling,
@@ -60,7 +60,7 @@
 .allocation_information_range <- function(jacobian, mean, rank_tol) {
   weighted <- jacobian / sqrt(mean)
   information <- crossprod(weighted)
-  if (any(!is.finite(information))) stop("nonfinite observation information")
+  if (any(!is.finite(information))) .stop("nonfinite observation information")
   eig <- eigen(information, symmetric = TRUE)
   largest <- max(eig$values, 0)
   keep <- eig$values > largest * rank_tol^2 & eig$values > 0
@@ -84,16 +84,16 @@
   group_adjustment <- match.arg(group_adjustment)
   for (z in list(fd_eps, rank_tol)) {
     if (!is.numeric(z) || length(z) != 1L || !is.finite(z) || z <= 0 || z >= 1) {
-      stop("fd_eps and rank_tol must be finite scalars strictly between zero and one")
+      .stop("fd_eps and rank_tol must be finite scalars strictly between zero and one")
     }
   }
   if (!is.numeric(min_groups) || length(min_groups) != 1L || !is.finite(min_groups) ||
-      min_groups < 2 || min_groups > .Machine$integer.max || min_groups != floor(min_groups)) stop("min_groups must be an integer >= 2")
+      min_groups < 2 || min_groups > .Machine$integer.max || min_groups != floor(min_groups)) .stop("min_groups must be an integer >= 2")
   selected <- .selected_allocation_fit(fit)
   source <- .clm_prediction_source(selected)
   outside <- if (source$spec$fit_v0) selected$theta[["v0"]] else source$spec$v0
-  if (outside <= 0) stop("inference requires a positive outside option")
-  if (!isTRUE(selected$convergence == 0L)) stop("inference requires a converged outer fit")
+  if (outside <= 0) .stop("inference requires a positive outside option")
+  if (!isTRUE(selected$convergence == 0L)) .stop("inference requires a converged outer fit")
   expected <- .allocation_observation(model, observation$target$observed, observation$output,
     event = observation$declaration$event, exposure_units = observation$declaration$exposure_units,
     period = observation$declaration$period, exposure = observation$declaration$exposure,
@@ -102,7 +102,7 @@
       !identical(expected$declaration, observation$declaration) ||
       !identical(expected$target[c("observed", "values", "mask", "identity", "dim", "n_observed", "length")],
         observation$target[c("observed", "values", "mask", "identity", "dim", "n_observed", "length")]) ||
-      !identical(expected$labels, observation$labels)) stop("observation contract conflicts with model or target")
+      !identical(expected$labels, observation$labels)) .stop("observation contract conflicts with model or target")
   target <- expected$target
   loss_arguments_ok <- is.list(selected$loss_args) &&
     (length(selected$loss_args) == 0L ||
@@ -115,11 +115,11 @@
       !identical(dim(selected$observed), dim(target$observed)) ||
       !.same_function(selected$loss_fn, .poisson_loss) ||
       !loss_arguments_ok) {
-    stop("inference requires the same canonical counts and unweighted Poisson fit")
+    .stop("inference requires the same canonical counts and unweighted Poisson fit")
   }
   theta <- selected$theta
   parameters <- model$theta$names
-  if (!identical(names(theta), parameters) || any(theta <= 0)) stop("inference requires positive log parameters")
+  if (!identical(names(theta), parameters) || any(theta <= 0)) .stop("inference requires positive log parameters")
   # Rebind the declared substrate, rather than trusting a closure that could
   # still capture an earlier substrate after unsupported manual model mutation.
   model$bind <- .compile_huff_map(model$metadata$spec, model$substrate)$bind
@@ -134,17 +134,17 @@
       !same(base$utilization, source$utilization) ||
       !identical(model$substrate$D_active, selected$coverage_meta$demand) ||
       !identical(model$substrate$input_policy, source$input_policy)) {
-    stop("fitted source conflicts with the prepared CLM; refit the current model")
+    .stop("fitted source conflicts with the prepared CLM; refit the current model")
   }
   mask <- target$mask
   mu <- as.numeric(base$outputs[[observation$output]])[mask]
   y <- target$values
-  if (any(!is.finite(mu) | mu < 0)) stop("invalid fitted count means")
-  if (any(mu == 0 & y > 0)) stop("positive observed count at zero model mean")
+  if (any(!is.finite(mu) | mu < 0)) .stop("invalid fitted count means")
+  if (any(mu == 0 & y > 0)) .stop("positive observed count at zero model mean")
   expected_loss <- do.call(.poisson_loss, c(list(predicted = mu, observed = y), selected$loss_args))
   if (!same(base$outputs[[observation$output]], selected$predicted) ||
       !is.finite(selected$loss) || abs(expected_loss - selected$loss) > 1e-8 + 1e-10 * abs(expected_loss)) {
-    stop("fitted counts or loss conflict with the current observation contract")
+    .stop("fitted counts or loss conflict with the current observation contract")
   }
   jacobian <- matrix(NA_real_, length(mu), length(theta), dimnames = list(NULL, parameters))
   perturbations <- vector("list", length(theta)); names(perturbations) <- parameters
@@ -157,7 +157,7 @@
     perturbations[[k]] <- list(plus = .allocation_compact_solution(a),
       minus = .allocation_compact_solution(b), theta_plus = plus, theta_minus = minus)
   }
-  if (any(!is.finite(jacobian))) stop("nonfinite log-parameter count sensitivity")
+  if (any(!is.finite(jacobian))) .stop("nonfinite log-parameter count sensitivity")
   positive <- mu > 0
   # In these kernels finite admissible travel and positive attraction imply
   # positive mathematical mass. Numeric underflow is not a structural absence.
@@ -166,9 +166,9 @@
     (as.vector(is.finite(model$substrate$distance_active)) &
       rep(positive_attraction, each = length(model$substrate$D_active)))[mask] else
     (positive_attraction & colSums(is.finite(model$substrate$distance_active)) > 0)[mask]
-  if (!any(positive)) stop("no positive-mean observation information")
+  if (!any(positive)) .stop("no positive-mean observation information")
   range <- .allocation_information_range(jacobian[positive, , drop = FALSE], mu[positive], rank_tol)
-  if (range$rank == 0L) stop("no locally sensitive positive-mean count information")
+  if (range$rank == 0L) .stop("no locally sensitive positive-mean count information")
   score_rows <- jacobian[positive, , drop = FALSE] * ((y[positive] - mu[positive]) / mu[positive])
   score <- colSums(score_rows)
   covariance <- range$inverse
@@ -261,17 +261,17 @@
   .chck_class(inference, "allocation_inference", "inference")
   ids <- names(values)
   if (!is.numeric(values) || !is.null(dim(values)) || is.null(ids) || anyNA(ids) ||
-      anyDuplicated(ids) || any(!nzchar(ids))) stop("values require unique named quantities")
+      anyDuplicated(ids) || any(!nzchar(ids))) .stop("values require unique named quantities")
   if (!is.matrix(gradient_log) || !is.numeric(gradient_log) ||
       nrow(gradient_log) != length(values) ||
       !identical(rownames(gradient_log), ids) ||
-      !identical(colnames(gradient_log), inference$parameters)) stop("gradient_log must follow quantity and parameter order")
-  if (!is.logical(fixed_input) || length(fixed_input) != length(values) || anyNA(fixed_input)) stop("invalid fixed_input declarations")
+      !identical(colnames(gradient_log), inference$parameters)) .stop("gradient_log must follow quantity and parameter order")
+  if (!is.logical(fixed_input) || length(fixed_input) != length(values) || anyNA(fixed_input)) .stop("invalid fixed_input declarations")
   if (length(transform) == 1L) transform <- rep(transform, length(values))
   if (!is.character(transform) || length(transform) != length(values) || anyNA(transform) ||
-      any(!transform %in% c("identity", "log", "logit"))) stop("invalid quantity transforms")
-  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) || level <= 0 || level >= 1) stop("invalid interval level")
-  if (!is.numeric(support_tol) || length(support_tol) != 1L || !is.finite(support_tol) || support_tol <= 0 || support_tol >= 1) stop("invalid support tolerance")
+      any(!transform %in% c("identity", "log", "logit"))) .stop("invalid quantity transforms")
+  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) || level <= 0 || level >= 1) .stop("invalid interval level")
+  if (!is.numeric(support_tol) || length(support_tol) != 1L || !is.finite(support_tol) || support_tol <= 0 || support_tol >= 1) .stop("invalid support tolerance")
   # Recheck the scope when reading a saved pre-restriction diagnostic object.
   scope <- .allocation_interval_scope(inference$observation, inference$diagnostics$group_adjustment)
   valid <- isTRUE(inference$valid_regular_interval) && !length(scope)
@@ -290,7 +290,7 @@
     fraction <- if (magnitude > 0 && ncol(null)) sqrt(sum((gradient %*% null)^2)) / magnitude else 0
     table$null_fraction[i] <- fraction
     if (fixed_input[i]) {
-      if (magnitude > support_tol) stop("fixed-input identity has a nonzero parameter gradient")
+      if (magnitude > support_tol) .stop("fixed-input identity has a nonzero parameter gradient")
       table$status[i] <- "fixed_input_identity"
       next
     }
@@ -320,11 +320,11 @@
 .allocation_estimands <- function(inference, evaluate, transform = "identity",
                                   fixed_input = NULL, level = .95, support_tol = 1e-4) {
   .chck_class(inference, "allocation_inference", "inference")
-  if (!is.function(evaluate)) stop("evaluate must be a fixed-input quantity callback")
+  if (!is.function(evaluate)) .stop("evaluate must be a fixed-input quantity callback")
   values <- evaluate(inference$theta, inference$base)
   if (!is.numeric(values) || !is.null(dim(values)) || is.null(names(values)) ||
       anyNA(names(values)) || anyDuplicated(names(values)) || any(!nzchar(names(values)))) {
-    stop("quantity callback requires a numeric vector with unique named quantities")
+    .stop("quantity callback requires a numeric vector with unique named quantities")
   }
   gradient <- matrix(NA_real_, length(values), length(inference$theta),
     dimnames = list(names(values), inference$parameters))
@@ -333,7 +333,7 @@
     a <- evaluate(z$theta_plus, z$plus); b <- evaluate(z$theta_minus, z$minus)
     if (!is.numeric(a) || !is.numeric(b) || !identical(names(a), names(values)) ||
         !identical(names(b), names(values)) || length(a) != length(values) ||
-        length(b) != length(values)) stop("quantity callback changed its output identity")
+        length(b) != length(values)) .stop("quantity callback changed its output identity")
     gradient[, k] <- (a - b) / (2 * inference$fd_eps)
   }
   if (is.null(fixed_input)) fixed_input <- rep(FALSE, length(values))

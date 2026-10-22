@@ -10,16 +10,16 @@
   vals <- terra::values(x)
 
   if (all(is.na(vals))) {
-    stop("Input raster 'x' contains only NA values")
+    .stop("Input raster 'x' contains only NA values")
   }
 
   if (any(vals < 0, na.rm = TRUE)) {
-    stop("values in x must be >= 0")
+    .stop("values in x must be >= 0")
   }
 
   totals <- colSums(as.matrix(vals), na.rm = TRUE)
   if (any(totals <= 0)) {
-    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+    .stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
          "cannot create PMF")
   }
 
@@ -84,7 +84,7 @@ transform_pmf <- function(x, value_col = NULL, template = NULL,
 
   total <- terra::global(x, "sum", na.rm = TRUE)$sum # one per layer
   if (!isTRUE(all(total > 0))) {
-    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+    .stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
          "cannot create PMF")
   }
 

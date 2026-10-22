@@ -45,7 +45,7 @@ read_spax_example <- function(dataset = NULL) {
   # Get all files in extdata directory
   ex_dir <- system.file("extdata", package = "spax")
   if (ex_dir == "") {
-    stop("Example data directory not found. Is spax installed correctly?")
+    .stop("Example data directory not found. Is spax installed correctly?")
   }
 
   available <- dir(ex_dir, pattern = "\\.tif$")
@@ -57,7 +57,7 @@ read_spax_example <- function(dataset = NULL) {
 
   # Check if requested dataset exists
   if (!dataset %in% available) {
-    stop(sprintf(
+    .stop(sprintf(
       "Dataset '%s' not found. Available datasets:\n%s",
       dataset,
       paste("  -", available, collapse = "\n")

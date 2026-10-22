@@ -31,17 +31,17 @@
                          contact_cut = NULL, adequacy_cut = norm) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (!identical(fit$allocation_form, "clm")) {
-    stop("coverage requires a CLM allocation fit")
+    .stop("coverage requires a CLM allocation fit")
   }
   meta <- fit$coverage_meta
-  if (is.null(meta)) stop("fit has no coverage metadata; regenerate the fit")
+  if (is.null(meta)) .stop("fit has no coverage metadata; regenerate the fit")
   if (!is.null(norm)) .chck_positive_scalar(norm, "norm")
   if (!is.null(adequacy_cut)) .chck_positive_scalar(adequacy_cut, "adequacy_cut")
   .chck_nonnegative_scalar(rho_floor, "rho_floor")
   .chck_nonnegative_scalar(contact_need_floor, "contact_need_floor")
-  if (rho_floor > 1) stop("rho_floor must be <= 1")
+  if (rho_floor > 1) .stop("rho_floor must be <= 1")
   if (!is.null(units) && (!is.character(units) || length(units) != 1L || is.na(units))) {
-    stop("units must be one nonmissing string")
+    .stop("units must be one nonmissing string")
   }
   P <- fit$outputs$allocation
   U <- as.numeric(fit$outputs$utilization)
@@ -59,25 +59,25 @@
       length(registry) != length(D) || anyNA(registry) || anyDuplicated(registry) ||
       length(origins) != length(D) || anyNA(origins) || anyDuplicated(origins) ||
       (!is.null(cells) && (length(cells) != length(D) || anyNA(cells) || anyDuplicated(cells)))) {
-    stop("coverage inputs have incompatible axes or missing support metadata")
+    .stop("coverage inputs have incompatible axes or missing support metadata")
   }
   if (!length(D) || any(!is.finite(D) | D <= 0) ||
       any(!is.finite(S) | S < 0) || any(!is.finite(U) | U < 0) ||
-      any(!is.finite(P) | P < 0)) stop("invalid coverage numeric inputs")
+      any(!is.finite(P) | P < 0)) .stop("invalid coverage numeric inputs")
   rho <- rowSums(P)
-  if (any(rho > 1 + 1e-10)) stop("allocation must be a subprobability matrix")
+  if (any(rho > 1 + 1e-10)) .stop("allocation must be a subprobability matrix")
   implied <- .contract(D, P, over = "rows")
   if (any(abs(implied - U) > 1e-8 * pmax(1, abs(implied), abs(U)))) {
-    stop("stored utilization is inconsistent with allocation and demand")
+    .stop("stored utilization is inconsistent with allocation and demand")
   }
   r <- numeric(length(S))
   supported <- U > 0
   r[supported] <- S[supported] / U[supported]
   A <- .contract(r, P, over = "cols")
-  if (any(!is.finite(r)) || any(!is.finite(A))) stop("nonfinite coverage ratio or intensity")
+  if (any(!is.finite(r)) || any(!is.finite(A))) .stop("nonfinite coverage ratio or intensity")
   if (is.null(contact_cut)) contact_cut <- sum(D * rho) / sum(D)
   .chck_nonnegative_scalar(contact_cut, "contact_cut")
-  if (contact_cut > 1 + 1e-10) stop("contact_cut must be <= 1")
+  if (contact_cut > 1 + 1e-10) .stop("contact_cut must be <= 1")
   cell <- data.frame(origin_id = origins, registry_index = registry, demand = D, rho = rho, A = A)
   if (!is.null(cells)) cell$cell <- cells
   if (!is.null(norm)) {
@@ -95,7 +95,7 @@
         is.null(names(observed)) || anyNA(names(observed)) ||
         anyDuplicated(names(observed)) || !setequal(names(observed), ids) ||
         any(!is.na(observed) & (!is.finite(observed) | observed < 0))) {
-      stop("observed must be a nonnegative named vector matching facility IDs; NA is allowed")
+      .stop("observed must be a nonnegative named vector matching facility IDs; NA is allowed")
     }
     Y <- as.numeric(observed[match(ids, names(observed))])
     plugin <- rep(NA_real_, length(S))
@@ -134,17 +134,17 @@
 .problem_coverage <- function(problem, theta, state = NULL, ..., solve_control = list()) {
   .chck_class(problem, "ae_problem", "problem")
   if (!identical(problem$metadata$spec$allocation, "clm")) {
-    stop("coverage requires a CLM allocation problem")
+    .stop("coverage requires a CLM allocation problem")
   }
   if (!is.list(solve_control) || (length(solve_control) &&
       (is.null(names(solve_control)) || any(names(solve_control) == "") ||
        anyDuplicated(names(solve_control)) ||
        any(names(solve_control) %in% c("problem", "theta"))))) {
-    stop("solve_control must be a named list of solver controls")
+    .stop("solve_control must be a named list of solver controls")
   }
   outputs <- if (is.null(state)) {
     solved <- do.call(.solve_problem, c(list(problem = problem, theta = theta), solve_control))
-    if (!isTRUE(solved$converged)) stop("coverage requires a converged solve")
+    if (!isTRUE(solved$converged)) .stop("coverage requires a converged solve")
     solved$outputs
   } else .problem_outputs_at(problem, theta, state)
   .coverage_from_outputs(problem, theta, outputs, ...)
@@ -210,22 +210,22 @@
   group <- rep("region", nrow(d))
   if (!is.null(zones)) {
     if (!is.data.frame(zones) || !"zone" %in% names(zones) || anyNA(zones$zone)) {
-      stop("zones must contain nonmissing zone labels and origin_id or cell keys")
+      .stop("zones must contain nonmissing zone labels and origin_id or cell keys")
     }
     keys <- intersect(c("origin_id", "cell"), names(zones))
-    if (!length(keys)) stop("zones require origin_id or cell keys")
+    if (!length(keys)) .stop("zones require origin_id or cell keys")
     positions <- lapply(keys, function(key) {
-      if (!key %in% names(d)) stop("cell zone keys require spatial metadata; use origin_id")
+      if (!key %in% names(d)) .stop("cell zone keys require spatial metadata; use origin_id")
       if (anyNA(zones[[key]]) || anyDuplicated(zones[[key]]) ||
           (key == "origin_id" && any(!nzchar(trimws(as.character(zones[[key]])))))) {
-        stop("zones must contain unique ", key, " keys and nonmissing zone labels")
+        .stop("zones must contain unique ", key, " keys and nonmissing zone labels")
       }
       pos <- match(d[[key]], zones[[key]])
-      if (anyNA(pos)) stop("zones must cover every retained origin")
+      if (anyNA(pos)) .stop("zones must cover every retained origin")
       pos
     })
     if (length(positions) == 2L && !identical(positions[[1]], positions[[2]])) {
-      stop("zone origin_id and cell keys disagree")
+      .stop("zone origin_id and cell keys disagree")
     }
     pos <- positions[[1]]
     group <- as.character(zones$zone[pos])

@@ -9,7 +9,7 @@
 
   # Handle sf objects first
   if (inherits(values, "sf")) {
-    stop("'values' is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
+    .stop("'values' is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
   }
 
   # Check values is one of allowed types
@@ -22,7 +22,7 @@
     .chck_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
   } else if (is.data.frame(values)) {
     if (is.null(value_cols)) {
-      stop("value_cols must be specified when values is a data.frame")
+      .stop("value_cols must be specified when values is a data.frame")
     }
     .chck_cols_exist(values, value_cols, "values")
     .chck_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
@@ -39,7 +39,7 @@
 #' @keywords internal
 .spread_core <- function(values, weights, full_output = FALSE) {
   if (length(values) != nlyr(weights)) {
-    stop("Number of values must match number of weight layers")
+    .stop("Number of values must match number of weight layers")
   }
 
   unit_distribution <- weights * values

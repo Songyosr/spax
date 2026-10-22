@@ -141,7 +141,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
     "power" = .help_decay_power(distance, sigma, ...),
     "inverse" = .help_decay_inverse(distance, ...),
     "binary" = .help_decay_binary(distance, sigma, ...),
-    stop("Invalid method specified")
+    .stop("Invalid method specified")
   )
 }
 
@@ -150,25 +150,25 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 # 0 and a missing one NA.
 .calc_decay_declared <- function(distance, kernel, sigma, snap, ..., .d1 = FALSE) {
   if (...length() > 0L) {
-    stop("pass fixed arguments through decay_kernel(args = )")
+    .stop("pass fixed arguments through decay_kernel(args = )")
   }
   if (inherits(sigma, "SpatRaster")) {
-    stop("a variable catchment needs a built-in method or a plain function")
+    .stop("a variable catchment needs a built-in method or a plain function")
   }
   if (is.null(sigma)) {
-    stop("sigma is required for a declared kernel")
+    .stop("sigma is required for a declared kernel")
   }
   if (!is.numeric(sigma) || length(sigma) != 1L || !is.finite(sigma) ||
       sigma < kernel$lower || sigma > kernel$upper) {
-    stop("sigma must be a single number from ", format(kernel$lower), " to ",
+    .stop("sigma must be a single number from ", format(kernel$lower), " to ",
          format(kernel$upper))
   }
   if (sigma <= 0) {
-    stop(kernel$name, " decay requires positive sigma")
+    .stop(kernel$name, " decay requires positive sigma")
   }
   if (!snap && !inherits(distance, "SpatRaster") &&
       (!is.numeric(distance) || is.object(distance))) {
-    stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
+    .stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
   }
   sigma <- as.numeric(sigma)
   fun <- .decay_kernel_function(kernel)
@@ -240,13 +240,13 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
   # SpatRaster. Classed numerics such as units objects are refused.
   if (!inherits(distance, "SpatRaster") &&
       (!is.numeric(distance) || is.object(distance))) {
-    stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
+    .stop("distance must be one of the following classes: numeric, matrix, SpatRaster")
   }
 
   # Check method is either a character or function
   if (!is.function(method)) {
     if (!method %in% c("gaussian", "exponential", "power", "inverse", "binary")) {
-      stop("Invalid method specified")
+      .stop("Invalid method specified")
     }
 
     # Sigma validation if provided: a scalar, or a SpatRaster for a variable
@@ -254,15 +254,15 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
     if (!is.null(sigma)) {
       if (inherits(sigma, "SpatRaster")) {
         if (!inherits(distance, "SpatRaster")) {
-          stop("a SpatRaster `sigma` (variable catchment) requires a SpatRaster `distance`")
+          .stop("a SpatRaster `sigma` (variable catchment) requires a SpatRaster `distance`")
         }
         .chck_raster_alignment(sigma, distance[[1]], "sigma", "distance")
         if (!terra::nlyr(sigma) %in% c(1L, terra::nlyr(distance))) {
-          stop("`sigma` raster must have 1 layer or one layer per `distance` layer")
+          .stop("`sigma` raster must have 1 layer or one layer per `distance` layer")
         }
         smin <- min(terra::global(sigma, "min", na.rm = TRUE)[[1]])
         if (is.finite(smin) && smin <= 0) {
-          stop("`sigma` must be positive")
+          .stop("`sigma` must be positive")
         }
       } else {
         .chck_is_numeric(sigma, "sigma")

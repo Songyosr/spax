@@ -362,7 +362,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
   .chck_class(inputs, "ae_prepared_inputs", "inputs")
   if (is.null(inputs$group_ids)) {
     if (length(by_group) || !is.null(fixed)) {
-      stop("`by_group` and `fixed` need prepared inputs with demand groups ",
+      .stop("`by_group` and `fixed` need prepared inputs with demand groups ",
            "(demand given as a named list by group)")
     }
     decay <- .resolve_decay_family(family)
@@ -483,7 +483,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
   .chck_class(model, "ae_problem", "model")
   if (!identical(model$model, "huff") ||
       !identical(model$metadata$spec$allocation, "clm")) {
-    stop("the allocation workflow requires a corrected static CLM")
+    .stop("the allocation workflow requires a corrected static CLM")
   }
   invisible(model)
 }
@@ -704,14 +704,14 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
   .check_allocation_model(model)
   for (kernel in .allocation_kernels(model$metadata$spec)) {
     if (isFALSE(kernel$smooth)) {
-      stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
+      .stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
            "parameters, for example over a grid of sigma and v0")
     }
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
       output %in% .default_count_outputs && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {
-    stop("observed expected counts must be nonnegative for output '", output, "'")
+    .stop("observed expected counts must be nonnegative for output '", output, "'")
   }
   # Starts and bounds that are not given come from the default search (SPAX-058).
   expected <- model$theta$names
@@ -724,17 +724,17 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     if (!counts) {
       # An outside-count output the model cannot carry is refused with its own message.
       .check_outside_target(model, output)
-      stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
+      .stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
            "'")
     }
-    if (is.null(starts) && loss_missing) stop(.default_search_message$loss)
+    if (is.null(starts) && loss_missing) .stop(.default_search_message$loss)
   }
   loss_name <- if (is.character(loss)) match.arg(loss, c("weighted_sse", "poisson")) else "custom"
   # Outside counts are fitted with the built-in Poisson loss only: the weighted SSE
   # (also the default when starts are given) and custom losses are refused.
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
       output %in% names(.outside_outputs) && !identical(loss_name, "poisson")) {
-    stop("outside counts are fitted with loss = \"poisson\"")
+    .stop("outside counts are fitted with loss = \"poisson\"")
   }
   if (is.character(loss)) {
     loss <- match.arg(loss, c("weighted_sse", "poisson"))
@@ -745,7 +745,7 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     loss <- if (loss == "poisson") .poisson_loss else .weighted_sse_loss
     if (is.null(loss_grad)) loss_grad <- default_gradient
   } else if (!is.function(loss)) {
-    stop("loss must be 'weighted_sse', 'poisson' or a function")
+    .stop("loss must be 'weighted_sse', 'poisson' or a function")
   }
   if (!searching) {
     result <- .fit_problem_multistart(model, observed, starts, lower, upper,
@@ -798,7 +798,7 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 .selected_allocation_fit <- function(object) {
   if (inherits(object, "ae_multistart_fit")) {
     if (is.null(object$best)) {
-      stop("no eligible allocation fit; inspect per-start diagnostics and messages")
+      .stop("no eligible allocation fit; inspect per-start diagnostics and messages")
     }
     object <- object$best
   }
@@ -913,14 +913,14 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
       (is.null(names(coverage_args)) || anyNA(names(coverage_args)) ||
        any(!nzchar(names(coverage_args))) || anyDuplicated(names(coverage_args)) ||
        any(!names(coverage_args) %in% setdiff(names(formals(.ae_coverage)), "fit"))))) {
-    stop("coverage_args must contain unique named coverage controls")
+    .stop("coverage_args must contain unique named coverage controls")
   }
   if (!is.null(model$metadata$spec[["groups", exact = TRUE]])) {
     theta <- .group_evaluation_theta(model, theta)
   }
   theta <- .coerce_problem_theta(theta, model$theta)
   result <- .solve_problem(model, theta, ...)
-  if (!isTRUE(result$converged)) stop("allocation evaluation did not converge")
+  if (!isTRUE(result$converged)) .stop("allocation evaluation did not converge")
   result$coverage <- do.call(.coverage_from_outputs,
     c(list(problem = model, theta = theta, outputs = result$outputs), coverage_args))
   result
@@ -981,7 +981,7 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
   .refuse_grouped("predict_allocation()", source)
   if (type == "raster" && (length(outputs) != 1L ||
       !is.character(outputs) || is.na(outputs) || outputs %in% c("allocation", "flow"))) {
-    stop("raster prediction requires exactly one requested vector output")
+    .stop("raster prediction requires exactly one requested vector output")
   }
   source <- .selected_allocation_fit(source)
   result <- .predict_clm(source, distance, origin_ids = origin_ids, demand = demand,
@@ -998,7 +998,7 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
   nms <- names(theta)
   if (is.null(nms) || all(nms == "")) return(theta)
   if (anyNA(nms) || any(nms == "") || anyDuplicated(nms)) {
-    stop("`theta` names must be unique and nonempty")
+    .stop("`theta` names must be unique and nonempty")
   }
   fixed <- spec$fixed
   unknown <- setdiff(nms, c(model$theta$names, names(fixed)))

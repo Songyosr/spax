@@ -10,10 +10,10 @@
 .fit_output <- function(fit, output) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {
-    stop("output must be one nonmissing name")
+    .stop("output must be one nonmissing name")
   }
   if (!is.list(fit$outputs) || !output %in% names(fit$outputs)) {
-    stop("fit does not contain requested output `", output, "`")
+    .stop("fit does not contain requested output `", output, "`")
   }
   fit$outputs[[output]]
 }
@@ -23,7 +23,7 @@
 .fit_output_vector <- function(fit, output) {
   value <- .fit_output(fit, output)
   if (!is.numeric(value) || !is.null(dim(value))) {
-    stop("output `", output, "` is not a numeric vector; use .fit_output for matrices")
+    .stop("output `", output, "` is not a numeric vector; use .fit_output for matrices")
   }
   value
 }

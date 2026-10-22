@@ -70,55 +70,55 @@ calc_travel_time <- function(friction, facilities, template, ids,
   type <- match.arg(type)
   method <- match.arg(method)
   if (!inherits(friction, "SpatRaster") || terra::nlyr(friction) != 1L) {
-    stop("friction must be a one-layer SpatRaster")
+    .stop("friction must be a one-layer SpatRaster")
   }
   if (!inherits(template, "SpatRaster") || terra::nlyr(template) != 1L) {
-    stop("template must be a one-layer SpatRaster")
+    .stop("template must be a one-layer SpatRaster")
   }
   if (terra::is.lonlat(template)) {
-    stop("template must use a projected coordinate reference system in metres")
+    .stop("template must use a projected coordinate reference system in metres")
   }
   res <- terra::res(template)
   if (abs(res[1] - res[2]) > 1e-6 * max(res)) {
-    stop("template cells must be square")
+    .stop("template cells must be square")
   }
   if (inherits(facilities, "sf")) facilities <- terra::vect(facilities)
   if (!inherits(facilities, "SpatVector") || terra::geomtype(facilities) != "points") {
-    stop("facilities must be sf or SpatVector points")
+    .stop("facilities must be sf or SpatVector points")
   }
   if (!is.character(ids) || length(ids) != 1L || !ids %in% names(facilities)) {
-    stop("ids must name a column of facilities")
+    .stop("ids must name a column of facilities")
   }
   fid <- as.character(facilities[[ids, drop = TRUE]])
   if (anyNA(fid) || any(!nzchar(fid)) || anyDuplicated(fid)) {
-    stop("facility IDs must be unique and nonmissing")
+    .stop("facility IDs must be unique and nonmissing")
   }
   .chck_nonnegative_scalar(buffer, "buffer")
   if (!is.numeric(max_time) || length(max_time) != 1L || is.na(max_time) || max_time <= 0) {
-    stop("max_time must be a positive number or Inf")
+    .stop("max_time must be a positive number or Inf")
   }
 
   steps <- ceiling(buffer / min(terra::res(template)))
   work <- terra::extend(terra::rast(template), steps)
   fr <- terra::project(friction, work, method = method)
   if (any(terra::values(fr, mat = FALSE) <= 0, na.rm = TRUE)) {
-    stop("friction must be positive; use NA for barriers")
+    .stop("friction must be positive; use NA for barriers")
   }
   if (!is.null(mask)) {
     if (inherits(mask, "sf")) mask <- terra::vect(mask)
     if (!inherits(mask, "SpatVector") || terra::geomtype(mask) != "polygons") {
-      stop("mask must be sf or SpatVector polygons")
+      .stop("mask must be sf or SpatVector polygons")
     }
     fr <- terra::mask(fr, terra::project(mask, terra::crs(work)))
   }
   facilities <- terra::project(facilities, terra::crs(work))
   cells <- terra::cellFromXY(work, terra::crds(facilities))
   if (anyNA(cells)) {
-    stop("facilities outside the working grid: ", paste(fid[is.na(cells)], collapse = ", "))
+    .stop("facilities outside the working grid: ", paste(fid[is.na(cells)], collapse = ", "))
   }
   start_friction <- terra::values(fr, mat = FALSE)[cells]
   if (anyNA(start_friction)) {
-    stop("facilities on missing friction or outside the mask: ",
+    .stop("facilities on missing friction or outside the mask: ",
          paste(fid[is.na(start_friction)], collapse = ", "))
   }
   # costDist() marks the start by giving it zero friction, which drops the half

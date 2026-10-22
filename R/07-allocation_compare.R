@@ -236,6 +236,6 @@ as.data.frame.ae_allocation_comparison <- function(x, row.names = NULL, optional
                                                    type = c("fits", "zones"), ...) {
   type <- match.arg(type)
   out <- if (type == "fits") x$table else x$zones
-  if (is.null(out)) stop("no zone summaries; supply zones to compare_allocations()")
+  if (is.null(out)) .stop("no zone summaries; supply zones to compare_allocations()")
   out
 }

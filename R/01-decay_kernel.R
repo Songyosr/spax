@@ -110,30 +110,30 @@ decay_kernel <- function(fun, name = NULL, parameter = NULL, lower = 0, upper = 
   fun_message <- "fun must be \"gaussian\", \"exponential\", \"power\" or a function"
   if (is.character(fun)) {
     if (length(fun) != 1L || is.na(fun) || !fun %in% .decay_builtin_families) {
-      stop(fun_message)
+      .stop(fun_message)
     }
     supplied <- c(name = !missing(name), parameter = !missing(parameter),
                   lower = !missing(lower), upper = !missing(upper),
                   zero_distance = !missing(zero_distance), smooth = !missing(smooth),
                   args = !missing(args))
     if (any(supplied)) {
-      stop("a built-in kernel takes no other arguments (remove: ",
+      .stop("a built-in kernel takes no other arguments (remove: ",
            paste(names(supplied)[supplied], collapse = ", "), ")")
     }
     return(.builtin_decay_kernel(fun))
   }
-  if (!is.function(fun)) stop(fun_message)
-  if (is.primitive(fun)) stop("fun must be a closure, not a primitive function")
+  if (!is.function(fun)) .stop(fun_message)
+  if (is.primitive(fun)) .stop("fun must be a closure, not a primitive function")
   formal_list <- as.list(formals(fun))
   if (length(formal_list) < 2L || !identical(names(formal_list)[1:2], c("distance", "sigma"))) {
-    stop("the first two arguments of fun must be named distance and sigma")
+    .stop("the first two arguments of fun must be named distance and sigma")
   }
-  if (is.null(name)) stop("name is required to declare a kernel from a function")
-  if (is.null(parameter)) stop("parameter is required to declare a kernel from a function")
+  if (is.null(name)) .stop("name is required to declare a kernel from a function")
+  if (is.null(parameter)) .stop("parameter is required to declare a kernel from a function")
   .check_decay_kernel_name(name)
   if (!is.character(parameter) || length(parameter) != 1L || is.na(parameter) ||
       !nzchar(parameter)) {
-    stop("parameter must be one nonempty string")
+    .stop("parameter must be one nonempty string")
   }
   .chck_is_numeric(lower, "lower")
   .chck_length(length(lower), 1, "lower")
@@ -142,13 +142,13 @@ decay_kernel <- function(fun, name = NULL, parameter = NULL, lower = 0, upper = 
   lower <- as.double(lower)
   upper <- as.double(upper)
   if (is.na(lower) || is.na(upper) || lower < 0 || lower >= upper) {
-    stop("lower and upper must be numbers with 0 <= lower < upper <= Inf")
+    .stop("lower and upper must be numbers with 0 <= lower < upper <= Inf")
   }
   if (!is.logical(zero_distance) || length(zero_distance) != 1L || is.na(zero_distance)) {
-    stop("zero_distance must be TRUE or FALSE")
+    .stop("zero_distance must be TRUE or FALSE")
   }
   if (!is.logical(smooth) || length(smooth) != 1L || is.na(smooth)) {
-    stop("smooth must be TRUE or FALSE")
+    .stop("smooth must be TRUE or FALSE")
   }
   rest <- formal_list[-(1:2)]
   .check_decay_kernel_args(args, setdiff(names(rest), "..."))
@@ -171,7 +171,7 @@ decay_kernel <- function(fun, name = NULL, parameter = NULL, lower = 0, upper = 
   rebuilt <- tryCatch(.decay_kernel_function(kernel), error = function(e) NULL)
   if (is.null(rebuilt) || !identical(formals(rebuilt), formals(fun0)) ||
       !identical(body(rebuilt), body(fun0))) {
-    stop("the kernel function cannot be stored exactly")
+    .stop("the kernel function cannot be stored exactly")
   }
   .probe_decay_kernel(kernel, fun, rebuilt)
   kernel
@@ -225,13 +225,13 @@ print.spax_decay_kernel <- function(x, ...) {
       gaussian = .help_decay_gaussian,
       exponential = .help_decay_exponential,
       power = .help_decay_power,
-      stop("unknown built-in kernel")
+      .stop("unknown built-in kernel")
     ))
   }
   exprs <- tryCatch(parse(text = kernel$code, keep.source = FALSE), error = function(e) NULL)
   if (length(exprs) != 1L || !is.call(exprs[[1L]]) ||
       !identical(exprs[[1L]][[1L]], as.name("function"))) {
-    stop("the kernel code must be a single function expression")
+    .stop("the kernel code must be a single function expression")
   }
   eval(exprs[[1L]], baseenv())
 }
@@ -248,7 +248,7 @@ print.spax_decay_kernel <- function(x, ...) {
     if (is.null(fun)) fun <- .decay_kernel_function(kernel)
     out <- do.call(fun, c(list(distance, sigma), kernel$args))
     if (!is.numeric(out) || length(out) != length(distance)) {
-      stop("the kernel must return one numeric value for each distance")
+      .stop("the kernel must return one numeric value for each distance")
     }
     attributes(out) <- NULL
     storage.mode(out) <- "double"
@@ -258,7 +258,7 @@ print.spax_decay_kernel <- function(x, ...) {
       if (is.null(fun)) fun <- .decay_kernel_function(kernel)
       weights <- do.call(fun, c(list(distance[finite], sigma), kernel$args))
       if (!is.numeric(weights) || length(weights) != sum(finite)) {
-        stop("the kernel must return one numeric value for each distance")
+        .stop("the kernel must return one numeric value for each distance")
       }
       out[finite] <- weights
     }
@@ -285,7 +285,7 @@ print.spax_decay_kernel <- function(x, ...) {
 .validate_decay_kernel_fields <- function(x) {
   if (!is.list(x) || !identical(class(x), "spax_decay_kernel") ||
       !identical(names(x), .decay_kernel_fields)) {
-    stop("the class or the fields are wrong")
+    .stop("the class or the fields are wrong")
   }
   scalar_string <- function(value) is.character(value) && length(value) == 1L && !is.na(value)
   scalar_flag <- function(value) is.logical(value) && length(value) == 1L && !is.na(value)
@@ -293,23 +293,23 @@ print.spax_decay_kernel <- function(x, ...) {
   if (!scalar_string(x$name) || !scalar_flag(x$builtin) || !scalar_string(x$parameter) ||
       !nzchar(x$parameter) || !scalar_bound(x$lower) || !scalar_bound(x$upper) ||
       !scalar_flag(x$zero_distance) || !scalar_flag(x$smooth)) {
-    stop("a field has the wrong type")
+    .stop("a field has the wrong type")
   }
   if (x$lower < 0 || x$lower >= x$upper) {
-    stop("the bounds must satisfy 0 <= lower < upper <= Inf")
+    .stop("the bounds must satisfy 0 <= lower < upper <= Inf")
   }
   if (x$builtin) {
     if (!x$name %in% .decay_builtin_families || !identical(x, .builtin_decay_kernel(x$name))) {
-      stop("a built-in declaration must match its built-in kernel")
+      .stop("a built-in declaration must match its built-in kernel")
     }
     return(invisible(TRUE))
   }
   .check_decay_kernel_name(x$name)
-  if (!scalar_string(x$code)) stop("code must be one string")
+  if (!scalar_string(x$code)) .stop("code must be one string")
   fun <- .decay_kernel_function(x)
   formal_list <- as.list(formals(fun))
   if (length(formal_list) < 2L || !identical(names(formal_list)[1:2], c("distance", "sigma"))) {
-    stop("the first two arguments of the function must be named distance and sigma")
+    .stop("the first two arguments of the function must be named distance and sigma")
   }
   rest <- formal_list[-(1:2)]
   .check_decay_kernel_args(x$args, setdiff(names(rest), "..."))
@@ -320,11 +320,11 @@ print.spax_decay_kernel <- function(x, ...) {
 .check_decay_kernel_name <- function(name) {
   if (!is.character(name) || length(name) != 1L || is.na(name) ||
       !grepl("^[A-Za-z][A-Za-z0-9_.-]*$", name)) {
-    stop("name must be one string that starts with a letter and continues with letters, ",
+    .stop("name must be one string that starts with a letter and continues with letters, ",
          "digits, _, . or -")
   }
   if (tolower(name) %in% .decay_reserved_names) {
-    stop("name cannot be gaussian, exponential, power, inverse, binary or none ",
+    .stop("name cannot be gaussian, exponential, power, inverse, binary or none ",
          "(in any capitalization)")
   }
   invisible(TRUE)
@@ -333,15 +333,15 @@ print.spax_decay_kernel <- function(x, ...) {
 # `args` is a plain list with unique nonempty names among the `allowed` argument
 # names; its values are plain numeric, logical or character vectors.
 .check_decay_kernel_args <- function(args, allowed) {
-  if (!is.list(args) || is.object(args)) stop("args must be a named list")
+  if (!is.list(args) || is.object(args)) .stop("args must be a named list")
   if (!length(args)) return(invisible(TRUE))
   nms <- names(args)
   if (is.null(nms) || anyNA(nms) || any(!nzchar(nms)) || anyDuplicated(nms)) {
-    stop("args must have unique, nonempty names")
+    .stop("args must have unique, nonempty names")
   }
   unknown <- setdiff(nms, allowed)
   if (length(unknown)) {
-    stop("args names must be arguments of fun other than distance and sigma: ",
+    .stop("args names must be arguments of fun other than distance and sigma: ",
          paste(unknown, collapse = ", "))
   }
   plain <- vapply(args, function(value) {
@@ -349,7 +349,7 @@ print.spax_decay_kernel <- function(x, ...) {
       is.null(attributes(value))
   }, logical(1))
   if (!all(plain)) {
-    stop("args values must be numeric, logical or character vectors without attributes: ",
+    .stop("args values must be numeric, logical or character vectors without attributes: ",
          paste(nms[!plain], collapse = ", "))
   }
   invisible(TRUE)
@@ -362,7 +362,7 @@ print.spax_decay_kernel <- function(x, ...) {
                   logical(1))
   missing_default <- setdiff(names(rest)[empty], c("...", supplied))
   if (length(missing_default)) {
-    stop("every argument of fun after distance and sigma needs a default, an entry in ",
+    .stop("every argument of fun after distance and sigma needs a default, an entry in ",
          "args or must be ...; missing: ", paste(missing_default, collapse = ", "))
   }
   invisible(TRUE)
@@ -409,23 +409,23 @@ print.spax_decay_kernel <- function(x, ...) {
     }
     w <- evaluate(rebuilt, sigma)
     if (!is.numeric(w) || length(w) != length(distance)) {
-      stop("the kernel must return a numeric vector with one value per distance")
+      .stop("the kernel must return a numeric vector with one value per distance")
     }
     if (!all(is.finite(w))) {
       i <- which(!is.finite(w))[1L]
-      stop("the kernel must return finite values; it returned ", format(w[i]), " ", at(i))
+      .stop("the kernel must return finite values; it returned ", format(w[i]), " ", at(i))
     }
     if (any(w < 0)) {
       i <- which(w < 0)[1L]
-      stop("the kernel must return nonnegative values; it returned ", format(w[i]), " ", at(i))
+      .stop("the kernel must return nonnegative values; it returned ", format(w[i]), " ", at(i))
     }
     rises <- diff(w) > 1e-12 * pmax(1, w[-1L])
     if (any(rises)) {
       i <- which(rises)[1L] + 1L
-      stop("the kernel must not increase with distance; it increases ", at(i))
+      .stop("the kernel must not increase with distance; it increases ", at(i))
     }
     if (!identical(w, evaluate(fun, sigma))) {
-      stop("the kernel gives different values when rebuilt from its stored code; it may use ",
+      .stop("the kernel gives different values when rebuilt from its stored code; it may use ",
            "only its arguments, base R, `pkg::fn` calls and `args`")
     }
     if (identical(sigma, middle)) {
@@ -437,7 +437,7 @@ print.spax_decay_kernel <- function(x, ...) {
       if (!identical(evaluate(rebuilt, sigma, rev(distance)), rev(w)) ||
           !identical(evaluate(rebuilt, sigma, distance[-n]), w[-n]) ||
           !identical(evaluate(rebuilt, sigma, distance[-1L]), w[-1L])) {
-        stop("the kernel must give each distance its own weight, independent of the other distances")
+        .stop("the kernel must give each distance its own weight, independent of the other distances")
       }
     }
   }
