@@ -23,8 +23,12 @@ test_that("save_spax and read_spax round-trip in file and directory modes", {
                      saved[names(saved) != "accessibility"])
     expect_true(terra::compareGeom(loaded$accessibility, saved$accessibility))
     expect_equal(names(loaded$accessibility), names(saved$accessibility))
-    expect_equal(terra::values(loaded$accessibility),
-                 terra::values(saved$accessibility), tolerance = 1e-6)
+    # Double precision by default: the values come back exactly (cells without a
+    # value as NaN, the nodata value of a float raster).
+    expect_identical(is.na(terra::values(loaded$accessibility)),
+                     is.na(terra::values(saved$accessibility)))
+    expect_true(isTRUE(all.equal(terra::values(loaded$accessibility),
+                                 terra::values(saved$accessibility), tolerance = 0)))
   }
 
   # File mode: files sit next to the given path; a layer-names file only for
@@ -44,6 +48,36 @@ test_that("save_spax and read_spax round-trip in file and directory modes", {
   expect_round_trip(result, read_spax(file.path(dir_path, "multi")))
   expect_error(save_spax(result, dir_path, dir = TRUE), "Directory already exists")
   expect_no_error(save_spax(result, dir_path, dir = TRUE, overwrite = TRUE))
+})
+
+test_that("save_spax() writes double precision unless another datatype is given", {
+  skip_if_no_proj()
+  td <- fca_toy()
+  result <- spax_e2sfca(
+    demand = td$demand,
+    supply = td$supply_df,
+    distance = td$distance,
+    decay_params = list(method = "gaussian", sigma = 2),
+    id_col = "id",
+    supply_cols = c("doctors", "nurses"),
+    snap = TRUE
+  )
+  tmp <- withr::local_tempdir()
+  double <- file.path(tmp, "double")
+  single <- file.path(tmp, "single")
+  save_spax(result, double)
+  save_spax(result, single, datatype = "FLT4S")
+  raster_file <- function(path) paste0(path, "_accessibility.tif")
+  expect_identical(terra::datatype(terra::rast(raster_file(double))), c("FLT8S", "FLT8S"))
+  expect_identical(terra::datatype(terra::rast(raster_file(single))), c("FLT4S", "FLT4S"))
+  expect_lt(file.size(raster_file(single)), file.size(raster_file(double)))
+  values <- terra::values(result$accessibility)
+  expect_true(isTRUE(all.equal(terra::values(read_spax(double)$accessibility), values,
+                               tolerance = 0)))
+  # single precision rounds the values to about seven significant digits
+  rounded <- terra::values(read_spax(single)$accessibility)
+  expect_false(isTRUE(all.equal(rounded, values, tolerance = 0)))
+  expect_equal(rounded, values, tolerance = 1e-7)
 })
 
 test_that("save_spax and read_spax refuse invalid objects and missing files", {
