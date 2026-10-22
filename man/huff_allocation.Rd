@@ -40,8 +40,8 @@ parameters held fixed, as in \code{\link[=clm_allocation]{clm_allocation()}}. Na
 (\code{v0}) are refused.}
 }
 \value{
-The existing private \code{ae_problem} for corrected static CLM with no
-outside option. Parameter order is sigma, then beta when it is fitted. With
+The model: an \code{ae_problem} for the static CLM with no outside
+option. Parameter order is sigma, then beta when it is fitted. With
 demand groups sigma is \verb{sigma.<group>} for the groups in \code{by_group}.
 }
 \description{

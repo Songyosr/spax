@@ -205,8 +205,8 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
     t <- travel[finite]
     o <- order(t)
     cw <- cumsum(w[o]) / sum(w)
-    q <- function(p) t[o][which(cw >= p)[1L]]
-    c(trip_median = q(0.5), trip_p90 = q(0.9),
+    quantile_at <- function(p) t[o][which(cw >= p)[1L]]
+    c(trip_median = quantile_at(0.5), trip_p90 = quantile_at(0.9),
       stats::setNames(vapply(trip_breaks, function(b) sum(w[t > b]) / sum(w), numeric(1)),
                       paste0("trips_over_", trip_breaks)),
       trips_absent_edge = 1 - sum(w) / total)

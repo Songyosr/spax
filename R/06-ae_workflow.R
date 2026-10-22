@@ -382,7 +382,7 @@ print.ae_prepared_inputs <- function(x, ...) {
 #'   `family` may be given by group, a named list of kernel names or
 #'   declarations with one element per group (sigma is then group specific);
 #'   `v0` may be a named numeric vector by group when `fit_v0 = FALSE`.
-#' @return The existing private `ae_problem` for corrected static CLM.
+#' @return The model: an `ae_problem` for the static CLM.
 #'   Parameter order is sigma, then v0 and beta when their flags are true. With
 #'   demand groups sigma and v0 are `sigma.<group>` and `v0.<group>` for the
 #'   parameters in `by_group`.
@@ -479,8 +479,8 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' @param fixed For inputs with demand groups: a named numeric vector of
 #'   parameters held fixed, as in [clm_allocation()]. Names of outside weights
 #'   (`v0`) are refused.
-#' @return The existing private `ae_problem` for corrected static CLM with no
-#'   outside option. Parameter order is sigma, then beta when it is fitted. With
+#' @return The model: an `ae_problem` for the static CLM with no outside
+#'   option. Parameter order is sigma, then beta when it is fitted. With
 #'   demand groups sigma is `sigma.<group>` for the groups in `by_group`.
 #' @references
 #' Huff DL (1963). A probabilistic analysis of shopping center trade areas.

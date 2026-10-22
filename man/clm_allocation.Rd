@@ -53,7 +53,7 @@ model (for example \code{sigma.a} or \code{v0.b = 0}). They are not fitted and n
 part of \code{theta}.}
 }
 \value{
-The existing private \code{ae_problem} for corrected static CLM.
+The model: an \code{ae_problem} for the static CLM.
 Parameter order is sigma, then v0 and beta when their flags are true. With
 demand groups sigma and v0 are \verb{sigma.<group>} and \verb{v0.<group>} for the
 parameters in \code{by_group}.
