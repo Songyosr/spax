@@ -4,7 +4,7 @@
 #'
 #' Solves `x = map(x, ...)` by iterating
 #' `x_next = (1 - lambda) * x + lambda * map(x, ...)`.
-#' @keywords internal
+#' @noRd
 solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
                               max_iter = 1000, norm = c("max", "l2"),
                               keep_history = TRUE, warn = TRUE,
@@ -96,7 +96,7 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
 }
 
 #' Spectral radius of a square Jacobian
-#' @keywords internal
+#' @noRd
 spectral_radius <- function(jac) {
   jac <- as.matrix(jac)
   if (nrow(jac) != ncol(jac)) {
@@ -126,7 +126,7 @@ spectral_radius <- function(jac) {
 #' @param lazy_f0 If `TRUE`, `fn(x)` is evaluated (and checked as usual) only
 #'   when a coordinate needs a one-sided or room step; the result is identical.
 #'   An invalid `fn(x)` is then detected only when it is used.
-#' @keywords internal
+#' @noRd
 #' @md
 fd_jacobian <- function(fn, x, ..., eps = 1e-6,
                         method = c("central", "forward"),
@@ -218,7 +218,7 @@ fd_jacobian <- function(fn, x, ..., eps = 1e-6,
 }
 
 #' Finite-difference state Jacobian dT/dx
-#' @keywords internal
+#' @noRd
 fd_jacobian_state <- function(map, x, ..., eps = 1e-6,
                               method = c("central", "forward"),
                               check = TRUE) {

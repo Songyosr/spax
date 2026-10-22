@@ -24,7 +24,7 @@
 #' Only the best rich fit is retained unless `keep_fits = TRUE`; other results
 #' retain compact parameters and diagnostics. This is a finite search over the
 #' supplied starts, not a guarantee of a global optimum or identified parameters.
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_problem_multistart <- function(problem, observed, starts, lower, upper, ...,
                                     loss_tol = 1e-6, parameter_tol = 1e-3,
@@ -167,7 +167,7 @@
 
 #' Print the outcome of a private AE multistart search
 #' @method print ae_multistart_fit
-#' @keywords internal
+#' @noRd
 #' @export
 #' @md
 print.ae_multistart_fit <- function(x, ...) {

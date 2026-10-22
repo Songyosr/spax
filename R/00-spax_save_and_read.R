@@ -10,7 +10,24 @@
 #' @param overwrite Logical; whether to overwrite existing files/directory (default FALSE)
 #' @param ... Additional arguments passed to terra::writeRaster()
 #' @return Invisibly returns the input object
+#' @examples
+#' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice", supply_cols = "gp_fte_extg")
+#'
+#' # Save it to temporary files: the object, and its accessibility raster
+#' path <- tempfile("cornwall_e2sfca")
+#' save_spax(result, path)
+#' basename(list.files(dirname(path), pattern = basename(path)))
+#'
+#' # Read it back, then remove the files
+#' read_spax(path)
+#' unlink(paste0(path, c("_spax.rds", "_accessibility.tif")))
 #' @export
+#' @md
 save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
   # Input validation
   if (inherits(x, "spax_allocation")) {
@@ -67,6 +84,28 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
 #'
 #' @param file Character; path/name of saved spax files
 #' @return A spax object
+#' @examples
+#' # E2SFCA on the Cornwall population grid for two supply measures
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice",
+#'                       supply_cols = c("gp_fte_extg", "gp_fte"))
+#'
+#' # Save it to temporary files, the raster in double precision (terra writes
+#' # single precision by default)
+#' path <- tempfile("cornwall_e2sfca")
+#' save_spax(result, path, datatype = "FLT8S")
+#'
+#' # Read it back: the layers keep their names and values
+#' restored <- read_spax(path)
+#' names(restored$accessibility)
+#' all.equal(terra::values(restored$accessibility),
+#'           terra::values(result$accessibility))
+#'
+#' # Remove the files
+#' unlink(paste0(path, c("_spax.rds", "_accessibility.tif", "_names.rds")))
 #' @export
 read_spax <- function(file) {
   .chck_class(file, "character", "file")

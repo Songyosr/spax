@@ -25,3 +25,20 @@ A summary.spax object. For each accessibility layer, \code{coverage}
 Provides detailed statistical summaries of accessibility analysis results,
 including accessibility scores, facility statistics, and model-specific metrics.
 }
+\examples{
+# E2SFCA on the Cornwall population grid for two supply measures: GPs
+# excluding GPs in training, and all GPs
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+                      decay_params = list(method = "gaussian", sigma = 10),
+                      id_col = "practice",
+                      supply_cols = c("gp_fte_extg", "gp_fte"))
+summary(result)
+
+# Deciles instead of quartiles, and the coverage of the first measure: the
+# cells with a value, and those with access above zero
+s <- summary(result, quantiles = seq(0, 1, by = 0.1))
+s$accessibility$gp_fte_extg$quantiles
+s$accessibility$gp_fte_extg$coverage
+}

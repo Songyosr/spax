@@ -87,14 +87,8 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     }
   }
 
-  # Initialize RNG if needed
   if (is.null(seed)) {
-    # Check if RNG is already initialized
-    if (!exists(".Random.seed", envir = .GlobalEnv)) {
-      # Initialize with random seed if none exists
-      set.seed(sample.int(.Machine$integer.max, 1))
-    }
-    # Use current RNG state
+    # Use the current random stream (R seeds it on first use)
     result <- .sample_pmf_internal(
       x, n, size, prob, method, iterations,
       evolve_prop, replace_0, snap, ...
@@ -113,7 +107,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   return(result)
 }
 #' Internal sampling function (moved from main body)
-#' @keywords internal
+#' @noRd
 .sample_pmf_internal <- function(x, n, size, prob, method, iterations,
                                  evolve_prop, replace_0, snap, ...) {
   # Compute sample sizes (a fixed n takes precedence and is validated there)
@@ -164,7 +158,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param iterations Number of iterations
 #' @param evolve_prop Evolution proportion
 #' @param snap Logical for snap mode
-#' @keywords internal
+#' @noRd
 .chck_sample_pmf <- function(x, n, size, prob, method, iterations, evolve_prop, snap) {
   # Essential validation (always run)
   if (!inherits(x, "SpatRaster")) {
@@ -203,7 +197,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #'
 #' @param x SpatRaster input
 #' @return List with PMF raster and total population
-#' @keywords internal
+#' @noRd
 .chck_n_convert_pmf <- function(x) {
   # Check if input is PMF
   sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
@@ -231,7 +225,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param iterations Number of iterations
 #' @param ... Additional arguments for custom methods
 #' @return Vector of sample sizes
-#' @keywords internal
+#' @noRd
 .help_gen_sample_size <- function(n = NULL, size = NULL, prob = NULL,
                                   method = "poisson", iterations = 1, ...) {
   # Fixed sample size takes precedence
@@ -283,7 +277,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param replace_0 Logical for NA replacement
 #' @param snap Logical for snap mode
 #' @return Multi-layer SpatRaster of samples
-#' @keywords internal
+#' @noRd
 .sample_pmf_core_indp <- function(x, n_samples, iterations, replace_0 = TRUE, snap = FALSE) {
   # Create empty multi-layer template for results
   result <- rast(x, nlyrs = iterations)
@@ -330,7 +324,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 }
 
 #' Estimate new sample
-#' @keywords internal
+#' @noRd
 .help_est_new_sample <- function(input_vector, evolve_prop) {
   # Round retained samples from previous iteration
   retained <- round(c(0, head(input_vector, -1)) * (1 - evolve_prop))
@@ -345,7 +339,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 }
 
 #' Generate evolving spatial samples across iterations
-#' @keywords internal
+#' @noRd
 .sample_pmf_core_evlv <- function(x, n_samples, iterations,
                                   evolve_prop = 0.1,
                                   replace_0 = TRUE, snap = FALSE) {

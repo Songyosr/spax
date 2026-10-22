@@ -2,7 +2,7 @@
 #' @param rast SpatRaster object
 #' @param base_path Path to the raster file
 #' @return SpatRaster with names attached if available
-#' @keywords internal
+#' @noRd
 .attach_raster_names <- function(rast, base_path) {
   # Construct names file path by adding _names.rds to base path
   names_path <- sub("\\.tif$", "_names.rds", base_path)

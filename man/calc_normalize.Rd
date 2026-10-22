@@ -15,22 +15,19 @@ calc_normalize(
 }
 \arguments{
 \item{x}{Numeric vector, matrix, or SpatRaster of weights. The built-in
-methods require non-negative weights; a custom method receives `x` as is.}
+methods require non-negative weights; a custom method receives \code{x} as is.}
 
 \item{method}{Character string specifying normalization method:
-
-       - "standard": Divide by sum + a0 (default)
-
-       - "semi": Normalize only if sum + a0 > 1
-
-       - "reference": Normalize by reference value
-
-       - "identity": Return unchanged
-
-       - Or a custom function(x, ...)}
+\itemize{
+\item \code{"standard"}: divide by sum + a0 (default)
+\item \code{"semi"}: normalize only if sum + a0 > 1
+\item \code{"reference"}: normalize by reference value
+\item \code{"identity"}: return unchanged
+\item or a custom \verb{function(x, ...)}
+}}
 
 \item{ref_value}{Optional reference value for "reference" method. When
-`NULL`, the maximum of `x` is used; for a SpatRaster that is each cell's
+\code{NULL}, the maximum of \code{x} is used; for a SpatRaster that is each cell's
 maximum across layers.}
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0)}
@@ -41,7 +38,7 @@ maximum across layers.}
 }
 \value{
 Object of the same class as input containing normalized weights.
-  A SpatRaster is normalized cell by cell across its layers.
+A SpatRaster is normalized cell by cell across its layers.
 }
 \description{
 Normalizes weights using different methods with support for outside options.

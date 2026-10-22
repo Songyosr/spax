@@ -144,6 +144,8 @@ test_that("the Cornwall cases of the design evidence table reach the optimum", {
 # (b) Unit invariance ------------------------------------------------------------
 
 test_that("rescaling the travel times rescales sigma and keeps the loss", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   case <- alloc_generated_case()
   for (family in c("gaussian", "exponential")) {
     for (output in c("utilization", "flow")) {

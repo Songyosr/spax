@@ -223,7 +223,7 @@
 #' validity, declared units/policies and compact facility values. Optional spatial
 #' metadata follows `.prepare_allocation()` and is saved as plain geometry.
 #' Raster reconstruction is deferred to `.prediction_surface()`.
-#' @keywords internal
+#' @noRd
 #' @md
 .predict_clm <- function(source, distance, origin_ids = rownames(distance),
                          demand = NULL, outputs = c("rho", "A", "abar"),
@@ -443,7 +443,7 @@
 #' Uses only validated requested-cell geometry and stored vector values. Other
 #' cells remain NA. Matrix outputs require explicit numeric access and cannot be
 #' silently flattened into a surface. This never evaluates the CLM again.
-#' @keywords internal
+#' @noRd
 #' @md
 .prediction_surface <- function(x, output = "A") {
   .chck_class(x, "ae_clm_prediction", "x")

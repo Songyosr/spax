@@ -68,7 +68,11 @@ The friction surface is projected to the grid's lattice, extended by
 \code{mask} are treated as barriers (for example, to keep routes within one
 country). Global motorized friction surfaces, such as those of the Malaria
 Atlas Project, give minutes per metre; the travel times are then in minutes.
-The function downloads nothing.
+Inputs in another coordinate reference system are projected to the grid's
+with terra, which lets PROJ fetch files from the internet. When a projection
+changes datum, for example from WGS 84 to British National Grid, PROJ may
+download a datum shift grid and keep it in the user's PROJ data folder; give
+the inputs in the grid's system, or in one on the same datum, to avoid this.
 
 Times are measured between cell centers; the facility's own cell has time
 zero. Paths that leave the facility cell diagonally are underestimated by at
@@ -80,14 +84,15 @@ the straight-line time by up to about 8\%.
 library(sf)
 library(terra)
 
-# Cornwall population grid in British National Grid (metres)
-pop <- project(read_spax_example("cornwall_pop.tif"), "EPSG:27700")
+# Cornwall population grid in WGS 84 / UTM zone 30N (metres), on the same
+# datum as the grid's WGS 84 longitude and latitude
+pop <- project(read_spax_example("cornwall_pop.tif"), "EPSG:32630")
 
 # A uniform friction surface of 50 km/h, in minutes per metre
 friction <- init(pop, 60 / 50000)
 
 # Minutes from five practices to every populated cell
-gp <- cornwall_gp[1:5, ]
+gp <- st_transform(cornwall_gp[1:5, ], 32630)
 travel <- calc_travel_time(friction, gp, pop, ids = "practice", buffer = 5000)
 summary(travel[, 1])
 }

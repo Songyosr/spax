@@ -24,7 +24,7 @@
 #' is present only for a validated spatial mapping. Numeric summaries and origin
 #' zone joins do not require a template. Declared input units and policies are
 #' retained separately, without converting the supplied quantities.
-#' @keywords internal
+#' @noRd
 #' @md
 .ae_coverage <- function(fit, norm = NULL, units = NULL, observed = NULL,
                          rho_floor = 0, contact_need_floor = 0,
@@ -129,7 +129,7 @@
 #' This entry point also supports older saved problems without refitting targets.
 #' `solve_control` supplies named solver controls, such as damping for feedback.
 #' Failed solves are rejected before coverage extraction.
-#' @keywords internal
+#' @noRd
 #' @md
 .problem_coverage <- function(problem, theta, state = NULL, ..., solve_control = list()) {
   .chck_class(problem, "ae_problem", "problem")
@@ -202,7 +202,7 @@
 #' irrelevant. Unknown zone membership is an error, never silently dropped.
 #' Floors are applied after aggregating raw values. All original demand stays
 #' in the denominator, including low-contact/unreachable cells.
-#' @keywords internal
+#' @noRd
 #' @md
 .coverage_aggregate <- function(x, zones = NULL) {
   .chck_class(x, "ae_coverage", "x")
@@ -246,7 +246,7 @@
 #' Quadrant codes: 1 both-low, 2 capacity-limited, 3 contact-limited, 4 adequate;
 #' unclassified cells are NA. Other output names are numeric cell-table columns.
 #' Numeric-only coverage has no map; provide a spatial mapping at preparation.
-#' @keywords internal
+#' @noRd
 #' @md
 .coverage_surface <- function(x, output = "A") {
   .chck_class(x, "ae_coverage", "x")
@@ -259,7 +259,7 @@
 
 #' Format a private coverage object
 #' @method format ae_coverage
-#' @keywords internal
+#' @noRd
 #' @export
 #' @md
 format.ae_coverage <- function(x, digits = 4, ...) {
@@ -280,7 +280,7 @@ format.ae_coverage <- function(x, digits = 4, ...) {
 
 #' Print a private coverage object
 #' @method print ae_coverage
-#' @keywords internal
+#' @noRd
 #' @export
 #' @md
 print.ae_coverage <- function(x, digits = 4, ...) {
@@ -299,7 +299,7 @@ print.ae_coverage <- function(x, digits = 4, ...) {
 
 #' Summarize a private coverage object
 #' @method summary ae_coverage
-#' @keywords internal
+#' @noRd
 #' @exportS3Method base::summary
 #' @md
 summary.ae_coverage <- function(object, ...) {
@@ -325,7 +325,7 @@ summary.ae_coverage <- function(object, ...) {
 
 #' Print a private coverage summary
 #' @method print summary.ae_coverage
-#' @keywords internal
+#' @noRd
 #' @export
 #' @md
 print.summary.ae_coverage <- function(x, ...) {
@@ -347,14 +347,15 @@ print.summary.ae_coverage <- function(x, ...) {
 #' Coverage plots E_post when a norm is set, otherwise A. Adequacy plots the
 #' reported (floored) abar. `all` draws the four named panels.
 #' @method plot ae_coverage
-#' @keywords internal
+#' @noRd
 #' @exportS3Method graphics::plot
 #' @md
 plot.ae_coverage <- function(x, type = c("coverage", "contact", "adequacy", "quadrant", "all"), ...) {
   type <- match.arg(type)
   if (type == "all") {
-    old <- graphics::par(mfrow = c(2, 2))
+    old <- graphics::par(no.readonly = TRUE)
     on.exit(graphics::par(old), add = TRUE)
+    graphics::par(mfrow = c(2, 2))
     for (panel in c("coverage", "contact", "adequacy", "quadrant")) {
       plot(x, type = panel, ...)
     }

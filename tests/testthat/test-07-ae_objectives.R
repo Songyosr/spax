@@ -75,7 +75,7 @@ test_that("the Poisson gradient equals its pmax/logical form exactly (SPAX-061 T
     weights[floored] <- 0
     as.vector(crossprod(sensitivity, weights))
   }
-  set.seed(61)
+  local_test_seed(61)
   n <- 40
   sens <- matrix(rnorm(2 * n), n, 2, dimnames = list(NULL, c("a", "b")))
   observed <- rpois(n, 3) + 0

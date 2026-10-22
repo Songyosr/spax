@@ -60,14 +60,55 @@ map, so inspect the numeric validity result before interpreting the map.}
 An \code{ae_clm_prediction}, or an explicitly requested one-layer raster.
 Contact to positive-supply/zero-load facilities preserves valid probabilities
 but makes unqualified A/abar unknown; explicitly named supported-only outputs
-retain the existing zero-contribution convention. Zero-denominator rows
+retain the zero-contribution convention. Zero-denominator rows
 retain guarded zero mass and a false probability-valid flag.
 }
 \description{
-Numeric output preserves the existing prediction result and its separate probability,
+Numeric output keeps the prediction result and its separate probability,
 demand and capacity validity. Raster conversion is explicit and permits one
 vector only; inspect numeric validity before interpreting a map. Supply/theta
 overrides are deliberately absent. A changed system requires reevaluation.
+}
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+
+# Fit on every other small area; predict the others, which lie among them,
+# so these practices are their real choice set
+fit_areas <- areas[seq(1, nrow(areas), by = 2), ]
+held_out <- areas[seq(2, nrow(areas), by = 2), ]
+
+# A fit to the registrations of the fitted areas' residents, with those
+# registered elsewhere as the outside column (see fit_allocation())
+travel <- cornwall_travel[fit_areas$lsoa, gp$practice]
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% fit_areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+flow_matrix <- cbind(flow_matrix,
+                     "(outside)" = fit_areas$registered - rowSums(flow_matrix))
+model <- clm_allocation(prepare_allocation(
+  stats::setNames(fit_areas$registered, fit_areas$lsoa), supply, travel), fit_v0 = TRUE)
+fit <- fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poisson")
+
+# The held-out areas: no refit, the fitted values and practice loads are used
+pred <- predict_allocation(fit, cornwall_travel[held_out$lsoa, gp$practice],
+                           demand = stats::setNames(held_out$registered, held_out$lsoa),
+                           outputs = c("rho", "A", "flow"))
+
+# The modeled share of each area's residents at these practices, the share
+# registered there, and the GP FTE per 1,000 residents attributed to the area
+held <- cornwall_flows[cornwall_flows$lsoa \%in\% held_out$lsoa &
+                         cornwall_flows$practice \%in\% gp$practice, ]
+registered_here <- tapply(held$patients, factor(held$lsoa, levels = held_out$lsoa), sum)
+head(cbind(contact = pred$outputs$rho,
+           observed = registered_here / held_out$registered,
+           fte_per_1000 = 1000 * pred$outputs$A))
+table(pred$validity$status)
 }
 \seealso{
 Other allocation steps: 

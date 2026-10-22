@@ -384,6 +384,8 @@ test_that("travel by group in the data is used by group", {
 })
 
 test_that("the Cornwall rasters give the one-shot results with the same NA positions", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   pop <- read_spax_example("cornwall_pop.tif")
   travel <- read_spax_example("cornwall_gp_travel.tif")
   supply <- sf::st_drop_geometry(cornwall_gp)
@@ -728,6 +730,8 @@ test_that("a large grid prints thousands with a comma", {
 # prep_data(): the rasters do not survive saveRDS() ---------------------------------------
 
 test_that("raster data whose rasters are gone are detected and refused by spax()", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   td <- fca_toy()
   d <- prep_data(td$demand, td$supply_df, td$distance, id_col = "id", supply_cols = "doctors")
   expect_true(.raster_data_alive(d))
@@ -751,6 +755,8 @@ test_that("raster data whose rasters are gone are detected and refused by spax()
 })
 
 test_that("raster data with groups are dead after a round trip too, and so is each part", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   k <- group_case()
   d <- fca_case_data(k)
   file <- withr::local_tempfile(fileext = ".rds")
@@ -770,6 +776,8 @@ test_that("raster data with groups are dead after a round trip too, and so is ea
 # spax(): dispatch ------------------------------------------------------------------------
 
 test_that("spax() checks the data, the model and the rasters in that order", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   td <- fca_toy()
   d <- prep_data(td$demand, td$supply_vector, td$distance)
   back <- {
@@ -961,7 +969,7 @@ test_that("a raster sigma saved and reloaded is refused with the package's messa
   terra::values(sig) <- 2
   spec <- spec_e2sfca(decay_gaussian(sig))
   expect_s3_class(spax(d, spec), "spax")
-  path <- tempfile(fileext = ".rds")
+  path <- withr::local_tempfile(fileext = ".rds")
   saveRDS(spec, path)
   expect_message_exact(spax(d, readRDS(path)),
                        paste0("the raster sigma of this specification is no longer ",

@@ -1,7 +1,7 @@
 # SPAX-024: private HAAE fixed-point map -------------------------------------
 
 #' Compile inputs for the compact HAAE map
-#' @keywords internal
+#' @noRd
 .haae_compact_plan <- function(demand, supply, kernel, kappa = 1,
                                id_col = NULL, supply_cols = NULL) {
   .chck_positive_scalar(kappa, "kappa")
@@ -27,7 +27,7 @@
 }
 
 #' Evaluate the HAAE map and derived state at one attractiveness vector
-#' @keywords internal
+#' @noRd
 .haae_state <- function(a, plan, eps = 1e-8, a_min = 1e-6,
                         a_max = Inf) {
   .chck_numeric_vector(a, "a")
@@ -60,7 +60,7 @@
 }
 
 #' HAAE fixed-point map T(a)
-#' @keywords internal
+#' @noRd
 .haae_map <- function(a, plan, eps = 1e-8, a_min = 1e-6,
                       a_max = Inf) {
   .haae_state(
@@ -69,7 +69,7 @@
 }
 
 #' Analytic state Jacobian dT/da for the compact HAAE map
-#' @keywords internal
+#' @noRd
 .haae_jacobian_state <- function(a, plan, eps = 1e-8, a_min = 1e-6,
                                  a_max = Inf) {
   state <- .haae_state(

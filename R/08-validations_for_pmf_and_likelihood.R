@@ -3,7 +3,7 @@
 #' @param template Optional SpatRaster to check compatibility
 #' @param allow_null Logical; if TRUE, x can be NULL if template provided
 #' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
+#' @noRd
 .chck_raster_input <- function(x, template = NULL, allow_null = FALSE) {
   # Handle NULL case
   if (is.null(x)) {
@@ -54,7 +54,7 @@
 #' @param template SpatRaster template for rasterization
 #' @param allow_null Logical; if TRUE, value_col can be NULL
 #' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
+#' @noRd
 .chck_vector_input <- function(x, value_col = NULL, template = NULL, allow_null = FALSE) {
   # Check input type
   if (!inherits(x, "SpatVector")) {
@@ -104,7 +104,7 @@
 #' @param x SpatRaster to check PMF properties
 #' @param tolerance Numeric tolerance for sum to 1 check
 #' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
+#' @noRd
 .chck_pmf_validity <- function(x, tolerance = 1e-10) {
   # Check for negative values (in any layer)
   min_val <- terra::global(x, "min", na.rm = TRUE)$min
@@ -127,7 +127,7 @@
 #' Points that fall in the same cell add up (missing values are ignored, and
 #' each part of a multipoint carries the feature's full value); a polygon's
 #' value is copied to every cell it covers.
-#' @keywords internal
+#' @noRd
 .rasterize_values <- function(x, template, value_col) {
   if (all(terra::geomtype(x) == "points")) {
     return(terra::rasterize(x, template, field = value_col, fun = "sum",

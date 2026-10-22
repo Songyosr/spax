@@ -199,6 +199,9 @@ NULL
 #' @source Derived from the Malaria Atlas Project motorised friction surface
 #'   (Weiss et al. 2020, Creative Commons Attribution) and [cornwall_gp]. See
 #'   `system.file("COPYRIGHTS", package = "spax")`.
+#' @references Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., et al. (2020).
+#'   Global maps of travel time to healthcare facilities. *Nature Medicine*,
+#'   26, 1835-1838. \doi{10.1038/s41591-020-1059-1}
 #' @seealso [cornwall_travel], [cornwall_pop]
 #' @examples
 #' travel <- read_spax_example("cornwall_gp_travel.tif")

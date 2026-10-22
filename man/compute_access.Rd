@@ -19,7 +19,7 @@ compute_access(
 \item{demand}{SpatRaster representing spatial distribution of demand, or a
 named list of single-layer SpatRasters, one per demand group (see
 "Demand groups"). A multi-layer SpatRaster is refused. Demand
-must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+must be finite and nonnegative (use NA for unknown) unless \code{snap = TRUE},
 which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values.
@@ -33,7 +33,7 @@ same order and have the same geometry.}
 
 \item{access_weights}{Multi-layer SpatRaster of accessibility-side weights;
 values may be NA but not infinite. Given per group in the same way as
-`demand_weights`.}
+\code{demand_weights}.}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
 
@@ -45,8 +45,8 @@ values may be NA but not infinite. Given per group in the same way as
 }
 \value{
 SpatRaster of accessibility scores. With demand groups, the layers
-       are named `<measure>.<group>` for every group and `<measure>.all`
-       for the overall layer, measure by measure.
+are named \verb{<measure>.<group>} for every group and \verb{<measure>.all}
+for the overall layer, measure by measure.
 }
 \description{
 General-purpose function to calculate spatial accessibility by combining
@@ -55,16 +55,36 @@ supply measures and flexible weight specifications.
 }
 \section{Demand groups}{
 
-When `demand` is a named list of single-layer rasters, the groups compete
+When \code{demand} is a named list of single-layer rasters, the groups compete
 for the same supply: the demand that reaches a facility is the sum over the
 groups, each with its own demand weights. Each group gets its own
-accessibility layer, and `<measure>.all` is the overall layer, the average
+accessibility layer, and \verb{<measure>.all} is the overall layer, the average
 of the group scores weighted by the demand of the cell. A group with demand
 in a cell that none of its weights reach counts with accessibility 0 there;
 the overall layer is NA where any group's demand is missing or the total
-demand is 0. Group names must be unique, non-empty, not `"all"` and without
-a `.`. `demand_weights` and `access_weights` are shared by the groups, or a
+demand is 0. Group names must be unique, non-empty, not \code{"all"} and without
+a \code{.}. \code{demand_weights} and \code{access_weights} are shared by the groups, or a
 list with one element per group, named by the groups. Shared weights should
 be passed as one object, so that they are read once.
 }
 
+\examples{
+library(terra)
+
+# Cornwall population grid, and Gaussian weights of the travel time to each
+# GP practice
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+gp <- sf::st_drop_geometry(cornwall_gp)
+w <- calc_decay(travel, method = "gaussian", sigma = 10)
+
+# The same weights in both steps give E2SFCA (spax_e2sfca()); the squared
+# weights in the second step give M2SFCA (spax_m2sfca())
+e2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w,
+                         id_col = "practice", supply_cols = "gp_fte_extg",
+                         indicator_names = "e2sfca")
+m2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w^2,
+                         id_col = "practice", supply_cols = "gp_fte_extg",
+                         indicator_names = "m2sfca")
+plot(c(e2sfca, m2sfca))
+}

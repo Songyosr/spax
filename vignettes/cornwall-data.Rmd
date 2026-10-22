@@ -14,7 +14,10 @@ knitr::opts_chunk$set(
   class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
-  dpi = 100
+  dpi = 100,
+  # cairo writes smaller PNG files than the default macOS device (png only;
+  # other devices, such as pkgdown's, get no extra arguments)
+  dev.args = if (capabilities("cairo")) list(png = list(type = "cairo")) else list()
 )
 ```
 
@@ -392,7 +395,7 @@ explains that message.
 | Practice locations | `cornwall_gp` | ONS Postcode Directory, November 2025 | Open Government Licence v3.0; contains OS and Royal Mail data |
 | Boundaries, centroids, population | `cornwall_lsoa` | ONS LSOA 2021 boundaries and rural-urban classification, population-weighted centroids, mid-2024 population estimates | Open Government Licence v3.0; contains OS data |
 | Population grid | `cornwall_pop.tif` | WorldPop, 2020 UN-adjusted 1 km estimates | Creative Commons Attribution 4.0 |
-| Travel times | `cornwall_travel`, `cornwall_gp_travel.tif` | Derived by the package author from the Malaria Atlas Project 2019 motorized friction surface (Weiss et al. 2020) | Creative Commons Attribution; version not yet confirmed |
+| Travel times | `cornwall_travel`, `cornwall_gp_travel.tif` | Derived by the package author from the Malaria Atlas Project 2019 motorized friction surface (Weiss et al. 2020) | Creative Commons Attribution (version 3.0 on the Malaria Atlas Project website, 4.0 in the Google Earth Engine catalogue; both permit sharing adapted data with attribution) |
 
 Each source keeps the license given in the table. The package's MIT license
 covers its code only. The registrations and the workforce are from 2026, the

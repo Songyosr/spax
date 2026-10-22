@@ -22,7 +22,7 @@
 #' depend on a live raster pointer or source file. Metadata declares demand and
 #' supply units/periods and travel units; unspecified fields remain NA and no
 #' unit conversion is performed. The result is private `ae_prepared_inputs`.
-#' @keywords internal
+#' @noRd
 #' @md
 .prepare_allocation <- function(demand, supply, distance,
                                 origin_ids = NULL,

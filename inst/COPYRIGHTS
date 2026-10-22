@@ -49,6 +49,8 @@ surface (Weiss D.J. et al. (2020) Global maps of travel time to healthcare
 facilities. Nature Medicine 26, 1835-1838,
 https://doi.org/10.1038/s41591-020-1059-1) with least-cost paths over land,
 from the practice and centroid locations above. The Malaria Atlas Project
-publishes its maps under Creative Commons Attribution; its website states
-version 3.0 and the Google Earth Engine catalogue entry states version 4.0.
-The version applying to the downloaded surface has not been confirmed.
+publishes its maps under Creative Commons Attribution: its website states
+version 3.0 (https://creativecommons.org/licenses/by/3.0/) and the Google
+Earth Engine catalogue entry for the surface states version 4.0
+(https://creativecommons.org/licenses/by/4.0/). Both versions permit sharing
+adapted material, such as these derived travel times, with attribution.

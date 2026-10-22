@@ -2,7 +2,7 @@
 #' @param values SpatRaster of values
 #' @param weights SpatRaster of weights
 #' @param na.rm Logical for NA handling
-#' @keywords internal
+#' @noRd
 .chck_gather_weighted <- function(values, weights, na.rm) {
   # Input type validation
   .chck_class(values, "SpatRaster", "values")
@@ -18,7 +18,7 @@
 }
 
 #' Core computation for gather_weighted
-#' @keywords internal
+#' @noRd
 .gather_weighted_core <- function(values, weights, na.rm = TRUE) {
   weighted_sums <- terra::global(weights, "sum",
     weights = values,
@@ -29,7 +29,7 @@
 }
 
 #' Format output for gather_weighted
-#' @keywords internal
+#' @noRd
 .help_format_gather <- function(weighted_sums, weights, values = NULL) {
   if (is.null(values)) {
     # Single layer case
@@ -172,12 +172,13 @@ gather_demand <- function(demand, weights) {
     .stop("weights must contain probability values between 0 and 1")
   }
 
+  if (inherits(demand, "SpatRaster") && terra::nlyr(demand) != 1L) {
+    .stop("demand must be a single-layer SpatRaster")
+  }
   # Use gather_weighted and rename columns appropriately
-  result <- gather_weighted(demand, weights) |>
-    dplyr::rename(
-      location_id = unit_id,
-      potential_demand = weighted_sum
-    )
+  result <- gather_weighted(demand, weights)
+  names(result)[match(c("unit_id", "weighted_sum"), names(result))] <-
+    c("location_id", "potential_demand")
 
   return(result)
 }

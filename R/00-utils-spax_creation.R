@@ -13,7 +13,7 @@
 #' @param variations List containing variation results (optional)
 #' @param call The original function call
 #' @return Invisible TRUE if validation passes
-#' @keywords internal
+#' @noRd
 .chck_spax <- function(accessibility = NULL,
                        type = NULL,
                        parameters = list(),
@@ -61,7 +61,7 @@
 #'
 #' @inheritParams .chck_spax
 #' @return A spax object, of class `c("spax", "spax_result")`
-#' @keywords internal
+#' @noRd
 .new_spax <- function(accessibility = NULL,
                      type = NULL,
                      parameters = list(),
@@ -93,7 +93,7 @@
 #' @inheritParams .chck_spax
 #' @param snap Logical; if TRUE skip validation (default = FALSE)
 #' @return A spax object
-#' @keywords internal
+#' @noRd
 .create_spax <- function(accessibility = NULL,
                          type = NULL,
                          parameters = list(),
@@ -140,7 +140,7 @@
 #' @param type Character string specifying model type
 #' @param parameters List of model parameters
 #' @return Invisible TRUE if validation passes
-#' @keywords internal
+#' @noRd
 .chck_spax_summary <- function(accessibility = NULL,
                                facilities = NULL,
                                model_specific = NULL,
@@ -181,7 +181,7 @@
 #'
 #' @inheritParams .chck_spax_summary
 #' @return A summary.spax object
-#' @keywords internal
+#' @noRd
 .new_spax_summary <- function(accessibility = NULL,
                               facilities = NULL,
                               model_specific = NULL,
@@ -208,7 +208,7 @@
 #' @inheritParams .chck_spax_summary
 #' @param snap Logical; if TRUE skip validation (default = FALSE)
 #' @return A summary.spax object
-#' @keywords internal
+#' @noRd
 .create_spax_summary <- function(accessibility = NULL,
                                  facilities = NULL,
                                  model_specific = NULL,

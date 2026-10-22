@@ -69,7 +69,7 @@ the aligned mapping are saved. Numeric work needs no spatial metadata.}
 no unit conversion or dimensional compatibility check is performed.}
 }
 \value{
-The existing \code{ae_prepared_inputs}, with a full origin registry and
+An \code{ae_prepared_inputs}, with a full origin registry and
 distinct support statuses plus compact active load arrays. No duplicate
 full travel matrix is retained. Pass it to \code{\link[=clm_allocation]{clm_allocation()}} rather than
 editing its internal fields. Expected counts use demand units/period;
@@ -81,8 +81,8 @@ given per group).
 \description{
 Named axes align independently; unnamed axes are positional. Positive
 included demand enters facility-load support. Zero, unknown and explicitly
-excluded origins retain separate support statuses. This experimental entry
-point delegates to the existing compact preparation boundary.
+excluded origins retain separate support statuses. This experimental step
+prepares the compact arrays that the allocation model computes on.
 }
 \details{
 Demand groups (age bands, insurance types) are given as a named list of
@@ -91,6 +91,35 @@ when it is included, every group demand is known and the total is positive;
 an origin with a group demand missing is unknown as a whole under
 \code{missing_demand = "exclude"}. The prepared object then also carries the
 group IDs and the demand and travel by group (\code{D_groups}, \code{distance_groups}).
+}
+\examples{
+# Mainland Cornwall: registered residents by small area, GP FTE by practice
+# and the travel minutes between them, matched by their names
+areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+demand <- stats::setNames(areas$registered, areas$lsoa)
+supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+prepare_allocation(demand, supply, travel,
+                   metadata = list(demand_units = "registered residents",
+                                   supply_units = "GP FTE",
+                                   travel_units = "minutes"))
+
+# Demand groups: residents by age band, sharing one travel matrix
+by_age <- list(children = stats::setNames(areas$pop_0_15, areas$lsoa),
+               adults = stats::setNames(areas$pop_16_64, areas$lsoa),
+               older = stats::setNames(areas$pop_65p, areas$lsoa))
+prepare_allocation(by_age, supply, travel)
+
+# All small areas and practices, the Isles of Scilly area excluded. Travel
+# is NA between the islands and the mainland, which have no road link;
+# missing_travel = "omit" leaves those pairs out of the model
+all_areas <- sf::st_drop_geometry(cornwall_lsoa)
+all_gp <- sf::st_drop_geometry(cornwall_gp)
+prepare_allocation(stats::setNames(all_areas$registered, all_areas$lsoa),
+                   stats::setNames(all_gp$gp_fte_extg, all_gp$practice),
+                   cornwall_travel, included = !all_areas$scilly,
+                   missing_travel = "omit")
 }
 \seealso{
 Other allocation steps: 

@@ -2,7 +2,7 @@
 #' @param values Numeric vector, matrix or data.frame of values
 #' @param weights Multi-layer SpatRaster of weights
 #' @param value_cols Column names if values is data.frame
-#' @keywords internal
+#' @noRd
 .chck_spread_weighted <- function(values, weights, value_cols = NULL) {
   # Check weights
   .chck_class(weights, "SpatRaster", "weights")
@@ -36,7 +36,7 @@
 #' @param weights Multi-layer SpatRaster of weights
 #' @param full_output Whether to return intermediate calculations
 #' @return SpatRaster or list depending on full_output
-#' @keywords internal
+#' @noRd
 .spread_core <- function(values, weights, full_output = FALSE) {
   if (length(values) != nlyr(weights)) {
     .stop("Number of values must match number of weight layers")

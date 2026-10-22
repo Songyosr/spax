@@ -99,7 +99,7 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
 #'
 #' # Registered patients by Cornwall small area, on the population grid
 #' pop <- read_spax_example("cornwall_pop.tif")
-#' areas <- project(vect(cornwall_lsoa), pop)
+#' areas <- vect(sf::st_transform(cornwall_lsoa, 4326))
 #'
 #' # Uniform prior over the populated grid
 #' result1 <- rasterize_demand(areas, value_col = "registered", template = pop)

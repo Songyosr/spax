@@ -893,6 +893,7 @@ test_that("grouped spax objects print and summarise their groups", {
   expect_output(print(s), "Decay function (group a): gaussian (sigma = 2.5)",
                 fixed = TRUE)
   expect_output(print(s), "m1.all:", fixed = TRUE)
+  withr::local_pdf(NULL)
   expect_no_error(plot(per, y = "m1.all"))
 
   # Ungrouped printing has no group lines.

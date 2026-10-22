@@ -25,7 +25,7 @@
 #'   given: held `sigma` or `sigma.<group>` (fit mode only, since in evaluate mode
 #'   sigma is in `theta_given`), `v0` or `v0.<group>` (`v0 = 0` for the Huff
 #'   model), `beta` when it is a number and `kappa`.
-#' @keywords internal
+#' @noRd
 #' @md
 .bind_spax_spec <- function(spec, data) {
   groups <- data$group_ids

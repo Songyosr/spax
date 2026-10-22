@@ -1,5 +1,5 @@
 #' Validate inputs for PMF transformation
-#' @keywords internal
+#' @noRd
 .chck_transform_pmf_raster <- function(x, snap = FALSE) {
   if (snap) {
     return(invisible(TRUE))
@@ -63,6 +63,7 @@
 #' result$total
 #'
 #' @export
+#' @md
 transform_pmf <- function(x, value_col = NULL, template = NULL,
                           return_total = FALSE, snap = FALSE) {
   if (!snap) {

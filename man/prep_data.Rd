@@ -92,7 +92,7 @@ refused for numeric data.}
 \item{...}{Unused.}
 }
 \value{
-Numeric data: the existing \code{ae_prepared_inputs}, as returned by
+Numeric data: an \code{ae_prepared_inputs}, as returned by
 \code{\link[=prepare_allocation]{prepare_allocation()}}. Raster data: a \code{spax_raster_data} (also a
 \code{spax_data}), a list with \code{demand} and \code{travel} (as given), \code{supply} (the
 object as given), \code{id_col}, \code{supply_cols}, \code{facility_ids} (the layer names of
@@ -200,8 +200,14 @@ mainland <- terra::ext(-6, terra::xmax(pop), terra::ymin(pop), terra::ymax(pop))
 pop <- terra::crop(pop, mainland)
 registered <- pop * sum(areas$registered) /
   terra::global(pop, "sum", na.rm = TRUE)[[1]]
-d_mainland <- prep_data(registered, gp,
-                        terra::crop(travel_grid[[gp$practice]], mainland),
+travel_mainland <- terra::crop(travel_grid[[gp$practice]], mainland)
+
+# Cells of 2 x 2 grid cells keep the example quick: residents add up and
+# travel minutes average
+registered <- terra::aggregate(registered, fact = 2, fun = "sum", na.rm = TRUE)
+travel_mainland <- terra::aggregate(travel_mainland, fact = 2, fun = "mean",
+                                    na.rm = TRUE)
+d_mainland <- prep_data(registered, gp, travel_mainland,
                         id_col = "practice", supply_cols = "gp_fte_extg")
 
 # Registrations of mainland residents at the mainland practices

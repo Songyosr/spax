@@ -129,6 +129,39 @@ when the kernel is exactly zero at every finite travel time of such a
 facility, as a cutoff or bisquare kernel can be beyond its range, and also
 when Gaussian weights underflow to zero.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice),
+               cornwall_travel[areas$lsoa, gp$practice])
+
+# The bootstrap assumes practice totals that are independent counts over one
+# period. The registrations of cornwall_flows are a stock on one date, so the
+# totals here are drawn from the model instead: Poisson counts at a travel
+# scale of 10 minutes and an outside weight of 1
+expected <- fitted(spax(d, spec_clm(decay_gaussian(sigma = 10), outside = 1)))
+set.seed(1)
+totals <- stats::setNames(stats::rpois(length(expected), expected), names(expected))
+
+# Fit the conditional logit model with a fitted outside weight to the totals
+fit <- spax(d, spec_clm(decay_gaussian(), outside = "fit"),
+            observed = obs_totals(totals))
+coef(fit)
+
+\donttest{
+# 199 attempts, the fewest allowed (399 by default): each draws the practices
+# with replacement and refits the model
+boot <- bootstrap_fit(fit, observation = list(event = "simulated registrations",
+                                              period = "one reference period",
+                                              sampling = "independent_facilities"),
+                      seed = 2026, attempts = 199)
+boot
+}
+}
 \seealso{
 Other allocation steps: 
 \code{\link{calc_demand}()},

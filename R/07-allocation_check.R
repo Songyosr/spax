@@ -44,7 +44,7 @@
 #' share is reported separately. To see how the fit depends on a catchment limit, prepare the inputs
 #' again with travel beyond the limit set to `Inf`, refit, and check each fit.
 #'
-#' @param model The corrected CLM from [clm_allocation()] that was fitted, or a
+#' @param model The CLM from [clm_allocation()] that was fitted, or a
 #'   result of [spax()] that fitted a model; the result supplies its bound model
 #'   and its fit, so leave `fit` out. A result that was evaluated at given values
 #'   has no fit and is refused, and so is an FCA index (a result of [spax()] with an
@@ -63,6 +63,32 @@
 #'   `search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson fit:
 #'   its floor `eps` and the number of cells with positive observed counts modelled below
 #'   it, which cap the loss; `NULL` otherwise). Use `print()` or `as.data.frame()`.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+#'                stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                cornwall_travel[areas$lsoa, gp$practice],
+#'                metadata = list(travel_units = "minutes"))
+#'
+#' # Fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+#' clm <- spax(d, spec_clm(), observed = totals)
+#'
+#' # The fit against no decay and against capacity shares alone, with the
+#' # shares of trips longer than 10 and 20 minutes
+#' check <- check_fit(clm, trip_breaks = c(10, 20))
+#' check
+#' as.data.frame(check)[, c("comparator", "parameters", "trips_over_10",
+#'                          "trips_over_20")]
+#'
+#' # The same check from a model and its fit
+#' check_allocation(clm$model, clm$fit)
 #' @family allocation steps
 #' @export
 #' @md
@@ -179,8 +205,8 @@ check_allocation <- function(model, fit, trip_breaks = c(30, 60, 120)) {
     t <- travel[finite]
     o <- order(t)
     cw <- cumsum(w[o]) / sum(w)
-    q <- function(p) t[o][which(cw >= p)[1L]]
-    c(trip_median = q(0.5), trip_p90 = q(0.9),
+    quantile_at <- function(p) t[o][which(cw >= p)[1L]]
+    c(trip_median = quantile_at(0.5), trip_p90 = quantile_at(0.9),
       stats::setNames(vapply(trip_breaks, function(b) sum(w[t > b]) / sum(w), numeric(1)),
                       paste0("trips_over_", trip_breaks)),
       trips_absent_edge = 1 - sum(w) / total)

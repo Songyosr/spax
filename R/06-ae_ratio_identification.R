@@ -31,7 +31,7 @@
 #' @return A data frame with one row per model: parameters, number of fitted
 #'   parameters `k`, Poisson `loss`, `converged`, `gain` over the static fit and
 #'   `share_of_free_gain`, with the interpretation as attribute `note`.
-#' @keywords internal
+#' @noRd
 #' @md
 .ratio_identification <- function(inputs, observed, starts, lower, upper,
                                   gamma_upper = 5, b_upper = 3,

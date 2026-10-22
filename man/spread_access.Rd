@@ -14,9 +14,11 @@ spread_access(
 }
 \arguments{
 \item{ratios}{Numeric vector, matrix, or data.frame of supply-to-demand ratios:
-- Vector: Must match number of weight layers
-- Matrix: Rows match weight layers, columns are different measures
-- Data.frame: Same as matrix but requires ratio_cols parameter}
+\itemize{
+\item vector: must match the number of weight layers
+\item matrix: rows match weight layers, columns are different measures
+\item data.frame: as a matrix, with the columns named in \code{ratio_cols}
+}}
 
 \item{weights}{Multi-layer SpatRaster where each layer represents one site's
 probability-based catchment area}
@@ -28,13 +30,42 @@ probability-based catchment area}
 \item{plot_prefix}{Character string to prepend to output names (default NULL)}
 }
 \value{
-If full_output = TRUE, returns list containing:
-        - access_scores: SpatRaster stack of accessibility scores per measure
-        - site_specific: List of site-specific accessibility SpatRasters
-        If full_output = FALSE, returns only access_scores SpatRaster
+If \code{full_output = TRUE}, a list with
+\itemize{
+\item \code{access_scores}: SpatRaster stack of accessibility scores per measure
+\item \code{site_specific}: list of site-specific accessibility SpatRasters
+}
+
+If \code{full_output = FALSE}, the \code{access_scores} SpatRaster only.
 }
 \description{
-Specialized version of [spread_weighted()] for accessibility analysis.
+Specialized version of \code{\link[=spread_weighted]{spread_weighted()}} for accessibility analysis.
 Distributes supply-to-demand ratios across space using probability-based
 catchment areas to calculate accessibility scores.
+}
+\examples{
+library(terra)
+
+# Cornwall population grid, and Gaussian weights of the travel time to each
+# GP practice
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+weights <- calc_decay(travel, method = "gaussian", sigma = 10)
+
+# Step 1 of E2SFCA: the population each practice reaches, and its GP FTE per
+# person reached, for GPs excluding GPs in training and for all GPs
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[match(names(weights), gp$practice), ]
+reached <- gather_weighted(pop, weights, simplify = TRUE)
+ratios <- data.frame(extg = gp$gp_fte_extg / reached, all = gp$gp_fte / reached)
+
+# Step 2: spread the ratios back over the grid with the same weights
+access <- spread_access(ratios, weights, ratio_cols = c("extg", "all"),
+                        plot_prefix = "gp_fte_")
+access
+plot(access)
+
+# With full_output, the score that each practice adds to each cell as well
+detail <- spread_access(ratios$extg, weights, full_output = TRUE)
+names(detail)
 }
