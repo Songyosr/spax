@@ -195,9 +195,9 @@ step functions works too: give the model and its fit, as in
 
 The 399 refits take close to a minute, so the `bootstrap_fit()` call above
 does not run when this guide is built. The guide reads the result of that exact
-call from `allocation-bootstrap.rds`. The file comes with the package source and
-is not installed. To follow along, run the `bootstrap_fit()` call above and skip
-the next chunk. The script
+call from `allocation-bootstrap.rds`, which is installed with the package, so
+you can read it too. To follow along with your own run, run the
+`bootstrap_fit()` call above and skip the next chunk. The script
 `data-raw/precompute-vignette-bootstrap.R`, in the package repository, rebuilds
 the file. The code below reads the stored result; when the guide is built, it
 also checks that the result belongs to the inputs and the fit computed above.
@@ -206,13 +206,14 @@ also checks that the result belongs to the inputs and the fit computed above.
 # When rebuilding, store the fresh result with the spax version used
 if (rebuild_boot) {
   attr(boot, "spax_version") <- as.character(packageVersion("spax"))
-  saveRDS(boot, "allocation-bootstrap.rds", compress = "xz")
+  saveRDS(boot, file.path("..", "inst", "extdata", "allocation-bootstrap.rds"),
+          compress = "xz")
 }
 ```
 
-```{r paired-bootstrap-load}
-# The stored result of the call above
-boot <- readRDS("allocation-bootstrap.rds")
+```{r paired-bootstrap-load, eval = !rebuild_boot}
+# The stored result of the call above, installed with spax
+boot <- readRDS(system.file("extdata", "allocation-bootstrap.rds", package = "spax"))
 
 c(
   status = boot$status,

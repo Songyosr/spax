@@ -51,27 +51,10 @@ displaying the number plotted. Neither view implies empirical observation-law
 validation, simultaneous coverage or causal interpretation of a scenario.
 }
 \examples{
-# West Cornwall: the small areas and practices west of easting 170 km
-areas <- sf::st_drop_geometry(cornwall_lsoa)
-areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-gp <- cornwall_gp[!cornwall_gp$scilly, ]
-gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
-d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
-               stats::setNames(gp$gp_fte_extg, gp$practice),
-               cornwall_travel[areas$lsoa, gp$practice])
-
-# Practice totals drawn from the model as independent Poisson counts (see
-# bootstrap_fit() for why), and the model fitted to them
-expected <- fitted(spax(d, spec_clm(decay_gaussian(sigma = 10), outside = 1)))
-set.seed(1)
-totals <- stats::setNames(stats::rpois(length(expected), expected), names(expected))
-fit <- spax(d, spec_clm(), observed = obs_totals(totals))
-
-\donttest{
-boot <- bootstrap_fit(fit, observation = list(event = "simulated registrations",
-                                              period = "one reference period",
-                                              sampling = "independent_facilities"),
-                      seed = 2026, attempts = 199)
+# A stored result: the 399-attempt bootstrap of the guide
+# vignette("facility-bootstrap", package = "spax"), on a generated network,
+# with a scenario of more supply at one facility
+boot <- readRDS(system.file("extdata", "allocation-bootstrap.rds", package = "spax"))
 
 # The run, its attempts and the intervals
 boot
@@ -83,5 +66,4 @@ plot(boot, quantity = "v0", type = "draws")
 
 # Every attempt, as a table
 head(as.data.frame(boot, type = "draws"))
-}
 }
