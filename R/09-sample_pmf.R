@@ -76,7 +76,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
       }
     }
     if (is.null(n) && is.character(method) && is.null(size)) {
-      stop("size must be given when x is already a PMF; it is taken from the ",
+      .stop("size must be given when x is already a PMF; it is taken from the ",
            "total only for raw density input")
     }
   } else {
@@ -168,33 +168,33 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 .chck_sample_pmf <- function(x, n, size, prob, method, iterations, evolve_prop, snap) {
   # Essential validation (always run)
   if (!inherits(x, "SpatRaster")) {
-    stop("Input 'x' must be a SpatRaster object")
+    .stop("Input 'x' must be a SpatRaster object")
   }
   if (terra::nlyr(x) != 1) {
-    stop("Input 'x' must have a single layer")
+    .stop("Input 'x' must have a single layer")
   }
 
   # Extended validation (skip if snap=TRUE)
   if (!snap) {
     if (iterations < 1 || !is.numeric(iterations) || iterations != as.integer(iterations)) {
-      stop("iterations must be a positive integer")
+      .stop("iterations must be a positive integer")
     }
 
     if (is.null(n) && is.character(method) && is.null(prob)) {
-      stop("Either n or prob (with size, unless x holds raw density) must be ",
+      .stop("Either n or prob (with size, unless x holds raw density) must be ",
            "specified for built-in methods")
     }
 
     if (!is.null(prob) && (prob < 0 || prob > 1)) {
-      stop("prob must be between 0 and 1")
+      .stop("prob must be between 0 and 1")
     }
 
     if (!is.numeric(evolve_prop) || evolve_prop < 0 || evolve_prop > 1) {
-      stop("evolve_prop must be between 0 and 1")
+      .stop("evolve_prop must be between 0 and 1")
     }
 
     if (is.character(method) && !method %in% c("poisson", "binomial", "nbinom")) {
-      stop("Unknown method string. Use 'poisson', 'binomial', 'nbinom', or provide a function")
+      .stop("Unknown method string. Use 'poisson', 'binomial', 'nbinom', or provide a function")
     }
   }
 }
@@ -238,7 +238,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   if (!is.null(n)) {
     if (!is.numeric(n) || length(n) != 1 || !is.finite(n) || n < 0 ||
         n != round(n)) {
-      stop("n must be a non-negative integer")
+      .stop("n must be a non-negative integer")
     }
     return(rep(n, iterations))
   }
@@ -247,24 +247,24 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   if (is.function(method)) {
     result <- do.call(method, list(...))
     if (!is.numeric(result)) {
-      stop("Custom method must return numeric values")
+      .stop("Custom method must return numeric values")
     }
     if (length(result) != iterations) {
-      stop(sprintf("Custom method must return %d values (one per iteration)", iterations))
+      .stop(sprintf("Custom method must return %d values (one per iteration)", iterations))
     }
     if (any(result < 0) || any(result != as.integer(result))) {
-      stop("Custom method must return non-negative integer values")
+      .stop("Custom method must return non-negative integer values")
     }
     return(result)
   }
 
   # For built-in methods, we need size and prob
   if (is.null(size) || !is.numeric(size) || is.na(size) || size <= 0) {
-    stop("Valid size parameter required for probabilistic sampling")
+    .stop("Valid size parameter required for probabilistic sampling")
   }
 
   if (is.null(prob) || !is.numeric(prob) || is.na(prob) || prob < 0 || prob > 1) {
-    stop("Valid probability parameter (between 0 and 1) required for probabilistic sampling")
+    .stop("Valid probability parameter (between 0 and 1) required for probabilistic sampling")
   }
 
   # Built-in methods

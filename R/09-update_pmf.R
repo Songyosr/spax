@@ -52,7 +52,7 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
     n_prior <- terra::nlyr(prior)
     n_likelihood <- terra::nlyr(likelihood)
     if (n_prior != n_likelihood && n_prior != 1 && n_likelihood != 1) {
-      stop("prior and likelihood must have the same number of layers, ",
+      .stop("prior and likelihood must have the same number of layers, ",
            "or one of them a single layer")
     }
   }
@@ -118,10 +118,10 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
   # Input validation
   .chck_vector_input(x, value_col)
   if (is.null(prior) && is.null(template)) {
-    stop("Either prior or template must be provided")
+    .stop("Either prior or template must be provided")
   }
   if (!isFALSE(standardize)) {
-    stop("standardize = TRUE gives negative likelihood values, which cannot ",
+    .stop("standardize = TRUE gives negative likelihood values, which cannot ",
          "form a posterior PMF")
   }
 
@@ -132,7 +132,7 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
     prior <- terra::init(template[[1]], 1)
     if (terra::hasValues(template)) prior <- terra::mask(prior, template[[1]])
     if (!isTRUE(terra::global(prior, "sum", na.rm = TRUE)[[1]] > 0)) {
-      stop("template has no non-missing cells")
+      .stop("template has no non-missing cells")
     }
     prior <- transform_pmf(prior, snap = TRUE)
   } else {

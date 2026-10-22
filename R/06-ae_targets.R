@@ -13,7 +13,7 @@
 #' @md
 .problem_output_identity <- function(problem, output) {
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {
-    stop("`output` must be a length-one character value")
+    .stop("`output` must be a length-one character value")
   }
   declared <- problem$metadata$spec$output_axes
   if (is.null(declared) || !output %in% names(declared)) {
@@ -21,14 +21,14 @@
   }
   if (!is.character(declared) || is.null(names(declared)) ||
       anyNA(names(declared)) || anyDuplicated(names(declared))) {
-    stop("provider output_axes must have unique output names")
+    .stop("provider output_axes must have unique output names")
   }
   axis <- declared[[output]]
   if (is.na(axis) || !axis %in% c("origin", "facility", "origin_facility",
                                   "facility_group", "origin_group",
                                   "facility_outside", "origin_facility_outside",
                                   "facility_outside_group")) {
-    stop("unsupported declared output axis for `", output, "`")
+    .stop("unsupported declared output axis for `", output, "`")
   }
   # The group axis (demand groups) takes its IDs from `substrate$group_ids`; the
   # outside axis (SPAX-059) is the facility axis with the outside entry "(outside)"
@@ -56,11 +56,11 @@
       value <- c(value, .outside_label)
     }
     if (!is.atomic(value) || !is.null(dim(value)) || anyNA(value)) {
-      stop("declared ", a, " IDs must be a nonmissing vector")
+      .stop("declared ", a, " IDs must be a nonmissing vector")
     }
     value <- as.character(value)
     if (any(!nzchar(trimws(value))) || anyDuplicated(value)) {
-      stop("declared ", a, " IDs must be unique and nonblank")
+      .stop("declared ", a, " IDs must be unique and nonblank")
     }
     value
   })
@@ -89,7 +89,7 @@
   identity <- .problem_output_identity(problem, output)
   if (inherits(observed, "ae_bound_target")) {
     if (!identical(observed$identity, identity)) {
-      stop("bound target identity does not match the problem output")
+      .stop("bound target identity does not match the problem output")
     }
     .check_group_targets(problem, observed)
     return(observed)
@@ -99,7 +99,7 @@
   labels <- if (is.null(dim(observed))) list(names(observed)) else dimnames(observed)
   if (is.null(labels)) labels <- rep(list(NULL), length(dims))
   if (length(identity$axes) && length(identity$axes) != length(dims)) {
-    stop("observed shape does not match the declared output axes")
+    .stop("observed shape does not match the declared output axes")
   }
   indices <- lapply(dims, seq_len)
   named <- !vapply(labels, is.null, logical(1))
@@ -107,25 +107,25 @@
     ids <- if (length(identity$axes)) identity$ids[[k]] else NULL
     axis <- if (length(identity$axes)) identity$axes[k] else paste0("axis ", k)
     if (!is.null(ids) && length(ids) != dims[k]) {
-      stop("observed ", axis, " dimension does not match the declared ID count")
+      .stop("observed ", axis, " dimension does not match the declared ID count")
     }
     if (!named[k]) {
       # Group-labelled targets are matched by IDs on both axes, never by position.
       if ("group" %in% identity$axes) {
-        stop("observed ", axis, " axis must be named (group-labelled targets are ",
+        .stop("observed ", axis, " axis must be named (group-labelled targets are ",
              "matched by IDs)")
       }
       next
     }
     labels_k <- labels[[k]]
     if (anyNA(labels_k) || any(!nzchar(trimws(labels_k))) || anyDuplicated(labels_k)) {
-      stop("observed ", axis, " IDs must be nonmissing, unique and nonblank")
+      .stop("observed ", axis, " IDs must be nonmissing, unique and nonblank")
     }
     if (is.null(ids)) {
-      stop("named observed ", axis, " requires declared output axes and IDs")
+      .stop("named observed ", axis, " requires declared output axes and IDs")
     }
     if (!setequal(labels_k, ids)) {
-      stop("observed ", axis, " IDs must exactly match the declared IDs (no missing or extra IDs)")
+      .stop("observed ", axis, " IDs must exactly match the declared IDs (no missing or extra IDs)")
     }
     indices[[k]] <- match(ids, labels_k)
   }

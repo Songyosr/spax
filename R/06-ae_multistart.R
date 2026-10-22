@@ -35,14 +35,14 @@
       ncol(starts) != length(expected) || any(!is.finite(starts)) ||
       any(starts <= 0) || is.null(colnames(starts)) ||
       anyDuplicated(colnames(starts)) || !setequal(colnames(starts), expected)) {
-    stop("`starts` must be a finite positive matrix with exactly the named parameters")
+    .stop("`starts` must be a finite positive matrix with exactly the named parameters")
   }
   starts <- starts[, expected, drop = FALSE]
-  if (anyDuplicated(starts)) stop("`starts` must contain distinct rows")
+  if (anyDuplicated(starts)) .stop("`starts` must contain distinct rows")
   ids <- rownames(starts)
   if (is.null(ids)) ids <- paste0("start", seq_len(nrow(starts)))
   if (anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-    stop("start row names must be nonempty and unique")
+    .stop("start row names must be nonempty and unique")
   }
   rownames(starts) <- ids
   lower <- .coerce_fit_theta(lower, expected, "lower")
@@ -50,21 +50,21 @@
   .coerce_problem_theta(lower, problem$theta)
   .coerce_problem_theta(upper, problem$theta)
   if (any(lower <= 0 | upper <= 0 | lower >= upper)) {
-    stop("positive `lower` must be less than `upper`")
+    .stop("positive `lower` must be less than `upper`")
   }
   for (i in seq_len(nrow(starts))) {
     .coerce_problem_theta(starts[i, ], problem$theta)
     if (any(starts[i, ] < lower | starts[i, ] > upper)) {
-      stop("every start must be inside [`lower`, `upper`]")
+      .stop("every start must be inside [`lower`, `upper`]")
     }
   }
   for (value in list(loss_tol, parameter_tol)) {
     if (!is.numeric(value) || length(value) != 1L || !is.finite(value) || value < 0) {
-      stop("disagreement tolerances must be finite nonnegative scalars")
+      .stop("disagreement tolerances must be finite nonnegative scalars")
     }
   }
   if (!is.logical(keep_fits) || length(keep_fits) != 1L || is.na(keep_fits)) {
-    stop("`keep_fits` must be TRUE or FALSE")
+    .stop("`keep_fits` must be TRUE or FALSE")
   }
   args <- list(...)
   allowed <- setdiff(names(formals(.fit_problem_nfxp)),
@@ -72,7 +72,7 @@
   if (length(args) && (is.null(names(args)) || anyNA(names(args)) ||
       any(!nzchar(names(args))) || anyDuplicated(names(args)) ||
       any(!names(args) %in% allowed))) {
-    stop("`...` must contain unique named fitting controls, excluding init and bounds")
+    .stop("`...` must contain unique named fitting controls, excluding init and bounds")
   }
   output <- if ("output" %in% names(args)) args$output else "utilization"
   target <- .bind_problem_target(problem, observed, output)

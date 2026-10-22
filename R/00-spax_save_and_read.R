@@ -25,7 +25,7 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
   if (dir) {
     dir_path <- base_path
     if (!overwrite && dir.exists(dir_path)) {
-      stop("Directory already exists: ", dir_path, "\nUse overwrite = TRUE to replace")
+      .stop("Directory already exists: ", dir_path, "\nUse overwrite = TRUE to replace")
     }
     dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
     base_path <- file.path(dir_path, basename(base_path))
@@ -42,7 +42,7 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
       file.exists(c(spax_file, rast_file, names_file))
     ]
     if (length(existing) > 0) {
-      stop(
+      .stop(
         "Files exist. Use overwrite = TRUE to replace:\n",
         paste("  -", existing, collapse = "\n")
       )
@@ -76,8 +76,8 @@ read_spax <- function(file) {
   spax_file <- paste0(file, "_spax.rds")
   rast_file <- paste0(file, "_accessibility.tif")
 
-  if (!file.exists(spax_file)) stop("Spax object file not found: ", spax_file)
-  if (!file.exists(rast_file)) stop("Accessibility raster file not found: ", rast_file)
+  if (!file.exists(spax_file)) .stop("Spax object file not found: ", spax_file)
+  if (!file.exists(rast_file)) .stop("Accessibility raster file not found: ", rast_file)
 
   x <- readRDS(spax_file)
   x$accessibility <- .attach_raster_names(terra::rast(rast_file), file)

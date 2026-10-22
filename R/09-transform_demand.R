@@ -15,45 +15,45 @@
 .chck_transform_demand <- function(x, value_col, pmf = NULL, template = NULL) {
   # Input type validation
   if (!inherits(x, "SpatVector")) {
-    stop("Input 'x' must be a SpatVector object")
+    .stop("Input 'x' must be a SpatVector object")
   }
 
   # Check value column
   if (!value_col %in% names(x)) {
-    stop(sprintf("Column '%s' not found in input vector", value_col))
+    .stop(sprintf("Column '%s' not found in input vector", value_col))
   }
 
   # Check case counts; `[[` on a SpatVector returns a one-column data frame
   cases <- x[[value_col]][[1]]
   if (!is.numeric(cases)) {
-    stop("Case counts must be numeric")
+    .stop("Case counts must be numeric")
   }
   if (any(cases < 0, na.rm = TRUE)) {
-    stop("Case counts cannot be negative")
+    .stop("Case counts cannot be negative")
   }
 
   # PMF validation if provided
   if (!is.null(pmf)) {
     if (!inherits(pmf, "SpatRaster")) {
-      stop("PMF must be a SpatRaster object")
+      .stop("PMF must be a SpatRaster object")
     }
     # Check PMF sums to 1
     sum_check <- global(pmf, "sum", na.rm = TRUE)$sum
     if (abs(sum_check - 1) > 1e-10) {
-      stop("PMF values must sum to 1")
+      .stop("PMF values must sum to 1")
     }
   }
 
   # Template validation if provided
   if (!is.null(template)) {
     if (!inherits(template, "SpatRaster")) {
-      stop("Template must be a SpatRaster object")
+      .stop("Template must be a SpatRaster object")
     }
   }
 
   # Check that either PMF or template is provided
   if (is.null(pmf) && is.null(template)) {
-    stop("Either PMF or template raster must be provided")
+    .stop("Either PMF or template raster must be provided")
   }
 
   invisible(TRUE)

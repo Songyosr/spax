@@ -24,11 +24,11 @@
       length(predicted) != length(observed) || length(weights) != length(observed) ||
       any(!is.finite(predicted) | predicted < 0) ||
       any(!is.finite(observed) | observed < 0) ||
-      any(!is.finite(weights) | weights < 0)) stop("invalid case-weighted count values")
+      any(!is.finite(weights) | weights < 0)) .stop("invalid case-weighted count values")
   .chck_positive_scalar(eps, "eps")
   use <- weights > 0
-  if (any(use & predicted == 0 & observed > 0)) stop("positive count at zero model mean")
-  if (any(use & predicted > 0 & predicted <= eps)) stop("likelihood-floor contamination")
+  if (any(use & predicted == 0 & observed > 0)) .stop("positive count at zero model mean")
+  if (any(use & predicted > 0 & predicted <= eps)) .stop("likelihood-floor contamination")
   list(mu = as.numeric(predicted), y = as.numeric(observed), w = as.numeric(weights),
        positive = use & predicted > 0)
 }
@@ -43,7 +43,7 @@
   z <- .allocation_case_values(predicted, observed, weights, eps)
   if (!is.matrix(sensitivity) || !is.numeric(sensitivity) ||
       nrow(sensitivity) != length(z$mu) || any(!is.finite(sensitivity))) {
-    stop("case sensitivity must have one finite row per facility")
+    .stop("case sensitivity must have one finite row per facility")
   }
   k <- z$positive
   as.numeric(crossprod(sensitivity[k, , drop = FALSE],
@@ -57,17 +57,17 @@
   # fitted, beta may be fixed or fitted, and any fixed kappa/beta is allowed (the
   # model declaration already requires both to be positive).
   if (!isTRUE(spec$fit_v0)) {
-    stop("bootstrap requires a fitted outside weight (outside = \"fit\"; ",
+    .stop("bootstrap requires a fitted outside weight (outside = \"fit\"; ",
          "fit_v0 = TRUE in clm_allocation())")
   }
   kernel <- spec[["kernel", exact = TRUE]]
   smooth_kernel <- if (is.null(kernel)) spec$family %in% .decay_builtin_families else
     isTRUE(kernel$smooth)
   if (!smooth_kernel) {
-    stop("bootstrap requires a decay kernel that is smooth in sigma")
+    .stop("bootstrap requires a decay kernel that is smooth in sigma")
   }
   if (!identical(model$theta$names, .huff_theta_contract(TRUE, spec$fit_beta)$names)) {
-    stop("bootstrap requires the model parameters to match its specification")
+    .stop("bootstrap requires the model parameters to match its specification")
   }
   s <- model$substrate
   .chck_class(s, "ae_prepared_inputs", "model inputs")
@@ -76,7 +76,7 @@
       any(s$distance_active < 0) ||
       !identical(dim(s$distance_active), c(length(s$D_active), length(s$facility_ids))) ||
       !is.matrix(s$S) || ncol(s$S) != 1L || nrow(s$S) != length(s$facility_ids) ||
-      any(!is.finite(s$S) | s$S < 0)) stop("invalid fixed prepared bootstrap inputs")
+      any(!is.finite(s$S) | s$S < 0)) .stop("invalid fixed prepared bootstrap inputs")
   # Reconstruct the built-in provider from the declared inputs. A manually
   # replaced/captured closure cannot override the supported model equations.
   model$bind <- .compile_huff_map(spec, s)$bind
@@ -90,14 +90,14 @@
       !all(vapply(observation, function(x) is.character(x) && length(x) == 1L &&
         !is.na(x) && nzchar(trimws(x)), logical(1))) ||
       !identical(observation$sampling, "independent_facilities")) {
-    stop("observation must declare event, period and sampling = 'independent_facilities'")
+    .stop("observation must declare event, period and sampling = 'independent_facilities'")
   }
   observation[expected]
 }
 
 .allocation_bootstrap_align <- function(x, ids, name) {
   if (!is.numeric(x) || !is.null(dim(x)) || length(x) != length(ids)) {
-    stop(name, " must have one value per facility")
+    .stop(name, " must have one value per facility")
   }
   x <- x[.allocation_order(names(x), ids, name)]
   stats::setNames(as.numeric(x), ids)
@@ -109,7 +109,7 @@
   y <- .allocation_bootstrap_align(observed, ids, "observed")
   w <- .allocation_bootstrap_align(weights, ids, "weights")
   if (any(!is.finite(y) | y < 0) || any(!is.finite(w) | w < 0) || sum(w) <= 0) {
-    stop("invalid diagnostic counts or multiplicities")
+    .stop("invalid diagnostic counts or multiplicities")
   }
   theta <- .coerce_problem_theta(theta, model$theta)
   lower <- .coerce_fit_theta(lower, names(theta), "lower")
@@ -204,7 +204,7 @@
 .allocation_bootstrap_quantities <- function(model, theta, scenario = NULL) {
   base <- .solve_problem(model, theta, keep_history = FALSE, warn = FALSE,
     diagnostics = FALSE, requested_outputs = "utilization")
-  if (!isTRUE(base$converged)) stop("baseline evaluation did not converge")
+  if (!isTRUE(base$converged)) .stop("baseline evaluation did not converge")
   contacts <- sum(base$outputs$utilization)
   need <- sum(model$substrate$D_active)
   parameters <- model$theta$names
@@ -213,7 +213,7 @@
   if (!is.null(scenario)) {
     changed <- .solve_problem(scenario, theta, keep_history = FALSE, warn = FALSE,
       diagnostics = FALSE, requested_outputs = "utilization")
-    if (!isTRUE(changed$converged)) stop("scenario evaluation did not converge")
+    if (!isTRUE(changed$converged)) .stop("scenario evaluation did not converge")
     values <- c(values, delta_contacts = sum(changed$outputs$utilization) - contacts)
   }
   supported <- colSums(is.finite(model$substrate$distance_active)) > 0
@@ -251,7 +251,7 @@
     a <- model$substrate; b <- scenario$substrate
     a$S <- b$S <- NULL
     if (!identical(a, b) || !identical(model$metadata$spec, scenario$metadata$spec)) {
-      stop("scenario may change supply only; all other prepared inputs and settings must agree")
+      .stop("scenario may change supply only; all other prepared inputs and settings must agree")
     }
   }
   settings <- .allocation_bootstrap_settings()
@@ -273,29 +273,29 @@
       is.numeric(selected$loss_args$eps) && length(selected$loss_args$eps) == 1L &&
       is.finite(selected$loss_args$eps) && selected$loss_args$eps > 0))
   if (isTRUE(selected$output %in% names(.outside_outputs))) {
-    stop("the facility-case bootstrap is defined for facility totals without outside counts")
+    .stop("the facility-case bootstrap is defined for facility totals without outside counts")
   }
   if (!identical(selected$output, "utilization") ||
       !.same_function(selected$loss_fn, .poisson_loss) || !arguments_ok) {
-    stop("bootstrap requires an unweighted Poisson facility-utilization fit")
+    .stop("bootstrap requires an unweighted Poisson facility-utilization fit")
   }
   target <- .bind_problem_target(model, selected$observed, "utilization")
   if (!all(target$mask) || any(!is.finite(target$values) | target$values < 0 |
       abs(target$values - round(target$values)) > 1e-8)) {
-    stop("bootstrap requires complete nonnegative whole facility counts")
+    .stop("bootstrap requires complete nonnegative whole facility counts")
   }
   if (!identical(.fit_observation_identity(selected), target$identity[c("axes", "ids")])) {
-    stop("saved fit observation IDs conflict with the supplied model")
+    .stop("saved fit observation IDs conflict with the supplied model")
   }
   eps <- if (length(selected$loss_args)) selected$loss_args$eps else 1e-9
   theta <- .coerce_problem_theta(selected$theta, model$theta)
   lower <- .coerce_fit_theta(fit$bounds$lower, names(theta), "lower")
   upper <- .coerce_fit_theta(fit$bounds$upper, names(theta), "upper")
-  if (any(lower <= 0 | upper <= lower | theta < lower | theta > upper)) stop("invalid saved fit bounds")
+  if (any(lower <= 0 | upper <= lower | theta < lower | theta > upper)) .stop("invalid saved fit bounds")
   if (!is.matrix(fit$starts) || !is.numeric(fit$starts) || !nrow(fit$starts) ||
       !identical(colnames(fit$starts), names(theta)) || any(!is.finite(fit$starts)) ||
       any(sweep(fit$starts, 2, lower, "<")) || any(sweep(fit$starts, 2, upper, ">"))) {
-    stop("invalid saved explicit starts")
+    .stop("invalid saved explicit starts")
   }
   base <- .solve_problem(model, theta, keep_history = FALSE, warn = FALSE,
     diagnostics = FALSE, requested_outputs = "utilization")
@@ -307,7 +307,7 @@
       !identical(model$substrate$D_active, selected$coverage_meta$demand) ||
       !identical(as.numeric(base$outputs$allocation), as.numeric(selected$outputs$allocation)) ||
       !is.finite(selected$loss) || abs(expected_loss - selected$loss) > 1e-8 + 1e-10 * abs(expected_loss)) {
-    stop("saved fit conflicts with the supplied fixed model; refit the current model")
+    .stop("saved fit conflicts with the supplied fixed model; refit the current model")
   }
   observed <- stats::setNames(target$values, ids)
   original$theta <- theta
@@ -348,7 +348,7 @@
   temporary <- tempfile(pattern = ".spax-pcase-", tmpdir = dirname(path))
   on.exit(unlink(temporary), add = TRUE)
   saveRDS(value, temporary, version = 3)
-  if (!file.rename(temporary, path)) stop("could not atomically replace bootstrap checkpoint")
+  if (!file.rename(temporary, path)) .stop("could not atomically replace bootstrap checkpoint")
   invisible(NULL)
 }
 
@@ -447,13 +447,13 @@
 .run_allocation_bootstrap <- function(model, fit, observation, scenario = NULL, seed,
                                       checkpoint = NULL, attempts = 399L) {
   if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed) || seed != floor(seed) ||
-      seed < 0 || seed > .Machine$integer.max - 399L) stop("seed must be an explicit integer between 0 and integer.max - 399")
+      seed < 0 || seed > .Machine$integer.max - 399L) .stop("seed must be an explicit integer between 0 and integer.max - 399")
   if (!is.numeric(attempts) || length(attempts) != 1L || !is.finite(attempts) ||
-      attempts != floor(attempts) || attempts < 1L || attempts > 399L) stop("invalid internal attempt limit")
+      attempts != floor(attempts) || attempts < 1L || attempts > 399L) .stop("invalid internal attempt limit")
   seed <- as.integer(seed); attempts <- as.integer(attempts)
   if (!is.null(checkpoint) && (!is.character(checkpoint) || length(checkpoint) != 1L ||
       is.na(checkpoint) || !nzchar(checkpoint) || !dir.exists(dirname(checkpoint)))) {
-    stop("checkpoint must name an RDS file in an existing directory")
+    .stop("checkpoint must name an RDS file in an existing directory")
   }
   context <- .allocation_bootstrap_prepare(model, fit, observation, scenario)
   if (!identical(context$original$status, "eligible")) {
@@ -472,7 +472,7 @@
         !identical(saved$contract, contract) || !is.list(saved$records) ||
         length(saved$records) > attempts ||
         !identical(saved$integrity, .allocation_bootstrap_integrity(saved[c("contract", "records")]))) {
-      stop("bootstrap checkpoint does not match inputs, settings, seed, version or integrity")
+      .stop("bootstrap checkpoint does not match inputs, settings, seed, version or integrity")
     }
     records <- saved$records
   }
@@ -500,7 +500,7 @@
         !identical(record$starts$start, rownames(context$starts)) ||
         nrow(record$starts) != nrow(context$starts) ||
         !is.logical(record$draw$success) || is.na(record$draw$success) ||
-        !all(record$starts$attempt == b)) stop("invalid completed bootstrap checkpoint record")
+        !all(record$starts$attempt == b)) .stop("invalid completed bootstrap checkpoint record")
   }
   reason <- NULL
   if (length(records) < attempts) {

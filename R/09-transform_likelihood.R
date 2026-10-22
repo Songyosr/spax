@@ -9,7 +9,7 @@
   ref <- switch(method,
                 "mean" = terra::global(x, "mean", na.rm = TRUE)[[1]],
                 "sum" = terra::global(x, "sum", na.rm = TRUE)[[1]],
-                stop("Invalid method specified")
+                .stop("Invalid method specified")
   )
 
   return(x / ref)
@@ -73,15 +73,15 @@ transform_likelihood <- function(x, value_col = NULL, template = NULL,
     } else if (inherits(x, "SpatVector")) {
       .chck_vector_input(x, value_col, template)
     } else {
-      stop("Input must be either SpatRaster or SpatVector")
+      .stop("Input must be either SpatRaster or SpatVector")
     }
 
     # Method validation
     if (!method %in% c("mean", "sum", "custom")) {
-      stop("Invalid method specified")
+      .stop("Invalid method specified")
     }
     if (method == "custom" && is.null(ref_value)) {
-      stop("ref_value must be provided when method = 'custom'")
+      .stop("ref_value must be provided when method = 'custom'")
     }
   }
 

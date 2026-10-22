@@ -14,16 +14,16 @@
   expected <- problem$theta$names
   if (!is.character(parameter) || length(parameter) != 1L || is.na(parameter) ||
       !parameter %in% expected) {
-    stop("`parameter` must name one parameter in the problem theta contract")
+    .stop("`parameter` must name one parameter in the problem theta contract")
   }
   .chck_positive_scalar(value, "value")
   if (value < problem$theta$lower[match(parameter, expected)] ||
       value > problem$theta$upper[match(parameter, expected)]) {
-    stop("`value` is outside the problem theta bounds")
+    .stop("`value` is outside the problem theta bounds")
   }
   nuisance <- setdiff(expected, parameter)
   if (!length(nuisance)) {
-    stop("profile fitting requires at least one nuisance parameter")
+    .stop("profile fitting requires at least one nuisance parameter")
   }
   nuisance_index <- match(nuisance, expected)
   contract <- list(
@@ -43,7 +43,7 @@
         jac <- original_jac_param(x)
         if (is.list(jac)) {
           if (is.null(jac$jac_param)) {
-            stop("analytic parameter Jacobian list must include `jac_param`")
+            .stop("analytic parameter Jacobian list must include `jac_param`")
           }
           jac$jac_param <- jac$jac_param[, nuisance_index, drop = FALSE]
           return(jac)
@@ -98,15 +98,15 @@
   expected <- problem$theta$names
   if (!is.character(parameter) || length(parameter) != 1L || is.na(parameter) ||
       !parameter %in% expected) {
-    stop("`parameter` must name one parameter in the problem theta contract")
+    .stop("`parameter` must name one parameter in the problem theta contract")
   }
   nuisance <- setdiff(expected, parameter)
   if (!length(nuisance)) {
-    stop("profile fitting requires at least one nuisance parameter")
+    .stop("profile fitting requires at least one nuisance parameter")
   }
   if (!is.numeric(values) || !length(values) || any(!is.finite(values)) ||
       any(values <= 0) || anyDuplicated(values)) {
-    stop("`values` must contain distinct finite positive profile points")
+    .stop("`values` must contain distinct finite positive profile points")
   }
   value_names <- names(values)
   values <- stats::setNames(as.numeric(values), value_names)
@@ -117,18 +117,18 @@
   .coerce_problem_theta(lower, problem$theta)
   .coerce_problem_theta(upper, problem$theta)
   if (any(init <= 0 | lower <= 0 | upper <= 0)) {
-    stop("`init`, `lower`, and `upper` must be positive")
+    .stop("`init`, `lower`, and `upper` must be positive")
   }
-  if (any(lower >= upper)) stop("`lower` must be less than `upper`")
+  if (any(lower >= upper)) .stop("`lower` must be less than `upper`")
   if (any(init < lower | init > upper)) {
-    stop("`init` must be inside [`lower`, `upper`]")
+    .stop("`init` must be inside [`lower`, `upper`]")
   }
   if (any(values < lower[[parameter]] | values > upper[[parameter]])) {
-    stop("every profile point must be inside [`lower`, `upper`]")
+    .stop("every profile point must be inside [`lower`, `upper`]")
   }
   for (x in list(warm_start, keep_fits)) {
     if (!is.logical(x) || length(x) != 1L || is.na(x)) {
-      stop("`warm_start` and `keep_fits` must be TRUE or FALSE")
+      .stop("`warm_start` and `keep_fits` must be TRUE or FALSE")
     }
   }
   args <- list(...)
@@ -137,7 +137,7 @@
   if (length(args) && (is.null(names(args)) || anyNA(names(args)) ||
       any(!nzchar(names(args))) || anyDuplicated(names(args)) ||
       any(!names(args) %in% allowed))) {
-    stop("`...` must contain unique named fitting controls, excluding init and bounds")
+    .stop("`...` must contain unique named fitting controls, excluding init and bounds")
   }
   output <- if ("output" %in% names(args)) args$output else "utilization"
   target <- .bind_problem_target(problem, observed, output)
@@ -145,7 +145,7 @@
   ids <- names(values)
   if (is.null(ids)) ids <- paste0("point", seq_len(n))
   if (anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
-    stop("profile point names must be nonempty and unique")
+    .stop("profile point names must be nonempty and unique")
   }
   theta <- matrix(NA_real_, n, length(expected), dimnames = list(ids, expected))
   boundary <- matrix(FALSE, n, length(expected), dimnames = list(ids, expected))

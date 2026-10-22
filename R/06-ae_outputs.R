@@ -3,7 +3,7 @@
 .check_output_names <- function(x, name) {
   if (!is.null(x) && (!is.character(x) || !length(x) || anyNA(x) ||
                      any(!nzchar(trimws(x))) || anyDuplicated(x))) {
-    stop("`", name, "` must be NULL or unique nonempty output names")
+    .stop("`", name, "` must be NULL or unique nonempty output names")
   }
   invisible(TRUE)
 }
@@ -12,12 +12,12 @@
   requested <- step[["outputs_requested", exact = TRUE]]
   independent <- step[["state_independent_outputs", exact = TRUE]]
   if (!is.null(requested) && !is.function(requested)) {
-    stop("`outputs_requested` must be a function when supplied")
+    .stop("`outputs_requested` must be a function when supplied")
   }
   .check_output_names(independent, "state_independent_outputs")
   if (!is.null(output_axes) &&
       any(!independent %in% names(output_axes))) {
-    stop("`state_independent_outputs` must name declared output axes")
+    .stop("`state_independent_outputs` must name declared output axes")
   }
   invisible(TRUE)
 }
@@ -36,7 +36,7 @@
   }
   missing <- setdiff(requested_outputs, names(outputs))
   if (required && length(missing)) {
-    stop("problem outputs do not include requested output `",
+    .stop("problem outputs do not include requested output `",
          paste(missing, collapse = "`, `"), "`")
   }
   outputs
@@ -83,7 +83,7 @@
 # the denominator and count unit; this helper does not infer an event or period.
 .clm_flow <- function(allocation, demand) {
   if (!is.matrix(allocation) || nrow(allocation) != length(demand)) {
-    stop("CLM allocation rows must match active demand")
+    .stop("CLM allocation rows must match active demand")
   }
   allocation * as.numeric(demand)
 }
@@ -103,7 +103,7 @@
 # as one more column.
 .clm_flow_outside <- function(flow, outside) {
   if (!is.matrix(flow) || nrow(flow) != length(outside)) {
-    stop("CLM flow rows must match the outside counts")
+    .stop("CLM flow rows must match the outside counts")
   }
   out <- cbind(flow, as.numeric(outside))
   columns <- colnames(flow)

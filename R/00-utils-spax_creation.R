@@ -23,10 +23,10 @@
                        call = NULL) {
   # Core requirements
   if (is.null(accessibility)) {
-    stop("accessibility results required")
+    .stop("accessibility results required")
   }
   if (is.null(type)) {
-    stop("model type must be specified")
+    .stop("model type must be specified")
   }
 
   # Type validation
@@ -148,10 +148,10 @@
                                parameters = NULL) {
   # Core requirements
   if (is.null(accessibility)) {
-    stop("accessibility statistics required for summary")
+    .stop("accessibility statistics required for summary")
   }
   if (is.null(type)) {
-    stop("model type must be specified")
+    .stop("model type must be specified")
   }
 
   # Type validation

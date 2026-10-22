@@ -271,7 +271,7 @@ plot.ae_problem_nfxp_fit <- function(x,
   type <- match.arg(type)
   if (type == "fit") {
     if (is.null(x$observed) || length(x$observed) != length(x$predicted)) {
-      stop("fit plot requires stored observed values")
+      .stop("fit plot requires stored observed values")
     }
     graphics::plot(
       as.numeric(x$observed),
@@ -287,7 +287,7 @@ plot.ae_problem_nfxp_fit <- function(x,
   } else if (type == "convergence") {
     history <- x$equilibrium$history
     if (is.null(history) || nrow(history) == 0L) {
-      stop("convergence plot requires stored solver history")
+      .stop("convergence plot requires stored solver history")
     }
     graphics::plot(
       history$iter,

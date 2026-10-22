@@ -40,19 +40,19 @@ compute_fca <- function(demand, supply, rasters, kernels,
     groups <- names(demand)
     if (!length(demand) || is.null(groups) || anyNA(groups) ||
         any(groups == "") || anyDuplicated(groups)) {
-      stop("demand groups must be a named list with unique, non-empty names")
+      .stop("demand groups must be a named list with unique, non-empty names")
     }
     for (g in groups) {
       .chck_class(demand[[g]], "SpatRaster", paste0("demand group '", g, "'"))
       if (terra::nlyr(demand[[g]]) > 1L) {
-        stop("each demand group must be a single-layer raster")
+        .stop("each demand group must be a single-layer raster")
       }
     }
     demand_list <- stats::setNames(demand, paste0("demand.", groups))
   } else {
     .chck_class(demand, "SpatRaster", "demand")
     if (terra::nlyr(demand) > 1L) {
-      stop("give demand groups as a named list of single-layer rasters")
+      .stop("give demand groups as a named list of single-layer rasters")
     }
     groups <- NULL
     demand_list <- list(demand = demand)
@@ -60,13 +60,13 @@ compute_fca <- function(demand, supply, rasters, kernels,
   for (nm in names(rasters)) {
     if (terra::nrow(rasters[[nm]]) != terra::nrow(demand_list[[1L]]) ||
         terra::ncol(rasters[[nm]]) != terra::ncol(demand_list[[1L]])) {
-      stop(sprintf("demand and %s must have the same number of rows and columns", nm))
+      .stop(sprintf("demand and %s must have the same number of rows and columns", nm))
     }
   }
   for (nm in names(demand_list)[-1L]) {
     if (!terra::compareGeom(demand_list[[1L]], demand_list[[nm]],
                             stopOnError = FALSE)) {
-      stop("all demand groups must have the same geometry")
+      .stop("all demand groups must have the same geometry")
     }
   }
   ids <- .fca_ids(rasters[[1L]], names(rasters)[1L])
@@ -79,11 +79,11 @@ compute_fca <- function(demand, supply, rasters, kernels,
   )
   values <- as.matrix(processed$values)
   if (nrow(values) != length(ids)) {
-    stop("supply must have one row for each facility")
+    .stop("supply must have one row for each facility")
   }
   measures <- if (is.null(indicator_names)) processed$cols else indicator_names
   if (length(measures) != ncol(values)) {
-    stop("indicator_names must have one name for each supply measure")
+    .stop("indicator_names must have one name for each supply measure")
   }
 
   out <- .fca_blocks(

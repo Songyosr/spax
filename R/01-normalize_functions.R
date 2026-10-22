@@ -88,7 +88,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
 .chck_normalize <- function(x, method, ref_value = NULL, a0 = 0) {
   # Input existence check
   if (length(x) == 0) {
-    stop("Input weights cannot be empty")
+    .stop("Input weights cannot be empty")
   }
 
   # Built-in methods need non-negative weights; a custom method gets x as is
@@ -100,14 +100,14 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   if (!is.function(method)) {
     valid_methods <- c("identity", "standard", "semi", "reference")
     if (!method %in% valid_methods) {
-      stop("Invalid normalization method specified")
+      .stop("Invalid normalization method specified")
     }
     # ref_value validation
     if ((method == "reference") && !is.null(ref_value)) {
       .chck_is_numeric(ref_value, "ref_value")
       .chck_length(length(ref_value), 1, "ref_value")
       if (is.na(ref_value)) {
-        stop("ref_value must not be missing")
+        .stop("ref_value must not be missing")
       }
     }
   }
