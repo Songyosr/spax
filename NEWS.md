@@ -1,5 +1,17 @@
 # spax (development version)
 
+* Preparing for CRAN. spax needs fewer packages: it imports terra, sf, stats,
+  tools and withr; ggplot2, dplyr and tibble are only suggested (the guides use
+  ggplot2 and dplyr), and raster, sp, data.table, tidyverse and osrm are no
+  longer listed. Results are unchanged.
+* Help pages are written for users: every exported function has an example,
+  internal helpers no longer have help pages, and pages written in Markdown
+  show it formatted.
+* The examples and tests no longer project between WGS 84 and British National
+  Grid with terra, which can make PROJ download a datum shift grid and store it
+  in your PROJ data folder; `?calc_travel_time` says when this can happen.
+* `citation("spax")` gives the installed version and the DOI that refers to
+  all versions.
 * Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.
   doi:10.5281/zenodo.23438611 refers to all versions.
 * `bootstrap_fit()` and `bootstrap_allocation()` take `attempts`, the number of
