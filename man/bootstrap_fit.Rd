@@ -53,8 +53,9 @@ Non-overlapping registration alone does not establish independence.}
 \item{scenario}{Optional checked CLM whose prepared system changes supply only.
 Every draw evaluates baseline and scenario together at the same parameters.}
 
-\item{seed}{Required nonnegative integer; attempt b uses seed+b. The caller's
-RNG state and RNG kind are restored, including when interrupted.}
+\item{seed}{Required nonnegative integer; attempt b uses seed+b, so seed plus
+\code{attempts} must stay within the integer range. The caller's RNG state and
+RNG kind are restored, including when interrupted.}
 
 \item{checkpoint}{Optional RDS file in an existing directory. Completed attempts
 are saved atomically and resumed after exact input/settings/version checks.
@@ -62,9 +63,13 @@ Completed failures are never retried; incomplete runs retain actual counts.
 A checkpoint belongs to its number of attempts: a run cannot be extended to
 more attempts once it has been made.}
 
-\item{attempts}{The number of bootstrap attempts, a whole number of at least
-99; 399 by default. More attempts make the interval endpoints less dependent
-on the random draws and take proportionally longer.}
+\item{attempts}{The number of bootstrap attempts, a whole number from 199 to
+1,000,000; 399 by default. More attempts make the interval endpoints less
+dependent on the random draws and take proportionally longer; fewer give
+noisier intervals that tend to be narrower, with lower coverage. Choose the
+number of attempts and the seed before the run: runs with the same seed
+share their first attempts (a run of 999 repeats the run of 399 and adds 600
+more), and changing either after seeing a result is outside the method.}
 }
 \value{
 An \code{ae_allocation_bootstrap} with compact draws, multiplicities, all

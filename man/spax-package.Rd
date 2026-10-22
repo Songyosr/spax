@@ -109,9 +109,9 @@ percent of the attempts per quantity (380 of 399).
 Refused and incomplete results remain inspectable. Failed attempts are not
 replaced; successful inner-boundary estimates remain in the distribution.
 Coverage was evaluated for Gaussian decay with fitted \code{sigma} and
-\code{v0}, in generated 80-origin/40-facility designs under tested fixed-input
-laws; other kernels and a fitted \code{beta} use the same procedure without a
-separate coverage study. This is not a universal coverage guarantee or
+\code{v0} and 399 attempts, in generated 80-origin/40-facility designs under
+tested fixed-input laws; other kernels, a fitted \code{beta} and other numbers
+of attempts use the same procedure without a separate coverage study. This is not a universal coverage guarantee or
 validation of an application's observation law. Regional attributed capacity
 per demand is a fixed-input identity and has no bootstrap interval. No
 simultaneous spatial intervals are provided. See

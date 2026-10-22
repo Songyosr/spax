@@ -461,7 +461,9 @@
                         "fitted sigma and v0; this model uses the same procedure without a",
                         "separate coverage study."),
     if (planned != 399L) paste0("Coverage was evaluated with 399 attempts; this run used ",
-                                planned, "."))
+                                planned, ".",
+                                if (planned < 399L) paste(" Fewer attempts give noisier",
+                                  "intervals that tend to be narrower.")))
   if (length(notes)) paste(notes, collapse = " ") else NULL
 }
 
@@ -498,7 +500,8 @@
         !identical(saved$contract, contract) || !is.list(saved$records) ||
         length(saved$records) > attempts ||
         !identical(saved$integrity, .allocation_bootstrap_integrity(saved[c("contract", "records")]))) {
-      .stop("bootstrap checkpoint does not match inputs, settings, seed, version or integrity")
+      .stop("bootstrap checkpoint does not match inputs, settings, number of attempts, seed, ",
+            "version or integrity")
     }
     records <- saved$records
   }
@@ -631,16 +634,21 @@
 #'   Non-overlapping registration alone does not establish independence.
 #' @param scenario Optional checked CLM whose prepared system changes supply only.
 #'   Every draw evaluates baseline and scenario together at the same parameters.
-#' @param seed Required nonnegative integer; attempt b uses seed+b. The caller's
-#'   RNG state and RNG kind are restored, including when interrupted.
+#' @param seed Required nonnegative integer; attempt b uses seed+b, so seed plus
+#'   `attempts` must stay within the integer range. The caller's RNG state and
+#'   RNG kind are restored, including when interrupted.
 #' @param checkpoint Optional RDS file in an existing directory. Completed attempts
 #'   are saved atomically and resumed after exact input/settings/version checks.
 #'   Completed failures are never retried; incomplete runs retain actual counts.
 #'   A checkpoint belongs to its number of attempts: a run cannot be extended to
 #'   more attempts once it has been made.
-#' @param attempts The number of bootstrap attempts, a whole number of at least
-#'   99; 399 by default. More attempts make the interval endpoints less dependent
-#'   on the random draws and take proportionally longer.
+#' @param attempts The number of bootstrap attempts, a whole number from 199 to
+#'   1,000,000; 399 by default. More attempts make the interval endpoints less
+#'   dependent on the random draws and take proportionally longer; fewer give
+#'   noisier intervals that tend to be narrower, with lower coverage. Choose the
+#'   number of attempts and the seed before the run: runs with the same seed
+#'   share their first attempts (a run of 999 repeats the run of 399 and adds 600
+#'   more), and changing either after seeing a result is outside the method.
 #' @return An `ae_allocation_bootstrap` with compact draws, multiplicities, all
 #'   start diagnostics, assumptions, failure reasons and conditional percentile
 #'   intervals for each fitted parameter (sigma, v0 and, when fitted, beta),
@@ -676,8 +684,8 @@ bootstrap_allocation <- function(model, fit, observation, scenario = NULL, seed,
 .bootstrap_fit_run <- function(model, fit, observation, scenario, seed, checkpoint, attempts,
                                caller) {
   if (!is.numeric(attempts) || length(attempts) != 1L || !is.finite(attempts) ||
-      attempts != floor(attempts) || attempts < 99 || attempts > .Machine$integer.max) {
-    .stop("attempts must be a whole number of at least 99")
+      attempts != floor(attempts) || attempts < 199 || attempts > 1e6) {
+    .stop("attempts must be a whole number from 199 to 1,000,000")
   }
   attempts <- as.integer(attempts)
   if (.is_allocation_result(model) || .is_fca_result(model)) {

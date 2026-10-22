@@ -167,8 +167,12 @@ its supply stay in the network: only the weight of each total in the fit
 changes. Each attempt uses its own seed, the given seed plus the attempt number,
 so a run repeats exactly. The function takes the fitted result, the observation,
 the scenario and a seed. `attempts` sets another number of attempts, at least
-99: more make the interval endpoints depend less on the random draws, and take
-proportionally longer.
+199: more make the interval endpoints depend less on the random draws and take
+proportionally longer, while fewer give noisier intervals that tend to be
+narrower. Choose the number and the seed before the run. Runs with the same seed
+share their first attempts, so a larger run is the smaller one with more
+attempts added; changing the number after seeing a result is not part of the
+method.
 
 ```{r paired-bootstrap, eval = rebuild_boot}
 boot <- bootstrap_fit(
@@ -288,8 +292,8 @@ has no interval.
 
 The intervals follow fixed rules:
 
-- A run makes all its attempts, 399 unless `attempts` says otherwise, and
-  cannot be extended once it is made. A failed attempt stays in the record and
+- A run makes all its attempts, 399 unless `attempts` says otherwise, chosen
+  before the run. A failed attempt stays in the record and
   is not replaced. A refit that ends at a bound of its search range (an inner
   boundary) stays in the distribution.
 - An interval needs all the attempts and finite values from at least 95% of

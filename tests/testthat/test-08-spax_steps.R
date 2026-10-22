@@ -425,7 +425,8 @@ test_that("the general step names have the formals of the allocation names", {
   expect_identical(names(formals(compare_fits)),
                    c("fits", "models", "reference", "zones", "coverage_args"))
   expect_identical(names(formals(bootstrap_fit)),
-                   c("model", "fit", "observation", "scenario", "seed", "checkpoint"))
+                   c("model", "fit", "observation", "scenario", "seed", "checkpoint",
+                     "attempts"))
 })
 
 test_that("check_fit() gives the result of check_allocation()", {
