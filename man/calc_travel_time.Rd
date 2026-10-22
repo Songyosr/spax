@@ -81,19 +81,19 @@ neighboring cells in eight directions, travel over uniform friction exceeds
 the straight-line time by up to about 8\%.
 }
 \examples{
-library(sf)
 library(terra)
 
 # Cornwall population grid in WGS 84 / UTM zone 30N (metres), on the same
-# datum as the grid's WGS 84 longitude and latitude
+# datum as the bundled data
 pop <- project(read_spax_example("cornwall_pop.tif"), "EPSG:32630")
 
 # A uniform friction surface of 50 km/h, in minutes per metre
 friction <- init(pop, 60 / 50000)
 
-# Minutes from five practices to every populated cell
-gp <- st_transform(cornwall_gp[1:5, ], 32630)
-travel <- calc_travel_time(friction, gp, pop, ids = "practice", buffer = 5000)
+# Minutes from five practices to every populated cell; the practices are
+# projected to the grid's system
+travel <- calc_travel_time(friction, cornwall_gp[1:5, ], pop, ids = "practice",
+                           buffer = 5000)
 summary(travel[, 1])
 }
 \seealso{

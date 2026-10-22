@@ -45,7 +45,7 @@ pop <- read_spax_example("cornwall_pop.tif")
 
 # Group small areas into larger units (LSOA names end in a letter; dropping it
 # gives the containing MSOA) so every unit covers several grid cells
-areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas <- terra::vect(cornwall_lsoa)
 areas$msoa <- sub("[A-Z]$", "", areas$name)
 msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
 

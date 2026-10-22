@@ -14,10 +14,7 @@ knitr::opts_chunk$set(
   class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
-  dpi = 100,
-  # cairo writes smaller PNG files than the default macOS device (png only;
-  # other devices, such as pkgdown's, get no extra arguments)
-  dev.args = if (capabilities("cairo")) list(png = list(type = "cairo")) else list()
+  dpi = 100
 )
 ```
 
@@ -55,8 +52,9 @@ Each object has a help page with every column, for example `?cornwall_gp`.
 
 ## Practices
 
-`cornwall_gp` is an `sf` point layer in British National Grid coordinates
-(EPSG:27700), one row per practice. `practice` is the NHS practice code, which
+`cornwall_gp` is an `sf` point layer in longitude and latitude (WGS 84,
+EPSG:4326), one row per practice; `easting` and `northing` give the British
+National Grid coordinates in metres. `practice` is the NHS practice code, which
 links the practices to the registrations and to the travel times. The code
 drops the geometry and shows the first practices.
 
@@ -77,7 +75,10 @@ practice sits at its main site, so branch surgeries do not appear.
 ## Small areas
 
 `cornwall_lsoa` holds the `r nrow(cornwall_lsoa)` Lower layer Super Output
-Areas (LSOA 2021), small areas of
+Areas (LSOA 2021) as polygons in longitude and latitude (WGS 84, like the
+practices); each area's population-weighted centroid is given in both systems,
+`cent_lon` and `cent_lat` and the British National Grid `cent_x` and `cent_y`.
+The areas are small, of
 `r format(min(cornwall_lsoa$pop), big.mark = ",")` to
 `r format(max(cornwall_lsoa$pop), big.mark = ",")` residents. Each has an ONS
 mid-2024 population estimate (`pop`, also by age band) and the number of its
@@ -250,10 +251,10 @@ no residents, pairs with no road connection and journeys over 180 minutes. The
 map shows residents per cell in six classes.
 
 ```{r pop-map, fig.alt = "Raster map of the WorldPop 2020 population grid for Cornwall and the Isles of Scilly in residents per cell, in six classes; most cells hold fewer than 50 residents and the towns stand out with several hundred or more."}
-# The outline of Cornwall and the Isles of Scilly, in the grid's coordinates
+# The outline of Cornwall and the Isles of Scilly: the small areas share the
+# grid's longitude and latitude (WGS 84)
 outline <- cornwall_lsoa |>
   st_union() |>
-  st_transform(crs(pop)) |>
   vect()
 
 plot(

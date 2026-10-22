@@ -72,7 +72,6 @@ fca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 outline <- cornwall_lsoa |>
   filter(!scilly) |>
   st_union() |>
-  st_transform(crs(pop)) |>
   vect()
 
 plot(

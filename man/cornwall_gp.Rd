@@ -5,8 +5,8 @@
 \alias{cornwall_gp}
 \title{GP practices in Cornwall and the Isles of Scilly}
 \format{
-An \code{sf} point object (EPSG:27700, British National Grid) with 55
-rows and columns:
+An \code{sf} point object in WGS 84 longitude and latitude (EPSG:4326),
+the coordinate system of the bundled rasters, with 55 rows and columns:
 \describe{
 \item{practice}{NHS ODS practice code; matches \code{cornwall_flows},
 the columns of \code{cornwall_travel} and the layers of
@@ -23,7 +23,10 @@ Care Network.}
 of Scilly.}
 \item{fte_source}{Whether the workforce record includes estimates.}
 \item{scilly}{\code{TRUE} for the practice on the Isles of Scilly.}
-\item{geometry}{Main-site location from the postcode.}
+\item{easting, northing}{British National Grid coordinates (EPSG:27700)
+of the main-site postcode, in metres.}
+\item{geometry}{Main-site location from the postcode, the origin of
+\code{cornwall_gp_travel.tif}.}
 }
 }
 \source{
@@ -44,7 +47,12 @@ recording changed in June 2018 and who cluster in training practices.
 \details{
 Registrations are a July 2026 snapshot and workforce a June 2026
 snapshot. Only the main site of each practice is represented; branch
-surgeries are not.
+surgeries are not. All the bundled data use the WGS 84 datum, so they
+combine without a change of datum; for map units in metres project them
+to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
+British National Grid uses another datum (OSGB36): the geometry was
+converted from it with the OSGB36 to WGS 84 Helmert transformation (about
+2 m), and \code{easting}/\code{northing} keep its coordinates.
 }
 \examples{
 gp <- sf::st_drop_geometry(cornwall_gp)

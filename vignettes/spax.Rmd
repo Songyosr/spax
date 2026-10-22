@@ -14,10 +14,7 @@ knitr::opts_chunk$set(
   class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
-  dpi = 100,
-  # cairo writes smaller PNG files than the default macOS device (png only;
-  # other devices, such as pkgdown's, get no extra arguments)
-  dev.args = if (capabilities("cairo")) list(png = list(type = "cairo")) else list()
+  dpi = 100
 )
 ```
 
@@ -174,7 +171,10 @@ ggplot() +
     alpha = 0.8
   ) +
   geom_sf(data = outline, fill = NA, color = "grey20", linewidth = 0.3) +
-  geom_sf_text(data = towns, aes(label = town), size = 3, vjust = -0.9) +
+  geom_sf_text(
+    data = towns, aes(label = town), size = 3, vjust = -0.9,
+    fun.geometry = sf::st_centroid
+  ) +
   scale_size_area(name = "GP FTE") +
   labs(title = "GP practices in mainland Cornwall") +
   theme_void()
@@ -245,9 +245,9 @@ the same towns named.
 
 ```{r e2sfca-map, fig.alt = "Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses and eight towns named; values are highest in the west between Redruth, Truro and Falmouth, lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas, and lower in the far north-east."}
 # Practice and town locations in the grid's coordinates (longitude and latitude)
-practice_points <- vect(st_transform(practices, 4326))
+practice_points <- vect(practices)
 town_points <- vect(towns)
-outline_lonlat <- vect(st_transform(outline, 4326))
+outline_lonlat <- vect(outline)
 
 plot(
   1000 * e2sfca$accessibility,

@@ -391,8 +391,8 @@ print.ae_prepared_inputs <- function(x, ...) {
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
 #' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
-#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
 #' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
 #'                              stats::setNames(gp$gp_fte_extg, gp$practice),
 #'                              cornwall_travel[areas$lsoa, gp$practice])
@@ -756,8 +756,8 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
 #' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
-#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
 #' travel <- cornwall_travel[areas$lsoa, gp$practice]
 #' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
 #'                              stats::setNames(gp$gp_fte_extg, gp$practice),
@@ -921,8 +921,8 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
 #' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
-#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
 #' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
 #'                              stats::setNames(gp$gp_fte_extg, gp$practice),
 #'                              cornwall_travel[areas$lsoa, gp$practice])
@@ -1032,8 +1032,8 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
 #' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
-#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
 #' demand <- stats::setNames(areas$registered, areas$lsoa)
 #' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
 #' travel <- cornwall_travel[areas$lsoa, gp$practice]
@@ -1128,8 +1128,8 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
 #' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
-#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
 #' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
 #'
 #' # Fit on every other small area; predict the others, which lie among them,
