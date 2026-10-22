@@ -11,7 +11,8 @@ bootstrap_fit(
   observation,
   scenario = NULL,
   seed,
-  checkpoint = NULL
+  checkpoint = NULL,
+  attempts = 399
 )
 
 bootstrap_allocation(
@@ -20,7 +21,8 @@ bootstrap_allocation(
   observation,
   scenario = NULL,
   seed,
-  checkpoint = NULL
+  checkpoint = NULL,
+  attempts = 399
 )
 }
 \arguments{
@@ -51,12 +53,23 @@ Non-overlapping registration alone does not establish independence.}
 \item{scenario}{Optional checked CLM whose prepared system changes supply only.
 Every draw evaluates baseline and scenario together at the same parameters.}
 
-\item{seed}{Required nonnegative integer; attempt b uses seed+b. The caller's
-RNG state and RNG kind are restored, including when interrupted.}
+\item{seed}{Required nonnegative integer; attempt b uses seed+b, so seed plus
+\code{attempts} must stay within the integer range. The caller's RNG state and
+RNG kind are restored, including when interrupted.}
 
 \item{checkpoint}{Optional RDS file in an existing directory. Completed attempts
 are saved atomically and resumed after exact input/settings/version checks.
-Completed failures are never retried; incomplete runs retain actual counts.}
+Completed failures are never retried; incomplete runs retain actual counts.
+A checkpoint belongs to its number of attempts: a run cannot be extended to
+more attempts once it has been made.}
+
+\item{attempts}{The number of bootstrap attempts, a whole number from 199 to
+1,000,000; 399 by default. More attempts make the interval endpoints less
+dependent on the random draws and take proportionally longer; fewer give
+noisier intervals that tend to be narrower, with lower coverage. Choose the
+number of attempts and the seed before the run: runs with the same seed
+share their first attempts (a run of 999 repeats the run of 399 and adds 600
+more), and changing either after seeing a result is outside the method.}
 }
 \value{
 An \code{ae_allocation_bootstrap} with compact draws, multiplicities, all
@@ -68,9 +81,9 @@ without an interval: it includes supply with at least one known finite edge
 on retained demand support. Unsupported positive supply is disclosed in
 \code{capacity_support}; total supplied capacity can exceed attributed capacity.
 For any model other than built-in Gaussian decay with fitted sigma and v0 and
-\code{kappa} and \code{beta} equal to 1, the result also has a \code{coverage_note} saying
-that coverage was evaluated for that case and not studied separately for the
-model; it is printed with the result.
+\code{kappa} and \code{beta} equal to 1, or a number of attempts other than 399, the
+result also has a \code{coverage_note} saying that coverage was evaluated for that
+case and not studied separately; it is printed with the result.
 Scientific refusals are inspectable results; invalid inputs error.
 }
 \description{
@@ -91,20 +104,22 @@ kernel, or a kernel declared with \code{\link[=decay_kernel]{decay_kernel()}} (n
 \code{smooth = FALSE}). The supply elasticity beta may be fixed or fitted. Every
 fitted parameter gets its own interval.
 
-Exactly 399 attempts use the starts and positive bounds of the original fit
-(given, or found by the default search of \code{\link[=fit_allocation]{fit_allocation()}}), with fixed
-numerical controls. Failed attempts are retained without replacement.
+A run makes \code{attempts} attempts, 399 by default, each from the starts and
+positive bounds of the original fit (given, or found by the default search of
+\code{\link[=fit_allocation]{fit_allocation()}}), with fixed numerical controls. Failed attempts are
+retained without replacement.
 Successful inner boundary estimates remain in the distribution. Original mean
 boundaries, local rank deficiency (fewer identified directions than fitted
 parameters) or insufficient fit precision, including a score that cannot be
 computed, refuse intervals;
-percentile intervals require a complete run of 399 attempts and at least
-380 finite successful values per quantity. Incomplete results retain their
-point estimates and diagnostics but withhold intervals.
-Coverage was evaluated for Gaussian decay with fitted sigma and v0, in
-generated 80-origin/40-facility designs under tested fixed-input laws; other
-kernels and a fitted beta use the same procedure without a separate coverage
-study. Coverage validation is not a universal guarantee of exact 95 percent
+percentile intervals require a complete run of all the attempts and finite
+successful values from at least 95 percent of them, rounded up (380 of the
+default 399). Incomplete results retain their point estimates and diagnostics
+but withhold intervals.
+Coverage was evaluated for Gaussian decay with fitted sigma and v0 and 399
+attempts, in generated 80-origin/40-facility designs under tested fixed-input
+laws; other kernels, a fitted beta and other numbers of attempts use the same
+procedure without a separate coverage study. Coverage validation is not a universal guarantee of exact 95 percent
 coverage or validation of an application's observation law.
 
 A facility with positive supply, a known finite travel time on retained

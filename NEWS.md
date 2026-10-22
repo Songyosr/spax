@@ -2,6 +2,14 @@
 
 * Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.
   doi:10.5281/zenodo.23438611 refers to all versions.
+* `bootstrap_fit()` and `bootstrap_allocation()` take `attempts`, the number of
+  bootstrap attempts: 399 by default, as before, or a whole number from 199 to
+  1,000,000. An interval needs finite values from at least 95% of the attempts,
+  rounded up (380 of 399, unchanged). A result with a number other than 399
+  carries a note that coverage was evaluated with 399 attempts; fewer attempts
+  give noisier intervals that tend to be narrower. Choose the number before the
+  run: runs with the same seed share their first attempts, and a checkpoint
+  cannot be resumed with another number.
 * Errors found by the checks of spax name the call you made, such as
   `prep_data(...)` or `predict(fit, ...)`, rather than an internal function you
   never called. The messages are unchanged.
