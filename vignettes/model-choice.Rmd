@@ -14,7 +14,9 @@ knitr::opts_chunk$set(
   class.output = "spax-output",
   fig.width = 6,
   fig.height = 4,
-  dpi = 100
+  dpi = 100,
+  # cairo writes smaller PNG files than the default macOS device
+  dev.args = if (capabilities("cairo")) list(type = "cairo") else list()
 )
 ```
 
