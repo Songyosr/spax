@@ -116,6 +116,30 @@ test_that("loss choices pass through and count targets reject negatives", {
   expect_equal(calls, 5L)
 })
 
+test_that("fit_allocation() reads a one-dimensional array or table as the named vector", {
+  f <- alloc_small_case()
+  fit_with <- function(observed) {
+    fit_allocation(f$model, observed, f$starts, f$lower, f$upper, loss = "poisson",
+                   control = list(maxit = 100))
+  }
+  ref <- fit_with(f$observed)
+  # tapply() returns the facilities sorted by ID (f1, f2, f3; the model has f2, f1, f3)
+  from_tapply <- tapply(unname(f$observed), names(f$observed), sum)
+  from_table <- as.table(array(unname(f$observed), 3L, list(names(f$observed))))
+  expect_identical(dim(from_tapply), 3L)
+  for (observed in list(from_tapply, from_table)) {
+    fit <- fit_with(observed)
+    expect_identical(coef(fit), coef(ref))
+    expect_identical(fit$best$loss, ref$best$loss)
+    expect_identical(fit$best$observed, ref$best$observed)
+    expect_null(dim(fit$best$observed))
+  }
+  # The default search reads it the same way.
+  expect_identical(coef(fit_allocation(f$model, from_tapply, loss = "poisson")),
+                   coef(fit_allocation(f$model, f$observed, loss = "poisson")))
+  expect_error(fit_with(array(1, c(3, 1, 1))), "observed must be a numeric vector or matrix")
+})
+
 test_that("custom workflow callbacks retain canonical masked order and auxiliary arguments", {
   f <- alloc_small_case()
   y <- f$flow; y[1, 2] <- NA_real_

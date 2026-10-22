@@ -678,7 +678,9 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' starts to skip it.
 #' @param model A static CLM from [clm_allocation()] or [huff_allocation()]. A kernel
 #'   declared `smooth = FALSE` cannot be fitted.
-#' @param observed Numeric vector or origin-by-facility matrix. Named axes match
+#' @param observed Numeric vector or origin-by-facility matrix. A
+#'   one-dimensional array or table, such as the result of [tapply()] or
+#'   [table()], is read as the vector named by its names. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
 #'   use NA for unobserved entries. The count-valued `utilization`, `flow`,
 #'   `utilization_by_group` and outside-count targets reject negative nonmissing
