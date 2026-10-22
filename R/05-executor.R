@@ -41,7 +41,7 @@
 #' Row/column scaling is a contraction against a diagonal matrix -- the broadcast
 #' half of the grammar. Dense/sparse-clean: a base matrix uses recycling; a
 #' `Matrix::` matrix uses a `Diagonal()` multiply (sparse stays sparse).
-#' @keywords internal
+#' @noRd
 .scale <- function(K, s, margin = c("rows", "cols")) {
   margin <- match.arg(margin)
   if (is.matrix(K)) {
@@ -68,7 +68,7 @@
 #' generic, so dense vs sparse is a property of the plan, not of this code. The
 #' axis->margin mapping is the plan's job (a dense-array backend stores an
 #' explicit axis-to-dimension map); this primitive speaks plain matrix margins.
-#' @keywords internal
+#' @noRd
 .contract <- function(v, K, over = c("rows", "cols")) {
   over <- match.arg(over)
   out <- if (over == "rows") {
@@ -89,7 +89,7 @@
 #' scales columns. Policy choices such as "identity" and "semi" belong in the
 #' planner; this executor always divides by the full margin sum with a zero-row
 #' guard.
-#' @keywords internal
+#' @noRd
 .normalize <- function(x, over = c("rows", "cols")) {
   over <- match.arg(over)
   if (over == "cols") {
@@ -107,7 +107,7 @@
 #' `kept_cell_index = NULL` means `values` already covers every template cell
 #' (the FCA access surface is defined on the full grid). When the output itself
 #' is compacted, pass the kept cell indices and unfilled cells become NA.
-#' @keywords internal
+#' @noRd
 .rewrap_cells <- function(values, template, kept_cell_index = NULL) {
   if (is.null(kept_cell_index)) {
     return(terra::setValues(template, values))
@@ -118,7 +118,7 @@
 }
 
 #' Apply FCA demand-normalization policy to the compact gather kernel
-#' @keywords internal
+#' @noRd
 .fca_normalize_kernel <- function(K, method = "identity") {
   method <- match.arg(method, c("identity", "standard", "semi"))
   if (method == "identity") {
@@ -144,7 +144,7 @@
 #'
 #' Kernels are taken as `SpatRaster`s here (the proven oracle shape); the
 #' boundary check mirrors the alignment contract of [compute_access()].
-#' @keywords internal
+#' @noRd
 .fca_compact_plan <- function(demand, supply, demand_kernel, access_kernel,
                               demand_normalize = "identity",
                               id_col = NULL, supply_cols = NULL,
@@ -215,7 +215,7 @@
 #'
 #' The layer names, or `facility_1..J` by position when the names are terra
 #' defaults (`lyr.N`) or missing. Duplicate IDs are an error.
-#' @keywords internal
+#' @noRd
 .fca_ids <- function(x, arg = "distance") {
   .chck_class(x, "SpatRaster", arg)
   layer_names <- names(x)
@@ -256,7 +256,7 @@
 #' @param max_values Values per block over all layers read.
 #' @return `list(starts, n, ncol, same)`: first row and number of rows of each
 #'   block, columns per row, and the alias map.
-#' @keywords internal
+#' @noRd
 .raster_blocks <- function(rasters,
                            max_values = getOption("spax.fca_block_values", 2e6)) {
   nms <- names(rasters)
@@ -286,7 +286,7 @@
 #' Returns a function that closes them again. Call it as
 #' `close <- .raster_open(rasters, same); on.exit(close(), add = TRUE)`; if
 #' one raster fails to open, the ones already opened are closed.
-#' @keywords internal
+#' @noRd
 .raster_open <- function(rasters, same) {
   distinct <- unique(unname(same))
   opened <- character()
@@ -315,7 +315,7 @@
 #' Returns a named list of numeric matrices with `n * ncol` rows (cell index
 #' of row k is `(start - 1) * ncol + k`) and one column per layer. Each
 #' distinct raster is read once and shared with its aliases.
-#' @keywords internal
+#' @noRd
 .raster_read <- function(rasters, same, start, n, only = names(same)) {
   same <- same[only]
   distinct <- unique(unname(same))
@@ -346,7 +346,7 @@
 #' A key that occurs twice must name one and the same raster object (see
 #' `.same_raster()`), which is then read once; two different rasters under one
 #' key are an internal error, since a kernel would read the wrong one.
-#' @keywords internal
+#' @noRd
 .fca_merge_rasters <- function(rasters) {
   nms <- names(rasters)
   first <- match(nms, nms)
@@ -404,7 +404,7 @@
 #'   per supply measure. Grouped, `M * (G + 1)` columns in measure-major order:
 #'   for each measure the groups in the order of `groups`, then the overall
 #'   layer.
-#' @keywords internal
+#' @noRd
 .fca_blocks <- function(rasters, kernels, supply, normalize = "identity",
                         snap = FALSE, groups = NULL, block = NULL) {
   supply <- as.matrix(supply)
@@ -555,7 +555,7 @@
 #' order, then `all`; measure 2: ...). The table has one row per layer with the
 #' columns `layer`, `measure` and `group` (`"all"` for the overall layer);
 #' ungrouped, the layers are the measures and `group` is `NA`.
-#' @keywords internal
+#' @noRd
 .fca_layer_table <- function(measures, groups = NULL) {
   if (is.null(groups)) {
     return(data.frame(layer = measures, measure = measures,
@@ -569,7 +569,7 @@
 }
 
 #' Put a cell-by-measure matrix on a raster grid, one layer per column
-#' @keywords internal
+#' @noRd
 .fca_rewrap <- function(values, template, names) {
   out <- terra::rast(template, nlyrs = ncol(values))
   out <- terra::setValues(out, values)

@@ -2,7 +2,7 @@
 #' @param x SpatVector containing areas
 #' @param template SpatRaster template
 #' @return SpatRaster PMF with uniform weights within polygons
-#' @keywords internal
+#' @noRd
 .help_create_uniform_pmf <- function(x, template) {
   # Create binary raster of polygon coverage
   area_rast <- terra::rasterize(x, template, field = 1)
@@ -11,7 +11,7 @@
 }
 
 #' Validate inputs for demand transformation
-#' @keywords internal
+#' @noRd
 .chck_transform_demand <- function(x, value_col, pmf = NULL, template = NULL) {
   # Input type validation
   if (!inherits(x, "SpatVector")) {
@@ -60,7 +60,7 @@
 }
 
 #' Core computation for demand transformation
-#' @keywords internal
+#' @noRd
 .help_transform_demand_core <- function(x, value_col, pmf = NULL, template = NULL,
                                         density = FALSE) {
   # Get total cases

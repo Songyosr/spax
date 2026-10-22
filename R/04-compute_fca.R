@@ -30,7 +30,7 @@
 #' @inheritParams compute_access
 #' @param demand_normalize Normalization of the demand kernel.
 #' @return SpatRaster of accessibility.
-#' @keywords internal
+#' @noRd
 compute_fca <- function(demand, supply, rasters, kernels,
                         demand_normalize = "identity",
                         id_col = NULL, supply_cols = NULL,

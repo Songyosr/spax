@@ -230,7 +230,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param method Character string or function specifying decay method
 #' @param sigma Numeric parameter controlling decay rate
 #' @param snap Logical for validation skipping
-#' @keywords internal
+#' @noRd
 .chck_decay <- function(distance, method, sigma = NULL, snap = FALSE) {
   if (snap) {
     return(TRUE)
@@ -280,7 +280,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param sigma Standard deviation parameter controlling spread
 #' @param ... Additional parameters (not used in gaussian decay)
 #' @return Numeric vector of weights
-#' @keywords internal
+#' @noRd
 .help_decay_gaussian <- function(distance, sigma = 11.64884, ...) {
   return(exp(-(distance^2) / (2 * sigma^2)))
 }
@@ -290,7 +290,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param sigma Rate parameter controlling steepness of decay
 #' @param ... Additional parameters (not used in exponential decay)
 #' @return Numeric vector of weights
-#' @keywords internal
+#' @noRd
 .help_decay_exponential <- function(distance, sigma, ...) {
   return(exp(-sigma * distance))
 }
@@ -300,7 +300,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param sigma Exponent parameter controlling rate of decay
 #' @param ... Additional parameters (not used in power decay)
 #' @return Numeric vector of weights
-#' @keywords internal
+#' @noRd
 .help_decay_power <- function(distance, sigma, ...) {
   return(distance^(-sigma))
 }
@@ -310,7 +310,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param c Constant to prevent division by zero
 #' @param ... Additional parameters (not used in inverse decay)
 #' @return Numeric vector of weights
-#' @keywords internal
+#' @noRd
 .help_decay_inverse <- function(distance, c = 1, ...) {
   return(1 / (distance + c))
 }
@@ -320,7 +320,7 @@ calc_decay <- function(distance, method = "gaussian", sigma = NULL, snap = FALSE
 #' @param sigma Distance threshold
 #' @param ... Additional parameters (not used in binary decay)
 #' @return Numeric vector of weights
-#' @keywords internal
+#' @noRd
 .help_decay_binary <- function(distance, sigma = 97.5, ...) {
   weight <- 0 + (distance <= sigma)
   return(weight)

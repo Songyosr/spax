@@ -292,7 +292,7 @@
 #' @return A list with the `starts` matrix (`NULL` when `starts` were given),
 #'   the merged `lower` and `upper` and the `record` kept in the fit's
 #'   `default_search` field (`NULL` when no scan ran).
-#' @keywords internal
+#' @noRd
 #' @md
 .allocation_default_search <- function(problem, target, output, loss, loss_args,
                                        lower = NULL, upper = NULL,

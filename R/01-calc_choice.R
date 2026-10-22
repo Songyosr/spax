@@ -1,5 +1,5 @@
 #' Internal function for core choice cvalidation
-#' @keywords internal
+#' @noRd
 .chck_calc_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
   # Check weights is a SpatRaster of non-negative values
   .chck_class(weights, "SpatRaster", "weights")
@@ -25,7 +25,7 @@
 }
 
 #' Internal function for core choice computation
-#' @keywords internal
+#' @noRd
 .help_calc_choice_core <- function(weights, attractiveness, alpha, a0) {
   if (!is.null(attractiveness)) {
     weights <- weights * (attractiveness^alpha)

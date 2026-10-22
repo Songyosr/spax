@@ -13,7 +13,7 @@
 #' global scale on `a` cancels when `v0 = 0`. With a positive outside option,
 #' scaling attractiveness changes the inside/outside balance unless `v0` is
 #' scaled by the same factor.
-#' @keywords internal
+#' @noRd
 .huff_attractiveness <- function(supply, kappa = 1, beta = 1) {
   .chck_numeric_vector(supply, "supply")
   .chck_positive_scalar(kappa, "kappa")
@@ -35,7 +35,7 @@
 #' A zero denominator (no opportunity and no outside option) yields zero
 #' inside and outside shares. The returned `target` is the exogenous
 #' attractiveness, so the map `T(x) = a` is state-independent.
-#' @keywords internal
+#' @noRd
 # Keep the arithmetic in step with .huff_state_lean(), which must stay bit-identical.
 .huff_state <- function(a, plan, v0 = 0,
                         allocation = c("clm", "huff_decay")) {
@@ -78,7 +78,7 @@
 #' the call. `keep` names the count outputs to keep (`"flow"`, `"flow_outside"`),
 #' computed with the expressions of the bind's `outputs_requested`.
 #' @param demand Active demand, for the count outputs.
-#' @keywords internal
+#' @noRd
 .huff_state_lean <- function(a, plan, v0 = 0, keep = character(), demand = NULL) {
   .chck_numeric_vector(a, "a")
   .chck_nonnegative_scalar(v0, "v0")
@@ -137,7 +137,7 @@
 #' @param D_groups Demand by origin (rows) and group (columns), nonnegative with
 #'   a positive total on every row.
 #' @param v0 Outside-option weight of each group.
-#' @keywords internal
+#' @noRd
 # Keep the arithmetic in step with .clm_group_state_lean(), which must stay bit-identical.
 .clm_group_state <- function(a, kernels, D_groups, v0) {
   groups <- colnames(D_groups)
@@ -187,7 +187,7 @@
 #' The same arithmetic in the same order, returning the vectors, the by-group
 #' outputs (origin or facility by group) and the requested count matrices, but
 #' no pooled allocation matrix. See `.huff_state_lean()`.
-#' @keywords internal
+#' @noRd
 .clm_group_state_lean <- function(a, kernels, D_groups, v0, keep = character(),
                                   demand = NULL) {
   groups <- colnames(D_groups)

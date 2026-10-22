@@ -6,7 +6,7 @@
 #' names no call when there is none. A condition object is signalled as it is.
 #' Working out the call never replaces the message: if it fails, no call is
 #' named.
-#' @keywords internal
+#' @noRd
 .stop <- function(..., call. = TRUE, domain = NULL) {
   if (...length() == 1L && inherits(..1, "condition")) stop(..1)
   call <- if (isTRUE(call.)) tryCatch(.user_call(), error = function(e) NULL)
@@ -24,7 +24,7 @@
 #' `lapply()` or `optim()`, are never named. A function given as an object, as
 #' in `do.call(prep_data, args)`, is named by its spax name. `NULL` when there
 #' is no such frame.
-#' @keywords internal
+#' @noRd
 .user_call <- function() {
   ns <- topenv(environment())
   here <- sys.nframe()
@@ -109,7 +109,7 @@
 
 # 1. Basic Type Check ----------------------------------------------------------
 #' Check if input is of a specific structure* (or range of classes)
-#' @keywords internal
+#' @noRd
 .chck_class <- function(x, classes, name = "Input") {
   if (!inherits(x, classes)) {
     class_list <- paste(classes, collapse = ", ")
@@ -119,7 +119,7 @@
 }
 
 #' Check if input is numeric
-#' @keywords internal
+#' @noRd
 .chck_is_numeric <- function(x, name = "Input") {
   if (!is.numeric(x)) {
     .stop(sprintf("%s must be numeric", name))
@@ -132,7 +132,7 @@
 #' Same answer as `any(!is.finite(x))`. For a double it scans with `anyNA()`,
 #' `min()` and `max()`, which allocate nothing, where `is.finite()` allocates a
 #' logical vector as long as `x`. Other types take the original test.
-#' @keywords internal
+#' @noRd
 .any_nonfinite <- function(x) {
   if (is.double(x)) {
     return(length(x) > 0L && (anyNA(x) || min(x) == -Inf || max(x) == Inf))
@@ -141,7 +141,7 @@
 }
 
 #' Check if input is a numeric vector
-#' @keywords internal
+#' @noRd
 .chck_numeric_vector <- function(x, name = "Input", finite = TRUE) {
   .chck_is_numeric(x, name = name)
   if (is.null(x) || !is.null(dim(x))) {
@@ -154,7 +154,7 @@
 }
 
 #' Check if input is a numeric matrix
-#' @keywords internal
+#' @noRd
 .chck_numeric_matrix <- function(x, name = "Input", finite = TRUE) {
   .chck_is_numeric(x, name = name)
   if (is.null(dim(x)) || length(dim(x)) != 2L) {
@@ -167,7 +167,7 @@
 }
 
 #' Check if input is a positive scalar
-#' @keywords internal
+#' @noRd
 .chck_positive_scalar <- function(x, name = "Input") {
   .chck_is_numeric(x, name = name)
   .chck_length(length(x), 1, name = name)
@@ -178,7 +178,7 @@
 }
 
 #' Check if input is a nonnegative scalar
-#' @keywords internal
+#' @noRd
 .chck_nonnegative_scalar <- function(x, name = "Input") {
   .chck_is_numeric(x, name = name)
   .chck_length(length(x), 1, name = name)
@@ -189,7 +189,7 @@
 }
 
 #' Check if input is a positive integer scalar
-#' @keywords internal
+#' @noRd
 .chck_positive_integer <- function(x, name = "Input") {
   .chck_is_numeric(x, name = name)
   .chck_length(length(x), 1, name = name)
@@ -201,7 +201,7 @@
 
 # 2. Basic Value Checks --------------------------------------------------------
 #' Check if value is in valid range
-#' @keywords internal
+#' @noRd
 .chck_in_range <- function(x, min = 0, max = 1, inclusive = TRUE, name = "Value") {
   if (inclusive) {
     if (any(x < min | x > max, na.rm = TRUE)) {
@@ -216,7 +216,7 @@
 }
 
 #' Check if value is positive
-#' @keywords internal
+#' @noRd
 .chck_positive <- function(x, allow_zero = FALSE, name = "Input") {
   min_val <- if (allow_zero) 0 else .Machine$double.eps
   inclusive <- if (allow_zero) TRUE else FALSE
@@ -225,7 +225,7 @@
 
 # 3. Length and Dimension Checks -----------------------------------------------
 #' Check if length matches expected
-#' @keywords internal
+#' @noRd
 .chck_length <- function(len_x, expected, name = "Input") {
   if (len_x != expected) {
     .stop(sprintf("%s must have length %d", name, expected))
@@ -234,7 +234,7 @@
 }
 
 #' Check if length of two inputs match
-#' @keywords internal
+#' @noRd
 .chck_lengths_match <- function(len_x, len_y, name_x = "First input", name_y = "Second input") {
   if (len_x != len_y) {
     .stop(sprintf("Length of %s (%d) must match length of %s (%d)",
@@ -245,13 +245,13 @@
 
 # 4. Raster Checks ------------------------------------------------------------
 #' Check if the input is a SpatRaster - just a fast-track to .chck_class
-#' @keywords internal
+#' @noRd
 .chck_is_raster <- function(x, name = "Input") {
   .chck_class(x, "SpatRaster", name = name)
 }
 
 #' Check if rasters have matching geometry
-#' @keywords internal
+#' @noRd
 .chck_raster_alignment <- function(x, y, name_x = "First raster", name_y = "Second raster") {
   if (!compareGeom(x, y, stopOnError = FALSE)) {
     .stop(sprintf("%s and %s must have the same geometry (resolution, extent, and CRS)",
@@ -262,7 +262,7 @@
 
 # 5. Dataframe Checks ---------------------------------------------------------
 #' Check if columns exist in dataframe
-#' @keywords internal
+#' @noRd
 .chck_cols_exist <- function(df, cols, df_name = "data.frame") {
   missing <- setdiff(cols, names(df))
   if (length(missing) > 0) {
@@ -274,7 +274,7 @@
 }
 
 #' Check that numeric or raster weights are non-negative (NA is allowed)
-#' @keywords internal
+#' @noRd
 .chck_nonnegative_weights <- function(x, name = "weights") {
   lowest <- if (inherits(x, "SpatRaster")) {
     suppressWarnings(min(terra::global(x, "min", na.rm = TRUE)[[1]], na.rm = TRUE))

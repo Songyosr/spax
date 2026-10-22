@@ -1,5 +1,5 @@
 #' Validate inputs for PMF transformation
-#' @keywords internal
+#' @noRd
 .chck_transform_pmf_raster <- function(x, snap = FALSE) {
   if (snap) {
     return(invisible(TRUE))

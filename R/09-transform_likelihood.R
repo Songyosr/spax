@@ -1,5 +1,5 @@
 #' Core computation for likelihood transformation
-#' @keywords internal
+#' @noRd
 .help_transform_likelihood_core <- function(x, method = "mean", ref_value = NULL) {
   if (method == "custom" && !is.null(ref_value)) {
     return(x / ref_value)

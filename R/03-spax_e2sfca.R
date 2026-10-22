@@ -1,5 +1,5 @@
 #' Core facility supply validation used by multiple functions
-#' @keywords internal
+#' @noRd
 .validate_facility_supply <- function(supply, id_col = NULL, supply_cols = NULL) {
   # Stop early if supply is an sf object
   if (inherits(supply, "sf")) {
@@ -182,7 +182,7 @@
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
-#' @keywords internal
+#' @noRd
 .chck_compute_access <- function(demand, supply, demand_weights, access_weights,
                                  id_col = NULL, supply_cols = NULL,
                                  indicator_names = NULL) {
@@ -241,7 +241,7 @@
 #' @param demand_normalize Character specifying normalization method
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
-#' @keywords internal
+#' @noRd
 .chck_e2sfca <- function(demand, supply, distance, decay_params,
                          demand_normalize, id_col = NULL, supply_cols = NULL) {
   .chck_e2sfca_data(demand, supply, distance, id_col, supply_cols)
@@ -325,7 +325,7 @@
 #'   \item{values}{Matrix or vector of supply values}
 #'   \item{ids}{Vector of facility IDs}
 #'   \item{cols}{Names of supply measures}
-#' @keywords internal
+#' @noRd
 .help_process_supply <- function(supply, id_col = NULL, supply_cols = NULL,
                                  weight_ids = NULL) {
   # Handle data.frame input

@@ -2,7 +2,7 @@
 
 #' Print an AE fixed-point solution
 #' @method print ae_equilibrium
-#' @keywords internal
+#' @noRd
 #' @export
 print.ae_equilibrium <- function(x, digits = 4, ...) {
   cat(if (.is_public_equilibrium(x)) "<allocation evaluation>" else "<ae_equilibrium>", "\n",
@@ -123,7 +123,7 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
 
 #' Print an AE problem calibration fit
 #' @method print ae_problem_nfxp_fit
-#' @keywords internal
+#' @noRd
 #' @export
 print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   if (.is_public_allocation(x)) {
@@ -163,7 +163,7 @@ print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
 
 #' Summarize an AE problem calibration fit
 #' @method summary ae_problem_nfxp_fit
-#' @keywords internal
+#' @noRd
 #' @exportS3Method base::summary
 summary.ae_problem_nfxp_fit <- function(object, ...) {
   .chck_class(object, "ae_problem_nfxp_fit", "object")
@@ -221,7 +221,7 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
 
 #' Print an AE problem calibration summary
 #' @method print summary.ae_problem_nfxp_fit
-#' @keywords internal
+#' @noRd
 #' @export
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   public <- .is_public_allocation(x)
@@ -263,7 +263,7 @@ print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
 
 #' Plot AE problem calibration diagnostics
 #' @method plot ae_problem_nfxp_fit
-#' @keywords internal
+#' @noRd
 #' @exportS3Method graphics::plot
 plot.ae_problem_nfxp_fit <- function(x,
                                      type = c("fit", "convergence", "state"),
@@ -356,7 +356,7 @@ plot.ae_problem_nfxp_fit <- function(x,
 #' @param x A model, an `ae_problem` of the Huff or conditional logit family.
 #' @param ... Unused.
 #' @method format huff_problem
-#' @keywords internal
+#' @noRd
 #' @export
 #' @md
 format.huff_problem <- function(x, ...) {
@@ -386,9 +386,8 @@ format.huff_problem <- function(x, ...) {
                         .format_total(length(s$facility_ids)), " facilities")))
 }
 
-#' @rdname format.huff_problem
+#' @noRd
 #' @method print huff_problem
-#' @keywords internal
 #' @export
 #' @md
 print.huff_problem <- function(x, ...) {

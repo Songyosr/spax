@@ -6,7 +6,7 @@
 #' flows; multiplying rows by demand produces implied flows. `access` retains
 #' its model-specific meaning (CLM contact, SAE soft-capped opportunity, or
 #' HAAE/Huff-decay attenuated allocation mass). No semantic alias is applied.
-#' @keywords internal
+#' @noRd
 .fit_output <- function(fit, output) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {
@@ -19,7 +19,7 @@
 }
 
 #' Read a saved numeric AE vector without flattening matrix outputs
-#' @keywords internal
+#' @noRd
 .fit_output_vector <- function(fit, output) {
   value <- .fit_output(fit, output)
   if (!is.numeric(value) || !is.null(dim(value))) {
@@ -37,7 +37,7 @@
 #' which cannot distinguish coincident axes. Regenerate them with declared axes
 #' before relying on semantic surface discovery. This is metadata for inspection,
 #' not a recipe compiler or an `output_roles` alias layer.
-#' @keywords internal
+#' @noRd
 .fit_available_surfaces <- function(fit) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   .surface_output_names(fit$outputs, length(fit$surface_meta$demand_kept_index),

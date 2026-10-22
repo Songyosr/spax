@@ -8,7 +8,7 @@
 #' Weighted sum of squared errors
 #'
 #' Computes sum((predicted - observed)^2 / (observed + eta)).
-#' @keywords internal
+#' @noRd
 .weighted_sse_loss <- function(predicted, observed, eta = 1) {
   .chck_numeric_vector(predicted, "predicted")
   .chck_numeric_vector(observed, "observed")
@@ -29,7 +29,7 @@
 #' and its facility distribution. It does not generally force an exact total
 #' match; that requires an explicit total-matching constraint or a suitable
 #' independently fitted scale parameter.
-#' @keywords internal
+#' @noRd
 .poisson_loss <- function(predicted, observed, eps = 1e-9) {
   .chck_numeric_vector(predicted, "predicted")
   .chck_numeric_vector(observed, "observed")
@@ -50,7 +50,7 @@
 #' optimizers check every step against the loss, so a gradient that kept the
 #' slope `1 - y / eps` below the floor would point where the loss does not
 #' fall and stop line searches early (DEC-029).
-#' @keywords internal
+#' @noRd
 #' @md
 .poisson_gradient <- function(predicted, observed, sensitivity, eps = 1e-9) {
   .chck_numeric_vector(predicted, "predicted")
@@ -148,7 +148,7 @@
 #'
 #' `sensitivity` is d predicted / d theta, with one row per observation and one
 #' column per parameter.
-#' @keywords internal
+#' @noRd
 .weighted_sse_gradient <- function(predicted, observed, sensitivity, eta = 1) {
   .chck_numeric_vector(predicted, "predicted")
   .chck_numeric_vector(observed, "observed")

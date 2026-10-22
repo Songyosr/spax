@@ -84,7 +84,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   .normalize_core(x, method, ref_value, a0, ...)
 }
 
-#' @keywords internal
+#' @noRd
 .chck_normalize <- function(x, method, ref_value = NULL, a0 = 0) {
   # Input existence check
   if (length(x) == 0) {
@@ -123,7 +123,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   invisible(TRUE)
 }
 
-#' @keywords internal
+#' @noRd
 .normalize_core <- function(x, method, ref_value = NULL, a0 = 0, ...) {
   # Handle custom function first
   if (is.function(method)) {

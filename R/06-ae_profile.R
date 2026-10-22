@@ -7,7 +7,7 @@
 #' the original prepared problem. Analytic state-map parameter Jacobians, when
 #' present, are reduced to the nuisance columns; output sensitivities continue
 #' to use the standard problem machinery.
-#' @keywords internal
+#' @noRd
 #' @md
 .fix_problem_parameter <- function(problem, parameter, value) {
   .chck_class(problem, "ae_problem", "problem")
@@ -89,7 +89,7 @@
 #' additionally requires a justified loss scale, threshold and degrees of
 #' freedom; none is inferred here. Fixing a nuisance value to satisfy an
 #' external moment or total is a different estimator and is not this helper.
-#' @keywords internal
+#' @noRd
 #' @md
 .profile_problem <- function(problem, observed, parameter, values,
                              init, lower, upper, ...,

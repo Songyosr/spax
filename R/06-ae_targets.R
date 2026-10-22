@@ -9,7 +9,7 @@
 #' `origin_ids` / `facility_ids` (and `group_ids` for demand groups) in the
 #' substrate. No axis is inferred from an output name or a coincident vector
 #' length.
-#' @keywords internal
+#' @noRd
 #' @md
 .problem_output_identity <- function(problem, output) {
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {
@@ -82,7 +82,7 @@
 #' Unannotated custom providers retain positional numeric fitting for unnamed
 #' targets, but their fitted vectors are no longer relabelled as facilities
 #' merely because lengths agree. Declare axes and IDs for identity-safe names.
-#' @keywords internal
+#' @noRd
 #' @md
 .bind_problem_target <- function(problem, observed, output = "utilization") {
   .check_outside_target(problem, output)
@@ -168,7 +168,7 @@
 #' subproblem rebuilds the contract from its names alone).
 #' @param problem An `ae_problem`.
 #' @param target A bound target (`ae_bound_target`).
-#' @keywords internal
+#' @noRd
 #' @md
 .check_group_targets <- function(problem, target) {
   spec <- problem$metadata$spec
@@ -216,7 +216,7 @@
 }
 
 #' Apply target-axis names without changing raw model outputs
-#' @keywords internal
+#' @noRd
 #' @md
 .name_bound_target <- function(value, target) {
   ids <- target$identity$ids
@@ -240,7 +240,7 @@
 }
 
 #' Read the canonical observation identity retained by a fitted object
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_observation_identity <- function(fit) {
   a <- fit$target_alignment

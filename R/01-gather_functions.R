@@ -2,7 +2,7 @@
 #' @param values SpatRaster of values
 #' @param weights SpatRaster of weights
 #' @param na.rm Logical for NA handling
-#' @keywords internal
+#' @noRd
 .chck_gather_weighted <- function(values, weights, na.rm) {
   # Input type validation
   .chck_class(values, "SpatRaster", "values")
@@ -18,7 +18,7 @@
 }
 
 #' Core computation for gather_weighted
-#' @keywords internal
+#' @noRd
 .gather_weighted_core <- function(values, weights, na.rm = TRUE) {
   weighted_sums <- terra::global(weights, "sum",
     weights = values,
@@ -29,7 +29,7 @@
 }
 
 #' Format output for gather_weighted
-#' @keywords internal
+#' @noRd
 .help_format_gather <- function(weighted_sums, weights, values = NULL) {
   if (is.null(values)) {
     # Single layer case
