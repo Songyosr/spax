@@ -171,3 +171,33 @@
   }
   invisible(TRUE)
 }
+
+# Names of the vector outputs ----------------------------------------------------
+# The vector outputs of a complete evaluation carry the IDs of their declared axis:
+# the facility vectors (`target`, `utilization`, `attractiveness`), `utilization`
+# with the outside entry (`utilization_outside`) and the origin vectors (`access`,
+# `outside_share`) that the arithmetic leaves unnamed. Values, matrices and vectors
+# that have names are unchanged; the solver's top-level copy of `utilization` takes
+# the same names. Applied to what evaluate_allocation() returns and to the final
+# evaluation a fit keeps, never inside the optimizer or the default scan.
+.name_output_vectors <- function(problem, solved) {
+  axes <- problem$metadata$spec$output_axes
+  s <- problem$substrate
+  ids <- list(
+    facility = s$facility_ids,
+    facility_outside = if (!is.null(s$facility_ids)) c(s$facility_ids, .outside_label),
+    origin = if (!is.null(s$origin_ids)) s$origin_ids else s$demand_kept_index
+  )
+  outputs <- solved$outputs
+  for (name in intersect(names(outputs), names(axes))) {
+    value <- outputs[[name]]
+    axis_ids <- ids[[axes[[name]]]]
+    if (is.numeric(value) && is.null(dim(value)) && is.null(names(value)) &&
+        !is.null(axis_ids) && length(axis_ids) == length(value)) {
+      names(outputs[[name]]) <- as.character(axis_ids)
+    }
+  }
+  solved$outputs <- outputs
+  if (!is.null(solved[["utilization", exact = TRUE]])) solved$utilization <- outputs$utilization
+  solved
+}

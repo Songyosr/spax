@@ -842,12 +842,12 @@ test_that("fitted() reads the fit, and names an evaluation by facility", {
   x <- .run_totals_fit()
   expect_identical(fitted(x), fitted(x$fit))
   expect_identical(names(fitted(x)), colnames(case$distance))
-  expect_identical(unname(fitted(x)), x$fit$best$outputs$utilization)
+  expect_identical(fitted(x), x$fit$best$outputs$utilization)
   flows <- .run_flow_fit()$x
   expect_identical(fitted(flows), fitted(flows$fit))
   e <- spax(case$data, spec_clm(decay_gaussian(8), outside = 25))
   expect_identical(names(fitted(e)), colnames(case$distance))
-  expect_identical(unname(fitted(e)), e$evaluation$outputs$utilization)
+  expect_identical(fitted(e), e$evaluation$outputs$utilization)
   expect_identical(fitted(e), stats::setNames(
     evaluate_allocation(clm_allocation(case$data, v0 = 25), c(sigma = 8))$outputs$utilization,
     e$model$substrate$facility_ids))

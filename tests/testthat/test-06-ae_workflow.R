@@ -201,6 +201,36 @@ test_that("fixed evaluation solves once and coverage reads the evaluated allocat
   expect_error(evaluate_allocation(f$model, f$truth), "did not converge")
 })
 
+test_that("evaluations and fits name their vector outputs by facility and origin ID", {
+  f <- alloc_small_case()
+  facilities <- c("f2", "f1", "f3")
+  origins <- c("o1", "o3", "o5")
+  expect_named_outputs <- function(outputs) {
+    for (nm in c("target", "utilization", "attractiveness")) expect_named(outputs[[nm]], facilities)
+    for (nm in c("access", "outside_share")) expect_named(outputs[[nm]], origins)
+  }
+  e <- evaluate_allocation(f$model, f$truth, requested_outputs = "utilization_outside")
+  expect_named_outputs(e$outputs)
+  expect_named(e$outputs$utilization_outside, c(facilities, "(outside)"))
+  expect_identical(e$utilization, e$outputs$utilization)
+  # Only the names are added: the solver's own outputs are the same values, unnamed.
+  raw <- .solve_problem(f$model, f$truth, requested_outputs = "utilization_outside")$outputs
+  expect_null(names(raw$utilization))
+  for (nm in c("target", "utilization", "attractiveness", "utilization_outside")) {
+    expect_identical(unname(e$outputs[[nm]]), raw[[nm]])
+  }
+  expect_identical(e$outputs[c("access", "outside_share", "allocation")],
+                   raw[c("access", "outside_share", "allocation")])
+  # A fit keeps the same names on its final evaluation.
+  fit <- alloc_small_fit()
+  expect_named_outputs(fit$best$outputs)
+  expect_identical(fit$best$equilibrium$outputs, fit$best$outputs)
+  expect_identical(fitted(fit), fit$best$outputs$utilization)
+  # A Huff model's outside share (no outside option) is named too.
+  huff <- huff_allocation(f$inputs, family = "gaussian", fit_beta = FALSE)
+  expect_named_outputs(evaluate_allocation(huff, c(sigma = 3))$outputs)
+})
+
 test_that("workflow predictions delegate once and read fitted and evaluated sources", {
   f <- alloc_small_case()
   fit <- alloc_small_fit()

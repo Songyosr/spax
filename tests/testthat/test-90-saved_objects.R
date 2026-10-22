@@ -114,7 +114,11 @@ test_that("a saved evaluation of the earlier version equals a fresh evaluation",
   f <- alloc_small_case()
   fresh <- evaluate_allocation(f$model, f$truth, coverage_args = list(norm = 3),
                                requested_outputs = "flow")
-  expect_equal(x$evaluation$outputs, fresh$outputs, tolerance = 1e-12)
+  # A fresh evaluation names its vectors by facility and origin ID; the saved one,
+  # made before they carried names, has the same values.
+  unnamed <- function(outputs) lapply(outputs, function(v) if (is.null(dim(v))) unname(v) else v)
+  expect_equal(unnamed(x$evaluation$outputs), unnamed(fresh$outputs), tolerance = 1e-12)
+  expect_named(fresh$outputs$utilization, f$model$substrate$facility_ids)
   expect_equal(x$evaluation$prediction_snapshot, fresh$prediction_snapshot, tolerance = 1e-12)
   expect_equal(x$evaluation$coverage$regional, fresh$coverage$regional, tolerance = 1e-12)
   expect_equal(x$evaluation$coverage$cells, fresh$coverage$cells, tolerance = 1e-12)

@@ -1029,7 +1029,10 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
-#'   hard constraint on expected utilization.
+#'   hard constraint on expected utilization. In `outputs` the vectors are named
+#'   by facility ID (`target`, `utilization`, `attractiveness`) or by origin ID
+#'   (`access`, `outside_share`), and the matrices by origin (rows) and facility
+#'   (columns).
 #' @examples
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
@@ -1045,8 +1048,8 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
 #' ev$coverage
 #'
-#' # Expected registrations at each practice, in the order of the travel columns
-#' round(stats::setNames(ev$outputs$utilization, colnames(travel)))
+#' # Expected registrations at each practice
+#' round(ev$outputs$utilization)
 #'
 #' # Expected registrations by small area and practice, with the expected
 #' # outside count as one more column
@@ -1060,7 +1063,7 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'                                             travel), fit_v0 = TRUE)
 #' change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
 #'   ev$outputs$utilization
-#' round(stats::setNames(change, colnames(travel)))
+#' round(change)
 #' @family allocation steps
 #' @export
 #' @md
@@ -1080,7 +1083,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
   if (!isTRUE(result$converged)) .stop("allocation evaluation did not converge")
   result$coverage <- do.call(.coverage_from_outputs,
     c(list(problem = model, theta = theta, outputs = result$outputs), coverage_args))
-  result
+  .name_output_vectors(model, result)
 }
 
 #' Predict requested origins against a saved fitted or evaluated CLM

@@ -1390,6 +1390,7 @@
   observed_store <- .name_bound_target(target$observed, target)
   state_name <- problem$state$name
   state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
+  final <- .name_output_vectors(problem, final)
 
   fit <- structure(
     list(

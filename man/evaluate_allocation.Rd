@@ -39,7 +39,10 @@ An \code{ae_equilibrium} with its portable prediction snapshot
 (none for a model with demand groups, which cannot be predicted yet)
 and compact \code{coverage}. Coverage uses raw supply units without kappa;
 proportional attributed capacity is not a delivered-service measure or a
-hard constraint on expected utilization.
+hard constraint on expected utilization. In \code{outputs} the vectors are named
+by facility ID (\code{target}, \code{utilization}, \code{attractiveness}) or by origin ID
+(\code{access}, \code{outside_share}), and the matrices by origin (rows) and facility
+(columns).
 }
 \description{
 Solves once and constructs compact coverage from the saved evaluated outputs.
@@ -62,8 +65,8 @@ model <- clm_allocation(prepare_allocation(demand, supply, travel), fit_v0 = TRU
 ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
 ev$coverage
 
-# Expected registrations at each practice, in the order of the travel columns
-round(stats::setNames(ev$outputs$utilization, colnames(travel)))
+# Expected registrations at each practice
+round(ev$outputs$utilization)
 
 # Expected registrations by small area and practice, with the expected
 # outside count as one more column
@@ -77,7 +80,7 @@ closed <- clm_allocation(prepare_allocation(demand, replace(supply, "L82047", 0)
                                             travel), fit_v0 = TRUE)
 change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
   ev$outputs$utilization
-round(stats::setNames(change, colnames(travel)))
+round(change)
 }
 \seealso{
 Other allocation steps: 
