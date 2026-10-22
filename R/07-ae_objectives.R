@@ -44,7 +44,7 @@
 
 #' Gradient of the Poisson NLL with respect to parameters
 #'
-#' This is the gradient of [.poisson_loss()], floor included. A prediction
+#' This is the gradient of `.poisson_loss()`, floor included. A prediction
 #' below `eps` adds the constant `eps - y log(eps)` to the loss, so it adds
 #' nothing to the gradient, whatever its observed count. Quasi-Newton
 #' optimizers check every step against the loss, so a gradient that kept the

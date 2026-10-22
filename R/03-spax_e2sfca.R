@@ -871,6 +871,7 @@
 #' list with one element per group, named by the groups. Shared weights should
 #' be passed as one object, so that they are read once.
 #' @export
+#' @md
 compute_access <- function(demand, supply, demand_weights, access_weights,
                            id_col = NULL, supply_cols = NULL,
                            indicator_names = NULL,
@@ -1076,6 +1077,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' * [calc_decay()] for available decay functions
 #'
 #' @export
+#' @md
 spax_e2sfca <- function(demand, supply, distance,
                         decay_params = list(method = "gaussian", sigma = 30),
                         demand_normalize = "identity",
@@ -1130,6 +1132,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #'
 #' @seealso [spax_e2sfca()], [spax_2sfca()], [compute_access()], [calc_decay()]
 #' @export
+#' @md
 spax_m2sfca <- function(demand, supply, distance,
                         decay_params = list(method = "gaussian", sigma = 30),
                         demand_normalize = "identity",
@@ -1264,6 +1267,7 @@ spax_m2sfca <- function(demand, supply, distance,
 #' * [compute_access()] for more flexible accessibility calculations
 #'
 #' @export
+#' @md
 spax_2sfca <- function(demand, supply, distance, threshold,
                        id_col = NULL, supply_cols = NULL,
                        snap = FALSE) {

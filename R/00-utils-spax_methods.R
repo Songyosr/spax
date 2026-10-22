@@ -332,6 +332,7 @@ print.summary.spax <- function(x, digits = 4, ...) {
 #' # Plot single layer by name
 #' plot(result, y = "gp_fte_extg", main = "Access to GPs")
 #' @exportS3Method graphics::plot
+#' @md
 plot.spax <- function(x, ...) {
   plot(x$accessibility, ...)
 }

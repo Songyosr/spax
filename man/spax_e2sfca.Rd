@@ -20,7 +20,7 @@ spax_e2sfca(
 \item{demand}{SpatRaster representing spatial distribution of demand, or a
 named list of single-layer SpatRasters, one per demand group (see
 "Demand groups"). A multi-layer SpatRaster is refused. Demand
-must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+must be finite and nonnegative (use NA for unknown) unless \code{snap = TRUE},
 which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
@@ -29,26 +29,26 @@ which ignores other cells.}
 With demand groups, either one stack shared by every group or a list
 of stacks named by the groups (for example one per travel mode); the
 stacks of all groups must name the same facilities in the same order
-and have the same geometry (reorder with `x[[names(first)]]`).}
+and have the same geometry (reorder with \code{x[[names(first)]]}).}
 
 \item{decay_params}{List of parameters for decay function (with demand
 groups, one list shared by every group, or a list of such lists named
 by the groups):
 \itemize{
-  \item method: "gaussian", "exponential", "power" or "binary", a
-    custom decay function, or a kernel declared with
-    \code{\link{decay_kernel}}. Weights must be finite where the
-    distance is finite, so power decay needs a positive minimum
-    distance
-  \item sigma: decay parameter controlling the rate of distance decay
-  \item Additional parameters passed to custom decay functions
+\item method: "gaussian", "exponential", "power" or "binary", a
+custom decay function, or a kernel declared with
+\code{\link{decay_kernel}}. Weights must be finite where the
+distance is finite, so power decay needs a positive minimum
+distance
+\item sigma: decay parameter controlling the rate of distance decay
+\item Additional parameters passed to custom decay functions
 }}
 
 \item{demand_normalize}{Character specifying normalization method:
 \itemize{
-  \item "identity": No normalization (original weights)
-  \item "standard": Weights sum to 1 (prevents demand inflation)
-  \item "semi": Normalize only when sum > 1 (prevents deflation)
+\item "identity": No normalization (original weights)
+\item "standard": Weights sum to 1 (prevents demand inflation)
+\item "semi": Normalize only when sum > 1 (prevents deflation)
 }}
 
 \item{id_col}{Character; column name for facility IDs if supply is a data.frame}
@@ -61,18 +61,18 @@ by the groups):
 }
 \value{
 A spax object containing:
-       \itemize{
-         \item accessibility: SpatRaster of accessibility scores. With
-           demand groups, the layers are named `<measure>.<group>` for every
-           group and `<measure>.all` for the overall layer, measure by measure
-         \item type: Character string "E2SFCA"
-         \item parameters: List of model parameters used. With demand groups
-           it also holds `groups` (the group IDs) and `layers` (a data frame
-           of the columns `layer`, `measure` and `group`, the group being
-           `"all"` for the overall layer)
-         \item facilities: data.frame of facility-level information
-         \item call: The original function call
-       }
+\itemize{
+\item accessibility: SpatRaster of accessibility scores. With
+demand groups, the layers are named \verb{<measure>.<group>} for every
+group and \verb{<measure>.all} for the overall layer, measure by measure
+\item type: Character string "E2SFCA"
+\item parameters: List of model parameters used. With demand groups
+it also holds \code{groups} (the group IDs) and \code{layers} (a data frame
+of the columns \code{layer}, \code{measure} and \code{group}, the group being
+\code{"all"} for the overall layer)
+\item facilities: data.frame of facility-level information
+\item call: The original function call
+}
 }
 \description{
 Implements the Enhanced Two-Step Floating Catchment Area (E2SFCA) method as proposed
@@ -84,18 +84,24 @@ realistic measures of spatial accessibility to services.
 The E2SFCA method enhances the original 2SFCA by introducing:
 
 Step 1: For each facility j:
-* Weight demand points by distance decay: Wd(dij)
-* Calculate supply-to-demand ratio Rj = Sj/sum(Pi * Wd(dij))
+\itemize{
+\item Weight demand points by distance decay: Wd(dij)
+\item Calculate supply-to-demand ratio Rj = Sj/sum(Pi * Wd(dij))
+}
 
 Step 2: For each demand location i:
-* Weight facility ratios by distance decay: Wr(dij)
-* Calculate accessibility score Ai = sum(Rj * Wr(dij))
+\itemize{
+\item Weight facility ratios by distance decay: Wr(dij)
+\item Calculate accessibility score Ai = sum(Rj * Wr(dij))
+}
 
 Key improvements over original 2SFCA:
-1. Distance decay within catchments
-2. Differentiated travel behavior in demand vs. access phases
-3. Smoother accessibility surfaces
-4. More realistic representation of access barriers
+\enumerate{
+\item Distance decay within catchments
+\item Differentiated travel behavior in demand vs. access phases
+\item Smoother accessibility surfaces
+\item More realistic representation of access barriers
+}
 
 The method supports various distance decay functions and normalization approaches
 to handle different accessibility scenarios and prevent demand overestimation
@@ -103,31 +109,31 @@ in overlapping service areas.
 }
 \section{Demand groups}{
 
-Give `demand` as a named list of single-layer rasters (for example age
+Give \code{demand} as a named list of single-layer rasters (for example age
 bands) to let several groups compete for the same facilities. The names are
-the group IDs: unique, non-empty, not `"all"` and without a `.`; all rasters
+the group IDs: unique, non-empty, not \code{"all"} and without a \code{.}; all rasters
 need the same geometry. A multi-layer raster is not taken as groups.
 
 Step 1 sums, over all groups, the demand that reaches each facility, with
 the demand weights of each group; step 2 gives each group its own
 accessibility from the shared ratios, with its own weights. The result has
-one layer per group, and an overall layer `<measure>.all`: the average of
+one layer per group, and an overall layer \verb{<measure>.all}: the average of
 the group scores weighted by the demand of the cell. A group with demand in
 a cell that its travel cannot reach counts with accessibility 0 in the
 overall layer; the overall layer is NA where any group's demand is missing
 or the total demand is 0. With one group the group layer equals the
 ungrouped result.
 
-`decay_params` and `distance` (and `selection_params` of
-[spax_3sfca()] and [spax_huff2sfca()], `threshold` of [spax_2sfca()]) are
+\code{decay_params} and \code{distance} (and \code{selection_params} of
+\code{\link[=spax_3sfca]{spax_3sfca()}} and \code{\link[=spax_huff2sfca]{spax_huff2sfca()}}, \code{threshold} of \code{\link[=spax_2sfca]{spax_2sfca()}}) are
 each either shared by every group or given per group. An argument is per
-group when it is a list (for `threshold`, a named numeric vector) whose
+group when it is a list (for \code{threshold}, a named numeric vector) whose
 names are the group IDs, in any order; names that match only some of the
 groups are refused. Any other value is shared and checked as for one
-group. Pass a shared `distance` as one object, so that it is read once. A
+group. Pass a shared \code{distance} as one object, so that it is read once. A
 plain-function decay builds a whole in-memory weight raster for each group.
-`demand_normalize`, `indicator_names`, `id_col`, `supply_cols` and the
-attractiveness of [spax_huff2sfca()] are shared.
+\code{demand_normalize}, \code{indicator_names}, \code{id_col}, \code{supply_cols} and the
+attractiveness of \code{\link[=spax_huff2sfca]{spax_huff2sfca()}} are shared.
 }
 
 \examples{
@@ -203,11 +209,13 @@ plot(result_groups$accessibility)
 \references{
 Luo, W., & Qi, Y. (2009). An enhanced two-step floating catchment area (E2SFCA)
 method for measuring spatial accessibility to primary care physicians.
-*Health & Place*, *15*(4), 1100-1107.
+\emph{Health & Place}, \emph{15}(4), 1100-1107.
 https://doi.org/10.1016/j.healthplace.2009.06.002
 }
 \seealso{
-* [spax_2sfca()] for the original method without distance decay
-* [compute_access()] for more flexible accessibility calculations
-* [calc_decay()] for available decay functions
+\itemize{
+\item \code{\link[=spax_2sfca]{spax_2sfca()}} for the original method without distance decay
+\item \code{\link[=compute_access]{compute_access()}} for more flexible accessibility calculations
+\item \code{\link[=calc_decay]{calc_decay()}} for available decay functions
+}
 }

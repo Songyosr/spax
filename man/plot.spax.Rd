@@ -9,13 +9,13 @@
 \arguments{
 \item{x}{A spax object containing accessibility results}
 
-\item{...}{Additional arguments passed to [terra::plot()]. Common options include:
+\item{...}{Additional arguments passed to \code{\link[terra:plot]{terra::plot()}}. Common options include:
 \itemize{
-  \item y: which layers to plot (number or name)
-  \item main: title(s) for the plot(s)
-  \item col: color scheme
-  \item breaks: break points for the legend
-  \item legend: logical; whether to show the legend
+\item y: which layers to plot (number or name)
+\item main: title(s) for the plot(s)
+\item col: color scheme
+\item breaks: break points for the legend
+\item legend: logical; whether to show the legend
 }}
 }
 \value{
@@ -26,7 +26,7 @@ Plot method for spax objects. This function visualizes the accessibility surface
 contained in a spax object using the terra plotting engine.
 }
 \details{
-This is a simple wrapper around [terra::plot()] for SpatRaster objects.
+This is a simple wrapper around \code{\link[terra:plot]{terra::plot()}} for SpatRaster objects.
 For full control over plot appearance, including layer selection, color schemes,
 legends, and additional map elements, see the documentation of the terra
 package (?terra::plot).
@@ -62,5 +62,5 @@ plot(result, main = c("GPs excluding trainees", "All GPs"),
 plot(result, y = "gp_fte_extg", main = "Access to GPs")
 }
 \seealso{
-[terra::plot()] for the complete set of plotting parameters and options
+\code{\link[terra:plot]{terra::plot()}} for the complete set of plotting parameters and options
 }

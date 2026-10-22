@@ -11,6 +11,7 @@
 #' @param ... Additional arguments passed to terra::writeRaster()
 #' @return Invisibly returns the input object
 #' @export
+#' @md
 save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
   # Input validation
   if (inherits(x, "spax_allocation")) {

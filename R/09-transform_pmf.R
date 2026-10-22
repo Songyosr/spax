@@ -63,6 +63,7 @@
 #' result$total
 #'
 #' @export
+#' @md
 transform_pmf <- function(x, value_col = NULL, template = NULL,
                           return_total = FALSE, snap = FALSE) {
   if (!snap) {

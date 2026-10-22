@@ -21,7 +21,7 @@ save_spax(x, file, dir = FALSE, overwrite = FALSE, ...)
 Invisibly returns the input object
 }
 \description{
-Saves the result of a floating catchment analysis (an object of class `spax`)
-with its rasters. A result of [spax()] (a `spax_allocation`) is saved with
-[saveRDS()].
+Saves the result of a floating catchment analysis (an object of class \code{spax})
+with its rasters. A result of \code{\link[=spax]{spax()}} (a \code{spax_allocation}) is saved with
+\code{\link[=saveRDS]{saveRDS()}}.
 }
