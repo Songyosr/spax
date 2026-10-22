@@ -15,8 +15,9 @@ knitr::opts_chunk$set(
   fig.width = 7,
   fig.height = 4.5,
   dpi = 100,
-  # cairo writes smaller PNG files than the default macOS device
-  dev.args = if (capabilities("cairo")) list(type = "cairo") else list()
+  # cairo writes smaller PNG files than the default macOS device (png only;
+  # other devices, such as pkgdown's, get no extra arguments)
+  dev.args = if (capabilities("cairo")) list(png = list(type = "cairo")) else list()
 )
 ```
 
