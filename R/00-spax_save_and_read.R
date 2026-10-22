@@ -8,13 +8,13 @@
 #' @param file Character; path to save the object (without extension)
 #' @param dir Logical; whether to create a directory with same name for files (default FALSE)
 #' @param overwrite Logical; whether to overwrite existing files/directory (default FALSE)
-#' @param datatype Character; the data type of the raster file, passed to
-#'   [terra::writeRaster()]. The default `"FLT8S"` (double precision) keeps the
-#'   values: [read_spax()] returns them as they were. `"FLT4S"` (single
-#'   precision, terra's own default) writes files about half the size, with
-#'   values rounded to about seven significant digits (a relative change of up
-#'   to 6e-8).
 #' @param ... Additional arguments passed to [terra::writeRaster()]
+#' @param datatype Character; the data type of the raster file, passed to
+#'   [terra::writeRaster()] (give it by name). The default `"FLT8S"` (double
+#'   precision) keeps the values: [read_spax()] returns them as they were.
+#'   `"FLT4S"` (single precision, terra's own default) writes files about half
+#'   the size, with values rounded to about seven significant digits (a relative
+#'   change of up to 6e-8).
 #' @return Invisibly returns the input object
 #' @examples
 #' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
@@ -34,8 +34,8 @@
 #' unlink(paste0(path, c("_spax.rds", "_accessibility.tif")))
 #' @export
 #' @md
-save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, datatype = "FLT8S",
-                      ...) {
+save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...,
+                      datatype = "FLT8S") {
   # Input validation
   if (inherits(x, "spax_allocation")) {
     stop("save_spax() saves FCA results; save an allocation result with saveRDS()",

@@ -45,7 +45,9 @@
   unknown travel use the new name.
 * `fit_allocation()` takes a one-dimensional array or table, such as the result
   of `tapply()` or `table()`, as the vector of observed counts named by its
-  names, as `obs_totals()` does; it was refused.
+  names, as `obs_totals()` does; it was refused. As there, `tapply()` gives `NA`,
+  an unobserved count, for a factor level without records: use `default = 0`
+  when no record means a count of zero.
 * The results of `evaluate_allocation()` and the outputs a fit keeps
   (`fit$best$outputs`, and those of `spax()` results) name their vectors: by
   facility ID `target`, `utilization`, `attractiveness` and

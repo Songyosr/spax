@@ -134,6 +134,15 @@ test_that("fit_allocation() reads a one-dimensional array or table as the named 
     expect_identical(fit$best$observed, ref$best$observed)
     expect_null(dim(fit$best$observed))
   }
+  # A table() of records holds whole counts as integers: the fit is the fit to the same
+  # counts as a named vector.
+  counted <- table(rep(names(f$observed), round(f$observed)))
+  expect_type(counted, "integer")
+  as_vector <- stats::setNames(as.vector(counted), names(counted))
+  from_counted <- fit_with(counted)
+  expect_identical(coef(from_counted), coef(fit_with(as_vector)))
+  expect_identical(from_counted$best$observed, fit_with(as_vector)$best$observed)
+  expect_type(from_counted$best$observed, "integer")
   # The default search reads it the same way.
   expect_identical(coef(fit_allocation(f$model, from_tapply, loss = "poisson")),
                    coef(fit_allocation(f$model, f$observed, loss = "poisson")))

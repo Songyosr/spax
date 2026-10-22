@@ -806,7 +806,8 @@ test_that("a prediction prints its origins, demand, travel rule and outputs", {
   range_text <- function(v, digits = 4) {
     known <- v[!is.na(v)]
     paste0(format(min(known), digits = digits), " to ", format(max(known), digits = digits),
-           " (", length(known), " of ", length(v), " origins)")
+           " (", length(known), " of ", length(v), if (length(v) == 1L) " origin)" else
+             " origins)")
   }
   pred <- predict_allocation(solved, request, outputs = c("rho", "allocation"))
   lines <- utils::capture.output(shown <- withVisible(print(pred)))
@@ -815,7 +816,7 @@ test_that("a prediction prints its origins, demand, travel rule and outputs", {
   expect_identical(lines, c(
     "<allocation prediction> 3 origins x 3 facilities",
     "  origins     2 valid, 1 unknown_travel",
-    "  demand      not given",
+    "  demand      unknown for every origin",
     "  travel      an unknown travel time makes the origin unknown",
     "  outputs",
     sprintf("    %-10s  %s", "rho", range_text(pred$outputs$rho)),
@@ -836,5 +837,14 @@ test_that("a prediction prints its origins, demand, travel rule and outputs", {
   # An output without a value on any origin says so.
   none <- pred
   none$outputs$rho[] <- NA_real_
-  expect_true(sprintf("    %-10s  %s", "rho", "no values") %in% utils::capture.output(print(none)))
+  none$outputs$allocation[] <- NA_real_
+  expect_identical(utils::capture.output(print(none))[6:7],
+                   c(sprintf("    %-10s  %s", "rho", "no values"),
+                     sprintf("    %-10s  %s", "allocation", "3 origins x 3 facilities, no values")))
+  # One origin is singular.
+  one <- predict_allocation(solved, request[1, , drop = FALSE], outputs = "rho")
+  lines <- utils::capture.output(print(one))
+  expect_identical(lines[1], "<allocation prediction> 1 origin x 3 facilities")
+  expect_identical(lines[6], sprintf("    %-3s  %s", "rho", range_text(one$outputs$rho)))
+  expect_match(lines[6], "(1 of 1 origin)", fixed = TRUE)
 })

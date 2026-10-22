@@ -78,6 +78,9 @@ test_that("save_spax() writes double precision unless another datatype is given"
   rounded <- terra::values(read_spax(single)$accessibility)
   expect_false(isTRUE(all.equal(rounded, values, tolerance = 0)))
   expect_equal(rounded, values, tolerance = 1e-7)
+  # datatype comes after `...`, so positional and abbreviated arguments match as before
+  expect_identical(names(formals(save_spax)),
+                   c("x", "file", "dir", "overwrite", "...", "datatype"))
 })
 
 test_that("save_spax and read_spax refuse invalid objects and missing files", {

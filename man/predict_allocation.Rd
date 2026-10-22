@@ -61,8 +61,8 @@ map, so inspect the numeric validity result before interpreting the map.}
 
 \item{x}{For \code{print()}, a prediction: the \code{ae_clm_prediction} of
 \code{predict_allocation()}. Its print shows the number of origins with each
-status, whether demand was given, how unknown travel was treated, and the
-range of each requested vector over the origins with a value.}
+status, what is known of their demand, how unknown travel was treated, and
+the range of each requested vector over the origins with a value.}
 
 \item{digits}{Significant digits of the printed values.}
 

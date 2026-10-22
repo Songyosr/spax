@@ -680,7 +680,10 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   declared `smooth = FALSE` cannot be fitted.
 #' @param observed Numeric vector or origin-by-facility matrix. A
 #'   one-dimensional array or table, such as the result of [tapply()] or
-#'   [table()], is read as the vector named by its names. Named axes match
+#'   [table()], is read as the vector named by its names. For a factor level
+#'   without records [tapply()] gives `NA`, which the fit reads as unobserved:
+#'   give it `default = 0` (or use [table()]) when no record means a count of
+#'   zero. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
 #'   use NA for unobserved entries. The count-valued `utilization`, `flow`,
 #'   `utilization_by_group` and outside-count targets reject negative nonmissing
@@ -1050,9 +1053,11 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
 #'   hard constraint on expected utilization. In `outputs` the vectors are named
-#'   by facility ID (`target`, `utilization`, `attractiveness`) or by origin ID
-#'   (`access`, `outside_share`), and the matrices by origin (rows) and facility
-#'   (columns).
+#'   by facility ID (`target`, `utilization`, `attractiveness`, and
+#'   `utilization_outside`, whose last element is `"(outside)"`) or by origin ID
+#'   (`access`, `outside_share`), and the matrices by their two axes: origins by
+#'   facilities (`allocation`, `flow`) and, with demand groups, facilities or
+#'   origins by groups.
 #' @examples
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
@@ -1213,8 +1218,8 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
 #' @rdname predict_allocation
 #' @param x For `print()`, a prediction: the `ae_clm_prediction` of
 #'   `predict_allocation()`. Its print shows the number of origins with each
-#'   status, whether demand was given, how unknown travel was treated, and the
-#'   range of each requested vector over the origins with a value.
+#'   status, what is known of their demand, how unknown travel was treated, and
+#'   the range of each requested vector over the origins with a value.
 #' @param digits Significant digits of the printed values.
 #' @param ... Unused.
 #' @export
@@ -1226,16 +1231,20 @@ print.ae_clm_prediction <- function(x, digits = 4, ...) {
     n <- table(factor(values, levels = levels))
     paste(.format_total(as.vector(n)), names(n), collapse = ", ")
   }
-  n <- length(x$origin_ids)
-  cat("<allocation prediction> ", .format_total(n), if (n == 1L) " origin" else " origins",
-      " x ", .format_total(length(x$facility_ids)), " facilities\n", sep = "")
+  count_of <- function(n, one, many) paste(.format_total(n), if (n == 1L) one else many)
+  dimensions <- function(rows, cols) {
+    paste(count_of(rows, "origin", "origins"), "x", count_of(cols, "facility", "facilities"))
+  }
+  cat("<allocation prediction> ", dimensions(length(x$origin_ids), length(x$facility_ids)),
+      "\n", sep = "")
   line("origins", counts(x$validity$status, "valid"))
   demand <- x$validity[["demand_status"]]
   if (!is.null(demand)) {
-    line("demand", if (all(demand == "unknown")) "not given" else
+    line("demand", if (all(demand == "unknown")) "unknown for every origin" else
       counts(demand, c("positive", "zero", "unknown")))
   }
-  line("travel", if (identical(x$policy$missing_travel, "legacy_zero")) {
+  # "omit" is stored under its older name, "legacy_zero".
+  line("travel", if (isTRUE(x$policy$missing_travel %in% c("legacy_zero", "omit"))) {
     "pairs with an unknown travel time left out (\"omit\")"
   } else {
     "an unknown travel time makes the origin unknown"
@@ -1245,14 +1254,14 @@ print.ae_clm_prediction <- function(x, digits = 4, ...) {
   for (name in names(x$outputs)) {
     value <- x$outputs[[name]]
     text <- if (!is.null(dim(value))) {
-      paste(nrow(value), "origins x", ncol(value), "facilities")
+      paste0(dimensions(nrow(value), ncol(value)), if (all(is.na(value))) ", no values")
     } else if (all(is.na(value))) {
       "no values"
     } else {
       known <- value[!is.na(value)]
       paste0(format(min(known), digits = digits), " to ", format(max(known), digits = digits),
-             " (", .format_total(length(known)), " of ", .format_total(length(value)),
-             " origins)")
+             " (", .format_total(length(known)), " of ",
+             count_of(length(value), "origin", "origins"), ")")
     }
     cat(sprintf("    %-*s  %s\n", width, name, text))
   }

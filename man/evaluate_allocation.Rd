@@ -40,9 +40,11 @@ An \code{ae_equilibrium} with its portable prediction snapshot
 and compact \code{coverage}. Coverage uses raw supply units without kappa;
 proportional attributed capacity is not a delivered-service measure or a
 hard constraint on expected utilization. In \code{outputs} the vectors are named
-by facility ID (\code{target}, \code{utilization}, \code{attractiveness}) or by origin ID
-(\code{access}, \code{outside_share}), and the matrices by origin (rows) and facility
-(columns).
+by facility ID (\code{target}, \code{utilization}, \code{attractiveness}, and
+\code{utilization_outside}, whose last element is \code{"(outside)"}) or by origin ID
+(\code{access}, \code{outside_share}), and the matrices by their two axes: origins by
+facilities (\code{allocation}, \code{flow}) and, with demand groups, facilities or
+origins by groups.
 }
 \description{
 Solves once and constructs compact coverage from the saved evaluated outputs.
