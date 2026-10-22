@@ -73,6 +73,16 @@ jobs:
           error-on: '"warning"'
           upload-results: true
           artifact-name: r-check-quick
+      # The check above runs in CRAN mode, which skips the skip_on_cran() blocks
+      # (slow, or sensitive to R internals); run the whole suite once with them.
+      - name: Tests skipped in CRAN mode
+        env:
+          NOT_CRAN: "true"
+        shell: Rscript {0}
+        run: |
+          res <- as.data.frame(testthat::test_local(".", reporter = "summary",
+                                                    stop_on_failure = TRUE))
+          cat("expectations:", sum(res$nb), "skipped:", sum(res$skipped), "\n")
 
   check:
     name: ${{ matrix.config.id }} (R ${{ matrix.config.r }})

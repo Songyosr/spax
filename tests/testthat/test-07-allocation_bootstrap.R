@@ -1147,6 +1147,8 @@ test_that("a declared kernel whose optimum is on its bound fits like the built-i
 })
 
 test_that("replicates on a declared bound are kept, as for the built-in Gaussian", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   f <- alloc_generated_case()
   # Generated with sigma = 10.2 (v0 = 25), whose Poisson estimate is 10.16: close
   # enough to the lower bound of 10 that replicates often fall on it. The search
@@ -1181,6 +1183,8 @@ test_that("replicates on a declared bound are kept, as for the built-in Gaussian
 })
 
 test_that("a declared bound that exp(log()) cannot reach exactly still holds boundary draws", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   f <- alloc_generated_case()
   expect_lt(exp(log(7.6)), 7.6)  # the case this block is about
   y <- colSums(round(clm_oracle(f$distance, f$demand, f$supply, 8, 25)$flow))
