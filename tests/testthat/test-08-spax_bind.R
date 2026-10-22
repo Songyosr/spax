@@ -496,7 +496,7 @@ test_that("prep_data() is prepare_allocation() with travel for distance", {
     c("demand", "supply", "travel", "origin_ids", "facility_ids", "included",
       "missing_demand", "missing_travel", "spatial", "metadata", "id_col", "supply_cols"))
   expect_identical(formals(prep_data)$missing_demand, quote(c("error", "exclude")))
-  expect_identical(formals(prep_data)$missing_travel, quote(c("error", "legacy_zero")))
+  expect_identical(formals(prep_data)$missing_travel, quote(c("error", "omit", "legacy_zero")))
   f <- alloc_small_case()
   metadata <- list(demand_units = "requests", travel_units = "minutes")
   expect_identical(
@@ -601,7 +601,7 @@ test_that("prepared inputs print the count of active origins with unknown travel
     "<spax data> 5 origins (3 active; 1 with zero demand, 1 with unknown demand) x 3 facilities",
     "  demand      130",
     "  travel      minutes; unknown for 1 active origin",
-    "  policies    missing demand: exclude; missing travel: legacy_zero"))
+    "  policies    missing demand: exclude; missing travel: omit"))
   travel["o5", "f3"] <- NA
   two <- prep_data(f$demand, f$supply, travel, missing_demand = "exclude",
                    missing_travel = "legacy_zero")

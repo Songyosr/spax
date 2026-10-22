@@ -10,7 +10,7 @@
   origin_ids = rownames(distance),
   demand = NULL,
   outputs = c("rho", "A", "abar"),
-  missing_travel = c("unknown", "legacy_zero"),
+  missing_travel = c("unknown", "omit", "legacy_zero"),
   spatial = NULL
 )
 }
@@ -19,7 +19,7 @@ Reads the portable prediction snapshot of a fixed solve or fitted object.
 Requested rows do not change saved facility loads or rerun fitting/solving.
 Named travel axes and demand are aligned independently to complete IDs.
 Positive infinity is a known absent edge. Unknown travel makes the whole
-normalized row unknown unless explicit \code{legacy_zero} imputation is requested.
+normalized row unknown unless explicit \code{omit} imputation is requested.
 Legacy finite-kernel guards are used only with that explicit request and a
 compatible legacy source; their use is flagged. Negative travel always fails.
 }

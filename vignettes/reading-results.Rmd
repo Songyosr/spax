@@ -191,7 +191,7 @@ Only the `r sum(demand_gaps > 0 & included, na.rm = TRUE)` active areas, with
 known positive demand and not left out, enter the model. The print counts the
 other three separately. In travel, `Inf` marks a pair known to have no link and
 `NA` an unknown time. On numeric data, `prep_data()` stops at unknown travel
-unless you set `missing_travel = "legacy_zero"`, which leaves those pairs out.
+unless you set `missing_travel = "omit"`, which leaves those pairs out.
 An FCA index on a grid drops unknown times from its sums, so an unknown time
 counts as no access. Mask such cells first if they are not truly unreachable.
 [Bringing your own data](data-prep.html) shows both.

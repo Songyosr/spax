@@ -347,17 +347,16 @@ prep_data(all_demand, all_supply, cornwall_travel)
 ```
 
 Here an origin is a small area, where people live, and an active origin is
-one with demand above zero. The error calls an area-practice pair an edge.
-Unknown travel from an active origin is an error unless you say what it means. There are
-three ways to say it. `missing_travel = "legacy_zero"` leaves
-the unknown pairs out of the model, as the FCA indices do, and records that it
+one with demand above zero. Unknown travel from an active origin is an error
+unless you say what it means. There are three ways to say it.
+`missing_travel = "omit"` leaves the unknown pairs out of the model, as the FCA indices do, and records that it
 did. A travel time of `Inf` declares a pair known to have no link. That is a
 known value, so `prep_data()` accepts it. Or you drop the rows and columns
 with unknown times. The code shows the first two.
 
 ```{r allocation-policies}
 # Leave the unknown pairs out, and record that policy
-prep_data(all_demand, all_supply, cornwall_travel, missing_travel = "legacy_zero")
+prep_data(all_demand, all_supply, cornwall_travel, missing_travel = "omit")
 
 # Declare the unknown pairs known to have no link
 no_link <- replace(cornwall_travel, is.na(cornwall_travel), Inf)
@@ -369,7 +368,7 @@ area to the Scilly practice, and the Scilly area to the mainland practices)
 and the policy that left them out. The second records none. In the allocation
 model both give the pair no weight, so a model gives the same results with
 either. They differ in what the data records: an unknown time for
-`legacy_zero`, a known absence for `Inf`.
+`omit`, a known absence for `Inf`.
 
 The guides drop the islands instead, as for the grid, with the small-area
 recipe from [The Cornwall GP example

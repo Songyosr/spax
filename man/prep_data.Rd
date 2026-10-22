@@ -16,7 +16,7 @@ prep_data(
   facility_ids = NULL,
   included = NULL,
   missing_demand = c("error", "exclude"),
-  missing_travel = c("error", "legacy_zero"),
+  missing_travel = c("error", "omit", "legacy_zero"),
   spatial = NULL,
   metadata = list(),
   id_col = NULL,
@@ -65,7 +65,9 @@ from known zero or explicit exclusion. Positive included demand remains
 active even when every inside edge is absent.}
 
 \item{missing_travel}{Default \code{"error"} rejects NA/NaN on active fit rows.
-\code{"legacy_zero"} explicitly omits unknown edges and records that policy.
+\code{"omit"} leaves out unknown pairs (a facility with unknown travel is out of
+reach from that origin) and records that policy; \code{"legacy_zero"} is its
+older name and does the same.
 Finite nonnegative travel is known, positive infinity is an absent edge,
 and negative travel is invalid. Omitted rows are validated when requested
 by prediction. Model-specific finite domains, such as positive power
