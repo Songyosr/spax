@@ -261,26 +261,26 @@ print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-#' Plot AE problem calibration diagnostics
-#' @method plot ae_problem_nfxp_fit
-#' @noRd
+#' @rdname plot.ae_multistart_fit
+#' @order 2
 #' @exportS3Method graphics::plot
+#' @md
 plot.ae_problem_nfxp_fit <- function(x,
                                      type = c("fit", "convergence", "state"),
                                      ...) {
   type <- match.arg(type)
+  # Each `draw` takes the default labels as arguments after `...`, so `main`, `xlab`
+  # and `ylab` given by the caller replace them (matched exactly, never partially).
   if (type == "fit") {
     if (is.null(x$observed) || length(x$observed) != length(x$predicted)) {
       .stop("fit plot requires stored observed values")
     }
-    graphics::plot(
-      as.numeric(x$observed),
-      as.numeric(x$predicted),
-      xlab = "Observed",
-      ylab = "Predicted",
-      main = "AE fit",
-      ...
-    )
+    draw <- function(..., xlab = "Observed", ylab = "Fitted",
+                     main = "Observed and fitted values") {
+      graphics::plot(as.numeric(x$observed), as.numeric(x$predicted),
+                     xlab = xlab, ylab = ylab, main = main, ...)
+    }
+    draw(...)
     lim <- range(c(x$observed, x$predicted), finite = TRUE)
     graphics::abline(a = 0, b = 1, col = "gray50", lty = 2)
     invisible(lim)
@@ -289,23 +289,23 @@ plot.ae_problem_nfxp_fit <- function(x,
     if (is.null(history) || nrow(history) == 0L) {
       .stop("convergence plot requires stored solver history")
     }
-    graphics::plot(
-      history$iter,
-      history$error,
-      type = "l",
-      xlab = "Iteration",
-      ylab = "Error",
-      main = "AE inner convergence",
-      ...
-    )
+    # Points as well as lines: a static model converges in a single iteration.
+    draw <- function(..., xlab = "Iteration", ylab = "Error",
+                     main = "Solver convergence at the fitted values") {
+      graphics::plot(history$iter, history$error, type = "b",
+                     xlab = xlab, ylab = ylab, main = main, ...)
+    }
+    draw(...)
     invisible(history)
   } else {
-    graphics::hist(
-      as.numeric(x$state),
-      xlab = x$state_name,
-      main = "AE final state",
-      ...
-    )
+    # The state of the public allocation models is the facilities' attractiveness.
+    public <- .is_public_allocation(x)
+    draw <- function(..., xlab = if (public) "Attractiveness" else x$state_name,
+                     main = if (public) "Attractiveness at the fitted values" else
+                       "State at the fitted values") {
+      graphics::hist(as.numeric(x$state), xlab = xlab, main = main, ...)
+    }
+    draw(...)
     invisible(x$state)
   }
 }

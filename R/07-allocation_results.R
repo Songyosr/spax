@@ -166,10 +166,27 @@ print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
 }
 
 #' Plot saved diagnostics from the selected allocation fit
-#' @param x An allocation multistart fit.
-#' @param type Existing selected-fit diagnostic to display.
-#' @param ... Arguments forwarded to the selected-fit plot method.
-#' @return The selected diagnostic method's result, invisibly.
+#'
+#' `plot()` of a fit draws a diagnostic of its selected fit, `fit$best`, which has
+#' the same method. The plots read what the fit saved; nothing is recomputed.
+#' @param x An allocation fit from [fit_allocation()] (an `ae_multistart_fit`), or
+#'   its selected fit `fit$best`.
+#' @param type The diagnostic to draw:
+#'   * `"fit"` (the default): the observed against the fitted values of the
+#'     fitted output (the facility totals, or every cell of a flow matrix), with
+#'     the line where they are equal.
+#'   * `"convergence"`: the error of the equilibrium solver at each iteration of
+#'     the evaluation at the fitted values (a single iteration for the models of
+#'     [clm_allocation()] and [huff_allocation()], whose state does not depend on
+#'     the allocation).
+#'   * `"state"`: a histogram of the model state at the fitted values, the
+#'     attractiveness of the facilities.
+#' @param ... Graphics arguments passed to [graphics::plot()] (`"fit"`,
+#'   `"convergence"`) or [graphics::hist()] (`"state"`), such as `col`, `pch` or
+#'   `breaks`. `main`, `xlab` and `ylab` replace the default title and axis labels.
+#' @return Invisibly: for `"fit"` the range of the plotted values, for
+#'   `"convergence"` the solver history (a data frame with one row per
+#'   iteration), for `"state"` the state at the fitted values.
 #' @examples
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
@@ -187,12 +204,15 @@ print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
 #' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
 #'                       loss = "poisson")
 #'
-#' # Observed against modeled registrations at each practice
+#' # Observed against modeled registrations at each practice, with a title of
+#' # your own
 #' plot(fit)
+#' plot(fit, main = "West Cornwall practices", pch = 19)
 #'
 #' # The state of this model is the attractiveness of the practices: their GP
 #' # FTE, since kappa and beta are 1
 #' plot(fit, type = "state", breaks = 10)
+#' @order 1
 #' @exportS3Method graphics::plot
 #' @md
 plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), ...) {
