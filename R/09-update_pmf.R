@@ -20,8 +20,8 @@
 #' @param density Logical; if TRUE return density surface instead of PMF
 #' @param snap Logical; if TRUE skip validation
 #' @return SpatRaster containing either:
-#'         - Posterior PMF if density = FALSE
-#'         - Posterior density if density = TRUE
+#'   - Posterior PMF if `density = FALSE`
+#'   - Posterior density if `density = TRUE`
 #'
 #' @examples
 #' pop <- read_spax_example("cornwall_pop.tif")
@@ -42,6 +42,7 @@
 #' prior <- transform_pmf(pop)
 #' posterior <- update_pmf(prior, likelihood)
 #' @export
+#' @md
 update_pmf <- function(prior, likelihood, normalize = TRUE,
                        density = FALSE, snap = FALSE) {
   # Input validation

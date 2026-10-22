@@ -7,7 +7,7 @@
 calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 }
 \arguments{
-\item{weights}{Multi-layer SpatRaster of spatial weights (e.g., from calc_decay)}
+\item{weights}{Multi-layer SpatRaster of spatial weights (e.g., from \code{\link[=calc_decay]{calc_decay()}})}
 
 \item{attractiveness}{Optional numeric vector of facility attractiveness values}
 
@@ -15,10 +15,12 @@ calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 
 \item{a0}{Non-negative numeric value representing outside option weight (default = 0)}
 
-\item{snap}{Logical; if TRUE enables fast computation mode with:
-- Minimal validation
-- Essential preprocessing only
-Only use when inputs are known to be valid.}
+\item{snap}{Logical; if \code{TRUE}, a fast computation mode, only for inputs known
+to be valid, with:
+\itemize{
+\item Minimal validation
+\item Essential preprocessing only
+}}
 }
 \value{
 SpatRaster stack of choice probabilities (layers sum to 1 at each location)

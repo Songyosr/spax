@@ -9,30 +9,30 @@
 #'   - A PMF where values sum to 1
 #'   - Raw density values that will be converted to PMF (except in snap mode)
 #' @param n Integer or NULL. Fixed number of samples for deterministic sampling.
-#'        If specified, overrides probabilistic sampling parameters.
+#'   If specified, overrides probabilistic sampling parameters.
 #' @param size Integer or NULL. Population size parameter for probability distributions.
-#'        If NULL and input is density (not PMF), the rounded total of the data
-#'        is used.
+#'   If NULL and input is density (not PMF), the rounded total of the data
+#'   is used.
 #' @param prob Numeric between 0 and 1. Probability parameter for sampling methods
-#'        (e.g., disease prevalence, detection probability).
+#'   (e.g., disease prevalence, detection probability).
 #' @param method Character string or function specifying sampling method:
-#'   - "poisson": Random size with mean = size * prob
-#'   - "binomial": Random size from binomial(size, prob)
-#'   - "nbinom": Random size from negative binomial(size, prob)
-#'   - custom function: Must return vector of length 'iterations'
+#'   - `"poisson"`: Random size with mean `size * prob`
+#'   - `"binomial"`: Random size from binomial(`size`, `prob`)
+#'   - `"nbinom"`: Random size from negative binomial(`size`, `prob`)
+#'   - custom function: Must return vector of length `iterations`
 #' @param iterations Integer. Number of realizations to generate (default = 1)
 #' @param evolve_prop Numeric between 0 and 1. Controls sample evolution between iterations:
 #'   - 1 (default): Independent sampling, all new samples each iteration
 #'   - 0: No new samples, returns only first iteration
-#'   - (0,1): Proportion of samples that evolve each iteration
+#'   - Between 0 and 1: Proportion of samples that evolve each iteration
 #' @param seed Integer or NULL. Random seed for reproducibility
 #' @param replace_0 Logical. If TRUE, replaces zero values with NA (default = TRUE)
 #' @param snap Logical. If TRUE, enters fast mode with minimal validation (default = FALSE)
 #' @param ... Additional arguments passed to custom sampling function
 #'
-#' @return SpatRaster with one layer per realization (or single layer if evolve_prop = 0),
-#'         containing counts of samples per cell. If replace_0 = TRUE, cells with zero
-#'         counts contain NA.
+#' @return SpatRaster with one layer per realization (or single layer if `evolve_prop = 0`),
+#'   containing counts of samples per cell. If `replace_0 = TRUE`, cells with zero
+#'   counts contain NA.
 #'
 #' @examples
 #' # Population density on a small grid
@@ -56,6 +56,7 @@
 #' )
 #'
 #' @export
+#' @md
 sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                        method = "poisson", iterations = 1,
                        evolve_prop = 1, seed = NULL, replace_0 = TRUE,

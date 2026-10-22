@@ -33,10 +33,10 @@
 #' @param value_col Character; name of column if x is SpatVector
 #' @param template SpatRaster; template for rasterization if x is SpatVector
 #' @param method Character; method to compute reference value:
-#'        - "mean": Compare to mean value (default)
-#'        - "sum": Compare to sum
-#'        - "custom": Compare to provided ref_value
-#' @param ref_value Numeric; custom reference value if method = "custom"
+#'   - `"mean"`: Compare to mean value (default)
+#'   - `"sum"`: Compare to sum
+#'   - `"custom"`: Compare to provided `ref_value`
+#' @param ref_value Numeric; custom reference value if `method = "custom"`
 #' @param standardize Logical; if TRUE return z-scores instead of ratios
 #' @param snap Logical; if TRUE skip validation
 #' @return SpatRaster of likelihood values
@@ -63,6 +63,7 @@
 #'   ref_value = 100
 #' )
 #' @export
+#' @md
 transform_likelihood <- function(x, value_col = NULL, template = NULL,
                                  method = "mean", ref_value = NULL,
                                  standardize = FALSE, snap = FALSE) {

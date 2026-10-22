@@ -43,14 +43,14 @@
 #' implements Huff model logic. Without attractiveness, behaves like standard weight
 #' normalization.
 #'
-#' @param weights Multi-layer SpatRaster of spatial weights (e.g., from calc_decay)
+#' @param weights Multi-layer SpatRaster of spatial weights (e.g., from [calc_decay()])
 #' @param attractiveness Optional numeric vector of facility attractiveness values
 #' @param alpha Numeric parameter for attractiveness sensitivity (default = 1)
 #' @param a0 Non-negative numeric value representing outside option weight (default = 0)
-#' @param snap Logical; if TRUE enables fast computation mode with:
-#'        - Minimal validation
-#'        - Essential preprocessing only
-#'        Only use when inputs are known to be valid.
+#' @param snap Logical; if `TRUE`, a fast computation mode, only for inputs known
+#'   to be valid, with:
+#'   - Minimal validation
+#'   - Essential preprocessing only
 #' @return SpatRaster stack of choice probabilities (layers sum to 1 at each location)
 #' @examples
 #' library(terra)
@@ -81,6 +81,7 @@
 #'   a0 = 0.1
 #' )
 #' @export
+#' @md
 calc_choice <- function(weights, attractiveness = NULL,
                         alpha = 1, a0 = 0, snap = FALSE) {
   # Fast path for internal use

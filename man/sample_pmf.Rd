@@ -20,8 +20,10 @@ sample_pmf(
 }
 \arguments{
 \item{x}{Single-layer SpatRaster representing spatial distribution. Can be either:
-- A PMF where values sum to 1
-- Raw density values that will be converted to PMF (except in snap mode)}
+\itemize{
+\item A PMF where values sum to 1
+\item Raw density values that will be converted to PMF (except in snap mode)
+}}
 
 \item{n}{Integer or NULL. Fixed number of samples for deterministic sampling.
 If specified, overrides probabilistic sampling parameters.}
@@ -34,17 +36,21 @@ is used.}
 (e.g., disease prevalence, detection probability).}
 
 \item{method}{Character string or function specifying sampling method:
-- "poisson": Random size with mean = size * prob
-- "binomial": Random size from binomial(size, prob)
-- "nbinom": Random size from negative binomial(size, prob)
-- custom function: Must return vector of length 'iterations'}
+\itemize{
+\item \code{"poisson"}: Random size with mean \code{size * prob}
+\item \code{"binomial"}: Random size from binomial(\code{size}, \code{prob})
+\item \code{"nbinom"}: Random size from negative binomial(\code{size}, \code{prob})
+\item custom function: Must return vector of length \code{iterations}
+}}
 
 \item{iterations}{Integer. Number of realizations to generate (default = 1)}
 
 \item{evolve_prop}{Numeric between 0 and 1. Controls sample evolution between iterations:
-- 1 (default): Independent sampling, all new samples each iteration
-- 0: No new samples, returns only first iteration
-- (0,1): Proportion of samples that evolve each iteration}
+\itemize{
+\item 1 (default): Independent sampling, all new samples each iteration
+\item 0: No new samples, returns only first iteration
+\item Between 0 and 1: Proportion of samples that evolve each iteration
+}}
 
 \item{seed}{Integer or NULL. Random seed for reproducibility}
 
@@ -55,9 +61,9 @@ is used.}
 \item{...}{Additional arguments passed to custom sampling function}
 }
 \value{
-SpatRaster with one layer per realization (or single layer if evolve_prop = 0),
-        containing counts of samples per cell. If replace_0 = TRUE, cells with zero
-        counts contain NA.
+SpatRaster with one layer per realization (or single layer if \code{evolve_prop = 0}),
+containing counts of samples per cell. If \code{replace_0 = TRUE}, cells with zero
+counts contain NA.
 }
 \description{
 Generates multiple realizations of point patterns from a probability mass function (PMF)

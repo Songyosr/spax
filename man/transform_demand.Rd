@@ -30,10 +30,12 @@ transform_demand(
 \item{snap}{Logical; if TRUE skip validation}
 }
 \value{
-If full_output = FALSE, returns SpatRaster (PMF or density).
-        If full_output = TRUE, returns list with:
-        - surface: SpatRaster (PMF or density)
-        - totals: data.frame with original and redistributed totals by area
+If \code{full_output = FALSE}, returns SpatRaster (PMF or density).
+If \code{full_output = TRUE}, returns list with:
+\itemize{
+\item \code{surface}: SpatRaster (PMF or density)
+\item \code{totals}: data.frame with original and redistributed totals by area
+}
 }
 \description{
 Transforms case count data from vector format into either a probability mass

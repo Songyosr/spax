@@ -53,20 +53,21 @@
 #' a stack of weight rasters. Each layer in the weights represents a different aggregation unit.
 #'
 #' @param values SpatRaster representing values to be aggregated. Can be single or multi-layer.
-#'        If multi-layer, each layer represents a different realization/scenario.
+#'   If multi-layer, each layer represents a different realization/scenario.
 #' @param weights Multi-layer SpatRaster where:
-#'        - Each layer represents one aggregation unit
-#'        - Values are weights (typically 0-1) for aggregation
-#'        - Layer names should match unit IDs
+#'   - Each layer represents one aggregation unit
+#'   - Values are weights (typically 0-1) for aggregation
+#'   - Layer names should match unit IDs
 #' @param na.rm Logical; if TRUE, remove NA values from computation (default = TRUE)
 #' @param simplify Logical; if TRUE, returns vector (single layer) or matrix (multi-layer).
-#'        If FALSE, returns data.frame in wide format. (default = FALSE)
+#'   If FALSE, returns data.frame in wide format. (default = FALSE)
 #' @param snap Logical; if TRUE, avoid input validation and formatting. Used for performance
-#'        optimization in internal functions.
-#' @return Depending on input and simplify parameter:
-#'         - If simplify=TRUE and single layer: named vector
-#'         - If simplify=TRUE and multi-layer: matrix with rownames=units, colnames=scenarios
-#'         - If simplify=FALSE: data.frame in wide format with unit_id column
+#'   optimization in internal functions.
+#' @return Depending on input and `simplify`:
+#'   - If `simplify = TRUE` and single layer: named vector
+#'   - If `simplify = TRUE` and multi-layer: matrix with rows for the units and
+#'     columns for the scenarios (the layers of `values`)
+#'   - If `simplify = FALSE`: data.frame in wide format with a `unit_id` column
 #' @examples
 #' # Load necessary library
 #' library(terra)
@@ -89,6 +90,7 @@
 #' result2 <- gather_weighted(values_multi, weights, simplify = TRUE) # Returns matrix
 #' result2_df <- gather_weighted(values_multi, weights)
 #' @export
+#' @md
 gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE) {
   # Validation
   if (!snap) {
@@ -134,18 +136,18 @@ gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, sna
 #' Calculate demand captured by each service site
 #'
 #' @description
-#' Specialized version of gather_weighted() for accessibility analysis.
+#' Specialized version of [gather_weighted()] for accessibility analysis.
 #' Calculates the potential demand for each service site by applying pre-computed
 #' spatial weights to a demand raster.
 #'
 #' @param demand SpatRaster representing spatial distribution of demand
 #' @param weights Multi-layer SpatRaster where:
-#'        - Each layer represents one service site
-#'        - Values are probability weights (0-1) from distance decay
-#'        - Layer names should match site IDs
+#'   - Each layer represents one service site
+#'   - Values are probability weights (0-1) from distance decay
+#'   - Layer names should match site IDs
 #' @return data.frame with:
-#'         - location_id: identifier matching weight layer names
-#'         - potential_demand: weighted sum of demand for each site
+#'   - `location_id`: identifier matching weight layer names
+#'   - `potential_demand`: weighted sum of demand for each site
 #' @examples
 #' library(terra)
 #'
@@ -165,6 +167,7 @@ gather_weighted <- function(values, weights, na.rm = TRUE, simplify = FALSE, sna
 #' practice_demands <- gather_demand(pop, weights)
 #' head(practice_demands)
 #' @export
+#' @md
 gather_demand <- function(demand, weights) {
   # Validate weights are probabilities
   w_range <- range(values(weights), na.rm = TRUE)

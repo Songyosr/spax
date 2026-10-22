@@ -22,15 +22,19 @@ each layer of a multi-layer posterior separately}
 }
 \value{
 SpatRaster containing either:
-        - Posterior PMF if density = FALSE
-        - Posterior density if density = TRUE
+\itemize{
+\item Posterior PMF if \code{density = FALSE}
+\item Posterior density if \code{density = TRUE}
+}
 }
 \description{
 Updates a spatial probability mass function (PMF) using a likelihood surface
 following Bayesian principles. The function combines:
-- Prior: Initial spatial PMF representing prior beliefs
-- Likelihood: Surface showing relative intensity of observations
-- Posterior: Updated PMF incorporating both prior and likelihood
+\itemize{
+\item Prior: Initial spatial PMF representing prior beliefs
+\item Likelihood: Surface showing relative intensity of observations
+\item Posterior: Updated PMF incorporating both prior and likelihood
+}
 
 Values in the posterior will be higher where both prior probability
 and likelihood are high, representing areas supported by both prior
