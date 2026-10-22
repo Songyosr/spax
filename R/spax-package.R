@@ -12,12 +12,13 @@
 #'
 #' @section Choose a workflow:
 #' \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}} and
-#' \code{\link{spax_m2sfca}} remain supported public FCA entry points;
-#' \code{\link{compute_access}} is also retained. The experimental
-#' \code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add selection
-#' weights that divide each origin's demand among the facilities. These take
-#' raster demand and facility travel layers. Multiple supply columns produce
-#' independent accessibility indicators, not interacting resource constraints.
+#' \code{\link{spax_m2sfca}} compute FCA indices, and
+#' \code{\link{compute_access}} computes them from given decay weights. The
+#' experimental \code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add
+#' selection weights that divide each origin's demand among the facilities.
+#' These take raster demand and facility travel layers. Multiple supply columns
+#' produce independent accessibility indicators, not interacting resource
+#' constraints.
 #'
 #' The experimental allocation interface runs a model in one call:
 #' \code{\link{spax}} binds a model specification (\code{\link{spec_clm}} or
@@ -104,27 +105,22 @@
 #' simultaneous spatial intervals are provided. See
 #' \code{\link{bootstrap_allocation}} for the full restrictions.
 #'
-#' @section Compatibility and migration:
-#' Existing public FCA calls remain supported. Their independent supply columns
-#' and accessibility scores do not become CLM probabilities by changing function
-#' names. Normalization choices remain part of the FCA model specification.
-#' Internal feedback models are private, and a shared execution engine does not
-#' establish universal mathematical nesting among the models.
+#' @section FCA indices, saved results:
+#' FCA indices and the allocation model answer different questions: the
+#' independent supply columns and accessibility scores of an FCA index are not
+#' choice probabilities. Normalization choices are part of the FCA model
+#' specification. One numeric engine computing several models does not make
+#' them nested.
 #'
-#' Corrected static CLM and the older private \code{huff_decay} route have
-#' different equations and output meanings. Do not reinterpret saved legacy
-#' outputs as corrected contact or count outputs. Older private fits may lack
-#' the compact source snapshot or metadata needed for prediction and reporting;
-#' regenerate them from verified inputs rather than renaming their classes.
-#' Named observation axes align to canonical input IDs. Custom loss arguments
-#' indexed by observations must already use that canonical order.
+#' Named observation axes align to the input IDs. Custom loss arguments indexed
+#' by observations must already use that order.
 #'
 #' Save input declarations and support metadata with fitted results, preferably
-#' in an RDS bundle. CSV exports discard R attributes. Inspect saved results with
+#' in an RDS file. CSV exports discard R attributes. Inspect saved results with
 #' \code{coef}, \code{fitted}, \code{summary}, \code{plot} and
-#' \code{as.data.frame}; these methods do not silently fit or bootstrap again.
-#' Record the package version, and the source commit when using a development
-#' version from the \code{develop} branch.
+#' \code{as.data.frame}; these methods do not fit or bootstrap again. Results
+#' saved by earlier versions may lack what prediction and reporting need; fit
+#' them again from the inputs. Record the package version with saved results.
 #'
 #' @section Installed guides and status:
 #' The \code{spax()} interface and the allocation model are experimental and
@@ -149,20 +145,10 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @importFrom raster raster
 #' @importFrom stats rbinom rnbinom rpois setNames sd
 #' @import terra
-#' @importFrom ggplot2 ggplot aes geom_line geom_ribbon geom_hline geom_histogram geom_vline geom_point
-#' @importFrom ggplot2 scale_color_viridis_d scale_fill_viridis_d scale_size_continuous
-#' @importFrom ggplot2 labs mean_cl_normal theme element_text theme_minimal
-#' @importFrom tibble tibble
 #' @importFrom sf st_drop_geometry
 ## usethis namespace: end
 NULL
 # sf is imported so that loading spax registers sf's methods for the sf
 # example datasets (cornwall_gp, cornwall_lsoa).
-
-# Non-standard-evaluation column names used in data.frame pipelines
-# (e.g. gather_demand). Declared to satisfy R CMD check's "no visible
-# binding for global variable" note.
-utils::globalVariables(c("unit_id", "weighted_sum"))

@@ -173,11 +173,9 @@ gather_demand <- function(demand, weights) {
   }
 
   # Use gather_weighted and rename columns appropriately
-  result <- gather_weighted(demand, weights) |>
-    dplyr::rename(
-      location_id = unit_id,
-      potential_demand = weighted_sum
-    )
+  result <- gather_weighted(demand, weights)
+  names(result)[match(c("unit_id", "weighted_sum"), names(result))] <-
+    c("location_id", "potential_demand")
 
   return(result)
 }

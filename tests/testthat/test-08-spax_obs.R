@@ -138,7 +138,9 @@ test_that("obs_flows() reads a data frame by position or by column name", {
   expect_identical(obs_flows(fac)$x, data.frame(origin = c("o2", "o1"), facility = c("f1", "f1"),
                                                 count = c(1, 2)))
   # a tibble is read like a data frame
-  expect_identical(obs_flows(tibble::as_tibble(d))$x, obs$x)
+  if (requireNamespace("tibble", quietly = TRUE)) {
+    expect_identical(obs_flows(tibble::as_tibble(d))$x, obs$x)
+  }
   expect_identical(.obs_error(obs_flows(wide)), "name the origin, facility and count columns")
   expect_identical(.obs_error(obs_flows(d[1:2])), "name the origin, facility and count columns")
   expect_identical(.obs_error(obs_flows(d, origin = "o", facility = "f")),
