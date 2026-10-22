@@ -63,12 +63,10 @@ facilities' weighted supply: an origin whose facilities add up to a weighted
 supply of v0 sends half its requests outside.
 
 The code builds travel times between origins and facilities on a wavy strip,
-computes the shares at a known truth (`boot_probability`) and draws each
-facility's total as a Poisson count around its modeled total. It then fits the
-model with `prepare_allocation()`, `clm_allocation()` and `fit_allocation()`,
-the steps that `spax()` runs underneath (see the [Function
-map](function-naming.html)). The bootstrap's `scenario` argument takes a model
-declared by `clm_allocation()`, so the baseline is declared the same way.
+computes the shares at a known truth (`probability`) and draws each facility's
+total as a Poisson count around its modeled total. It then fits the model with
+`spax()`, as in [Where do residents register?](allocation-workflow.html), to
+the facility totals declared by `obs_totals()`.
 
 ```{r bootstrap-generated-inputs}
 units <- list(
@@ -80,68 +78,44 @@ units <- list(
 )
 
 # Travel minutes between 80 origins and 40 facilities on a wavy strip
-i <- seq_len(80)
-j <- seq_len(40)
-boot_travel <- sqrt(
-  outer(seq(2, 58, length.out = 80), seq(4, 56, length.out = 40), "-")^2 +
-  outer(8 * sin(i * .73), 7 * sin(j * 1.31), "-")^2) + 2
-dimnames(boot_travel) <- list(paste0("origin", i), paste0("facility", j))
+origin_x <- seq(2, 58, length.out = 80)
+origin_y <- 8 * sin(seq_len(80) * 0.73)
+facility_x <- seq(4, 56, length.out = 40)
+facility_y <- 7 * sin(seq_len(40) * 1.31)
+travel <- sqrt(
+  outer(origin_x, facility_x, "-")^2 + outer(origin_y, facility_y, "-")^2
+) + 2
+dimnames(travel) <- list(paste0("origin", 1:80), paste0("facility", 1:40))
 
 # Demand at each origin and supply at each facility
-boot_demand <- setNames(80 + 35 * (1 + sin(i * .23)), rownames(boot_travel))
-boot_supply <- setNames(rep(c(5, 7, 6, 8, 9), 8), colnames(boot_travel))
+demand <- setNames(80 + 35 * (1 + sin(seq_len(80) * 0.23)), rownames(travel))
+supply <- setNames(rep(c(5, 7, 6, 8, 9), 8), colnames(travel))
 
-# True choice probabilities under the static CLM
+# True choice probabilities under the CLM
 truth <- c(sigma = 12, v0 = 45)
-boot_score <- exp(-boot_travel^2 / (2 * truth[["sigma"]]^2)) *
-  rep(boot_supply, each = length(boot_demand))
-boot_probability <- boot_score / (rowSums(boot_score) + truth[["v0"]])
+attraction <- exp(-travel^2 / (2 * truth[["sigma"]]^2)) *
+  rep(supply, each = length(demand))
+probability <- attraction / (rowSums(attraction) + truth[["v0"]])
 
 # Observed facility totals: independent Poisson counts around the truth
 set.seed(2490001)
-boot_observed <- setNames(
-  rpois(40, colSums(boot_probability * boot_demand)),
-  names(boot_supply)
-)
+observed <- setNames(rpois(40, colSums(probability * demand)), names(supply))
 
-# Prepare, declare and fit, as for Cornwall
-boot_inputs <- prepare_allocation(
-  demand = boot_demand,
-  supply = boot_supply,
-  distance = boot_travel,
-  metadata = units
-)
-boot_model <- clm_allocation(boot_inputs, family = "gaussian", fit_v0 = TRUE)
-boot_starts <- rbind(
-  short = c(sigma = 8, v0 = 25),
-  medium = c(sigma = 15, v0 = 70),
-  wide = c(sigma = 25, v0 = 15)
-)
-boot_fit <- fit_allocation(
-  model = boot_model,
-  observed = boot_observed,
-  starts = boot_starts,
-  lower = c(sigma = 2, v0 = 1),
-  upper = c(sigma = 60, v0 = 500),
-  output = "utilization",  # facility totals
-  loss = "poisson",
-  gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
-)
-rbind(truth = truth, estimate = coef(boot_fit))
+# Fit the CLM to the facility totals
+data <- prep_data(demand, supply, travel, metadata = units)
+result <- spax(data, spec_clm(), observed = obs_totals(observed))
+rbind(truth = truth, estimate = coef(result))
 ```
 
-The network has `r nrow(boot_travel)` origins and `r ncol(boot_travel)`
-facilities. The fit uses the facility totals (`output = "utilization"`),
-because they are what the bootstrap resamples. The three rows of `boot_starts`
-are starting points for the search, and `lower` and `upper` bound it. Every
-bootstrap refit reuses them. `control` asks for the same strict convergence
-that the bootstrap uses for its refits. The fit estimates σ =
-`r sprintf("%.1f", coef(boot_fit)[["sigma"]])` minutes and v0 =
-`r sprintf("%.1f", coef(boot_fit)[["v0"]])`, against a truth of
+The network has `r nrow(travel)` origins and `r ncol(travel)` facilities. The
+fit uses the facility totals, because they are what the bootstrap resamples.
+`spax()` found its starting values and search bounds from the data, and every
+bootstrap refit reuses them. The fit estimates σ =
+`r sprintf("%.1f", coef(result)[["sigma"]])` minutes and v0 =
+`r sprintf("%.1f", coef(result)[["v0"]])`, against a truth of
 `r truth[["sigma"]]` and `r truth[["v0"]]`. The gap is expected: the
-`r length(boot_observed)` totals are one random draw, and the bootstrap
-describes how much the estimates could vary from draw to draw.
+`r length(observed)` totals are one random draw, and the bootstrap describes
+how much the estimates could vary from draw to draw.
 
 ## Declare the observation and a scenario
 
@@ -154,21 +128,17 @@ holds, because the totals were drawn that way.
 
 A scenario is optional: the same model with changed supply. The bootstrap
 evaluates the baseline and the scenario together at each refitted set of
-parameter values, so the change between them gets an interval of its own.
+parameter values, so the change between them gets an interval of its own. The
+scenario is a model declared with `clm_allocation()` on data prepared like the
+baseline, with only the supply changed; `fit_v0 = TRUE` matches the fitted
+outside weight of `spec_clm()`.
 
 ```{r paired-bootstrap-inputs}
 # Scenario: 20% more supply at facility2
-boot_scenario_supply <- boot_supply
-boot_scenario_supply["facility2"] <- 1.2 * boot_scenario_supply["facility2"]
-boot_scenario_inputs <- prepare_allocation(
-  demand = boot_demand,
-  supply = boot_scenario_supply,
-  distance = boot_travel,
-  metadata = units
-)
-boot_scenario <- clm_allocation(
-  inputs = boot_scenario_inputs,
-  family = "gaussian",
+scenario_supply <- supply
+scenario_supply["facility2"] <- 1.2 * scenario_supply["facility2"]
+scenario <- clm_allocation(
+  prep_data(demand, scenario_supply, travel, metadata = units),
   fit_v0 = TRUE
 )
 
@@ -184,56 +154,42 @@ rebuild_boot <- identical(Sys.getenv("SPAX_REBUILD_VIGNETTE_BOOTSTRAP"), "true")
 ```
 
 The scenario raises the supply of facility2 from
-`r boot_supply[["facility2"]]` to `r boot_scenario_supply[["facility2"]]`
+`r supply[["facility2"]]` to `r scenario_supply[["facility2"]]`
 service slots and changes nothing else.
 
 ## Run the bootstrap
 
 `bootstrap_fit()` makes 399 attempts. Each attempt draws
-`r ncol(boot_travel)` facilities with replacement from the
-`r ncol(boot_travel)`, refits the model to their totals and records the new
-estimates. A facility drawn twice counts twice in the fit, and one not drawn
-does not count. Every facility and its supply stay in the network: only the
-weight of each total in the fit changes. Each attempt uses its own seed, the
-given seed plus the attempt number, so a run repeats exactly. The function
-takes the model, its fit, the observation, the scenario and a seed. The code
-uses its other name, `bootstrap_allocation()`.
+`r ncol(travel)` facilities with replacement from the `r ncol(travel)`, refits
+the model to their totals and records the new estimates. A facility drawn twice
+counts twice in the fit, and one not drawn does not count. Every facility and
+its supply stay in the network: only the weight of each total in the fit
+changes. Each attempt uses its own seed, the given seed plus the attempt number,
+so a run repeats exactly. The function takes the fitted result, the observation,
+the scenario and a seed.
 
 ```{r paired-bootstrap, eval = rebuild_boot}
-boot <- bootstrap_allocation(
-  model = boot_model,
-  fit = boot_fit,
+boot <- bootstrap_fit(
+  result,
   observation = observation,
-  scenario = boot_scenario,
+  scenario = scenario,
   seed = 20260930
 )
 ```
 
-A result of `spax()` that fitted `spec_clm()` to facility totals, without an
-outside count, can stand in for the model and its fit:
-
-```{r bootstrap-spax-result, eval = FALSE}
-# The same data, prepared with the same metadata as the scenario
-result <- spax(
-  prep_data(boot_demand, boot_supply, boot_travel, metadata = units),
-  spec_clm(),
-  observed = obs_totals(boot_observed)
-)
-bootstrap_fit(result, observation = observation, scenario = boot_scenario, seed = 20260930)
-```
-
-The scenario must be prepared from the same inputs and metadata, with only the
-supply changed. The refits then start from the starting values and bounds that
-`spax()` found from the data, so the intervals can differ a little from those
-below.
+Before the first attempt, `bootstrap_fit()` checks that the original fit is
+usable: converged, with a score close enough to zero, each parameter pinned down
+by the totals and away from the bounds of its search. A model declared with the
+step functions works too: give the model and its fit, as in
+`bootstrap_fit(model, fit, observation = observation, seed = 20260930)`.
 
 ### The stored result
 
-The 399 refits take close to a minute, so the `bootstrap_allocation()` call
-above does not run when this guide is built. The guide reads the result of
-that exact call from `allocation-bootstrap.rds`. The file comes with the
-package source and is not installed. To follow along, run the
-`bootstrap_allocation()` call above and skip the next chunk. The script
+The 399 refits take close to a minute, so the `bootstrap_fit()` call above
+does not run when this guide is built. The guide reads the result of that exact
+call from `allocation-bootstrap.rds`. The file comes with the package source and
+is not installed. To follow along, run the `bootstrap_fit()` call above and skip
+the next chunk. The script
 `data-raw/precompute-vignette-bootstrap.R`, in the package repository, rebuilds
 the file. The code below reads the stored result; when the guide is built, it
 also checks that the result belongs to the inputs and the fit computed above.
@@ -266,10 +222,10 @@ stopifnot(
   boot$seed == 20260930L,
   boot$planned == 399L,
   boot$attempted == 399L,
-  identical(boot$facility_ids, names(boot_supply)),
+  identical(boot$facility_ids, names(supply)),
   identical(boot$observation, observation),
   identical(boot$input_metadata, units),
-  isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6))
+  isTRUE(all.equal(boot$original$theta, coef(result), tolerance = 1e-6))
 )
 ```
 
@@ -338,7 +294,8 @@ The intervals follow fixed rules:
   precisely, and with each parameter pinned down by the totals.
 - Each refit starts from the same starting values and search bounds as the
   original fit: the ones you gave, or the ones found from the data when you
-  gave none.
+  gave none. Facility totals can fit almost as well at quite different travel
+  scales, so every refit tries all the starts and keeps its best fit.
 
 When a rule fails, the result keeps its point estimates and the reasons, and
 withholds the intervals.
@@ -350,9 +307,9 @@ The generated data have a known truth, so the intervals can be set beside it.
 ```{r bootstrap-truth, fig.width = 7, fig.height = 3.5, fig.alt = "Two interval plots, for sigma and for v0, each showing the point estimate and its bootstrap percentile interval, with the true value as an orange dashed line inside the interval."}
 # Two panels side by side; each adds the true value as a dashed line
 oldpar <- par(mfrow = c(1, 2))
-for (q in c("sigma", "v0")) {
-  plot(boot, quantity = q, main = paste(q, "(dashed line: truth)"))
-  abline(v = truth[[q]], col = "orange", lwd = 2, lty = 2)
+for (parameter in c("sigma", "v0")) {
+  plot(boot, quantity = parameter, main = paste(parameter, "(dashed line: truth)"))
+  abline(v = truth[[parameter]], col = "orange", lwd = 2, lty = 2)
 }
 par(oldpar)
 ```
