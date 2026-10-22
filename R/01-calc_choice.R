@@ -1,4 +1,4 @@
-#' Internal function for core choice cvalidation
+#' Internal function for core choice validation
 #' @noRd
 .chck_calc_choice <- function(weights, attractiveness = NULL, alpha = 1, a0 = 0) {
   # Check weights is a SpatRaster of non-negative values
@@ -69,10 +69,11 @@
 #'   alpha = 1.5
 #' )
 #'
-#' # Plot to compare
-#' par(mfrow = c(1, 2)) # Set up 2 panels side by side
+#' # Plot to compare, two panels side by side
+#' old_par <- par(mfrow = c(1, 2))
 #' plot(p1[[1]], main = "Basic Choice Prob.")
 #' plot(p2[[1]], main = "GP-weighted Choice Prob.")
+#' par(old_par)
 #'
 #' # With outside option (a0)
 #' p3 <- calc_choice(weights,

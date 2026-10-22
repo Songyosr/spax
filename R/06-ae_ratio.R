@@ -59,9 +59,9 @@
       phi <- sweep(K, 2, a, `*`)
       denom <- rowSums(phi) + par[["v0"]]
       P <- phi / denom
-      T <- as.numeric(crossprod(D, P))
-      if (!full) return(T)
-      list(target = T, utilization = T, attractiveness = a, allocation = P,
+      util <- as.numeric(crossprod(D, P))
+      if (!full) return(util)
+      list(target = util, utilization = util, attractiveness = a, allocation = P,
            access = rowSums(P), outside_share = par[["v0"]] / denom,
            opportunity = phi, flow = D * P)
     }
@@ -73,16 +73,16 @@
       if (!is.null(last) && identical(U, last$U)) return(last$value)
       st <- eval(U, TRUE)
       P <- st$allocation
-      T <- st$utilization
-      B <- diag(T, nrow = length(S)) - crossprod(P, D * P)
+      util <- st$utilization
+      B <- diag(util, nrow = length(S)) - crossprod(P, D * P)
       Ju <- -gamma * sweep(B, 2, 1 / (U + eps), `*`)
       score <- D2 / par[["sigma"]]^3
       dsigma <- colSums(D * P * (score - rowSums(P * score)))
       dv0 <- -colSums(D * P * st$outside_share) / par[["v0"]]
       signal <- log(S / ((U + eps) * ratio_ref))
-      dg <- T * signal - colSums(D * P * as.numeric(P %*% signal))
+      dg <- util * signal - colSums(D * P * as.numeric(P %*% signal))
       Jp <- cbind(dsigma, dv0, dg)
-      if (fit_b) Jp <- cbind(Jp, T * logS - colSums(D * P * as.numeric(P %*% logS)))
+      if (fit_b) Jp <- cbind(Jp, util * logS - colSums(D * P * as.numeric(P %*% logS)))
       colnames(Jp) <- theta$names
       value <- list(jac_state = Ju, jac_utilization = Ju, jac_param = Jp)
       last <<- list(U = U, value = value)

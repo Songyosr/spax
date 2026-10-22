@@ -87,14 +87,8 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     }
   }
 
-  # Initialize RNG if needed
   if (is.null(seed)) {
-    # Check if RNG is already initialized
-    if (!exists(".Random.seed", envir = .GlobalEnv)) {
-      # Initialize with random seed if none exists
-      set.seed(sample.int(.Machine$integer.max, 1))
-    }
-    # Use current RNG state
+    # Use the current random stream (R seeds it on first use)
     result <- .sample_pmf_internal(
       x, n, size, prob, method, iterations,
       evolve_prop, replace_0, snap, ...

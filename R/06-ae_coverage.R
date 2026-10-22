@@ -353,8 +353,9 @@ print.summary.ae_coverage <- function(x, ...) {
 plot.ae_coverage <- function(x, type = c("coverage", "contact", "adequacy", "quadrant", "all"), ...) {
   type <- match.arg(type)
   if (type == "all") {
-    old <- graphics::par(mfrow = c(2, 2))
+    old <- graphics::par(no.readonly = TRUE)
     on.exit(graphics::par(old), add = TRUE)
+    graphics::par(mfrow = c(2, 2))
     for (panel in c("coverage", "contact", "adequacy", "quadrant")) {
       plot(x, type = panel, ...)
     }
