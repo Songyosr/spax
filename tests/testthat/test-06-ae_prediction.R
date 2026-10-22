@@ -797,3 +797,54 @@ test_that("a fit of a declared kernel prints and summarizes the meaning of sigma
   gaussian <- alloc_prediction_sources()[["gaussian fitted"]]$fit
   expect_true("family: gaussian (sigma = travel scale)" %in% utils::capture.output(print(gaussian)))
 })
+
+test_that("a prediction prints its origins, demand, travel rule and outputs", {
+  case <- alloc_prediction_case()
+  solved <- .solve_problem(case$model, case$theta, requested_outputs = "flow")
+  request <- case$distance
+  request[2, 3] <- NA
+  range_text <- function(v, digits = 4) {
+    known <- v[!is.na(v)]
+    paste0(format(min(known), digits = digits), " to ", format(max(known), digits = digits),
+           " (", length(known), " of ", length(v), if (length(v) == 1L) " origin)" else
+             " origins)")
+  }
+  pred <- predict_allocation(solved, request, outputs = c("rho", "allocation"))
+  lines <- utils::capture.output(shown <- withVisible(print(pred)))
+  expect_false(shown$visible)
+  expect_identical(shown$value, pred)
+  expect_identical(lines, c(
+    "<allocation prediction> 3 origins x 3 facilities",
+    "  origins     2 valid, 1 unknown_travel",
+    "  demand      unknown for every origin",
+    "  travel      an unknown travel time makes the origin unknown",
+    "  outputs",
+    sprintf("    %-10s  %s", "rho", range_text(pred$outputs$rho)),
+    sprintf("    %-10s  %s", "allocation", "3 origins x 3 facilities"),
+    "  values in $outputs; the status of each origin in $validity"))
+  # Pairs with an unknown time left out ("omit", stored under its older name), given
+  # demand with a zero and an unknown value, and fewer digits.
+  omit <- predict_allocation(solved, request, demand = c(o3 = 3, o1 = 0, o7 = NA),
+                             outputs = c("A", "flow"), missing_travel = "omit")
+  expect_identical(omit$policy$missing_travel, "legacy_zero")
+  lines <- utils::capture.output(print(omit, digits = 2))
+  expect_identical(lines[2:4], c(
+    "  origins     2 valid, 1 legacy_imputed",
+    "  demand      1 positive, 1 zero, 1 unknown",
+    "  travel      pairs with an unknown travel time left out (\"omit\")"))
+  expect_identical(lines[6:7], c(sprintf("    %-4s  %s", "A", range_text(omit$outputs$A, 2)),
+                                 sprintf("    %-4s  %s", "flow", "3 origins x 3 facilities")))
+  # An output without a value on any origin says so.
+  none <- pred
+  none$outputs$rho[] <- NA_real_
+  none$outputs$allocation[] <- NA_real_
+  expect_identical(utils::capture.output(print(none))[6:7],
+                   c(sprintf("    %-10s  %s", "rho", "no values"),
+                     sprintf("    %-10s  %s", "allocation", "3 origins x 3 facilities, no values")))
+  # One origin is singular.
+  one <- predict_allocation(solved, request[1, , drop = FALSE], outputs = "rho")
+  lines <- utils::capture.output(print(one))
+  expect_identical(lines[1], "<allocation prediction> 1 origin x 3 facilities")
+  expect_identical(lines[6], sprintf("    %-3s  %s", "rho", range_text(one$outputs$rho)))
+  expect_match(lines[6], "(1 of 1 origin)", fixed = TRUE)
+})

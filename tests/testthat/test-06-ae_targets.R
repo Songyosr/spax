@@ -245,6 +245,24 @@ test_that("singleton matrix axes keep dimensions and old raster keys remain reso
   }
 })
 
+test_that("a one-dimensional array or table binds as the vector named by its names", {
+  f <- .identity_fixture()
+  y <- f$utilization[c("a", "c", "b")]
+  vector <- .bind_problem_target(f$p, y, "utilization")
+  from_table <- .bind_problem_target(f$p, as.table(array(unname(y), 3L, list(names(y)))),
+                                     "utilization")
+  expect_identical(from_table, vector)
+  # tapply() sorts by name: the same canonical target from another input order
+  from_tapply <- .bind_problem_target(f$p, tapply(unname(y), names(y), sum), "utilization")
+  expect_null(dim(from_tapply$observed))
+  expect_identical(from_tapply[c("observed", "values", "mask", "dim")],
+                   vector[c("observed", "values", "mask", "dim")])
+  expect_identical(from_tapply$alignment$input_ids, list(c("a", "b", "c")))
+  # An unnamed one-dimensional array is positional, as an unnamed vector is.
+  expect_identical(.bind_problem_target(f$p, array(unname(f$utilization), 3L), "utilization"),
+                   .bind_problem_target(f$p, unname(f$utilization), "utilization"))
+})
+
 test_that("declared output identities are validated", {
   p <- .identity_fixture()$p
   expect_error(.problem_output_identity(p, NA_character_), "length-one")

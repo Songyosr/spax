@@ -22,7 +22,12 @@ fit_allocation(
 \item{model}{A static CLM from \code{\link[=clm_allocation]{clm_allocation()}} or \code{\link[=huff_allocation]{huff_allocation()}}. A kernel
 declared \code{smooth = FALSE} cannot be fitted.}
 
-\item{observed}{Numeric vector or origin-by-facility matrix. Named axes match
+\item{observed}{Numeric vector or origin-by-facility matrix. A
+one-dimensional array or table, such as the result of \code{\link[=tapply]{tapply()}} or
+\code{\link[=table]{table()}}, is read as the vector named by its names. For a factor level
+without records \code{\link[=tapply]{tapply()}} gives \code{NA}, which the fit reads as unobserved:
+give it \code{default = 0} (or use \code{\link[=table]{table()}}) when no record means a count of
+zero. Named axes match
 declared IDs independently; unnamed axes are positional. Keep all IDs and
 use NA for unobserved entries. The count-valued \code{utilization}, \code{flow},
 \code{utilization_by_group} and outside-count targets reject negative nonmissing

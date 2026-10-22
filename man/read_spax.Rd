@@ -24,10 +24,9 @@ result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
                       id_col = "practice",
                       supply_cols = c("gp_fte_extg", "gp_fte"))
 
-# Save it to temporary files, the raster in double precision (terra writes
-# single precision by default)
+# Save it to temporary files
 path <- tempfile("cornwall_e2sfca")
-save_spax(result, path, datatype = "FLT8S")
+save_spax(result, path)
 
 # Read it back: the layers keep their names and values
 restored <- read_spax(path)

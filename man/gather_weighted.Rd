@@ -11,9 +11,11 @@ gather_weighted(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE)
 If multi-layer, each layer represents a different realization/scenario.}
 
 \item{weights}{Multi-layer SpatRaster where:
-- Each layer represents one aggregation unit
-- Values are weights (typically 0-1) for aggregation
-- Layer names should match unit IDs}
+\itemize{
+\item Each layer represents one aggregation unit
+\item Values are weights (typically 0-1) for aggregation
+\item Layer names should match unit IDs
+}}
 
 \item{na.rm}{Logical; if TRUE, remove NA values from computation (default = TRUE)}
 
@@ -24,10 +26,13 @@ If FALSE, returns data.frame in wide format. (default = FALSE)}
 optimization in internal functions.}
 }
 \value{
-Depending on input and simplify parameter:
-        - If simplify=TRUE and single layer: named vector
-        - If simplify=TRUE and multi-layer: matrix with rownames=units, colnames=scenarios
-        - If simplify=FALSE: data.frame in wide format with unit_id column
+Depending on input and \code{simplify}:
+\itemize{
+\item If \code{simplify = TRUE} and single layer: named vector
+\item If \code{simplify = TRUE} and multi-layer: matrix with rows for the units and
+columns for the scenarios (the layers of \code{values})
+\item If \code{simplify = FALSE}: data.frame in wide format with a \code{unit_id} column
+}
 }
 \description{
 General-purpose function to aggregate values from a raster (single or multi-layer) using

@@ -10,17 +10,21 @@ gather_demand(demand, weights)
 \item{demand}{SpatRaster representing spatial distribution of demand}
 
 \item{weights}{Multi-layer SpatRaster where:
-- Each layer represents one service site
-- Values are probability weights (0-1) from distance decay
-- Layer names should match site IDs}
+\itemize{
+\item Each layer represents one service site
+\item Values are probability weights (0-1) from distance decay
+\item Layer names should match site IDs
+}}
 }
 \value{
 data.frame with:
-        - location_id: identifier matching weight layer names
-        - potential_demand: weighted sum of demand for each site
+\itemize{
+\item \code{location_id}: identifier matching weight layer names
+\item \code{potential_demand}: weighted sum of demand for each site
+}
 }
 \description{
-Specialized version of gather_weighted() for accessibility analysis.
+Specialized version of \code{\link[=gather_weighted]{gather_weighted()}} for accessibility analysis.
 Calculates the potential demand for each service site by applying pre-computed
 spatial weights to a demand raster.
 }

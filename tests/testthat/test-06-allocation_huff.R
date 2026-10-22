@@ -154,7 +154,11 @@ test_that("a Huff model passes demand groups through", {
                              beta = 0.9)
   e <- evaluate_allocation(m, theta)
   expect_equal(unname(e$outputs$allocation), unname(oracle$allocation), tolerance = 1e-12)
-  expect_equal(e$outputs$utilization, oracle$utilization, tolerance = 1e-12)
+  expect_equal(e$outputs$utilization, stats::setNames(oracle$utilization, p$facility_ids),
+               tolerance = 1e-12)
+  # a Huff model has no outside option: its outside share is 0, named by origin
+  expect_identical(e$outputs$outside_share, stats::setNames(rep(0, length(p$origin_ids)),
+                                                             p$origin_ids))
   # held fixed values and a family per group pass through
   m2 <- huff_allocation(p, by_group = "sigma", fixed = c(sigma.a = 1.5), fit_beta = FALSE)
   expect_identical(m2$theta$names, "sigma.b")

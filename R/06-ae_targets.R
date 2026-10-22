@@ -72,6 +72,8 @@
 #'
 #' Each named axis must contain the complete canonical ID set; unnamed axes
 #' stay positional. Missing observations use NA values rather than omitted IDs.
+#' A one-dimensional array (from `tapply()` or `table()`) is the vector named by
+#' its dimnames.
 #' Matrix orientation and dimensions are never guessed. A private bound object
 #' can be passed by multistart/profile wrappers without repeating ID matches;
 #' its identity must still agree with the receiving problem and output.
@@ -94,6 +96,8 @@
     .check_group_targets(problem, observed)
     return(observed)
   }
+  # c() keeps the names of a one-dimensional array and drops its dim and class.
+  if (is.atomic(observed) && length(dim(observed)) == 1L) observed <- c(observed)
   target <- .fit_target_meta(observed, "observed")
   dims <- if (is.null(dim(observed))) length(observed) else dim(observed)
   labels <- if (is.null(dim(observed))) list(names(observed)) else dimnames(observed)

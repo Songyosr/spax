@@ -372,7 +372,10 @@ test_that("shared travel in the grouped form equals the ungrouped preparation on
   expect_identical(o$huff_share, o$allocation)
   expect_equal(as.numeric(o$access), unname(oracle$rho), tolerance = 1e-12)
   expect_equal(as.numeric(o$outside_share), unname(oracle$outside_share), tolerance = 1e-12)
-  expect_equal(o$utilization, oracle$utilization, tolerance = 1e-12)
+  expect_equal(unname(o$utilization), oracle$utilization, tolerance = 1e-12)
+  # the vectors carry the IDs of their axis
+  for (nm in c("target", "utilization", "attractiveness")) expect_named(o[[nm]], p$facility_ids)
+  for (nm in c("access", "outside_share")) expect_named(o[[nm]], p$origin_ids)
   expect_equal(unname(o$flow), unname(oracle$flow), tolerance = 1e-12)
   expect_equal(unname(o$utilization_by_group), unname(oracle$utilization_by_group),
                tolerance = 1e-12)
@@ -402,7 +405,7 @@ test_that("a grouped model equals the oracle with shared travel", {
   # the group quantities are not the pooled ones
   expect_false(isTRUE(all.equal(e$outputs$utilization_by_group[, "a"],
                                 e$outputs$utilization_by_group[, "b"])))
-  expect_equal(unname(rowSums(e$outputs$utilization_by_group)), e$outputs$utilization)
+  expect_equal(rowSums(e$outputs$utilization_by_group), e$outputs$utilization)
   # pooled access and outside probability add to one on every origin
   expect_equal(unname(e$outputs$access + e$outputs$outside_share), rep(1, 4))
   # theta can be given in any order
@@ -510,7 +513,8 @@ test_that("groups with zero demand, missing travel and one group are handled", {
   oracle <- clm_group_oracle(list(a = f$M[rows, ], b = f$M[rows, ]), p$D_groups, as.vector(p$S),
                              sigma = c(a = 3, b = 4), v0 = 2)
   expect_equal(unname(e$outputs$allocation), unname(oracle$allocation), tolerance = 1e-12)
-  expect_equal(e$outputs$utilization, oracle$utilization, tolerance = 1e-12)
+  expect_equal(e$outputs$utilization, stats::setNames(oracle$utilization, p$facility_ids),
+               tolerance = 1e-12)
   expect_equal(unname(e$outputs$utilization_by_group), unname(oracle$utilization_by_group),
                tolerance = 1e-12)
   # group b has no demand and no usable travel at o4: its own access and outside
@@ -554,7 +558,7 @@ test_that("groups with zero demand, missing travel and one group are handled", {
   expect_equal(eo$outputs$allocation, ev$outputs$allocation, tolerance = 1e-12)
   expect_equal(eo$outputs$flow, ev$outputs$flow, tolerance = 1e-12)
   expect_equal(eo$outputs$utilization, ev$outputs$utilization, tolerance = 1e-12)
-  expect_equal(unname(eo$outputs$utilization_by_group[, "a"]), ev$outputs$utilization,
+  expect_equal(eo$outputs$utilization_by_group[, "a"], ev$outputs$utilization,
                tolerance = 1e-12)
 })
 
@@ -657,7 +661,7 @@ test_that("a grouped model with everything shared equals the ungrouped model on 
     expect_equal(eg$coverage$conservation, eu$coverage$conservation, tolerance = 1e-10)
     # every group has the pooled quantities
     shares <- eg$outputs$utilization_by_group
-    expect_equal(unname(rowSums(shares)), eg$outputs$utilization, tolerance = 1e-12)
+    expect_equal(rowSums(shares), eg$outputs$utilization, tolerance = 1e-12)
   }
   # per-group parameters set equal give the same as the shared model
   shared <- clm_allocation(p, fit_v0 = TRUE)

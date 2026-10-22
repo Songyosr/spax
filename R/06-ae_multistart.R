@@ -165,9 +165,9 @@
     class = "ae_multistart_fit")
 }
 
-#' Print the outcome of a private AE multistart search
+#' @rdname allocation-fit-methods
+#' @order 7
 #' @method print ae_multistart_fit
-#' @noRd
 #' @export
 #' @md
 print.ae_multistart_fit <- function(x, ...) {

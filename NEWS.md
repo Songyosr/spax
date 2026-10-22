@@ -43,6 +43,35 @@
   name of `"legacy_zero"`, which still works and gives the same results; saved
   data and fits are unchanged. The print of prepared data and the error for
   unknown travel use the new name.
+* `fit_allocation()` takes a one-dimensional array or table, such as the result
+  of `tapply()` or `table()`, as the vector of observed counts named by its
+  names, as `obs_totals()` does; it was refused. As there, `tapply()` gives `NA`,
+  an unobserved count, for a factor level without records: use `default = 0`
+  when no record means a count of zero.
+* The results of `evaluate_allocation()` and the outputs a fit keeps
+  (`fit$best$outputs`, and those of `spax()` results) name their vectors: by
+  facility ID `target`, `utilization`, `attractiveness` and
+  `utilization_outside`, by origin ID `access` and `outside_share` (the outside
+  share of a Huff model was unnamed too), as the matrices were already. The
+  values are unchanged. Objects saved earlier keep their unnamed outputs until
+  they are evaluated again; code that compares these vectors with unnamed ones,
+  for example with `identical()`, needs `unname()`.
+* `plot()` of a fit and of its selected fit `fit$best` takes `main`, `xlab` and
+  `ylab` (they were an error) and has plain titles, such as "Observed and
+  fitted values"; the convergence plot shows the single iteration of a static
+  model. `?plot.ae_multistart_fit` describes each `type` and what it returns.
+* `save_spax()` writes rasters in double precision by default (new argument
+  `datatype = "FLT8S"`), so `read_spax()` returns the values that were saved;
+  they were single precision, rounded to about seven significant digits.
+  `datatype = "FLT4S"` writes the smaller files of before.
+* `summary()` of an FCA result takes its argument as `object`, as `summary()`
+  does, so `summary(object = result)` works.
+* Predictions from `predict_allocation()` and `predict()` of a result print a
+  short report: the origins by status, whether demand was given, how unknown
+  travel was treated and the range of each output.
+* The print and summary methods of fits are documented on
+  `?allocation-fit-methods`, and help pages that showed lists as running text
+  show them as lists.
 
 # spax 0.6.0
 

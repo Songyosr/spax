@@ -118,10 +118,10 @@
 #' @param density Logical; if TRUE returns density surface, if FALSE returns PMF
 #' @param full_output Logical; if TRUE returns list with additional information
 #' @param snap Logical; if TRUE skip validation
-#' @return If full_output = FALSE, returns SpatRaster (PMF or density).
-#'         If full_output = TRUE, returns list with:
-#'         - surface: SpatRaster (PMF or density)
-#'         - totals: data.frame with original and redistributed totals by area
+#' @return If `full_output = FALSE`, returns SpatRaster (PMF or density).
+#'   If `full_output = TRUE`, returns list with:
+#'   - `surface`: SpatRaster (PMF or density)
+#'   - `totals`: data.frame with original and redistributed totals by area
 #' @examples
 #' pop <- read_spax_example("cornwall_pop.tif")
 #'
@@ -149,6 +149,7 @@
 #'   full_output = TRUE
 #' )
 #' @export
+#' @md
 transform_demand <- function(x, value_col, pmf = NULL, template = NULL,
                              density = FALSE, full_output = FALSE, snap = FALSE) {
   # Validation

@@ -8,7 +8,13 @@
 #' @param file Character; path to save the object (without extension)
 #' @param dir Logical; whether to create a directory with same name for files (default FALSE)
 #' @param overwrite Logical; whether to overwrite existing files/directory (default FALSE)
-#' @param ... Additional arguments passed to terra::writeRaster()
+#' @param ... Additional arguments passed to [terra::writeRaster()]
+#' @param datatype Character; the data type of the raster file, passed to
+#'   [terra::writeRaster()] (give it by name). The default `"FLT8S"` (double
+#'   precision) keeps the values: [read_spax()] returns them as they were.
+#'   `"FLT4S"` (single precision, terra's own default) writes files about half
+#'   the size, with values rounded to about seven significant digits (a relative
+#'   change of up to 6e-8).
 #' @return Invisibly returns the input object
 #' @examples
 #' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
@@ -28,7 +34,8 @@
 #' unlink(paste0(path, c("_spax.rds", "_accessibility.tif")))
 #' @export
 #' @md
-save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
+save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...,
+                      datatype = "FLT8S") {
   # Input validation
   if (inherits(x, "spax_allocation")) {
     stop("save_spax() saves FCA results; save an allocation result with saveRDS()",
@@ -67,7 +74,8 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
   }
 
   # Save components
-  terra::writeRaster(x$accessibility, rast_file, overwrite = overwrite, ...)
+  terra::writeRaster(x$accessibility, rast_file, overwrite = overwrite,
+                     datatype = datatype, ...)
 
   if (terra::nlyr(x$accessibility) > 1) {
     saveRDS(names(x$accessibility), names_file)
@@ -93,10 +101,9 @@ save_spax <- function(x, file, dir = FALSE, overwrite = FALSE, ...) {
 #'                       id_col = "practice",
 #'                       supply_cols = c("gp_fte_extg", "gp_fte"))
 #'
-#' # Save it to temporary files, the raster in double precision (terra writes
-#' # single precision by default)
+#' # Save it to temporary files
 #' path <- tempfile("cornwall_e2sfca")
-#' save_spax(result, path, datatype = "FLT8S")
+#' save_spax(result, path)
 #'
 #' # Read it back: the layers keep their names and values
 #' restored <- read_spax(path)

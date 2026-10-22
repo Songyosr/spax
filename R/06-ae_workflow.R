@@ -678,7 +678,12 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' starts to skip it.
 #' @param model A static CLM from [clm_allocation()] or [huff_allocation()]. A kernel
 #'   declared `smooth = FALSE` cannot be fitted.
-#' @param observed Numeric vector or origin-by-facility matrix. Named axes match
+#' @param observed Numeric vector or origin-by-facility matrix. A
+#'   one-dimensional array or table, such as the result of [tapply()] or
+#'   [table()], is read as the vector named by its names. For a factor level
+#'   without records [tapply()] gives `NA`, which the fit reads as unobserved:
+#'   give it `default = 0` (or use [table()]) when no record means a count of
+#'   zero. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
 #'   use NA for unobserved entries. The count-valued `utilization`, `flow`,
 #'   `utilization_by_group` and outside-count targets reject negative nonmissing
@@ -905,15 +910,27 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 
 #' Inspect saved allocation fits without recomputation
 #'
+#' A fit from [fit_allocation()] keeps every start and the selected fit,
+#' `fit$best`; both have these methods, which read what the fit saved.
 #' Coefficients and fitted targets are read from the selected fit. Multistart
 #' summaries retain failed starts, boundaries, warnings/errors and descriptive
 #' disagreement. A search with no eligible fit remains inspectable by summary,
-#' while coefficient and fitted extraction fail clearly.
-#' @param object An existing NFXP fit or multistart result from allocation fitting.
+#' while coefficient and fitted extraction fail clearly. `print()` of a fit
+#' shows its starts and the one selected; `print()` of the selected fit shows
+#' its estimates, loss and convergence, and its `summary()` adds the ranges of
+#' the fitted values, of the model state and of the residuals.
+#' @param object,x A fit from [fit_allocation()] (an `ae_multistart_fit`) or its
+#'   selected fit `fit$best` (an `ae_problem_nfxp_fit`); for the print method of
+#'   a summary, the summary of the selected fit.
+#' @param digits Significant digits of the printed numbers.
 #' @param ... Additional generic arguments; currently unused.
 #' @return `coef()` returns the saved named parameter vector. `fitted()` returns
-#'   saved canonical fitted targets. `summary()` returns a list containing the
-#'   selected fit summary, per-start table, boundaries, disagreement and messages.
+#'   saved canonical fitted targets. `summary()` of a fit returns a list
+#'   containing the selected fit summary, per-start table, boundaries,
+#'   disagreement and messages; `summary()` of the selected fit returns its
+#'   model and family, its parameters, its loss and convergence, and the ranges
+#'   of the fitted values, of the state and (when the fit kept its observed
+#'   values) of the residuals. `print()` returns its input invisibly.
 #'   These diagnostics establish neither identification nor global optimality.
 #' @name allocation-fit-methods
 #' @seealso [fit_allocation()]
@@ -941,8 +958,12 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 #' # Every start, the selected fit and its residuals
 #' summary(fit)
 #'
-#' # The selected fit itself has the same methods
+#' # The selected fit itself has the same methods: its estimates, loss and
+#' # convergence, and a summary with the ranges of its values and residuals
 #' coef(fit$best)
+#' fit$best
+#' summary(fit$best)
+#' @order 1
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_problem_nfxp_fit <- function(object, ...) {
@@ -951,6 +972,7 @@ coef.ae_problem_nfxp_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 2
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_multistart_fit <- function(object, ...) {
@@ -959,6 +981,7 @@ coef.ae_multistart_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 3
 #' @exportS3Method stats::fitted
 #' @md
 fitted.ae_problem_nfxp_fit <- function(object, ...) {
@@ -967,6 +990,7 @@ fitted.ae_problem_nfxp_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 4
 #' @exportS3Method stats::fitted
 #' @md
 fitted.ae_multistart_fit <- function(object, ...) {
@@ -975,6 +999,7 @@ fitted.ae_multistart_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 5
 #' @exportS3Method base::summary
 #' @md
 summary.ae_multistart_fit <- function(object, ...) {
@@ -1027,7 +1052,12 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
-#'   hard constraint on expected utilization.
+#'   hard constraint on expected utilization. In `outputs` the vectors are named
+#'   by facility ID (`target`, `utilization`, `attractiveness`, and
+#'   `utilization_outside`, whose last element is `"(outside)"`) or by origin ID
+#'   (`access`, `outside_share`), and the matrices by their two axes: origins by
+#'   facilities (`allocation`, `flow`) and, with demand groups, facilities or
+#'   origins by groups.
 #' @examples
 #' # West Cornwall: the small areas and practices west of easting 170 km
 #' areas <- sf::st_drop_geometry(cornwall_lsoa)
@@ -1043,8 +1073,8 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
 #' ev$coverage
 #'
-#' # Expected registrations at each practice, in the order of the travel columns
-#' round(stats::setNames(ev$outputs$utilization, colnames(travel)))
+#' # Expected registrations at each practice
+#' round(ev$outputs$utilization)
 #'
 #' # Expected registrations by small area and practice, with the expected
 #' # outside count as one more column
@@ -1058,7 +1088,7 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'                                             travel), fit_v0 = TRUE)
 #' change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
 #'   ev$outputs$utilization
-#' round(stats::setNames(change, colnames(travel)))
+#' round(change)
 #' @family allocation steps
 #' @export
 #' @md
@@ -1078,7 +1108,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
   if (!isTRUE(result$converged)) .stop("allocation evaluation did not converge")
   result$coverage <- do.call(.coverage_from_outputs,
     c(list(problem = model, theta = theta, outputs = result$outputs), coverage_args))
-  result
+  .name_output_vectors(model, result)
 }
 
 #' Predict requested origins against a saved fitted or evaluated CLM
@@ -1154,6 +1184,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' pred <- predict_allocation(fit, cornwall_travel[held_out$lsoa, gp$practice],
 #'                            demand = stats::setNames(held_out$registered, held_out$lsoa),
 #'                            outputs = c("rho", "A", "flow"))
+#' pred
 #'
 #' # The modeled share of each area's residents at these practices, the share
 #' # registered there, and the GP FTE per 1,000 residents attributed to the area
@@ -1182,6 +1213,60 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
   result <- .predict_clm(source, distance, origin_ids = origin_ids, demand = demand,
     outputs = outputs, missing_travel = match.arg(missing_travel), spatial = spatial)
   if (type == "raster") .prediction_surface(result, outputs) else result
+}
+
+#' @rdname predict_allocation
+#' @param x For `print()`, a prediction: the `ae_clm_prediction` of
+#'   `predict_allocation()`. Its print shows the number of origins with each
+#'   status, what is known of their demand, how unknown travel was treated, and
+#'   the range of each requested vector over the origins with a value.
+#' @param digits Significant digits of the printed values.
+#' @param ... Unused.
+#' @export
+#' @md
+print.ae_clm_prediction <- function(x, digits = 4, ...) {
+  line <- function(label, text) cat(sprintf("  %-10s  %s\n", label, text))
+  counts <- function(values, order) {
+    levels <- c(intersect(order, values), sort(setdiff(unique(values), order)))
+    n <- table(factor(values, levels = levels))
+    paste(.format_total(as.vector(n)), names(n), collapse = ", ")
+  }
+  count_of <- function(n, one, many) paste(.format_total(n), if (n == 1L) one else many)
+  dimensions <- function(rows, cols) {
+    paste(count_of(rows, "origin", "origins"), "x", count_of(cols, "facility", "facilities"))
+  }
+  cat("<allocation prediction> ", dimensions(length(x$origin_ids), length(x$facility_ids)),
+      "\n", sep = "")
+  line("origins", counts(x$validity$status, "valid"))
+  demand <- x$validity[["demand_status"]]
+  if (!is.null(demand)) {
+    line("demand", if (all(demand == "unknown")) "unknown for every origin" else
+      counts(demand, c("positive", "zero", "unknown")))
+  }
+  # "omit" is stored under its older name, "legacy_zero".
+  line("travel", if (isTRUE(x$policy$missing_travel %in% c("legacy_zero", "omit"))) {
+    "pairs with an unknown travel time left out (\"omit\")"
+  } else {
+    "an unknown travel time makes the origin unknown"
+  })
+  cat("  outputs\n")
+  width <- max(nchar(names(x$outputs)), 0L)
+  for (name in names(x$outputs)) {
+    value <- x$outputs[[name]]
+    text <- if (!is.null(dim(value))) {
+      paste0(dimensions(nrow(value), ncol(value)), if (all(is.na(value))) ", no values")
+    } else if (all(is.na(value))) {
+      "no values"
+    } else {
+      known <- value[!is.na(value)]
+      paste0(format(min(known), digits = digits), " to ", format(max(known), digits = digits),
+             " (", .format_total(length(known)), " of ",
+             count_of(length(value), "origin", "origins"), ")")
+    }
+    cat(sprintf("    %-*s  %s\n", width, name, text))
+  }
+  cat("  values in $outputs; the status of each origin in $validity\n")
+  invisible(x)
 }
 
 # The theta of evaluate_allocation() for a grouped model: the free parameters,
