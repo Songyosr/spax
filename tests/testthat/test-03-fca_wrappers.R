@@ -195,6 +195,10 @@ test_that("spax objects print, summarise and plot their accessibility", {
   # Labels follow stats::quantile().
   expect_equal(names(summary(result, quantiles = 1 / 3)$accessibility$nurses$quantiles),
                names(stats::quantile(0, 1 / 3)))
+  # The first argument is named as in the generic, summary(object, ...).
+  expect_identical(summary(object = result), s)
+  expect_identical(summary(object = result, quantiles = 0.5),
+                   summary(result, quantiles = 0.5))
 
   withr::local_pdf(NULL)
   expect_no_error(plot(result))

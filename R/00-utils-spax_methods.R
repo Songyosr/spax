@@ -109,7 +109,7 @@ print.spax <- function(x, ...) {
 #' Provides detailed statistical summaries of accessibility analysis results,
 #' including accessibility scores, facility statistics, and model-specific metrics.
 #'
-#' @param x A spax object created by an FCA function, such as
+#' @param object A spax object created by an FCA function, such as
 #'   \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
 #'   \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}
 #' @param quantiles Numeric vector of probabilities for quantile computation
@@ -136,10 +136,10 @@ print.spax <- function(x, ...) {
 #' s$accessibility$gp_fte_extg$quantiles
 #' s$accessibility$gp_fte_extg$coverage
 #' @exportS3Method base::summary
-summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
+summary.spax <- function(object, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
   # Calculate accessibility statistics
-  acc_stats <- lapply(1:nlyr(x$accessibility), function(i) {
-    layer <- x$accessibility[[i]]
+  acc_stats <- lapply(1:nlyr(object$accessibility), function(i) {
+    layer <- object$accessibility[[i]]
     values <- terra::values(layer)
 
     # Basic statistics
@@ -157,7 +157,7 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
 
     # Combine into named list
     list(
-      name = names(x$accessibility)[i],
+      name = names(object$accessibility)[i],
       min = stats$min,
       max = stats$max,
       mean = stats$mean,
@@ -171,20 +171,20 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
       )
     )
   })
-  names(acc_stats) <- names(x$accessibility)
+  names(acc_stats) <- names(object$accessibility)
 
   # Calculate facility statistics
   fac_stats <- NULL
-  if (!is.null(x$facilities)) {
+  if (!is.null(object$facilities)) {
     fac_stats <- list(
-      count = nrow(x$facilities)
+      count = nrow(object$facilities)
     )
 
     # Supply statistics if present
-    supply_cols <- setdiff(names(x$facilities), "id")
+    supply_cols <- setdiff(names(object$facilities), "id")
     if (length(supply_cols) > 0) {
       fac_stats$supply <- lapply(supply_cols, function(col) {
-        values <- x$facilities[[col]]
+        values <- object$facilities[[col]]
         list(
           name = col,
           min = min(values, na.rm = TRUE),
@@ -203,8 +203,8 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     accessibility = acc_stats,
     facilities = fac_stats,
     model_specific = NULL,
-    type = x$type,
-    parameters = x$parameters
+    type = object$type,
+    parameters = object$parameters
   )
 }
 
