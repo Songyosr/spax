@@ -3,11 +3,11 @@ bibentry(
   title   = "spax: Spatial Accessibility and Allocation Modeling",
   author  = person("Songyos", "Rajborirug", comment = c(ORCID = "0000-0002-5000-7409")),
   year    = "2026",
-  note    = "R package version 0.6.0",
-  doi     = "10.5281/zenodo.23538560",
+  note    = paste("R package version", meta$Version),
+  doi     = "10.5281/zenodo.23438611",
   url     = "https://github.com/Songyosr/spax",
-  textVersion = paste(
-    "Rajborirug S (2026). spax: Spatial Accessibility and Allocation Modeling.",
-    "R package version 0.6.0. doi:10.5281/zenodo.23538560"
+  textVersion = paste0(
+    "Rajborirug S (2026). spax: Spatial Accessibility and Allocation Modeling. ",
+    "R package version ", meta$Version, ". doi:10.5281/zenodo.23438611"
   )
 )

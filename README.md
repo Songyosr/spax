@@ -177,10 +177,10 @@ built the guides. If it finds nothing, use the website.
 
 Report reproducible issues or discuss larger changes on the [project
 repository](https://github.com/Songyosr/spax). Package code uses the MIT
-license; see [LICENSE](LICENSE.md). The bundled Cornwall GP example data
-are openly licensed third-party material (Open Government Licence v3.0
-and Creative Commons Attribution), which the MIT license does not cover.
-The installed notice file, `system.file("COPYRIGHTS", package = "spax")`
-(source `inst/COPYRIGHTS`), lists each source and its required
-attribution; the exact Creative Commons version of the travel-friction
-source is still unconfirmed.
+license; see
+[LICENSE](https://github.com/Songyosr/spax/blob/main/LICENSE.md). The
+bundled Cornwall GP example data are openly licensed third-party material
+(Open Government Licence v3.0 and Creative Commons Attribution), which the
+MIT license does not cover. The installed notice file,
+`system.file("COPYRIGHTS", package = "spax")` (source `inst/COPYRIGHTS`),
+lists each source and its required attribution.
