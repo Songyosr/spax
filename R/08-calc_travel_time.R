@@ -12,11 +12,10 @@
 #' country). Global motorized friction surfaces, such as those of the Malaria
 #' Atlas Project, give minutes per metre; the travel times are then in minutes.
 #' Inputs in another coordinate reference system are projected to the grid's
-#' with terra. When that needs a change of datum, for example from WGS 84 to
-#' British National Grid, PROJ may download a datum shift grid and keep it in
-#' the user's PROJ data folder; to avoid this, give the inputs in the grid's
-#' system or one on the same datum (here, transforming points with
-#' [sf::st_transform()] downloads nothing).
+#' with terra, which lets PROJ fetch files from the internet. When a projection
+#' changes datum, for example from WGS 84 to British National Grid, PROJ may
+#' download a datum shift grid and keep it in the user's PROJ data folder; give
+#' the inputs in the grid's system, or in one on the same datum, to avoid this.
 #'
 #' Times are measured between cell centers; the facility's own cell has time
 #' zero. Paths that leave the facility cell diagonally are underestimated by at

@@ -17,8 +17,8 @@ concurrency:
 
 # Tiered checks. develop is the integration branch and main the latest release.
 # Every push to develop and every PR into develop runs the quick check: one
-# Linux cell, CRAN-mode check with all tests, without rebuilding vignettes or
-# the PDF manual. The full five-cell matrix (vignettes, PDF manual with index,
+# Linux cell, CRAN-mode check without rebuilding vignettes or the PDF manual,
+# then the whole test suite again with the blocks that skip in CRAN mode. The full five-cell matrix (vignettes, PDF manual with index,
 # evidence and preservation records) runs before releases and other milestones:
 # manual "Run workflow" dispatch, PRs into main (the release promotion) and PRs
 # labelled `full-check` (the label takes effect on the next push or a
@@ -41,6 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: r-lib/actions/setup-r@v2
+        id: setup_r
         with:
           r-version: release
           use-public-rspm: true
@@ -83,6 +84,24 @@ jobs:
           res <- as.data.frame(testthat::test_local(".", reporter = "summary",
                                                     stop_on_failure = TRUE))
           cat("expectations:", sum(res$nb), "skipped:", sum(res$skipped), "\n")
+      # terra lets PROJ download datum shift grids; examples, tests and guides
+      # must not, so nothing may land in the user's PROJ data folder.
+      - name: Nothing written to the user's PROJ data folder
+        if: ${{ always() && steps.setup_r.outcome == 'success' }}
+        shell: Rscript {0}
+        run: |
+          home <- path.expand("~")
+          dir <- switch(Sys.info()[["sysname"]],
+            Linux = file.path(Sys.getenv("XDG_DATA_HOME", file.path(home, ".local", "share")), "proj"),
+            Darwin = file.path(home, "Library", "Application Support", "proj"),
+            Windows = file.path(Sys.getenv("LOCALAPPDATA"), "proj"))
+          files <- if (dir.exists(dir)) list.files(dir, recursive = TRUE, all.files = TRUE) else character()
+          cat("PROJ user data folder:", dir, "\n")
+          if (length(files)) {
+            print(file.info(file.path(dir, files))[, "size", drop = FALSE])
+            stop("files were written to the user's PROJ data folder (a downloaded datum shift grid?)")
+          }
+          cat("empty\n")
 
   check:
     name: ${{ matrix.config.id }} (R ${{ matrix.config.r }})
@@ -390,6 +409,35 @@ jobs:
             stopifnot(unchanged, any(grepl("[.]tar[.]gz$", files)),
                       any(basename(files) == "00check.log"), index_ok)
           }
+      # The check runs in CRAN mode, which skips the skip_on_cran() blocks; run
+      # the whole suite with them on Windows and macOS (the quick job covers Linux).
+      - name: Tests skipped in CRAN mode
+        if: ${{ runner.os != 'Linux' }}
+        env:
+          NOT_CRAN: "true"
+        shell: Rscript {0}
+        run: |
+          res <- as.data.frame(testthat::test_local(".", reporter = "summary",
+                                                    stop_on_failure = TRUE))
+          cat("expectations:", sum(res$nb), "skipped:", sum(res$skipped), "\n")
+      # terra lets PROJ download datum shift grids; examples, tests and guides
+      # must not, so nothing may land in the user's PROJ data folder.
+      - name: Nothing written to the user's PROJ data folder
+        if: ${{ always() && steps.setup_r.outcome == 'success' }}
+        shell: Rscript {0}
+        run: |
+          home <- path.expand("~")
+          dir <- switch(Sys.info()[["sysname"]],
+            Linux = file.path(Sys.getenv("XDG_DATA_HOME", file.path(home, ".local", "share")), "proj"),
+            Darwin = file.path(home, "Library", "Application Support", "proj"),
+            Windows = file.path(Sys.getenv("LOCALAPPDATA"), "proj"))
+          files <- if (dir.exists(dir)) list.files(dir, recursive = TRUE, all.files = TRUE) else character()
+          cat("PROJ user data folder:", dir, "\n")
+          if (length(files)) {
+            print(file.info(file.path(dir, files))[, "size", drop = FALSE])
+            stop("files were written to the user's PROJ data folder (a downloaded datum shift grid?)")
+          }
+          cat("empty\n")
       - name: Upload R and dependency evidence
         if: always()
         uses: actions/upload-artifact@v6

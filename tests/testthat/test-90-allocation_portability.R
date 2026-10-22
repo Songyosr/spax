@@ -6,8 +6,6 @@
 # plain geometry in a fresh process, so this test is not skipped on CRAN.
 
 test_that("a fresh process predicts, maps and rebuilds coverage from saved objects", {
-  # Slow; skipped in CRAN checks, run locally and in CI
-  skip_on_cran()
   outputs <- c("rho", "A", "abar", "flow")
   requests <- list()
   for (entry in alloc_prediction_sources()) for (source in entry[c("solved", "fit")]) {
