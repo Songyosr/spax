@@ -7,9 +7,17 @@
 * Help pages are written for users: every exported function has an example,
   internal helpers no longer have help pages, and pages written in Markdown
   show it formatted.
-* The examples and tests no longer project between WGS 84 and British National
-  Grid with terra, which can make PROJ download a datum shift grid and store it
-  in your PROJ data folder; `?calc_travel_time` says when this can happen.
+* The Cornwall example data `cornwall_gp` and `cornwall_lsoa` are now in WGS 84
+  longitude and latitude (EPSG:4326), the datum of the bundled rasters; they
+  were in British National Grid (EPSG:27700). Their grid coordinates stay as
+  columns (`easting` and `northing` for practices, `cent_x` and `cent_y` for
+  small-area centroids), and `cornwall_lsoa` gains `cent_lon` and `cent_lat`,
+  the origins of `cornwall_travel`. Combining the layers no longer changes
+  datum: with terra loaded, a change of datum can make PROJ download a datum
+  shift grid into your PROJ data folder (on Linux also for sf), so the
+  examples, tests and guides no longer make one. For map units in metres,
+  project to a system on the WGS 84 datum, such as UTM zone 30N (EPSG:32630).
+  `?calc_travel_time` says when a download can happen.
 * `citation("spax")` gives the installed version and the DOI that refers to
   all versions.
 * Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.

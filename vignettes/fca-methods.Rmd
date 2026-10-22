@@ -14,10 +14,7 @@ knitr::opts_chunk$set(
   class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
-  dpi = 100,
-  # cairo writes smaller PNG files than the default macOS device (png only;
-  # other devices, such as pkgdown's, get no extra arguments)
-  dev.args = if (capabilities("cairo")) list(png = list(type = "cairo")) else list()
+  dpi = 100
 )
 ```
 
@@ -143,7 +140,6 @@ shared_range <- range(values(all_three), na.rm = TRUE)
 outline <- cornwall_lsoa |>
   filter(!scilly) |>
   st_union() |>
-  st_transform(crs(pop)) |>
   vect()
 plot(
   all_three,

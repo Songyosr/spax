@@ -73,8 +73,8 @@ overrides are deliberately absent. A changed system requires reevaluation.
 # West Cornwall: the small areas and practices west of easting 170 km
 areas <- sf::st_drop_geometry(cornwall_lsoa)
 areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
-gp <- cornwall_gp[!cornwall_gp$scilly, ]
-gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
 supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
 
 # Fit on every other small area; predict the others, which lie among them,

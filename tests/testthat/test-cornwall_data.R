@@ -6,8 +6,12 @@ test_that("Cornwall GP tables have aligned identifiers", {
   expect_equal(nrow(areas), 337L)
   expect_false(anyDuplicated(gp$practice) > 0)
   expect_false(anyDuplicated(areas$lsoa) > 0)
-  expect_equal(sf::st_crs(cornwall_gp)$epsg, 27700L)
-  expect_equal(sf::st_crs(cornwall_lsoa)$epsg, 27700L)
+  # Every bundled layer is on the WGS 84 datum of the rasters, so the examples
+  # and guides never change datum; grid coordinates are kept as columns
+  expect_equal(sf::st_crs(cornwall_gp)$epsg, 4326L)
+  expect_equal(sf::st_crs(cornwall_lsoa)$epsg, 4326L)
+  expect_true(all(c("easting", "northing") %in% names(gp)))
+  expect_true(all(c("cent_x", "cent_y", "cent_lon", "cent_lat") %in% names(areas)))
 
   expect_true(all(cornwall_flows$practice %in% gp$practice))
   expect_true(all(cornwall_flows$lsoa %in% areas$lsoa))
@@ -49,15 +53,14 @@ test_that("Cornwall travel matrix matches the tables and the travel grid", {
   expect_false(any((reaches_mainland | reaches_scilly) &
                      is.na(terra::values(pop)[, 1])))
 
-  skip_if_no_proj()
-  centroids <- sf::st_transform(sf::st_as_sf(
-    sf::st_drop_geometry(cornwall_lsoa), coords = c("cent_x", "cent_y"),
-    crs = 27700), 4326)
-  cells <- terra::cellFromXY(travel, sf::st_coordinates(centroids))
-  mainland <- which(!scilly_area)[1:5]
-  expect_equal(unname(as.matrix(travel[cells[mainland]])[, !scilly_gp]),
-               unname(cornwall_travel[mainland, !scilly_gp]),
+  # The travel matrix is the travel grid at each small area's centroid cell,
+  # and each practice's own cell is the 1-minute floor of its layer
+  cells <- terra::cellFromXY(travel, cbind(cornwall_lsoa$cent_lon, cornwall_lsoa$cent_lat))
+  expect_equal(unname(as.matrix(travel[cells])), unname(cornwall_travel),
                ignore_attr = TRUE)
+  own <- terra::cellFromXY(travel, sf::st_coordinates(cornwall_gp))
+  expect_equal(vapply(seq_along(own), function(j) travel[own[j]][[j]], numeric(1)),
+               rep(1, nrow(cornwall_gp)))
 })
 
 test_that("read_spax_example lists and loads the bundled rasters", {

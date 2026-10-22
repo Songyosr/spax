@@ -14,10 +14,7 @@ knitr::opts_chunk$set(
   class.output = "spax-output",
   fig.width = 7,
   fig.height = 4.5,
-  dpi = 100,
-  # cairo writes smaller PNG files than the default macOS device (png only;
-  # other devices, such as pkgdown's, get no extra arguments)
-  dev.args = if (capabilities("cairo")) list(png = list(type = "cairo")) else list()
+  dpi = 100
 )
 ```
 
@@ -86,12 +83,10 @@ supply <- setNames(gp$gp_fte_extg, gp$practice)
 truro_window <- ext(-5.30, -4.80, 50.12, 50.42)
 practices <- cornwall_gp |>
   filter(!scilly) |>
-  st_transform(crs(pop)) |>
   vect()
 coast <- cornwall_lsoa |>
   filter(!scilly) |>
   st_union() |>
-  st_transform(crs(pop)) |>
   vect()
 show <- function(layer, title) {
   plot(

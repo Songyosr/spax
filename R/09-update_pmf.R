@@ -28,7 +28,7 @@
 #'
 #' # Group small areas into larger units (LSOA names end in a letter; dropping it
 #' # gives the containing MSOA) so every unit covers several grid cells
-#' areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas <- terra::vect(cornwall_lsoa)
 #' areas$msoa <- sub("[A-Z]$", "", areas$name)
 #' msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
 #'
@@ -99,7 +99,7 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
 #'
 #' # Registered patients by Cornwall small area, on the population grid
 #' pop <- read_spax_example("cornwall_pop.tif")
-#' areas <- vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas <- vect(cornwall_lsoa)
 #'
 #' # Uniform prior over the populated grid
 #' result1 <- rasterize_demand(areas, value_col = "registered", template = pop)

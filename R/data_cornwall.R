@@ -10,8 +10,8 @@
 #' Use `gp_fte_extg` as supply in examples: it excludes GPs in training, whose
 #' recording changed in June 2018 and who cluster in training practices.
 #'
-#' @format An `sf` point object (EPSG:27700, British National Grid) with 55
-#'   rows and columns:
+#' @format An `sf` point object in WGS 84 longitude and latitude (EPSG:4326),
+#'   the datum of the bundled rasters, with 55 rows and columns:
 #' \describe{
 #'   \item{practice}{NHS ODS practice code; matches `cornwall_flows`,
 #'     the columns of `cornwall_travel` and the layers of
@@ -28,12 +28,18 @@
 #'     of Scilly.}
 #'   \item{fte_source}{Whether the workforce record includes estimates.}
 #'   \item{scilly}{`TRUE` for the practice on the Isles of Scilly.}
-#'   \item{geometry}{Main-site location from the postcode.}
+#'   \item{easting, northing}{British National Grid coordinates (EPSG:27700)
+#'     of the main-site postcode, in metres.}
+#'   \item{geometry}{Main-site location from the postcode, the origin of
+#'     `cornwall_gp_travel.tif`.}
 #' }
 #'
 #' @details Registrations are a July 2026 snapshot and workforce a June 2026
 #'   snapshot. Only the main site of each practice is represented; branch
-#'   surgeries are not.
+#'   surgeries are not. All the bundled data use the WGS 84 datum, so they
+#'   combine without a change of datum; for map units in metres project them
+#'   to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
+#'   British National Grid uses another datum (OSGB36).
 #'
 #' @source NHS England, Patients Registered at a GP Practice (July 2026) and
 #'   General Practice Workforce (30 June 2026), Open Government Licence v3.0.
@@ -55,7 +61,8 @@
 #' of Scilly ICB, with population, registered patients and population-weighted
 #' centroids.
 #'
-#' @format An `sf` polygon object (EPSG:27700) with 337 rows and columns:
+#' @format An `sf` polygon object in WGS 84 longitude and latitude
+#'   (EPSG:4326) with 337 rows and columns:
 #' \describe{
 #'   \item{lsoa, name}{LSOA 2021 code and name; `lsoa` matches
 #'     `cornwall_flows` and the rows of `cornwall_travel`.}
@@ -66,8 +73,10 @@
 #'   \item{registered_in}{Residents registered at a Cornwall and Isles of Scilly
 #'     practice (row totals of `cornwall_flows`).}
 #'   \item{registered_out}{Residents registered at a practice elsewhere.}
-#'   \item{cent_x, cent_y}{Population-weighted centroid (EPSG:27700), the
-#'     origin used for `cornwall_travel`.}
+#'   \item{cent_x, cent_y}{Population-weighted centroid in British National
+#'     Grid coordinates (EPSG:27700), in metres.}
+#'   \item{cent_lon, cent_lat}{The same centroid in WGS 84 longitude and
+#'     latitude, the origin used for `cornwall_travel`.}
 #'   \item{scilly}{`TRUE` for the Isles of Scilly area.}
 #'   \item{geometry}{Super-generalised (200 m) clipped boundary.}
 #' }
