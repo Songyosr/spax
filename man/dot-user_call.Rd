@@ -7,10 +7,14 @@
 .user_call()
 }
 \description{
-The outermost call on the stack to an exported spax function or, for an S3
-method of spax, the call to its generic (`predict(fit, ...)` rather than
-`predict.spax_allocation(fit, ...)`). The outermost call is the one the user
-typed; functions it calls in turn, exported or not, are not named. `NULL`
-when there is none, for example when an internal function is called directly.
+The innermost frame in which control passed from code outside spax into a
+spax function: the user's own call (`prep_data(...)`), a call that base R
+makes for the user (`FUN(X[[i]], ...)` in `lapply()`), or, for an S3 method,
+the call to its generic (`predict(fit, ...)` rather than
+`predict.spax_allocation(fit, ...)`). Calls that spax makes to its own
+functions, directly or through functions of other packages such as
+`lapply()` or `optim()`, are never named. A function given as an object, as
+in `do.call(prep_data, args)`, is named by its spax name. `NULL` when there
+is no such frame.
 }
 \keyword{internal}

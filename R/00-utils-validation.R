@@ -4,48 +4,105 @@
 #' Like [stop()], but the error names the call that the user made to spax (see
 #' `.user_call()`) instead of the internal function that found the problem, and
 #' names no call when there is none. A condition object is signalled as it is.
+#' Working out the call never replaces the message: if it fails, no call is
+#' named.
 #' @keywords internal
 .stop <- function(..., call. = TRUE, domain = NULL) {
   if (...length() == 1L && inherits(..1, "condition")) stop(..1)
-  stop(simpleError(.makeMessage(..., domain = domain),
-                   if (isTRUE(call.)) .user_call()))
+  call <- if (isTRUE(call.)) tryCatch(.user_call(), error = function(e) NULL)
+  stop(simpleError(.makeMessage(..., domain = domain), call))
 }
 
 #' The call to spax that the user made
 #'
-#' The outermost call on the stack to an exported spax function or, for an S3
-#' method of spax, the call to its generic (`predict(fit, ...)` rather than
-#' `predict.spax_allocation(fit, ...)`). The outermost call is the one the user
-#' typed; functions it calls in turn, exported or not, are not named. `NULL`
-#' when there is none, for example when an internal function is called directly.
+#' The innermost frame in which control passed from code outside spax into a
+#' spax function: the user's own call (`prep_data(...)`), a call that base R
+#' makes for the user (`FUN(X[[i]], ...)` in `lapply()`), or, for an S3 method,
+#' the call to its generic (`predict(fit, ...)` rather than
+#' `predict.spax_allocation(fit, ...)`). Calls that spax makes to its own
+#' functions, directly or through functions of other packages such as
+#' `lapply()` or `optim()`, are never named. A function given as an object, as
+#' in `do.call(prep_data, args)`, is named by its spax name. `NULL` when there
+#' is no such frame.
 #' @keywords internal
 .user_call <- function() {
-  ns <- topenv(environment(.user_call))
-  # Dot-named functions are internal even when a development load exports them
-  exported <- grep("^[.]", getNamespaceExports(ns), value = TRUE, invert = TRUE)
-  methods <- getNamespaceInfo(ns, "S3methods")
-  method_names <- ifelse(is.na(methods[, 3L]), paste(methods[, 1L], methods[, 2L], sep = "."),
-                         methods[, 3L])
+  ns <- topenv(environment())
+  here <- sys.nframe()
+  parents <- sys.parents()
   calls <- sys.calls()
-  # The name of the function of each call: `f(...)` or `pkg::f(...)`
-  called <- vapply(calls, function(cl) {
-    fn <- cl[[1L]]
-    if (is.name(fn)) return(as.character(fn))
-    if (is.call(fn) && length(fn) == 3L && is.name(fn[[1L]]) &&
-        as.character(fn[[1L]]) %in% c("::", ":::") && is.name(fn[[3L]])) {
-      return(as.character(fn[[3L]]))
+  # Where the function of frame k comes from: spax, another package (base R
+  # included) or the user's own code
+  origin <- function(k) {
+    env <- environment(sys.function(k))
+    if (is.null(env)) return("package")
+    top <- topenv(env)
+    if (identical(top, ns)) "spax" else if (isNamespace(top)) "package" else "user"
+  }
+  # Frame k was entered from outside spax when its callers, followed through
+  # frames of other packages, lead to the user's code or to the top level
+  entered_from_outside <- function(k) {
+    current <- k
+    p <- parents[current]
+    while (p > 0L && p < current && origin(p) == "package") {
+      current <- p
+      p <- parents[current]
     }
-    NA_character_
-  }, character(1))
-  for (i in seq_along(calls)) {
-    if (is.na(called[i])) next
-    if (called[i] %in% exported) return(calls[[i]])
-    method <- match(called[i], method_names)
-    if (!is.na(method)) {
-      generic <- methods[method, 1L]
-      if (i > 1L && identical(called[i - 1L], generic)) return(calls[[i - 1L]])
-      return(calls[[i]])
+    !(p > 0L && p < current && origin(p) == "spax")
+  }
+  for (k in rev(seq_len(here - 1L))) {
+    if (origin(k) != "spax" || identical(sys.function(k), .stop) ||
+        !entered_from_outside(k)) next
+    # A method dispatched by NextMethod(): name the method that dispatched it
+    if (k > 1L && identical(sys.function(k - 1L), NextMethod)) next
+    call <- calls[[k]]
+    head <- call[[1L]]
+    # An S3 method: the call to its generic. The frames that dispatched the
+    # method come just before it and share its caller; each is called by the
+    # generic's name or runs UseMethod() or standardGeneric() for it. Name the
+    # outermost of them.
+    if (k > 1L && is.name(head)) {
+      name <- as.character(head)
+      dots <- gregexpr(".", name, fixed = TRUE)[[1L]]
+      dots <- dots[dots > 1L]
+      generics <- if (length(dots)) substring(name, 1L, dots - 1L) else character()
+      # The generic that frame j dispatches, or NA
+      dispatches <- function(j) {
+        h <- calls[[j]][[1L]]
+        if (is.call(h) && length(h) == 3L && is.name(h[[1L]]) &&
+            as.character(h[[1L]]) %in% c("::", ":::")) h <- h[[3L]]
+        if (is.name(h) && as.character(h) %in% generics) return(as.character(h))
+        b <- body(sys.function(j))
+        if (is.call(b) && is.name(b[[1L]]) &&
+            as.character(b[[1L]]) %in% c("UseMethod", "standardGeneric") &&
+            length(b) > 1L && is.character(b[[2L]]) && b[[2L]] %in% generics) {
+          return(b[[2L]])
+        }
+        NA_character_
+      }
+      first <- 0L
+      generic <- NA_character_
+      j <- k - 1L
+      while (length(generics) && j >= 1L && parents[j] == parents[k] &&
+             !is.na(g <- dispatches(j))) {
+        first <- j
+        generic <- g
+        j <- j - 1L
+      }
+      if (first > 0L) {
+        call <- calls[[first]]
+        # The generic given as an object, as in do.call(predict, args): its name
+        if (is.function(call[[1L]])) call[[1L]] <- as.name(generic)
+        return(call)
+      }
     }
+    # A function given as an object: its name in spax
+    if (is.function(head)) {
+      found <- Find(function(nm) identical(get(nm, envir = ns), head),
+                    c(getNamespaceExports(ns), ls(ns, all.names = TRUE)))
+      if (is.null(found)) return(NULL)
+      call[[1L]] <- as.name(found)
+    }
+    return(call)
   }
   NULL
 }

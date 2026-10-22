@@ -10,5 +10,7 @@
 Like [stop()], but the error names the call that the user made to spax (see
 `.user_call()`) instead of the internal function that found the problem, and
 names no call when there is none. A condition object is signalled as it is.
+Working out the call never replaces the message: if it fails, no call is
+named.
 }
 \keyword{internal}

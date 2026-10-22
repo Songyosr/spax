@@ -768,9 +768,10 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     if (starts_searched) starts <- search$starts
     search_lower <- search$lower
     search_upper <- search$upper
-    # The call is built from symbols and evaluated here, so that an error from the
-    # fit shows `.fit_problem_multistart(model, observed, ...)` and not the function
-    # and the values written out (as do.call() with the function itself would).
+    # The call is built from symbols and evaluated here, so that an error R itself
+    # raises in the fitter shows `.fit_problem_multistart(model, observed, ...)` and
+    # not the function and the values written out (as do.call() with the function
+    # itself would). Errors from spax's own checks name the user's call (.stop()).
     dots <- lapply(dots, function(v) if (is.language(v)) call("quote", v) else v)
     fit_call <- as.call(c(list(quote(.fit_problem_multistart), quote(model), quote(observed),
       quote(starts), quote(search_lower), quote(search_upper), output = quote(output),
