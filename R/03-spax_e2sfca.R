@@ -870,6 +870,25 @@
 #' a `.`. `demand_weights` and `access_weights` are shared by the groups, or a
 #' list with one element per group, named by the groups. Shared weights should
 #' be passed as one object, so that they are read once.
+#' @examples
+#' library(terra)
+#'
+#' # Cornwall population grid, and Gaussian weights of the travel time to each
+#' # GP practice
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' w <- calc_decay(travel, method = "gaussian", sigma = 10)
+#'
+#' # The same weights in both steps give E2SFCA (spax_e2sfca()); the squared
+#' # weights in the second step give M2SFCA (spax_m2sfca())
+#' e2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w,
+#'                          id_col = "practice", supply_cols = "gp_fte_extg",
+#'                          indicator_names = "e2sfca")
+#' m2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w^2,
+#'                          id_col = "practice", supply_cols = "gp_fte_extg",
+#'                          indicator_names = "m2sfca")
+#' plot(c(e2sfca, m2sfca))
 #' @export
 #' @md
 compute_access <- function(demand, supply, demand_weights, access_weights,
@@ -1131,6 +1150,44 @@ spax_e2sfca <- function(demand, supply, distance,
 #' https://doi.org/10.1016/j.healthplace.2013.07.012
 #'
 #' @seealso [spax_e2sfca()], [spax_2sfca()], [compute_access()], [calc_decay()]
+#' @examples
+#' library(terra)
+#' library(sf)
+#'
+#' # Cornwall population grid and travel time to each GP practice
+#' pop_rast <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' gp <- cornwall_gp |> st_drop_geometry()
+#'
+#' # M2SFCA with Gaussian decay
+#' result <- spax_m2sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' result
+#'
+#' # E2SFCA with the same decay, for comparison
+#' result_e2 <- spax_e2sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' plot(c(result_e2$accessibility, result$accessibility),
+#'   main = c("E2SFCA", "M2SFCA")
+#' )
+#'
+#' # The share of the E2SFCA score that M2SFCA keeps: the average decay weight
+#' # of the practices in reach, low where they are far away
+#' plot(result$accessibility / result_e2$accessibility,
+#'   main = "M2SFCA / E2SFCA"
+#' )
 #' @export
 #' @md
 spax_m2sfca <- function(demand, supply, distance,

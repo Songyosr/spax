@@ -152,6 +152,20 @@
 #' @return `print()` returns its argument invisibly, `summary()` a
 #'   `summary.spax_access_values` and `as.data.frame()` a data frame.
 #' @seealso [spax()], [prep_data()]
+#' @examples
+#' # Mainland Cornwall: residents by small area, GP FTE by practice and the
+#' # travel minutes between them
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' d <- prep_data(stats::setNames(areas$pop, areas$lsoa),
+#'                stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # E2SFCA with a Gaussian decay of 10 minutes, at the small areas
+#' access <- spax(d, spec_e2sfca(decay_gaussian(sigma = 10)))
+#' access
+#' summary(access)
+#' head(as.data.frame(access))
 #' @family allocation interface
 #' @name spax_access_values-methods
 #' @method format spax_access_values

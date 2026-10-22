@@ -62,6 +62,34 @@
 #'   demand groups the total demand is `D_active`, and `group_ids`, `D_groups`
 #'   and `distance_groups` are added (`distance_active` is `NULL` when travel is
 #'   given per group).
+#' @examples
+#' # Mainland Cornwall: registered residents by small area, GP FTE by practice
+#' # and the travel minutes between them, matched by their names
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' demand <- stats::setNames(areas$registered, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' prepare_allocation(demand, supply, travel,
+#'                    metadata = list(demand_units = "registered residents",
+#'                                    supply_units = "GP FTE",
+#'                                    travel_units = "minutes"))
+#'
+#' # Demand groups: residents by age band, sharing one travel matrix
+#' by_age <- list(children = stats::setNames(areas$pop_0_15, areas$lsoa),
+#'                adults = stats::setNames(areas$pop_16_64, areas$lsoa),
+#'                older = stats::setNames(areas$pop_65p, areas$lsoa))
+#' prepare_allocation(by_age, supply, travel)
+#'
+#' # All small areas and practices, the Isles of Scilly area excluded. Travel
+#' # is NA between the islands and the mainland, which have no road link;
+#' # missing_travel = "omit" leaves those pairs out of the model
+#' all_areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' all_gp <- sf::st_drop_geometry(cornwall_gp)
+#' prepare_allocation(stats::setNames(all_areas$registered, all_areas$lsoa),
+#'                    stats::setNames(all_gp$gp_fte_extg, all_gp$practice),
+#'                    cornwall_travel, included = !all_areas$scilly,
+#'                    missing_travel = "omit")
 #' @family allocation steps
 #' @export
 #' @md
@@ -358,6 +386,31 @@ print.ae_prepared_inputs <- function(x, ...) {
 #'   Parameter order is sigma, then v0 and beta when their flags are true. With
 #'   demand groups sigma and v0 are `sigma.<group>` and `v0.<group>` for the
 #'   parameters in `by_group`.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # Gaussian decay and a fitted outside weight: the parameters are sigma and v0
+#' model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+#' model
+#'
+#' # Evaluate it at a travel scale of 10 minutes and an outside weight of 1
+#' evaluate_allocation(model, c(sigma = 10, v0 = 1))$coverage
+#'
+#' # Or fit it to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' coef(fit_allocation(model, totals, loss = "poisson"))
+#'
+#' # Power decay, a fitted supply elasticity beta and an outside weight held at 0.5
+#' clm_allocation(inputs, family = "power", v0 = 0.5, fit_beta = TRUE)
 #' @family allocation steps
 #' @export
 #' @md
@@ -698,6 +751,40 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
 #'   the loss.
 #' @seealso [allocation-fit-methods] for methods on saved fits.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              travel)
+#' model <- clm_allocation(inputs, fit_v0 = TRUE)
+#'
+#' # Registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#'
+#' # Fit to the practice totals. Without starts, the search finds starts and
+#' # bounds from the data, and the loss must be named
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(model, totals, loss = "poisson")
+#' fit
+#' coef(fit)
+#'
+#' # Fit to the flows: a matrix of small areas by practices, 0 where none
+#' flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+#' flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+#' coef(fit_allocation(model, flow_matrix, output = "flow", loss = "poisson"))
+#'
+#' # Starts and bounds of your own: one start per row
+#' starts <- rbind(near = c(sigma = 5, v0 = 0.5), far = c(sigma = 30, v0 = 5))
+#' fit_own <- fit_allocation(model, totals, starts = starts,
+#'                           lower = c(sigma = 1, v0 = 0.001),
+#'                           upper = c(sigma = 100, v0 = 100), loss = "poisson")
+#' coef(fit_own)
 #' @family allocation steps
 #' @export
 #' @md
@@ -826,6 +913,32 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 #'   These diagnostics establish neither identification nor global optimality.
 #' @name allocation-fit-methods
 #' @seealso [fit_allocation()]
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # The selected estimates and the modeled registrations at each practice
+#' coef(fit)
+#' round(fitted(fit))
+#'
+#' # Every start, the selected fit and its residuals
+#' summary(fit)
+#'
+#' # The selected fit itself has the same methods
+#' coef(fit$best)
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_problem_nfxp_fit <- function(object, ...) {
@@ -911,6 +1024,37 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
 #'   hard constraint on expected utilization.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' demand <- stats::setNames(areas$registered, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' model <- clm_allocation(prepare_allocation(demand, supply, travel), fit_v0 = TRUE)
+#'
+#' # The model at a travel scale of 10 minutes and an outside weight of 1
+#' ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
+#' ev$coverage
+#'
+#' # Expected registrations at each practice, in the order of the travel columns
+#' round(stats::setNames(ev$outputs$utilization, colnames(travel)))
+#'
+#' # Expected registrations by small area and practice, with the expected
+#' # outside count as one more column
+#' flow <- evaluate_allocation(model, c(sigma = 10, v0 = 1),
+#'                             requested_outputs = "flow_outside")$outputs$flow_outside
+#' round(flow[1:3, c("L82047", "(outside)")])
+#'
+#' # A scenario: Marazion Surgery (L82047) closes. Prepare the changed inputs
+#' # and evaluate them at the same values
+#' closed <- clm_allocation(prepare_allocation(demand, replace(supply, "L82047", 0),
+#'                                             travel), fit_v0 = TRUE)
+#' change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
+#'   ev$outputs$utilization
+#' round(stats::setNames(change, colnames(travel)))
 #' @family allocation steps
 #' @export
 #' @md
@@ -976,6 +1120,35 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #'   but makes unqualified A/abar unknown; explicitly named supported-only outputs
 #'   retain the existing zero-contribution convention. Zero-denominator rows
 #'   retain guarded zero mass and a false probability-valid flag.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # The small areas just east of the fitted ones, against the same practices
+#' east <- sf::st_drop_geometry(cornwall_lsoa)
+#' east <- east[east$cent_x >= 170000 & east$cent_x < 175000, ]
+#' pred <- predict_allocation(fit, cornwall_travel[east$lsoa, gp$practice],
+#'                            demand = stats::setNames(east$registered, east$lsoa),
+#'                            outputs = c("rho", "A", "flow"))
+#'
+#' # The share of each area's residents modeled at these practices, the GP FTE
+#' # per 1,000 residents attributed to the area, and the modeled registrations
+#' head(cbind(contact = pred$outputs$rho, fte_per_1000 = 1000 * pred$outputs$A,
+#'            registered = rowSums(pred$outputs$flow)))
+#' table(pred$validity$status)
 #' @family allocation steps
 #' @export
 #' @md

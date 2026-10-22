@@ -36,6 +36,33 @@ summaries retain failed starts, boundaries, warnings/errors and descriptive
 disagreement. A search with no eligible fit remains inspectable by summary,
 while coefficient and fitted extraction fail clearly.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# A fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+                      loss = "poisson")
+
+# The selected estimates and the modeled registrations at each practice
+coef(fit)
+round(fitted(fit))
+
+# Every start, the selected fit and its residuals
+summary(fit)
+
+# The selected fit itself has the same methods
+coef(fit$best)
+}
 \seealso{
 \code{\link[=fit_allocation]{fit_allocation()}}
 }

@@ -108,6 +108,45 @@ plain-function decay builds a whole in-memory weight raster for each group.
 attractiveness of \code{\link[=spax_huff2sfca]{spax_huff2sfca()}} are shared.
 }
 
+\examples{
+library(terra)
+library(sf)
+
+# Cornwall population grid and travel time to each GP practice
+pop_rast <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+gp <- cornwall_gp |> st_drop_geometry()
+
+# M2SFCA with Gaussian decay
+result <- spax_m2sfca(
+  demand = pop_rast,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+result
+
+# E2SFCA with the same decay, for comparison
+result_e2 <- spax_e2sfca(
+  demand = pop_rast,
+  supply = gp,
+  distance = travel,
+  decay_params = list(method = "gaussian", sigma = 10),
+  id_col = "practice",
+  supply_cols = "gp_fte_extg"
+)
+plot(c(result_e2$accessibility, result$accessibility),
+  main = c("E2SFCA", "M2SFCA")
+)
+
+# The share of the E2SFCA score that M2SFCA keeps: the average decay weight
+# of the practices in reach, low where they are far away
+plot(result$accessibility / result_e2$accessibility,
+  main = "M2SFCA / E2SFCA"
+)
+}
 \references{
 Delamater, P. L. (2013). Spatial accessibility in suboptimally configured
 health care systems: A modified two-step floating catchment area (M2SFCA)

@@ -39,6 +39,14 @@
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
+#' @examples
+#' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice", supply_cols = "gp_fte_extg")
+#' print(result)
 #' @export
 print.spax <- function(x, ...) {
   # Header: the type, the layers and the grid
@@ -111,6 +119,22 @@ print.spax <- function(x, ...) {
 #'   counts the cells with a value (\code{cells_total}; cells outside the study area,
 #'   such as sea, are missing and excluded) and the cells whose accessibility is
 #'   above zero (\code{cells_covered}), with their \code{proportion}.
+#' @examples
+#' # E2SFCA on the Cornwall population grid for two supply measures: GPs
+#' # excluding GPs in training, and all GPs
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice",
+#'                       supply_cols = c("gp_fte_extg", "gp_fte"))
+#' summary(result)
+#'
+#' # Deciles instead of quartiles, and the coverage of the first measure: the
+#' # cells with a value, and those with access above zero
+#' s <- summary(result, quantiles = seq(0, 1, by = 0.1))
+#' s$accessibility$gp_fte_extg$quantiles
+#' s$accessibility$gp_fte_extg$coverage
 #' @exportS3Method base::summary
 summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
   # Calculate accessibility statistics
@@ -197,6 +221,16 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
+#' @examples
+#' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice", supply_cols = "gp_fte_extg")
+#'
+#' # The summary, to three significant digits
+#' print(summary(result), digits = 3)
 #' @export
 print.summary.spax <- function(x, digits = 4, ...) {
   # Format numbers with consistent precision

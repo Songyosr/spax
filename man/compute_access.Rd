@@ -68,3 +68,23 @@ list with one element per group, named by the groups. Shared weights should
 be passed as one object, so that they are read once.
 }
 
+\examples{
+library(terra)
+
+# Cornwall population grid, and Gaussian weights of the travel time to each
+# GP practice
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+gp <- sf::st_drop_geometry(cornwall_gp)
+w <- calc_decay(travel, method = "gaussian", sigma = 10)
+
+# The same weights in both steps give E2SFCA (spax_e2sfca()); the squared
+# weights in the second step give M2SFCA (spax_m2sfca())
+e2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w,
+                         id_col = "practice", supply_cols = "gp_fte_extg",
+                         indicator_names = "e2sfca")
+m2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w^2,
+                         id_col = "practice", supply_cols = "gp_fte_extg",
+                         indicator_names = "m2sfca")
+plot(c(e2sfca, m2sfca))
+}

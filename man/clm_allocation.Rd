@@ -75,6 +75,32 @@ the groups, the model equals the ungrouped model on the total demand.
 declarations with one element per group (sigma is then group specific);
 \code{v0} may be a named numeric vector by group when \code{fit_v0 = FALSE}.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# Gaussian decay and a fitted outside weight: the parameters are sigma and v0
+model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+model
+
+# Evaluate it at a travel scale of 10 minutes and an outside weight of 1
+evaluate_allocation(model, c(sigma = 10, v0 = 1))$coverage
+
+# Or fit it to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+coef(fit_allocation(model, totals, loss = "poisson"))
+
+# Power decay, a fitted supply elasticity beta and an outside weight held at 0.5
+clm_allocation(inputs, family = "power", v0 = 0.5, fit_beta = TRUE)
+}
 \seealso{
 Other allocation steps: 
 \code{\link{bootstrap_fit}()},

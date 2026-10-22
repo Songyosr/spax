@@ -43,3 +43,29 @@ Specialized version of \code{\link[=spread_weighted]{spread_weighted()}} for acc
 Distributes supply-to-demand ratios across space using probability-based
 catchment areas to calculate accessibility scores.
 }
+\examples{
+library(terra)
+
+# Cornwall population grid, and Gaussian weights of the travel time to each
+# GP practice
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+weights <- calc_decay(travel, method = "gaussian", sigma = 10)
+
+# Step 1 of E2SFCA: the population each practice reaches, and its GP FTE per
+# person reached, for GPs excluding GPs in training and for all GPs
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[match(names(weights), gp$practice), ]
+reached <- gather_weighted(pop, weights, simplify = TRUE)
+ratios <- data.frame(extg = gp$gp_fte_extg / reached, all = gp$gp_fte / reached)
+
+# Step 2: spread the ratios back over the grid with the same weights
+access <- spread_access(ratios, weights, ratio_cols = c("extg", "all"),
+                        plot_prefix = "gp_fte_")
+access
+plot(access)
+
+# With full_output, the score that each practice adds to each cell as well
+detail <- spread_access(ratios$extg, weights, full_output = TRUE)
+names(detail)
+}

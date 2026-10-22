@@ -19,3 +19,27 @@ The selected diagnostic method's result, invisibly.
 \description{
 Plot saved diagnostics from the selected allocation fit
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# A fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+                      loss = "poisson")
+
+# Observed against modeled registrations at each practice
+plot(fit)
+
+# The state of this model is the attractiveness of the practices: their GP
+# FTE, since kappa and beta are 1
+plot(fit, type = "state", breaks = 10)
+}

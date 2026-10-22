@@ -20,3 +20,14 @@ Invisibly returns the input object
 Formats and displays summary statistics for spax objects in a readable format.
 This is a placeholder until S3 method export issues are resolved.
 }
+\examples{
+# E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+                      decay_params = list(method = "gaussian", sigma = 10),
+                      id_col = "practice", supply_cols = "gp_fte_extg")
+
+# The summary, to three significant digits
+print(summary(result), digits = 3)
+}
