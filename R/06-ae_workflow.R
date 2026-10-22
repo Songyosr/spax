@@ -205,8 +205,14 @@ prepare_allocation <- function(demand, supply, distance,
 #' pop <- terra::crop(pop, mainland)
 #' registered <- pop * sum(areas$registered) /
 #'   terra::global(pop, "sum", na.rm = TRUE)[[1]]
-#' d_mainland <- prep_data(registered, gp,
-#'                         terra::crop(travel_grid[[gp$practice]], mainland),
+#' travel_mainland <- terra::crop(travel_grid[[gp$practice]], mainland)
+#'
+#' # Cells of 2 x 2 grid cells keep the example quick: residents add up and
+#' # travel minutes average
+#' registered <- terra::aggregate(registered, fact = 2, fun = "sum", na.rm = TRUE)
+#' travel_mainland <- terra::aggregate(travel_mainland, fact = 2, fun = "mean",
+#'                                     na.rm = TRUE)
+#' d_mainland <- prep_data(registered, gp, travel_mainland,
 #'                         id_col = "practice", supply_cols = "gp_fte_extg")
 #'
 #' # Registrations of mainland residents at the mainland practices
