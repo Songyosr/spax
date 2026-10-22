@@ -31,6 +31,11 @@ limitations.
 travel <- read_spax_example("cornwall_gp_travel.tif")
 travel
 }
+\references{
+Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., et al. (2020).
+Global maps of travel time to healthcare facilities. \emph{Nature Medicine},
+26, 1835-1838. \doi{10.1038/s41591-020-1059-1}
+}
 \seealso{
 \link{cornwall_travel}, \link{cornwall_pop}
 }
