@@ -24,14 +24,17 @@ change in later versions, while the one-call FCA functions
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.6.0.
+for spax 0.7.0.
 
-Install version 0.6.0 by its release tag rather than from the
-repository’s default branch:
+Install the released version from CRAN, or version 0.7.0 by its release
+tag rather than from the repository’s default branch:
 
 ``` r
+install.packages("spax")
+
+# or from GitHub
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.6.0")
+pak::pak("Songyosr/spax@v0.7.0")
 ```
 
 Development continues on the `develop` branch
