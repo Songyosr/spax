@@ -4,9 +4,9 @@ This is a new submission.
 
 ## Test environments
 
-* local: macOS (aarch64), R 4.5.2
-* GitHub Actions: Ubuntu (R-devel, R-release and R 4.4.0, the minimum
-  version), Windows (R-release), macOS (R-release)
+* local: macOS 26 (aarch64), R 4.5.2
+* GitHub Actions: Ubuntu (R-devel, R-release 4.6.1 and R 4.4.0, the minimum
+  version), Windows (R-release 4.6.1), macOS (R-release 4.6.1)
 
 ## R CMD check results
 

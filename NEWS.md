@@ -1,4 +1,13 @@
-# spax (development version)
+# spax 0.7.0
+
+The first version prepared for CRAN. The Cornwall example data are now in WGS 84
+longitude and latitude, the coordinate system of the bundled rasters, so the
+examples and guides never change datum; spax needs fewer packages; every exported
+function has an example; and fits, evaluations and predictions are easier to read.
+Fitted and computed values are the same as in 0.6.0. Code that used the British
+National Grid geometry of the example data, compared output vectors with unnamed
+ones, or relied on `save_spax()` writing single precision may need a small change
+(see below).
 
 * Preparing for CRAN. spax needs fewer packages: it imports terra, sf, stats,
   tools and withr; ggplot2, dplyr and tibble are only suggested (the guides use
@@ -25,8 +34,6 @@
   `?calc_travel_time` says when a download can happen.
 * `citation("spax")` gives the installed version and the DOI that refers to
   all versions.
-* Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.
-  doi:10.5281/zenodo.23438611 refers to all versions.
 * `bootstrap_fit()` and `bootstrap_allocation()` take `attempts`, the number of
   bootstrap attempts: 399 by default, as before, or a whole number from 199 to
   1,000,000. An interval needs finite values from at least 95% of the attempts,
@@ -72,6 +79,8 @@
 * The print and summary methods of fits are documented on
   `?allocation-fit-methods`, and help pages that showed lists as running text
   show them as lists.
+* Version 0.6.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23538560.
+  doi:10.5281/zenodo.23438611 refers to all versions.
 
 # spax 0.6.0
 
