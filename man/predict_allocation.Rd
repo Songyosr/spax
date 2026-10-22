@@ -2,6 +2,7 @@
 % Please edit documentation in R/06-ae_workflow.R
 \name{predict_allocation}
 \alias{predict_allocation}
+\alias{print.ae_clm_prediction}
 \title{Predict requested origins against a saved fitted or evaluated CLM}
 \usage{
 predict_allocation(
@@ -14,6 +15,8 @@ predict_allocation(
   spatial = NULL,
   type = c("numeric", "raster")
 )
+
+\method{print}{ae_clm_prediction}(x, digits = 4, ...)
 }
 \arguments{
 \item{source}{A selected multistart result, NFXP fit or fixed evaluation with
@@ -55,6 +58,15 @@ contains plain geometry. Without a mapping, numeric prediction still works.}
 \item{type}{\code{"numeric"} retains selected values, all separate validity flags,
 policies and unit declarations. \code{"raster"} explicitly returns one vector
 map, so inspect the numeric validity result before interpreting the map.}
+
+\item{x}{For \code{print()}, a prediction: the \code{ae_clm_prediction} of
+\code{predict_allocation()}. Its print shows the number of origins with each
+status, whether demand was given, how unknown travel was treated, and the
+range of each requested vector over the origins with a value.}
+
+\item{digits}{Significant digits of the printed values.}
+
+\item{...}{Unused.}
 }
 \value{
 An \code{ae_clm_prediction}, or an explicitly requested one-layer raster.
@@ -99,6 +111,7 @@ fit <- fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poiss
 pred <- predict_allocation(fit, cornwall_travel[held_out$lsoa, gp$practice],
                            demand = stats::setNames(held_out$registered, held_out$lsoa),
                            outputs = c("rho", "A", "flow"))
+pred
 
 # The modeled share of each area's residents at these practices, the share
 # registered there, and the GP FTE per 1,000 residents attributed to the area

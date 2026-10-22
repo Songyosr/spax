@@ -1159,6 +1159,7 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' pred <- predict_allocation(fit, cornwall_travel[held_out$lsoa, gp$practice],
 #'                            demand = stats::setNames(held_out$registered, held_out$lsoa),
 #'                            outputs = c("rho", "A", "flow"))
+#' pred
 #'
 #' # The modeled share of each area's residents at these practices, the share
 #' # registered there, and the GP FTE per 1,000 residents attributed to the area
@@ -1187,6 +1188,56 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
   result <- .predict_clm(source, distance, origin_ids = origin_ids, demand = demand,
     outputs = outputs, missing_travel = match.arg(missing_travel), spatial = spatial)
   if (type == "raster") .prediction_surface(result, outputs) else result
+}
+
+#' @rdname predict_allocation
+#' @param x For `print()`, a prediction: the `ae_clm_prediction` of
+#'   `predict_allocation()`. Its print shows the number of origins with each
+#'   status, whether demand was given, how unknown travel was treated, and the
+#'   range of each requested vector over the origins with a value.
+#' @param digits Significant digits of the printed values.
+#' @param ... Unused.
+#' @export
+#' @md
+print.ae_clm_prediction <- function(x, digits = 4, ...) {
+  line <- function(label, text) cat(sprintf("  %-10s  %s\n", label, text))
+  counts <- function(values, order) {
+    levels <- c(intersect(order, values), sort(setdiff(unique(values), order)))
+    n <- table(factor(values, levels = levels))
+    paste(.format_total(as.vector(n)), names(n), collapse = ", ")
+  }
+  n <- length(x$origin_ids)
+  cat("<allocation prediction> ", .format_total(n), if (n == 1L) " origin" else " origins",
+      " x ", .format_total(length(x$facility_ids)), " facilities\n", sep = "")
+  line("origins", counts(x$validity$status, "valid"))
+  demand <- x$validity[["demand_status"]]
+  if (!is.null(demand)) {
+    line("demand", if (all(demand == "unknown")) "not given" else
+      counts(demand, c("positive", "zero", "unknown")))
+  }
+  line("travel", if (identical(x$policy$missing_travel, "legacy_zero")) {
+    "pairs with an unknown travel time left out (\"omit\")"
+  } else {
+    "an unknown travel time makes the origin unknown"
+  })
+  cat("  outputs\n")
+  width <- max(nchar(names(x$outputs)), 0L)
+  for (name in names(x$outputs)) {
+    value <- x$outputs[[name]]
+    text <- if (!is.null(dim(value))) {
+      paste(nrow(value), "origins x", ncol(value), "facilities")
+    } else if (all(is.na(value))) {
+      "no values"
+    } else {
+      known <- value[!is.na(value)]
+      paste0(format(min(known), digits = digits), " to ", format(max(known), digits = digits),
+             " (", .format_total(length(known)), " of ", .format_total(length(value)),
+             " origins)")
+    }
+    cat(sprintf("    %-*s  %s\n", width, name, text))
+  }
+  cat("  values in $outputs; the status of each origin in $validity\n")
+  invisible(x)
 }
 
 # The theta of evaluate_allocation() for a grouped model: the free parameters,
