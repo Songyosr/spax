@@ -69,7 +69,7 @@ the aligned mapping are saved. Numeric work needs no spatial metadata.}
 no unit conversion or dimensional compatibility check is performed.}
 }
 \value{
-The existing \code{ae_prepared_inputs}, with a full origin registry and
+An \code{ae_prepared_inputs}, with a full origin registry and
 distinct support statuses plus compact active load arrays. No duplicate
 full travel matrix is retained. Pass it to \code{\link[=clm_allocation]{clm_allocation()}} rather than
 editing its internal fields. Expected counts use demand units/period;
@@ -81,8 +81,8 @@ given per group).
 \description{
 Named axes align independently; unnamed axes are positional. Positive
 included demand enters facility-load support. Zero, unknown and explicitly
-excluded origins retain separate support statuses. This experimental entry
-point delegates to the existing compact preparation boundary.
+excluded origins retain separate support statuses. This experimental step
+prepares the compact arrays that the allocation model computes on.
 }
 \details{
 Demand groups (age bands, insurance types) are given as a named list of

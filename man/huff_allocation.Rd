@@ -2,7 +2,7 @@
 % Please edit documentation in R/06-ae_workflow.R
 \name{huff_allocation}
 \alias{huff_allocation}
-\title{Declare the Huff model over checked allocation inputs}
+\title{Declare the Huff model}
 \usage{
 huff_allocation(
   inputs,
@@ -46,7 +46,7 @@ demand groups sigma is \verb{sigma.<group>} for the groups in \code{by_group}.
 }
 \description{
 Declare the Huff model, a conditional logit allocation without an outside
-option, over checked allocation inputs.
+option, on prepared allocation inputs.
 }
 \details{
 The Huff model (Huff, 1963) gives each facility a share of each origin's

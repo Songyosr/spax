@@ -92,7 +92,7 @@ refused for numeric data.}
 \item{...}{Unused.}
 }
 \value{
-Numeric data: the existing \code{ae_prepared_inputs}, as returned by
+Numeric data: an \code{ae_prepared_inputs}, as returned by
 \code{\link[=prepare_allocation]{prepare_allocation()}}. Raster data: a \code{spax_raster_data} (also a
 \code{spax_data}), a list with \code{demand} and \code{travel} (as given), \code{supply} (the
 object as given), \code{id_col}, \code{supply_cols}, \code{facility_ids} (the layer names of

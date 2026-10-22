@@ -7,7 +7,7 @@
 evaluate_allocation(model, theta, coverage_args = list(), ...)
 }
 \arguments{
-\item{model}{A corrected CLM declared over checked prepared inputs.}
+\item{model}{A static CLM from \code{\link[=clm_allocation]{clm_allocation()}} or \code{\link[=huff_allocation]{huff_allocation()}}.}
 
 \item{theta}{A complete model parameter vector. Named parameters align to the
 model contract; unnamed values follow its declared order. This operation
@@ -18,7 +18,7 @@ model with demand groups, a parameter held fixed by \code{clm_allocation(fixed =
 optional \code{norm}, \code{units}, reporting floors and classification cuts. A norm
 must have the same declared supply-per-demand scale as capacity attribution.}
 
-\item{...}{Named controls passed to the existing fixed-parameter solver,
+\item{...}{Named controls passed to the fixed-parameter solver,
 including \code{requested_outputs}. For a model with demand groups, request the
 per-group outputs here, for example
 \code{requested_outputs = c("utilization_by_group", "access_by_group", "outside_share_by_group")}; the other outputs are pooled over the groups
@@ -35,7 +35,7 @@ The outside counts are zero for a model without an outside option; they
 are the outputs that \code{\link[=fit_allocation]{fit_allocation()}} fits to observed outside counts.}
 }
 \value{
-The existing \code{ae_equilibrium} with its portable prediction snapshot
+An \code{ae_equilibrium} with its portable prediction snapshot
 (none for a model with demand groups, which cannot be predicted yet)
 and compact \code{coverage}. Coverage uses raw supply units without kappa;
 proportional attributed capacity is not a delivered-service measure or a
@@ -43,7 +43,7 @@ hard constraint on expected utilization.
 }
 \description{
 Solves once and constructs compact coverage from the saved evaluated outputs.
-The existing equilibrium result carries its prediction snapshot;
+The equilibrium result carries its prediction snapshot;
 adding coverage does not retain the original model or create a scenario type.
 The caller changes system supply/demand by preparing a new model explicitly.
 }

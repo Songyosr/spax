@@ -44,7 +44,7 @@
 #' share is reported separately. To see how the fit depends on a catchment limit, prepare the inputs
 #' again with travel beyond the limit set to `Inf`, refit, and check each fit.
 #'
-#' @param model The corrected CLM from [clm_allocation()] that was fitted, or a
+#' @param model The CLM from [clm_allocation()] that was fitted, or a
 #'   result of [spax()] that fitted a model; the result supplies its bound model
 #'   and its fit, so leave `fit` out. A result that was evaluated at given values
 #'   has no fit and is refused, and so is an FCA index (a result of [spax()] with an

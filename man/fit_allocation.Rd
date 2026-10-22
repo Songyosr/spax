@@ -19,7 +19,7 @@ fit_allocation(
 )
 }
 \arguments{
-\item{model}{A corrected CLM declared over checked prepared inputs. A kernel
+\item{model}{A static CLM from \code{\link[=clm_allocation]{clm_allocation()}} or \code{\link[=huff_allocation]{huff_allocation()}}. A kernel
 declared \code{smooth = FALSE} cannot be fitted.}
 
 \item{observed}{Numeric vector or origin-by-facility matrix. Named axes match
@@ -27,7 +27,7 @@ declared IDs independently; unnamed axes are positional. Keep all IDs and
 use NA for unobserved entries. The count-valued \code{utilization}, \code{flow},
 \code{utilization_by_group} and outside-count targets reject negative nonmissing
 observations; fractional counts are allowed. Other output domains pass
-through to the existing fitter. For \code{utilization_by_group} (a model with
+to the fitter as given. For \code{utilization_by_group} (a model with
 demand groups) a facility-by-group matrix of observed counts with both axes
 named (group columns by group ID, facility rows by facility ID, any order).
 For the outside-count outputs the same shapes with the outside count added
@@ -85,10 +85,10 @@ arguments pass unchanged. Any observation-indexed values must already
 follow canonical observed order.}
 
 \item{loss_grad}{Optional matching parameter-gradient callback. Built-in
-choices supply their existing analytic loss-gradient adapters. A custom
+choices supply their analytic loss gradients. A custom
 loss requires its own loss_grad when gradient=TRUE; none is invented.}
 
-\item{gradient}{Logical; use the existing implicit sensitivity route when
+\item{gradient}{Logical; use the implicit sensitivity route when
 TRUE. FALSE retains the underlying fitter's default behavior. When \code{starts}
 is \code{NULL} and \code{gradient} is not given, it is \code{TRUE} if the loss has a gradient
 (the built-in losses, or a custom loss with \code{loss_grad}).}
@@ -99,7 +99,7 @@ When \code{starts} is \code{NULL} and \code{control} is not given it is
 \code{list(maxit = 300, factr = 1e3, pgtol = 1e-2)}.}
 }
 \value{
-The existing \code{ae_multistart_fit}, retaining selected fit, all per-start
+An \code{ae_multistart_fit}, retaining selected fit, all per-start
 diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
 whose starts came from the default search also has a \code{default_search}
 element: the rule, the sigma range, the number of grid points and of finite
@@ -107,8 +107,8 @@ ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
 the loss.
 }
 \description{
-Count targets and loss choice are separate. Weighted SSE retains the existing
-default when \code{starts} are given; Poisson is explicit. Custom loss/gradient
+Count targets and loss choice are separate. When \code{starts} are given, the
+loss defaults to weighted SSE; name Poisson explicitly. Custom loss/gradient
 functions pass through. Observation-indexed loss arguments must be in
 canonical order. Starts, boundaries, failed runs and disagreement retain the
 existing multistart result; a selected fit is not a claim of identification or
@@ -236,10 +236,13 @@ fit <- fit_allocation(model, totals, loss = "poisson")
 fit
 coef(fit)
 
-# Fit to the flows: a matrix of small areas by practices, 0 where none
+# Fit to the flows: a matrix of small areas by practices, 0 where none. Demand
+# counts every registered resident, so the residents registered elsewhere are
+# known: they are one more column, "(outside)", fitted by the outside option
 flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
 flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
-coef(fit_allocation(model, flow_matrix, output = "flow", loss = "poisson"))
+flow_matrix <- cbind(flow_matrix, "(outside)" = areas$registered - rowSums(flow_matrix))
+coef(fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poisson"))
 
 # Starts and bounds of your own: one start per row
 starts <- rbind(near = c(sigma = 5, v0 = 0.5), far = c(sigma = 30, v0 = 5))

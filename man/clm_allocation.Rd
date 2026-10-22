@@ -2,7 +2,7 @@
 % Please edit documentation in R/06-ae_workflow.R
 \name{clm_allocation}
 \alias{clm_allocation}
-\title{Declare corrected static CLM over checked allocation inputs}
+\title{Declare a static conditional logit allocation model}
 \usage{
 clm_allocation(
   inputs,
@@ -36,7 +36,7 @@ raw supply or capacity attribution.}
 \item{beta}{Positive supply elasticity in \code{(kappa * supply)^beta}.}
 
 \item{v0}{Nonnegative outside-option weight, not an outside probability.
-With zero outside weight and zero inside opportunity, the existing guard
+With zero outside weight and zero inside opportunity, the model
 returns zero mass; that row is not a normalized choice distribution.}
 
 \item{fit_v0, fit_beta}{\code{TRUE} or \code{FALSE}: whether to promote these constants
@@ -59,7 +59,8 @@ demand groups sigma and v0 are \verb{sigma.<group>} and \verb{v0.<group>} for th
 parameters in \code{by_group}.
 }
 \description{
-Declare corrected static CLM over checked allocation inputs.
+Declare a static conditional logit allocation model (CLM) with an outside
+option on prepared allocation inputs.
 }
 \details{
 With demand groups (see \code{\link[=prepare_allocation]{prepare_allocation()}}), group \code{g} chooses

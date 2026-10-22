@@ -16,7 +16,7 @@ check_allocation(model, fit, trip_breaks = c(30, 60, 120))
 \method{as.data.frame}{ae_allocation_check}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{model}{The corrected CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
+\item{model}{The CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
 result of \code{\link[=spax]{spax()}} that fitted a model; the result supplies its bound model
 and its fit, so leave \code{fit} out. A result that was evaluated at given values
 has no fit and is refused, and so is an FCA index (a result of \code{\link[=spax]{spax()}} with an
