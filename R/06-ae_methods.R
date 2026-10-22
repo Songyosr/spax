@@ -121,10 +121,11 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
       vapply(fixed, .ae_format_number, character(1), digits = digits))))
 }
 
-#' Print an AE problem calibration fit
+#' @rdname allocation-fit-methods
+#' @order 8
 #' @method print ae_problem_nfxp_fit
-#' @noRd
 #' @export
+#' @md
 print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   if (.is_public_allocation(x)) {
     cat("<allocation fit result>\n")
@@ -161,10 +162,11 @@ print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-#' Summarize an AE problem calibration fit
+#' @rdname allocation-fit-methods
+#' @order 6
 #' @method summary ae_problem_nfxp_fit
-#' @noRd
 #' @exportS3Method base::summary
+#' @md
 summary.ae_problem_nfxp_fit <- function(object, ...) {
   .chck_class(object, "ae_problem_nfxp_fit", "object")
   theta <- object$theta
@@ -219,10 +221,11 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
   out
 }
 
-#' Print an AE problem calibration summary
+#' @rdname allocation-fit-methods
+#' @order 9
 #' @method print summary.ae_problem_nfxp_fit
-#' @noRd
 #' @export
+#' @md
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   public <- .is_public_allocation(x)
   cat(if (public) "<allocation fit result summary>\n" else "<summary.ae_problem_nfxp_fit>\n")

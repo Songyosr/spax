@@ -907,15 +907,27 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 
 #' Inspect saved allocation fits without recomputation
 #'
+#' A fit from [fit_allocation()] keeps every start and the selected fit,
+#' `fit$best`; both have these methods, which read what the fit saved.
 #' Coefficients and fitted targets are read from the selected fit. Multistart
 #' summaries retain failed starts, boundaries, warnings/errors and descriptive
 #' disagreement. A search with no eligible fit remains inspectable by summary,
-#' while coefficient and fitted extraction fail clearly.
-#' @param object An existing NFXP fit or multistart result from allocation fitting.
+#' while coefficient and fitted extraction fail clearly. `print()` of a fit
+#' shows its starts and the one selected; `print()` of the selected fit shows
+#' its estimates, loss and convergence, and its `summary()` adds the ranges of
+#' the fitted values, of the model state and of the residuals.
+#' @param object,x A fit from [fit_allocation()] (an `ae_multistart_fit`) or its
+#'   selected fit `fit$best` (an `ae_problem_nfxp_fit`); for the print method of
+#'   a summary, the summary of the selected fit.
+#' @param digits Significant digits of the printed numbers.
 #' @param ... Additional generic arguments; currently unused.
 #' @return `coef()` returns the saved named parameter vector. `fitted()` returns
-#'   saved canonical fitted targets. `summary()` returns a list containing the
-#'   selected fit summary, per-start table, boundaries, disagreement and messages.
+#'   saved canonical fitted targets. `summary()` of a fit returns a list
+#'   containing the selected fit summary, per-start table, boundaries,
+#'   disagreement and messages; `summary()` of the selected fit returns its
+#'   model and family, its parameters, its loss and convergence, and the ranges
+#'   of the fitted values, of the state and (when the fit kept its observed
+#'   values) of the residuals. `print()` returns its input invisibly.
 #'   These diagnostics establish neither identification nor global optimality.
 #' @name allocation-fit-methods
 #' @seealso [fit_allocation()]
@@ -943,8 +955,12 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 #' # Every start, the selected fit and its residuals
 #' summary(fit)
 #'
-#' # The selected fit itself has the same methods
+#' # The selected fit itself has the same methods: its estimates, loss and
+#' # convergence, and a summary with the ranges of its values and residuals
 #' coef(fit$best)
+#' fit$best
+#' summary(fit$best)
+#' @order 1
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_problem_nfxp_fit <- function(object, ...) {
@@ -953,6 +969,7 @@ coef.ae_problem_nfxp_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 2
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_multistart_fit <- function(object, ...) {
@@ -961,6 +978,7 @@ coef.ae_multistart_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 3
 #' @exportS3Method stats::fitted
 #' @md
 fitted.ae_problem_nfxp_fit <- function(object, ...) {
@@ -969,6 +987,7 @@ fitted.ae_problem_nfxp_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 4
 #' @exportS3Method stats::fitted
 #' @md
 fitted.ae_multistart_fit <- function(object, ...) {
@@ -977,6 +996,7 @@ fitted.ae_multistart_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 5
 #' @exportS3Method base::summary
 #' @md
 summary.ae_multistart_fit <- function(object, ...) {
