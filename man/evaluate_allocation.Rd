@@ -47,6 +47,38 @@ The existing equilibrium result carries its prediction snapshot;
 adding coverage does not retain the original model or create a scenario type.
 The caller changes system supply/demand by preparing a new model explicitly.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+demand <- stats::setNames(areas$registered, areas$lsoa)
+supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+model <- clm_allocation(prepare_allocation(demand, supply, travel), fit_v0 = TRUE)
+
+# The model at a travel scale of 10 minutes and an outside weight of 1
+ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
+ev$coverage
+
+# Expected registrations at each practice, in the order of the travel columns
+round(stats::setNames(ev$outputs$utilization, colnames(travel)))
+
+# Expected registrations by small area and practice, with the expected
+# outside count as one more column
+flow <- evaluate_allocation(model, c(sigma = 10, v0 = 1),
+                            requested_outputs = "flow_outside")$outputs$flow_outside
+round(flow[1:3, c("L82047", "(outside)")])
+
+# A scenario: Marazion Surgery (L82047) closes. Prepare the changed inputs
+# and evaluate them at the same values
+closed <- clm_allocation(prepare_allocation(demand, replace(supply, "L82047", 0),
+                                            travel), fit_v0 = TRUE)
+change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
+  ev$outputs$utilization
+round(stats::setNames(change, colnames(travel)))
+}
 \seealso{
 Other allocation steps: 
 \code{\link{bootstrap_fit}()},

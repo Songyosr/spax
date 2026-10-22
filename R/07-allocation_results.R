@@ -31,6 +31,31 @@
 #' @param ... Additional generic arguments.
 #' @return A data frame of saved values. Coverage tables additionally carry
 #'   `support`, `input_metadata` and `reporting_settings` attributes.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' model <- clm_allocation(inputs, fit_v0 = TRUE)
+#' fit <- fit_allocation(model, totals, loss = "poisson")
+#' as.data.frame(fit)
+#'
+#' # Coverage at the estimates: for the region, by small area, and by the
+#' # rural-urban class of the small areas
+#' coverage <- evaluate_allocation(model, coef(fit))$coverage
+#' as.data.frame(coverage)
+#' head(as.data.frame(coverage, type = "cells"))
+#' zones <- data.frame(origin_id = areas$lsoa, zone = areas$ruc21)
+#' as.data.frame(coverage, type = "zones", zones = zones)
 #' @name allocation-result-tables
 #' @exportS3Method base::as.data.frame
 #' @md
@@ -100,6 +125,25 @@ as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional 
 #' @param digits Display precision; saved values are unchanged.
 #' @param ... Additional print arguments.
 #' @return The summary, invisibly.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # The starts, the selected fit and its residuals, to three significant digits
+#' print(summary(fit), digits = 3)
 #' @export
 #' @md
 print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
@@ -126,6 +170,29 @@ print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
 #' @param type Existing selected-fit diagnostic to display.
 #' @param ... Arguments forwarded to the selected-fit plot method.
 #' @return The selected diagnostic method's result, invisibly.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # Observed against modeled registrations at each practice
+#' plot(fit)
+#'
+#' # The state of this model is the attractiveness of the practices: their GP
+#' # FTE, since kappa and beta are 1
+#' plot(fit, type = "state", breaks = 10)
 #' @exportS3Method graphics::plot
 #' @md
 plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), ...) {
@@ -158,6 +225,40 @@ plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), .
 #'   diagnostics, capacity support and declarations (and the coverage note, when
 #'   the result has one) in a `summary.ae_allocation_bootstrap` object.
 #'   Print and plot methods return their input invisibly.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- cornwall_gp[!cornwall_gp$scilly, ]
+#' gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+#' d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+#'                stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # Practice totals drawn from the model as independent Poisson counts (see
+#' # bootstrap_fit() for why), and the model fitted to them
+#' expected <- fitted(spax(d, spec_clm(decay_gaussian(sigma = 10), outside = 1)))
+#' set.seed(1)
+#' totals <- stats::setNames(stats::rpois(length(expected), expected), names(expected))
+#' fit <- spax(d, spec_clm(), observed = obs_totals(totals))
+#'
+#' \donttest{
+#' boot <- bootstrap_fit(fit, observation = list(event = "simulated registrations",
+#'                                               period = "one reference period",
+#'                                               sampling = "independent_facilities"),
+#'                       seed = 2026, attempts = 199)
+#'
+#' # The run, its attempts and the intervals
+#' boot
+#' summary(boot)$counts
+#'
+#' # The interval of sigma, and the draws of v0
+#' plot(boot)
+#' plot(boot, quantity = "v0", type = "draws")
+#'
+#' # Every attempt, as a table
+#' head(as.data.frame(boot, type = "draws"))
+#' }
 #' @name allocation-bootstrap-methods
 #' @export
 #' @md

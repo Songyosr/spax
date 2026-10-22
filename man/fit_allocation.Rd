@@ -213,6 +213,41 @@ a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins
 and 400 facilities, which is roughly the cost of one strict start. Give your own
 starts to skip it.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             travel)
+model <- clm_allocation(inputs, fit_v0 = TRUE)
+
+# Registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+
+# Fit to the practice totals. Without starts, the search finds starts and
+# bounds from the data, and the loss must be named
+totals <- sapply(split(flows$patients, flows$practice), sum)
+fit <- fit_allocation(model, totals, loss = "poisson")
+fit
+coef(fit)
+
+# Fit to the flows: a matrix of small areas by practices, 0 where none
+flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+coef(fit_allocation(model, flow_matrix, output = "flow", loss = "poisson"))
+
+# Starts and bounds of your own: one start per row
+starts <- rbind(near = c(sigma = 5, v0 = 0.5), far = c(sigma = 30, v0 = 5))
+fit_own <- fit_allocation(model, totals, starts = starts,
+                          lower = c(sigma = 1, v0 = 0.001),
+                          upper = c(sigma = 100, v0 = 100), loss = "poisson")
+coef(fit_own)
+}
 \seealso{
 \link{allocation-fit-methods} for methods on saved fits.
 

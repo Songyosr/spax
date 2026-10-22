@@ -20,3 +20,12 @@ Invisibly returns the input object
 Prints a concise summary of a spax object, showing key information about the
 accessibility analysis without detailed statistics.
 }
+\examples{
+# E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+                      decay_params = list(method = "gaussian", sigma = 10),
+                      id_col = "practice", supply_cols = "gp_fte_extg")
+print(result)
+}

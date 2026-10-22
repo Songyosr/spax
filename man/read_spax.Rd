@@ -15,3 +15,26 @@ A spax object
 \description{
 Read a spax object from disk
 }
+\examples{
+# E2SFCA on the Cornwall population grid for two supply measures
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+                      decay_params = list(method = "gaussian", sigma = 10),
+                      id_col = "practice",
+                      supply_cols = c("gp_fte_extg", "gp_fte"))
+
+# Save it to temporary files, the raster in double precision (terra writes
+# single precision by default)
+path <- tempfile("cornwall_e2sfca")
+save_spax(result, path, datatype = "FLT8S")
+
+# Read it back: the layers keep their names and values
+restored <- read_spax(path)
+names(restored$accessibility)
+all.equal(terra::values(restored$accessibility),
+          terra::values(result$accessibility))
+
+# Remove the files
+unlink(paste0(path, c("_spax.rds", "_accessibility.tif", "_names.rds")))
+}

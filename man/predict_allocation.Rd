@@ -69,6 +69,36 @@ demand and capacity validity. Raster conversion is explicit and permits one
 vector only; inspect numeric validity before interpreting a map. Supply/theta
 overrides are deliberately absent. A changed system requires reevaluation.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# A fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+                      loss = "poisson")
+
+# The small areas just east of the fitted ones, against the same practices
+east <- sf::st_drop_geometry(cornwall_lsoa)
+east <- east[east$cent_x >= 170000 & east$cent_x < 175000, ]
+pred <- predict_allocation(fit, cornwall_travel[east$lsoa, gp$practice],
+                           demand = stats::setNames(east$registered, east$lsoa),
+                           outputs = c("rho", "A", "flow"))
+
+# The share of each area's residents modeled at these practices, the GP FTE
+# per 1,000 residents attributed to the area, and the modeled registrations
+head(cbind(contact = pred$outputs$rho, fte_per_1000 = 1000 * pred$outputs$A,
+           registered = rowSums(pred$outputs$flow)))
+table(pred$validity$status)
+}
 \seealso{
 Other allocation steps: 
 \code{\link{bootstrap_fit}()},

@@ -103,6 +103,35 @@ with \code{\link[=predict_allocation]{predict_allocation()}}. Models with demand
    \code{"starts"} \tab the table of starts of the fit (\code{seconds} is the time each took) \cr
 }
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- cornwall_gp[!cornwall_gp$scilly, ]
+gp <- sf::st_drop_geometry(gp[sf::st_coordinates(gp)[, "X"] < 170000, ])
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice), travel)
+
+# The conditional logit model fitted to the registrations of these residents
+# at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+clm <- spax(d, spec_clm(), observed = totals)
+clm
+summary(clm)
+coef(clm)
+round(fitted(clm))
+
+# The practices with their observed and modeled registrations, and the
+# small areas with the modeled share of their residents at these practices
+head(as.data.frame(clm, type = "facilities"))
+head(as.data.frame(clm, type = "origins"))
+
+# Modeled outside shares from travel times, here of three of the small areas
+predict(clm, travel[1:3, ], outputs = "outside_share")$outputs$outside_share
+}
 \seealso{
 \code{\link[=spax]{spax()}}
 
