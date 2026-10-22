@@ -171,7 +171,10 @@ ggplot() +
     alpha = 0.8
   ) +
   geom_sf(data = outline, fill = NA, color = "grey20", linewidth = 0.3) +
-  geom_sf_text(data = towns, aes(label = town), size = 3, vjust = -0.9) +
+  geom_sf_text(
+    data = towns, aes(label = town), size = 3, vjust = -0.9,
+    fun.geometry = sf::st_centroid
+  ) +
   scale_size_area(name = "GP FTE") +
   labs(title = "GP practices in mainland Cornwall") +
   theme_void()

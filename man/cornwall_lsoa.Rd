@@ -42,7 +42,10 @@ centroids.
 }
 \details{
 Registered counts exceed the population estimates by about 4\%,
-reflecting list inflation and the different reference dates.
+reflecting list inflation and the different reference dates. The
+polygons and \code{cent_lon}/\code{cent_lat} were converted from British National
+Grid with the OSGB36 to WGS 84 Helmert transformation (about 2 m); see
+\link{cornwall_gp} for working in metres.
 }
 \examples{
 areas <- sf::st_drop_geometry(cornwall_lsoa)

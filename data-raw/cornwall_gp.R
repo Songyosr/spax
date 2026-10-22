@@ -33,9 +33,12 @@ suppressPackageStartupMessages({
 # Every shipped layer is on the WGS 84 datum, as the rasters are, so the
 # package's examples and guides never change datum. British National Grid
 # (OSGB36) coordinates are converted with the OSGB36 to WGS 84 Helmert
-# transformation (about 2 m); PROJ network access stays off, so no datum grid
-# is downloaded and the result does not depend on the grids a machine has.
-sf_proj_network(FALSE)
+# transformation (about 2 m), as the shipped data were. PROJ network access
+# stays off, so no datum grid is downloaded, and the script stops if a grid
+# transformation is installed locally, which PROJ would prefer.
+invisible(sf_proj_network(FALSE))
+ops <- sf_proj_pipelines("EPSG:27700", "EPSG:4326")
+stopifnot(!any(ops$instantiable & ops$grid_count > 0))
 setDTthreads(1) # multithreaded fread can stall in non-interactive Rscript
 stopifnot(file.exists("DESCRIPTION"),
           read.dcf("DESCRIPTION")[, "Package"] == "spax")

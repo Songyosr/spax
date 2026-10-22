@@ -11,7 +11,7 @@
 #' recording changed in June 2018 and who cluster in training practices.
 #'
 #' @format An `sf` point object in WGS 84 longitude and latitude (EPSG:4326),
-#'   the datum of the bundled rasters, with 55 rows and columns:
+#'   the coordinate system of the bundled rasters, with 55 rows and columns:
 #' \describe{
 #'   \item{practice}{NHS ODS practice code; matches `cornwall_flows`,
 #'     the columns of `cornwall_travel` and the layers of
@@ -39,7 +39,9 @@
 #'   surgeries are not. All the bundled data use the WGS 84 datum, so they
 #'   combine without a change of datum; for map units in metres project them
 #'   to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
-#'   British National Grid uses another datum (OSGB36).
+#'   British National Grid uses another datum (OSGB36): the geometry was
+#'   converted from it with the OSGB36 to WGS 84 Helmert transformation (about
+#'   2 m), and `easting`/`northing` keep its coordinates.
 #'
 #' @source NHS England, Patients Registered at a GP Practice (July 2026) and
 #'   General Practice Workforce (30 June 2026), Open Government Licence v3.0.
@@ -82,7 +84,10 @@
 #' }
 #'
 #' @details Registered counts exceed the population estimates by about 4%,
-#'   reflecting list inflation and the different reference dates.
+#'   reflecting list inflation and the different reference dates. The
+#'   polygons and `cent_lon`/`cent_lat` were converted from British National
+#'   Grid with the OSGB36 to WGS 84 Helmert transformation (about 2 m); see
+#'   [cornwall_gp] for working in metres.
 #'
 #' @source Office for National Statistics: LSOA 2021 boundaries with rural-urban
 #'   classification, population-weighted centroids and mid-2024 small-area

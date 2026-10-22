@@ -6,7 +6,7 @@
 \title{GP practices in Cornwall and the Isles of Scilly}
 \format{
 An \code{sf} point object in WGS 84 longitude and latitude (EPSG:4326),
-the datum of the bundled rasters, with 55 rows and columns:
+the coordinate system of the bundled rasters, with 55 rows and columns:
 \describe{
 \item{practice}{NHS ODS practice code; matches \code{cornwall_flows},
 the columns of \code{cornwall_travel} and the layers of
@@ -50,7 +50,9 @@ snapshot. Only the main site of each practice is represented; branch
 surgeries are not. All the bundled data use the WGS 84 datum, so they
 combine without a change of datum; for map units in metres project them
 to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
-British National Grid uses another datum (OSGB36).
+British National Grid uses another datum (OSGB36): the geometry was
+converted from it with the OSGB36 to WGS 84 Helmert transformation (about
+2 m), and \code{easting}/\code{northing} keep its coordinates.
 }
 \examples{
 gp <- sf::st_drop_geometry(cornwall_gp)

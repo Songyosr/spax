@@ -75,7 +75,10 @@ practice sits at its main site, so branch surgeries do not appear.
 ## Small areas
 
 `cornwall_lsoa` holds the `r nrow(cornwall_lsoa)` Lower layer Super Output
-Areas (LSOA 2021), small areas of
+Areas (LSOA 2021) as polygons in longitude and latitude (WGS 84, like the
+practices); each area's population-weighted centroid is given in both systems,
+`cent_lon` and `cent_lat` and the British National Grid `cent_x` and `cent_y`.
+The areas are small, of
 `r format(min(cornwall_lsoa$pop), big.mark = ",")` to
 `r format(max(cornwall_lsoa$pop), big.mark = ",")` residents. Each has an ONS
 mid-2024 population estimate (`pop`, also by age band) and the number of its

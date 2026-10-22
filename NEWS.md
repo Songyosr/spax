@@ -8,11 +8,16 @@
   internal helpers no longer have help pages, and pages written in Markdown
   show it formatted.
 * The Cornwall example data `cornwall_gp` and `cornwall_lsoa` are now in WGS 84
-  longitude and latitude (EPSG:4326), the datum of the bundled rasters; they
-  were in British National Grid (EPSG:27700). Their grid coordinates stay as
-  columns (`easting` and `northing` for practices, `cent_x` and `cent_y` for
-  small-area centroids), and `cornwall_lsoa` gains `cent_lon` and `cent_lat`,
-  the origins of `cornwall_travel`. Combining the layers no longer changes
+  longitude and latitude (EPSG:4326), the coordinate system of the bundled
+  rasters; they were in British National Grid (EPSG:27700), and were converted
+  with the OSGB36 to WGS 84 Helmert transformation (about 2 m). British
+  National Grid coordinates are kept as columns: new `easting` and `northing`
+  for practices, and `cent_x` and `cent_y` for small-area centroids as before;
+  `cornwall_lsoa` gains `cent_lon` and `cent_lat`, the origins of
+  `cornwall_travel`. Code that read metres from the geometry, such as
+  `st_coordinates(cornwall_gp)`, should use these columns, and sf measures
+  such as `st_area()` now use the sphere (areas about 0.4% smaller than the
+  planar British National Grid areas). Combining the layers no longer changes
   datum: with terra loaded, a change of datum can make PROJ download a datum
   shift grid into your PROJ data folder (on Linux also for sf), so the
   examples, tests and guides no longer make one. For map units in metres,
