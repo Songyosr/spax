@@ -295,7 +295,12 @@ print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
   }
   if (is.character(x$settings$fixed_inputs)) cat("fixed inputs: ", x$settings$fixed_inputs, "\n", sep = "")
   for (label in c("capacity_identity", "evidence_scope")) {
-    if (is.character(x$settings[[label]])) cat(paste(strwrap(paste(x$settings[[label]], collapse = " ")), collapse = "\n"), "\n")
+    text <- x$settings[[label]]
+    if (!is.character(text)) next
+    # The stored scope names the coverage study by its internal ticket; the
+    # settings stay as stored, part of the checkpoint contract.
+    text <- sub("the SPAX-048 fixed", "the package's coverage study, a fixed", text, fixed = TRUE)
+    cat(paste(strwrap(paste(text, collapse = " ")), collapse = "\n"), "\n")
   }
   if (is.character(x$coverage_note)) cat(paste(strwrap(paste(x$coverage_note, collapse = " ")), collapse = "\n"), "\n")
   if (!identical(x$status, "complete")) cat("Regular interval reporting is unavailable for this run status.\n")

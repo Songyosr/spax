@@ -172,6 +172,9 @@ gather_demand <- function(demand, weights) {
     .stop("weights must contain probability values between 0 and 1")
   }
 
+  if (inherits(demand, "SpatRaster") && terra::nlyr(demand) != 1L) {
+    .stop("demand must be a single-layer SpatRaster")
+  }
   # Use gather_weighted and rename columns appropriately
   result <- gather_weighted(demand, weights)
   names(result)[match(c("unit_id", "weighted_sum"), names(result))] <-
