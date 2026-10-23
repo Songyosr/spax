@@ -7,8 +7,8 @@ This is a new submission.
 * local: macOS 26 (aarch64), R 4.5.2
 * GitHub Actions: Ubuntu (R-devel, R-release 4.6.1 and R 4.4.0, the minimum
   version), Windows (R-release 4.6.1), macOS (R-release 4.6.1)
-* win-builder: R-release 4.6.1 (1 NOTE: new submission, possibly misspelled
-  words; check time 539 s)
+* win-builder: R-release 4.6.1 and R-devel (2026-10-22 r90748); each 1 NOTE
+  (new submission, possibly misspelled words), check time 539 s and 543 s
 
 ## R CMD check results
 
