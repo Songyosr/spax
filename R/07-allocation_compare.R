@@ -20,7 +20,7 @@
 #' ([prepare_allocation()]) are comparable only with each other, with the same
 #' group IDs and, once `models` are supplied, the same demand and the same
 #' travel times for every group; a shared-parameter fit and a `by_group` fit on
-#' the same group-labelled target answer whether the group decays differ. The
+#' the same group-labeled target answer whether the group decays differ. The
 #' table then shows the free parameters, such as `sigma.<group>`, and coverage
 #' comes from the pooled outputs. Contact and capacity values remain comparable
 #' across specifications, but they are conditional on each specification's

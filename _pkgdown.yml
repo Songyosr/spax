@@ -8,8 +8,8 @@ articles:
     contents:
       - cornwall-data
       - data-prep
-  - title: Accessibility indices
-    navbar: Accessibility indices
+  - title: Accessibility scores (2SFCA family)
+    navbar: Accessibility scores
     contents:
       - fca-methods
       - e2sfca-steps
@@ -34,7 +34,7 @@ reference:
     contents:
       - spax-package
 
-  - title: "Public FCA Accessibility"
+  - title: "Accessibility scores (2SFCA family)"
     desc: "Raster accessibility surfaces with model-specific normalization and independent supply indicators"
     contents:
       - spax_2sfca
@@ -45,7 +45,7 @@ reference:
       - compute_access
 
   - title: "Access Interface (experimental)"
-    desc: "Specify a floating catchment area index without data: its decay (distance weights with a sigma, a step or an inverse decay), its normalization and its selection. spax() computes it on data from prep_data(): raster data give the spax object of the one-call functions, numeric data the index at each origin"
+    desc: "Specify a 2SFCA-family method without data: its decay (distance weights with a sigma, a step or an inverse decay), its normalization and its selection. spax() computes it on data from prep_data(): raster data give the spax object of the one-call functions, numeric data the accessibility score at each origin"
     contents:
       - spec_e2sfca
       - decay_step
@@ -108,8 +108,8 @@ reference:
       - update_pmf
       - transform_likelihood
 
-  - title: "FCA Object Methods"
-    desc: "Print, summary, and plot methods for public FCA spax objects"
+  - title: "Accessibility result methods"
+    desc: "Print, summary, and plot methods for spax objects of accessibility scores"
     contents:
       - print.spax
       - summary.spax
@@ -124,7 +124,7 @@ reference:
       - save_spax
 
   - title: "Cornwall GP Example Data"
-    desc: "Open data for NHS Cornwall and Isles of Scilly GP practices; see inst/COPYRIGHTS for sources and licences"
+    desc: "Open data for NHS Cornwall and Isles of Scilly GP practices; see inst/COPYRIGHTS for sources and licenses"
     contents:
       - cornwall_gp
       - cornwall_lsoa

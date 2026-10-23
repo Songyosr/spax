@@ -62,16 +62,17 @@ who uses which facility. spax takes them in two shapes:
 |:--|:--|:--|
 | Demand | a number per origin | a population raster |
 | Supply | a number per facility | the same |
-| Travel | an origin x facility matrix of minutes (`Inf` = no connection) | one travel-time layer per facility |
+| Travel | an origin x facility matrix of minutes (`Inf` = no connection, `NA` = unknown) | one travel-time layer per facility |
 | Observed use | flows (origin, facility, count) or facility totals | the same, with cells as origins |
 
 The same models run on both shapes, and the example data hold both. In table
 form, the origins are the small areas of `cornwall_lsoa` and the facilities the
 practices of `cornwall_gp`; travel is `cornwall_travel` and observed use is
 `cornwall_flows`. In grid form, demand is `cornwall_pop.tif` and travel is
-`cornwall_gp_travel.tif`, for the same practices. In table form, each
-ingredient is a vector or matrix named by ID. The code shows the first
-elements of each.
+`cornwall_gp_travel.tif`, for the same practices. In table form, demand
+and supply are vectors named by ID, travel is a matrix with origin and
+facility IDs as row and column names, and observed use is a long table of
+origin, facility and count. The code shows the first elements of each.
 
 ```{r ingredients}
 areas <- st_drop_geometry(cornwall_lsoa)
@@ -167,10 +168,10 @@ plot(pop, ext = window, breaks = c(0, 10, 50, 100, 500, 1000, 5000),
      cex.main = title_size, main = "(a) Demand: residents",
      plg = c(legend_at, title = "Per cell"))
 lines(outline, lwd = 0.4)
-points(centroids, cex = sqrt(centroids$pop / 3500), col = adjustcolor("grey10", 0.75), lwd = 0.6)
+points(centroids, cex = sqrt(centroids$pop / 3500), col = adjustcolor("gray30", 0.5), lwd = 0.5)
 
 # (b) Supply: the practices
-plot(outline, ext = window, col = "grey95", border = "grey40", lwd = 0.4, axes = FALSE,
+plot(outline, ext = window, col = "gray95", border = "gray40", lwd = 0.4, axes = FALSE,
      mar = margins, cex.main = title_size, main = "(b) Supply: GP FTE")
 points(practices, cex = sqrt(practices$gp_fte_extg) / 1.5, pch = 21, bg = "orange")
 legend("topleft", legend = c(2, 6, 12), title = "GP FTE", pch = 21, pt.bg = "orange",
@@ -186,8 +187,8 @@ points(centroids, pch = 21, cex = 0.6, lwd = 0.4,
 points(chosen_point, pch = 4, cex = 1.2, lwd = 2)
 
 # (d) Observed use: the share registered at the practice
-plot(area_polygons, "share", type = "interval", breaks = c(0, 0.05, 0.25, 0.5, 0.75, 1),
-     col = hcl.colors(5, "Blues", rev = TRUE), border = NA, ext = window, axes = FALSE,
+plot(area_polygons, "share", type = "interval", breaks = c(0, 0.05, 0.25, 0.5, 1),
+     col = hcl.colors(4, "Blues", rev = TRUE), border = NA, ext = window, axes = FALSE,
      mar = margins, cex.main = title_size, main = "(d) Observed use: share registered there",
      plg = c(legend_at, title = "Share"))
 lines(outline, lwd = 0.4)
@@ -324,7 +325,7 @@ nearest_map <- cornwall_lsoa |>
 
 ggplot(nearest_map) +
   geom_sf(aes(fill = minutes), color = "white", linewidth = 0.05) +
-  geom_sf(data = st_union(cornwall_lsoa), fill = NA, color = "grey20", linewidth = 0.3) +
+  geom_sf(data = st_union(cornwall_lsoa), fill = NA, color = "gray20", linewidth = 0.3) +
   scale_fill_viridis_c(name = "Minutes", option = "magma", direction = -1) +
   labs(title = "Travel time to the nearest GP practice") +
   theme_void()

@@ -27,9 +27,9 @@ GP data that ship with spax, described in [The Cornwall GP example
 data](cornwall-data.html). The `spax()` interface and the allocation model are
 experimental and may change in later versions.
 
-spax takes data in two shapes: give demand as areas or a grid, and travel as a
-matrix or one surface per facility. The same models run on both. This guide
-uses the grid form.
+spax takes data in two shapes: areas or points with an origin-by-facility
+matrix of travel minutes, or a population grid with one travel-time layer per
+facility. The same models run on both. This guide uses the grid form.
 
 | Ingredient | Table form (areas or points) | Grid form |
 |:--|:--|:--|
@@ -173,8 +173,8 @@ towns <- st_as_sf(
 ggplot() +
   geom_sf(
     data = small_areas,
-    fill = "grey95",
-    color = "grey70",
+    fill = "gray95",
+    color = "gray70",
     linewidth = 0.1
   ) +
   geom_sf(
@@ -184,7 +184,7 @@ ggplot() +
     fill = "orange",
     alpha = 0.8
   ) +
-  geom_sf(data = outline, fill = NA, color = "grey20", linewidth = 0.3) +
+  geom_sf(data = outline, fill = NA, color = "gray20", linewidth = 0.3) +
   geom_sf_text(
     data = towns, aes(label = town), size = 3, vjust = -0.9,
     fun.geometry = sf::st_centroid

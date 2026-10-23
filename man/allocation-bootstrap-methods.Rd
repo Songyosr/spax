@@ -43,7 +43,7 @@ count and reporting status. Fixed-input identities have no sampling interval.
 \code{plot()} displays one named saved quantity. Its default is the first saved
 quantity. The interval view draws a saved point and available percentile
 endpoints only when the overall run is complete and that quantity's saved
-status permits reporting; an unavailable interval is labelled explicitly. This
+status permits reporting; an unavailable interval is labeled explicitly. This
 also suppresses stale finite endpoints in refused or incomplete saved objects.
 The draw view plots
 finite values from successful attempted fits, retaining inner boundaries and
