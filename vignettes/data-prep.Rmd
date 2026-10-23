@@ -75,11 +75,13 @@ an unknown time (the section on unknown travel says what that means).
 ```{r own-files, eval = FALSE}
 pop <- terra::rast("population.tif")             # residents per cell
 travel_grid <- terra::rast("travel_minutes.tif") # one layer per facility ID
-facilities <- read.csv("facilities.csv")         # one row per facility
+# Read IDs as text, so that codes such as "0123" keep their form and match
+facilities <- read.csv("facilities.csv", colClasses = c(id = "character"))
 
 # A long table with columns origin, facility and minutes, as a matrix with
 # origins as row names and facilities as column names
-od <- read.csv("travel_minutes.csv")
+od <- read.csv("travel_minutes.csv",
+               colClasses = c(origin = "character", facility = "character"))
 travel <- matrix(NA_real_, length(unique(od$origin)), length(unique(od$facility)),
                  dimnames = list(unique(od$origin), unique(od$facility)))
 travel[cbind(od$origin, od$facility)] <- od$minutes
@@ -252,10 +254,15 @@ invisible(transform_demand(x = lsoa, value_col = "pop", pmf = pattern, density =
 
 ```{r lsoa-too-small-count, include = FALSE}
 # The number of areas the warning above counts
-lsoa_warning <- tryCatch(
+lsoa_warnings <- character()
+withCallingHandlers(
   transform_demand(x = lsoa, value_col = "pop", pmf = pattern, density = TRUE),
-  warning = conditionMessage
+  warning = function(w) {
+    lsoa_warnings <<- c(lsoa_warnings, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  }
 )
+lsoa_warning <- grep("area\\(s\\) cover no grid cell", lsoa_warnings, value = TRUE)[1]
 lsoa_dropped <- as.integer(sub(" area.*", "", lsoa_warning))
 stopifnot(!is.na(lsoa_dropped))
 ```

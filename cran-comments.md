@@ -18,10 +18,10 @@ This is a new submission.
 
 ## Notes
 
-* Possibly misspelled words in DESCRIPTION: FCA and SFCA are the method
-  abbreviations used in the literature (floating catchment area); Delamater,
-  Luo, Qi, Sternberg and Zou are authors of the cited methods, and "et al." is
-  part of a citation.
+* Possibly misspelled words in DESCRIPTION: SFCA is part of the method
+  abbreviations used in the literature (2SFCA, E2SFCA, M2SFCA, 3SFCA: two-step
+  floating catchment area); Delamater, Luo, Qi, Sternberg and Zou are authors
+  of the cited methods, and "et al." is part of a citation.
 * The Cornwall example data in `data/` and `inst/extdata/` are openly licensed
   third-party data (Open Government Licence v3.0 and Creative Commons
   Attribution); `inst/COPYRIGHTS` lists each source and its attribution, as

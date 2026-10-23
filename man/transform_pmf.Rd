@@ -14,12 +14,12 @@ transform_pmf(
 }
 \arguments{
 \item{x}{A \code{SpatRaster} containing values to normalize, or a \code{SpatVector}
-whose attribute values will be rasterised.}
+whose attribute values will be rasterized.}
 
 \item{value_col}{Character name of the attribute column to use when \code{x} is a
 \code{SpatVector}. Ignored for raster inputs.}
 
-\item{template}{\code{SpatRaster} providing geometry for rasterising vector
+\item{template}{\code{SpatRaster} providing geometry for rasterizing vector
 inputs. Required when \code{x} is a \code{SpatVector}.}
 
 \item{return_total}{Logical; when \code{TRUE}, return both the PMF raster and the
@@ -38,7 +38,7 @@ If \code{return_total = FALSE}, returns a \code{SpatRaster} whose cells sum to
 \description{
 Converts raster or vector inputs into a probability mass function where all
 values sum to 1. Raster inputs are normalized directly, each layer of a
-multi-layer raster separately, while vector inputs are first rasterised
+multi-layer raster separately, while vector inputs are first rasterized
 using a supplied template: points in the same cell add up (missing values
 are ignored, and each part of a multipoint carries the feature's full
 value), and a polygon's value is copied to every cell it covers.
