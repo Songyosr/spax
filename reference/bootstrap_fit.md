@@ -15,7 +15,8 @@ bootstrap_fit(
   observation,
   scenario = NULL,
   seed,
-  checkpoint = NULL
+  checkpoint = NULL,
+  attempts = 399
 )
 
 bootstrap_allocation(
@@ -24,7 +25,8 @@ bootstrap_allocation(
   observation,
   scenario = NULL,
   seed,
-  checkpoint = NULL
+  checkpoint = NULL,
+  attempts = 399
 )
 ```
 
@@ -74,15 +76,28 @@ bootstrap_allocation(
 
 - seed:
 
-  Required nonnegative integer; attempt b uses seed+b. The caller's RNG
-  state and RNG kind are restored, including when interrupted.
+  Required nonnegative integer; attempt b uses seed+b, so seed plus
+  `attempts` must stay within the integer range. The caller's RNG state
+  and RNG kind are restored, including when interrupted.
 
 - checkpoint:
 
   Optional RDS file in an existing directory. Completed attempts are
   saved atomically and resumed after exact input/settings/version
   checks. Completed failures are never retried; incomplete runs retain
-  actual counts.
+  actual counts. A checkpoint belongs to its number of attempts: a run
+  cannot be extended to more attempts once it has been made.
+
+- attempts:
+
+  The number of bootstrap attempts, a whole number from 199 to
+  1,000,000; 399 by default. More attempts make the interval endpoints
+  less dependent on the random draws and take proportionally longer;
+  fewer give noisier intervals that tend to be narrower, with lower
+  coverage. Choose the number of attempts and the seed before the run:
+  runs with the same seed share their first attempts (a run of 999
+  repeats the run of 399 and adds 600 more), and changing either after
+  seeing a result is outside the method.
 
 ## Value
 
@@ -95,11 +110,11 @@ identity without an interval: it includes supply with at least one known
 finite edge on retained demand support. Unsupported positive supply is
 disclosed in `capacity_support`; total supplied capacity can exceed
 attributed capacity. For any model other than built-in Gaussian decay
-with fitted sigma and v0 and `kappa` and `beta` equal to 1, the result
-also has a `coverage_note` saying that coverage was evaluated for that
-case and not studied separately for the model; it is printed with the
-result. Scientific refusals are inspectable results; invalid inputs
-error.
+with fitted sigma and v0 and `kappa` and `beta` equal to 1, or a number
+of attempts other than 399, the result also has a `coverage_note` saying
+that coverage was evaluated for that case and not studied separately; it
+is printed with the result. Scientific refusals are inspectable results;
+invalid inputs error.
 
 ## Details
 
@@ -119,23 +134,25 @@ power kernel, or a kernel declared with
 (not with `smooth = FALSE`). The supply elasticity beta may be fixed or
 fitted. Every fitted parameter gets its own interval.
 
-Exactly 399 attempts use the starts and positive bounds of the original
-fit (given, or found by the default search of
+A run makes `attempts` attempts, 399 by default, each from the starts
+and positive bounds of the original fit (given, or found by the default
+search of
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)),
 with fixed numerical controls. Failed attempts are retained without
 replacement. Successful inner boundary estimates remain in the
 distribution. Original mean boundaries, local rank deficiency (fewer
 identified directions than fitted parameters) or insufficient fit
 precision, including a score that cannot be computed, refuse intervals;
-percentile intervals require a complete run of 399 attempts and at least
-380 finite successful values per quantity. Incomplete results retain
-their point estimates and diagnostics but withhold intervals. Coverage
-was evaluated for Gaussian decay with fitted sigma and v0, in generated
-80-origin/40-facility designs under tested fixed-input laws; other
-kernels and a fitted beta use the same procedure without a separate
-coverage study. Coverage validation is not a universal guarantee of
-exact 95 percent coverage or validation of an application's observation
-law.
+percentile intervals require a complete run of all the attempts and
+finite successful values from at least 95 percent of them, rounded up
+(380 of the default 399). Incomplete results retain their point
+estimates and diagnostics but withhold intervals. Coverage was evaluated
+for Gaussian decay with fitted sigma and v0 and 399 attempts, in
+generated 80-origin/40-facility designs under tested fixed-input laws;
+other kernels, a fitted beta and other numbers of attempts use the same
+procedure without a separate coverage study. Coverage validation is not
+a universal guarantee of exact 95 percent coverage or validation of an
+application's observation law.
 
 A facility with positive supply, a known finite travel time on retained
 demand support and a modeled mean of exactly zero is treated as
@@ -158,3 +175,70 @@ Other allocation steps:
 [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice),
+               cornwall_travel[areas$lsoa, gp$practice])
+
+# The bootstrap assumes practice totals that are independent counts over one
+# period. The registrations of cornwall_flows are a stock on one date, so the
+# totals here are drawn from the model instead: Poisson counts at a travel
+# scale of 10 minutes and an outside weight of 1
+expected <- fitted(spax(d, spec_clm(decay_gaussian(sigma = 10), outside = 1)))
+set.seed(1)
+totals <- stats::setNames(stats::rpois(length(expected), expected), names(expected))
+
+# Fit the conditional logit model with a fitted outside weight to the totals
+fit <- spax(d, spec_clm(decay_gaussian(), outside = "fit"),
+            observed = obs_totals(totals))
+coef(fit)
+#>     sigma        v0 
+#> 10.005894  0.963842 
+
+# \donttest{
+# 199 attempts, the fewest allowed (399 by default): each draws the practices
+# with replacement and refits the model
+boot <- bootstrap_fit(fit, observation = list(event = "simulated registrations",
+                                              period = "one reference period",
+                                              sampling = "independent_facilities"),
+                      seed = 2026, attempts = 199)
+boot
+#> <allocation bootstrap>
+#> status: complete
+#>  planned attempted successful
+#>      199       199        199
+#> failed attempts: 0; retained inner-boundary attempts: 0
+#> sampling: independent_facilities; event: simulated registrations; period: one reference period
+#> supply (raw supply units): total: 90.38; attributed: 90.38; unsupported: 0
+#> facilities: total: 15; with retained-demand support: 15; positive supply without support: 0
+#> fixed inputs: demand, supply, travel, included network and support policy
+#> regional_A is supported raw supply per retained need; positive supply
+#> with no finite edge on retained demand support is excluded from
+#> attributed capacity and disclosed separately 
+#> Conditional percentile intervals; coverage evidence is limited to the
+#> package's coverage study, a fixed 80-origin/40-facility generated
+#> design. Facility independence and the empirical observation law are
+#> assumptions. No simultaneous-map or causal coverage claim. 
+#> Coverage was evaluated with 399 attempts; this run used 199. Fewer
+#> attempts give noisier intervals that tend to be narrower. 
+#> Available bounds: conditional bootstrap intervals.
+#>      quantity  estimate  lower  upper                          status
+#>         sigma 1.001e+01 9.8030 10.230 conditional_pointwise_bootstrap
+#>            v0 9.638e-01 0.8256  1.147 conditional_pointwise_bootstrap
+#>  regional_rho 9.717e-01 0.9667  0.976 conditional_pointwise_bootstrap
+#>    regional_A 6.053e-04     NA     NA            fixed_input_identity
+#>  successful attempted planned
+#>         199       199     199
+#>         199       199     199
+#>         199       199     199
+#>         199       199     199
+# }
+```

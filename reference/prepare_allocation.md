@@ -3,8 +3,8 @@
 Named axes align independently; unnamed axes are positional. Positive
 included demand enters facility-load support. Zero, unknown and
 explicitly excluded origins retain separate support statuses. This
-experimental entry point delegates to the existing compact preparation
-boundary.
+experimental step prepares the compact arrays that the allocation model
+computes on.
 
 ## Usage
 
@@ -17,7 +17,7 @@ prepare_allocation(
   facility_ids = NULL,
   included = NULL,
   missing_demand = c("error", "exclude"),
-  missing_travel = c("error", "legacy_zero"),
+  missing_travel = c("error", "omit", "legacy_zero"),
   spatial = NULL,
   metadata = list()
 )
@@ -72,13 +72,14 @@ prepare_allocation(
 
 - missing_travel:
 
-  Default `"error"` rejects NA/NaN on active fit rows. `"legacy_zero"`
-  explicitly omits unknown edges and records that policy. Finite
-  nonnegative travel is known, positive infinity is an absent edge, and
-  negative travel is invalid. Omitted rows are validated when requested
-  by prediction. Model-specific finite domains, such as positive power
-  distances, are checked when binding parameters; no imputation bypasses
-  them.
+  Default `"error"` rejects NA/NaN on active fit rows. `"omit"` leaves
+  out unknown pairs (a facility with unknown travel is out of reach from
+  that origin) and records that policy; `"legacy_zero"` is its older
+  name and does the same. Finite nonnegative travel is known, positive
+  infinity is an absent edge, and negative travel is invalid. Omitted
+  rows are validated when requested by prediction. Model-specific finite
+  domains, such as positive power distances, are checked when binding
+  parameters; no imputation bypasses them.
 
 - spatial:
 
@@ -98,9 +99,9 @@ prepare_allocation(
 
 ## Value
 
-The existing `ae_prepared_inputs`, with a full origin registry and
-distinct support statuses plus compact active load arrays. No duplicate
-full travel matrix is retained. Pass it to
+An `ae_prepared_inputs`, with a full origin registry and distinct
+support statuses plus compact active load arrays. No duplicate full
+travel matrix is retained. Pass it to
 [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
 rather than editing its internal fields. Expected counts use demand
 units/period; proportional capacity attribution uses supply per unit of
@@ -132,3 +133,49 @@ Other allocation steps:
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
 [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
+
+## Examples
+
+``` r
+# Mainland Cornwall: registered residents by small area, GP FTE by practice
+# and the travel minutes between them, matched by their names
+areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+demand <- stats::setNames(areas$registered, areas$lsoa)
+supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+prepare_allocation(demand, supply, travel,
+                   metadata = list(demand_units = "registered residents",
+                                   supply_units = "GP FTE",
+                                   travel_units = "minutes"))
+#> <spax data> 336 origins (336 active) x 54 facilities
+#>   demand      604,471 registered residents
+#>   supply      GP FTE
+#>   travel      minutes; unknown for 0 active origins
+#>   policies    missing demand: error; missing travel: error
+
+# Demand groups: residents by age band, sharing one travel matrix
+by_age <- list(children = stats::setNames(areas$pop_0_15, areas$lsoa),
+               adults = stats::setNames(areas$pop_16_64, areas$lsoa),
+               older = stats::setNames(areas$pop_65p, areas$lsoa))
+prepare_allocation(by_age, supply, travel)
+#> <spax data> 336 origins (336 active) x 54 facilities
+#>   groups      children, adults, older
+#>   demand      583,289
+#>   travel      unknown for 0 active origins
+#>   policies    missing demand: error; missing travel: error
+
+# All small areas and practices, the Isles of Scilly area excluded. Travel
+# is NA between the islands and the mainland, which have no road link;
+# missing_travel = "omit" leaves those pairs out of the model
+all_areas <- sf::st_drop_geometry(cornwall_lsoa)
+all_gp <- sf::st_drop_geometry(cornwall_gp)
+prepare_allocation(stats::setNames(all_areas$registered, all_areas$lsoa),
+                   stats::setNames(all_gp$gp_fte_extg, all_gp$practice),
+                   cornwall_travel, included = !all_areas$scilly,
+                   missing_travel = "omit")
+#> <spax data> 337 origins (336 active; 1 excluded) x 55 facilities
+#>   demand      604,471
+#>   travel      unknown for 336 active origins
+#>   policies    missing demand: error; missing travel: omit
+```

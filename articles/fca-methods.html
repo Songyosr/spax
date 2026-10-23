@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Comparing FCA methods • spax</title>
+<title>Which FCA index? • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Comparing FCA methods">
+<meta property="og:title" content="Which FCA index?">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,77 +76,74 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Comparing FCA methods</h1>
+      <h1>Which FCA index?</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/fca-methods.Rmd" class="external-link"><code>vignettes/fca-methods.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/fca-methods.Rmd" class="external-link"><code>vignettes/fca-methods.Rmd</code></a></small>
       <div class="d-none name"><code>fca-methods.Rmd</code></div>
     </div>
 
     
     
-<p>This guide uses the bundled Cornwall GP data, described in <a href="cornwall-data.html">The Cornwall GP example data</a>.</p>
+<p>A floating catchment area (FCA) index measures access as supply per
+resident. Each facility divides its supply, here GP full-time
+equivalents (FTE), by the demand it can reach, here residents. Each
+place then adds up the ratios of the facilities it can reach. Weights
+that fall with travel time decide what “can reach” means, and the FCA
+methods differ in those weights. This guide computes five indices on the
+same inputs, maps them on one color scale and shows how much of the GP
+supply each one hands back to residents. By the end you can choose an
+index and say what changes when you switch. The inputs are the mainland
+grids of <a href="cornwall-data.html">The Cornwall GP example data</a>.
+The <code><a href="../reference/spax.html">spax()</a></code> interface and the allocation model are
+experimental and may change in later versions.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></code></pre></div>
-<p>Floating catchment area (FCA) methods combine demand, facility supply
-and travel weights into an accessibility index. They differ in how they
-weight travel. This guide computes three of them on the same inputs and
-compares the results: the enhanced two-step FCA (E2SFCA) from <a href="spax.html">Getting started</a>, the original 2SFCA and the
-modified 2SFCA (M2SFCA). A last section adds two variants that first
-share each cell’s demand among practices, 3SFCA and Huff-2SFCA, and a
-final one lets several demand groups, such as age bands, have their own
-decay. For a fitted allocation model with an outside option, see <a href="model-choice.html">Choosing an FCA index or an allocation
-model</a>.</p>
 <div class="section level2">
 <h2 id="the-inputs">The inputs<a class="anchor" aria-label="anchor" href="#the-inputs"></a>
 </h2>
-<p>The inputs are those of <a href="spax.html">Getting started</a>: the
-WorldPop 2020 population grid (estimated residents per cell of about 1
-km, a count rather than a density), GP FTE excluding GPs in training,
-and travel minutes to each mainland practice. The grid and the workforce
-come from different sources and dates (2020 and 2026).</p>
+<p>The setup code shared by every grid guide, explained in <a href="cornwall-data.html">The Cornwall GP example data</a>, reads the
+population grid (residents per grid cell), the mainland practices with
+their GP FTE excluding GPs in training, and the travel stack: one raster
+layer of travel minutes per practice. <code><a href="../reference/prep_data.html">prep_data()</a></code> holds
+them together for <code><a href="../reference/spax.html">spax()</a></code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Residents per grid cell, and travel minutes with one layer per practice</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Mainland only: the Isles of Scilly have no road link to the mainland</span></span>
-<span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">travel</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
-<span></span>
-<span><span class="co"># Keep cells with a travel time to every mainland practice, then drop the</span></span>
-<span><span class="co"># empty margin the islands leave behind</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel</span>, <span class="va">pop</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Layers must line up with the practice table and the population grid</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/compareGeom.html" class="external-link">compareGeom</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">travel</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  practices <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">gp</span><span class="op">)</span>,</span>
-<span>  residents <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/global.html" class="external-link">global</a></span><span class="op">(</span><span class="va">pop</span>, <span class="st">"sum"</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  gp_fte <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>    cells practices residents    gp_fte 
-   6912.0      54.0  541184.0     311.3 </code></pre>
-<p><a href="data-prep.html">Preparing your own data</a> explains these
-steps in detail.</p>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co"># Keep cells with a travel time to every mainland practice</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel_grid</span>, <span class="va">pop</span><span class="op">)</span></span>
+<span><span class="va">grid_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">gp</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span>
+<span><span class="va">grid_data</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax data&gt; raster 117 x 187 cells x 54 facilities; supply gp_fte_extg
+  demand    1 layer; travel 54 layers
+  note      holds terra rasters: prepare the data again after saveRDS()</code></pre>
+<p>The print gives the grid size, the 54 practices and the supply
+column. Its note means that a saved <code>grid_data</code> cannot be
+reused: run <code><a href="../reference/prep_data.html">prep_data()</a></code> again after loading. The grid has
+6,912 populated cells holding 541,184 residents, and the practices hold
+311.3 GP FTE: 0.58 GP FTE per 1,000 residents across the mainland.</p>
 </div>
 <div class="section level2">
 <h2 id="three-ways-to-weight-travel">Three ways to weight travel<a class="anchor" aria-label="anchor" href="#three-ways-to-weight-travel"></a>
 </h2>
-<p>Each method gathers demand to practices with one set of weights,
-divides each practice’s supply by the demand it gathered, and spreads
-those ratios back to cells with a second set of weights.</p>
+<p>The first three methods are the original two-step FCA (2SFCA), the
+enhanced two-step FCA (E2SFCA) and the modified two-step FCA (M2SFCA).
+Each gathers demand to practices with one set of weights, divides each
+practice’s supply by the demand it gathered, and spreads those ratios
+back to cells with a second set of weights.</p>
+<p>Each method needs a rule for how much a practice counts at a given
+travel time. A Gaussian decay is a bell-shaped weight: 1 at zero
+minutes, falling smoothly as travel time grows. Its travel scale σ, in
+minutes, sets how fast it falls: with σ = 10, a practice 10 minutes away
+keeps 61% of its weight and one 20 minutes away 14%. The 15-minute
+catchment and σ = 10 minutes are choices for this guide.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -163,97 +163,54 @@ those ratios back to cells with a second set of weights.</p>
 </tr>
 <tr class="even">
 <td align="left">E2SFCA</td>
-<td align="left">Gaussian decay, scale 10 minutes</td>
+<td align="left">Gaussian decay, travel scale 10 minutes</td>
 <td align="left">The same</td>
 </tr>
 <tr class="odd">
 <td align="left">M2SFCA</td>
-<td align="left">Gaussian decay, scale 10 minutes</td>
+<td align="left">Gaussian decay, travel scale 10 minutes</td>
 <td align="left">The Gaussian weight squared</td>
 </tr>
 </tbody>
 </table>
-<p>The 15-minute threshold and the 10-minute scale are choices for this
-guide, not estimates. With the Gaussian scale of 10 minutes, a practice
-10 minutes away keeps about 61% of its weight and one 20 minutes away
-about 14%. <code>demand_normalize = "identity"</code> uses the weights
-unchanged when practices gather demand, as in the original E2SFCA.</p>
+<p>You describe each index with a <code>spec_*()</code> function, which
+records the method and its settings but no data. <code><a href="../reference/spax.html">spax()</a></code>
+then runs it on the prepared data. <code><a href="../reference/spec_e2sfca.html">spec_2sfca()</a></code> takes the
+catchment as <code>threshold</code>. The other specifications take a
+decay: <code><a href="../reference/decay_gaussian.html">decay_gaussian()</a></code> here, or
+<code><a href="../reference/decay_gaussian.html">decay_exponential()</a></code>, <code><a href="../reference/decay_gaussian.html">decay_power()</a></code>,
+<code><a href="../reference/decay_step.html">decay_step()</a></code> (a binary catchment) and
+<code><a href="../reference/decay_step.html">decay_inverse()</a></code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">twosfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_2sfca.html">spax_2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  threshold <span class="op">=</span> <span class="fl">15</span>,  <span class="co"># minutes</span></span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">gaussian_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,  <span class="co"># matches supply rows to travel layers</span></span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">twosfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_2sfca</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">15</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">m2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_m2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">m2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_m2sfca.html">spax_m2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The same three indices can be specified without data and computed
-with <code><a href="../reference/spax.html">spax()</a></code> on data prepared once with
-<code><a href="../reference/prep_data.html">prep_data()</a></code>. This interface is experimental.
-<code><a href="../reference/spec_e2sfca.html">spec_2sfca()</a></code> takes the 15-minute catchment as
-<code>threshold</code>; the other specifications take a decay:
-<code><a href="../reference/decay_gaussian.html">decay_gaussian()</a></code> here, or <code><a href="../reference/decay_gaussian.html">decay_exponential()</a></code>,
-<code><a href="../reference/decay_gaussian.html">decay_power()</a></code>, <code><a href="../reference/decay_step.html">decay_step()</a></code> (a binary
-catchment) and <code><a href="../reference/decay_step.html">decay_inverse()</a></code>. A Gaussian, exponential or
-power decay can also take a raster of <code>sigma</code> values, for a
-catchment that varies in space.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Demand grid, practice table and travel stack, held together</span></span>
-<span><span class="va">grid_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span></span>
-<span>  <span class="va">pop</span>,</span>
-<span>  <span class="va">gp</span>,</span>
-<span>  <span class="va">travel</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">grid_data</span></span></code></pre></div>
-<pre class="spax-output"><code>&lt;spax data&gt; raster 117 x 187 cells x 54 facilities; supply gp_fte_extg
-  demand    1 layer; travel 54 layers
-  note      holds terra rasters: prepare the data again after saveRDS()</code></pre>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The same three indices from specifications</span></span>
-<span><span class="va">gaussian_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="va">by_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  twosfca <span class="op">=</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_2sfca</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">15</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  e2sfca <span class="op">=</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  m2sfca <span class="op">=</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_m2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Each surface is identical to that of the one-call function</span></span>
-<span><span class="va">same</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">y</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu">same</span><span class="op">(</span><span class="va">by_spec</span><span class="op">$</span><span class="va">twosfca</span>, <span class="va">twosfca</span><span class="op">)</span>,</span>
-<span>  <span class="fu">same</span><span class="op">(</span><span class="va">by_spec</span><span class="op">$</span><span class="va">e2sfca</span>, <span class="va">e2sfca</span><span class="op">)</span>,</span>
-<span>  <span class="fu">same</span><span class="op">(</span><span class="va">by_spec</span><span class="op">$</span><span class="va">m2sfca</span>, <span class="va">m2sfca</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Each result is a <code>spax</code> object whose
-<code>accessibility</code> member is a raster of GP FTE per resident.
-The maps show all three in GP FTE per 1,000 residents on one colour
-scale.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Stack the three surfaces and draw them on one shared colour scale</span></span>
+<span><span class="va">e2sfca</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax access&gt; E2SFCA, 1 layer on 117 x 187 cells
+
+Spatial Properties:
+- Resolution: 0.00833333 x 0.00833333
+- Dimensions: 117 x 187
+
+Measures: 1
+- gp_fte_extg
+
+Facilities: 54
+
+Parameters:
+- Decay function: gaussian (sigma = 10)
+- Demand normalization: identity </code></pre>
+<p>The print names the method, the grid, the 54 practices and the decay.
+The index itself is the raster <code>e2sfca$accessibility</code>, in GP
+FTE per resident, so the maps multiply it by 1,000. Step 2 of <a href="e2sfca-steps.html">Inside the E2SFCA calculation</a> explains the
+print’s last line, the demand normalization.</p>
+<p>The maps show the three surfaces in GP FTE per 1,000 residents on one
+color scale.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Stack the three surfaces and draw them on one shared color scale</span></span>
 <span><span class="va">all_three</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span>,</span>
 <span>  <span class="va">twosfca</span><span class="op">$</span><span class="va">accessibility</span>,</span>
@@ -265,6 +222,11 @@ scale.</p>
 <span>  <span class="st">"M2SFCA, Gaussian 10 min"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">shared_range</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">all_three</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co"># Mainland Cornwall's outline, in the grid's longitude and latitude</span></span>
+<span><span class="va">outline</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span></span>
 <span>  <span class="va">all_three</span>,</span>
 <span>  nc <span class="op">=</span> <span class="fl">3</span>,</span>
@@ -272,33 +234,42 @@ scale.</p>
 <span>  col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"viridis"</span><span class="op">)</span>,</span>
 <span>  range <span class="op">=</span> <span class="va">shared_range</span>,</span>
 <span>  mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span>,</span>
-<span>  plg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span><span class="op">)</span></span>
+<span>  plg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span><span class="op">)</span>,</span>
+<span>  fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">outline</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="fca-methods_files/figure-html/methods-map-1.png" class="r-plt" alt="Three raster maps of mainland Cornwall on one colour scale in GP FTE per 1,000 residents: E2SFCA changes smoothly, 2SFCA has sharp steps at the 15-minute catchment edges, and M2SFCA is lower throughout." width="900"></p>
+<p><img src="fca-methods_files/figure-html/methods-map-1.png" class="r-plt" alt="Three raster maps of mainland Cornwall on one color scale in GP FTE per 1,000 residents: E2SFCA changes smoothly, 2SFCA has sharp steps at the 15-minute catchment edges, and M2SFCA is lower throughout." width="900"></p>
+<p>E2SFCA changes smoothly. It is highest in the west, between Redruth,
+Truro and Falmouth, and lowest on Bodmin Moor, the upland north-east of
+the map’s center. 2SFCA is patchy, with sharp edges where the 15-minute
+catchments end, and its highest patches lie in the west and at the
+eastern edge near Callington. M2SFCA has the E2SFCA pattern but is
+darker everywhere, for a reason the next section shows.</p>
 </div>
 <div class="section level2">
 <h2 id="compare-the-values">Compare the values<a class="anchor" aria-label="anchor" href="#compare-the-values"></a>
 </h2>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Cell values as plain vectors, per 1,000 residents, and residents per cell</span></span>
-<span><span class="va">per_1000</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">e2sfca</span><span class="op">)</span></span>
-<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">twosfca</span><span class="op">)</span></span>
-<span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">m2sfca</span><span class="op">)</span></span>
-<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<p>The table gives three cell quantiles and the index of the average
+resident, for each method, in GP FTE per 1,000 residents.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Residents per cell, and each index per 1,000 residents, as plain vectors</span></span>
+<span><span class="va">residents</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">per_1000</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">e2sfca_values</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">e2sfca</span><span class="op">)</span></span>
+<span><span class="va">twosfca_values</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">twosfca</span><span class="op">)</span></span>
+<span><span class="va">m2sfca_values</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">m2sfca</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Cell quantiles and the index of the average resident</span></span>
-<span><span class="va">describe</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="va">describe</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">index</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.5</span>, <span class="fl">0.95</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    resident_weighted <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">p</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">index</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.5</span>, <span class="fl">0.95</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    resident_weighted <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">index</span>, <span class="va">residents</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>    E2SFCA <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">a</span><span class="op">)</span>,</span>
-<span>    `2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,</span>
-<span>    M2SFCA <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span>
+<span>    E2SFCA <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">e2sfca_values</span><span class="op">)</span>,</span>
+<span>    `2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">twosfca_values</span><span class="op">)</span>,</span>
+<span>    M2SFCA <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">m2sfca_values</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fl">2</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -306,52 +277,52 @@ scale.</p>
 E2SFCA 0.24 0.49 0.73              0.58
 2SFCA  0.24 0.50 0.88              0.58
 M2SFCA 0.08 0.28 0.45              0.35</code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Total supply per 1,000 residents, for comparison</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">p</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] 0.58</code></pre>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># An index of zero in 2SFCA means no practice within 15 minutes</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  residents_beyond_15_min <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">p</span><span class="op">[</span><span class="va">b</span> <span class="op">==</span> <span class="fl">0</span><span class="op">]</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  correlation_2sfca <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span>  correlation_m2sfca <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">m</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<p>The quantiles describe grid cells, and most cells are rural. The
+resident-weighted column answers a different question: what does the
+average resident see? For E2SFCA and 2SFCA it equals the mainland ratio
+of 0.58 GP FTE per 1,000 residents. Each uses the same weights in both
+steps and every practice gathers some demand, so the two indices move
+supply between places without adding or losing any. M2SFCA gives the
+average resident 0.35. Its squared weights are smaller than the weights
+that gathered the demand, so part of the supply goes back to no one, and
+cells whose practices are far away lose the most.</p>
+<p>Correlations across cells show how far the surfaces agree on where
+access is higher. The second output counts the residents with no
+practice within 15 minutes. 2SFCA gives them an index of zero.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Correlation of E2SFCA with the other two, across cells</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    with_2sfca <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">e2sfca_values</span>, <span class="va">twosfca_values</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>,</span>
+<span>    with_m2sfca <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">e2sfca_values</span>, <span class="va">m2sfca_values</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  <span class="fl">2</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>residents_beyond_15_min       correlation_2sfca      correlation_m2sfca 
-                 720.00                    0.79                    0.90 </code></pre>
-<p>The quantiles describe grid cells, and most cells are rural.
-Weighting by residents answers a different question: the index the
-average resident sees. For E2SFCA and 2SFCA that average equals total GP
-FTE per 1,000 residents, because each uses the same weights in both
-steps and every practice gathers some demand. These indices redistribute
-the supply; they do not create or lose any. M2SFCA does not keep that
-total: its squared weights are smaller than the weights used to gather
-demand, so part of the supply is not spread back to anyone, and it
-discounts most strongly the cells whose practices are far away.</p>
-<p>The three surfaces broadly agree on where access is higher: E2SFCA
-correlates at 0.79 with 2SFCA and at 0.9 with M2SFCA across cells. 2SFCA
-shows sharp steps at the 15-minute edges and a longer upper tail, and
-the 720 residents with no practice within 15 minutes get an index of
-zero. The decay versions change gradually instead. All three depend on
-choices, the threshold or the decay scale, that this guide does not
-estimate from data. <a href="e2sfca-steps.html">The E2SFCA calculation
-step by step</a> rebuilds the E2SFCA and M2SFCA surfaces from their
-parts.</p>
-<p>The index has supply-per-demand units. It is not a share of people
-who use a practice, a waiting time or an observed rate of care.</p>
+<pre class="spax-output"><code> with_2sfca with_m2sfca 
+       0.79        0.90 </code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Residents with no practice within 15 minutes</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">residents</span><span class="op">[</span><span class="va">twosfca_values</span> <span class="op">==</span> <span class="fl">0</span><span class="op">]</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] 720</code></pre>
+<p>The three surfaces broadly agree: E2SFCA correlates at 0.79 with
+2SFCA and at 0.90 with M2SFCA. 2SFCA has sharp steps at the 15-minute
+edges, a longer upper tail and 720 residents at zero. The decay versions
+change gradually instead. The catchment and the travel scale are
+choices, so it is worth repeating a comparison like this one with the
+values you plan to use. <a href="reading-results.html">Reading
+results</a> says what an FCA index measures.</p>
 </div>
 <div class="section level2">
 <h2 id="selection-weights-3sfca-and-huff-2sfca">Selection weights: 3SFCA and Huff-2SFCA<a class="anchor" aria-label="anchor" href="#selection-weights-3sfca-and-huff-2sfca"></a>
 </h2>
-<p>With the weights above, the weights of all practices at one cell need
-not add up to 1, so where many practices are close each of them counts
-the same residents. Two further variants first share each cell’s demand
-among the practices. At each cell, the <strong>selection weight</strong>
-<code>G</code> of a practice is its share of the cell’s weights, so the
-shares at a cell add up to 1. Both steps then use the kernel
-<code>K = W * G</code> in place of the decay weights <code>W</code>: a
-practice gathers demand and spreads its ratio back to cells with the
-same weights.</p>
+<p>In the three methods above, the weights of all practices at one cell
+can add up to more than 1: where many practices are close, each of them
+counts the same residents. Two further methods, the three-step FCA
+(3SFCA) and Huff-2SFCA, first share each cell’s demand among the
+practices. At each cell, the <strong>selection weight</strong> of a
+practice is its share of the cell’s weights, as the table defines, so
+the selection weights at a cell add up to 1. Both steps then use the
+decay weight times the selection weight.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -360,8 +331,7 @@ same weights.</p>
 </colgroup>
 <thead><tr class="header">
 <th align="left">Method</th>
-<th align="left">Selection weight <code>G</code> of a practice at a
-cell</th>
+<th align="left">Selection weight of a practice at a cell</th>
 <th align="left">Weights in both steps</th>
 </tr></thead>
 <tbody>
@@ -369,118 +339,37 @@ cell</th>
 <td align="left">3SFCA</td>
 <td align="left">Its Gaussian weight, divided by the sum of these
 weights over the cell’s practices</td>
-<td align="left"><code>W * G</code></td>
+<td align="left">Decay weight × selection weight</td>
 </tr>
 <tr class="even">
 <td align="left">Huff-2SFCA</td>
 <td align="left">Its Gaussian weight times its GP FTE, divided by the
 sum of these products over the cell’s practices</td>
-<td align="left"><code>W * G</code></td>
+<td align="left">Decay weight × selection weight</td>
 </tr>
 </tbody>
 </table>
-<p>Huff-2SFCA puts the attractiveness of a practice into the share. By
-default the attractiveness is the supply measure, here GP FTE, raised to
-the power <code>alpha = 1</code>. Both functions also use the Gaussian
-decay for the selection weights, because <code>selection_params</code>
-defaults to <code>decay_params</code>; they have no
-<code>demand_normalize</code> argument, because the shares already
-divide each cell’s demand. This differs from
-<code>demand_normalize = "standard"</code> in
-<code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>, which divides the weights that gather demand
-only. <code><a href="../reference/spax_huff2sfca.html">spax_huff2sfca()</a></code> uses Huff shares inside an FCA
-score; <code><a href="../reference/huff_allocation.html">huff_allocation()</a></code> fits the Huff model itself to
-observed use (see
-<code><a href="../articles/allocation-workflow.html">vignette("allocation-workflow", package = "spax")</a></code>).</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sfca3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_3sfca.html">spax_3sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">huff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_huff2sfca.html">spax_huff2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span>  <span class="co"># also the attractiveness</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>3SFCA is the shared FCA calculation with a different kernel, so it
-can be rebuilt from <code><a href="../reference/calc_decay.html">calc_decay()</a></code>,
-<code><a href="../reference/calc_choice.html">calc_choice()</a></code> and <code><a href="../reference/compute_access.html">compute_access()</a></code>. The check
-is silent when the selection weights add up to 1 at every cell and the
-building blocks reproduce <code><a href="../reference/spax_3sfca.html">spax_3sfca()</a></code>.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">travel</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>  <span class="co"># decay weights W</span></span>
-<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_choice.html">calc_choice</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span>  <span class="co"># selection weights G: each cell's weights over their sum</span></span>
-<span><span class="va">k</span> <span class="op">&lt;-</span> <span class="va">w</span> <span class="op">*</span> <span class="va">g</span>           <span class="co"># the kernel of both steps</span></span>
-<span></span>
-<span><span class="va">by_blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_access.html">compute_access</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  demand_weights <span class="op">=</span> <span class="va">k</span>,</span>
-<span>  access_weights <span class="op">=</span> <span class="va">k</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span>  <span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">by_blocks</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">sfca3</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>    tolerance <span class="op">=</span> <span class="fl">1e-10</span>,</span>
-<span>    check.attributes <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Each variant uses one kernel in both steps, as E2SFCA and 2SFCA do,
-so it returns the supply of every practice that gathers demand, here all
-of them: residents times index, summed over cells, equals the total GP
-FTE. The check shows that sum as a share of total GP FTE. M2SFCA squares
-the access-side weights and returns only part of it.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Residents times index, summed over cells, as a share of total GP FTE</span></span>
-<span><span class="va">returned</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">p</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">/</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    E2SFCA <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">e2sfca</span><span class="op">)</span>,</span>
-<span>    `2SFCA` <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">twosfca</span><span class="op">)</span>,</span>
-<span>    M2SFCA <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">m2sfca</span><span class="op">)</span>,</span>
-<span>    `3SFCA` <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">sfca3</span><span class="op">)</span>,</span>
-<span>    `Huff-2SFCA` <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">huff</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  <span class="fl">6</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>    E2SFCA      2SFCA     M2SFCA      3SFCA Huff-2SFCA 
-  1.000000   1.000000   0.615978   1.000000   1.000000 </code></pre>
-<p>The maps put E2SFCA, 3SFCA and Huff-2SFCA on the colour scale of the
+<p>Huff-2SFCA is named after the Huff model of where shoppers go, in
+which a larger, nearer facility draws a larger share. Its selection
+weights multiply each practice’s decay weight by its attractiveness, by
+default its GP FTE (<code>alpha = 1</code> is the power on GP FTE). To
+fit the Huff model itself to observed registrations, see <a href="allocation-workflow.html">Where do residents register?</a>.</p>
+<p>Both run like the others.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sfca3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_3sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">huff2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_huff2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The maps put E2SFCA, 3SFCA and Huff-2SFCA on the color scale of the
 first map, in GP FTE per 1,000 residents.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Same colour scale as the first map; the new surfaces lie within its range</span></span>
-<span><span class="va">selection_maps</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">selection_maps</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span>,</span>
 <span>  <span class="va">sfca3</span><span class="op">$</span><span class="va">accessibility</span>,</span>
-<span>  <span class="va">huff</span><span class="op">$</span><span class="va">accessibility</span></span>
+<span>  <span class="va">huff2sfca</span><span class="op">$</span><span class="va">accessibility</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">selection_maps</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="st">"E2SFCA, Gaussian 10 min"</span>,</span>
 <span>  <span class="st">"3SFCA, Gaussian 10 min"</span>,</span>
 <span>  <span class="st">"Huff-2SFCA, Gaussian 10 min"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">selection_maps</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="va">shared_range</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">selection_maps</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="va">shared_range</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span></span>
 <span>  <span class="va">selection_maps</span>,</span>
@@ -489,19 +378,21 @@ first map, in GP FTE per 1,000 residents.</p>
 <span>  col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"viridis"</span><span class="op">)</span>,</span>
 <span>  range <span class="op">=</span> <span class="va">shared_range</span>,</span>
 <span>  mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span>,</span>
-<span>  plg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span><span class="op">)</span></span>
+<span>  plg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span><span class="op">)</span>,</span>
+<span>  fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">outline</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="fca-methods_files/figure-html/selection-map-1.png" class="r-plt" alt="Three raster maps of mainland Cornwall on the colour scale of the first map, in GP FTE per 1,000 residents: E2SFCA changes smoothly and is low on Bodmin Moor and at the tips of the peninsulas, while 3SFCA and Huff-2SFCA are patchier, stay low on Bodmin Moor and are higher than E2SFCA at the tips of the peninsulas, most clearly at the Lizard." width="900"></p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">a3</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">sfca3</span><span class="op">)</span></span>
-<span><span class="va">ah</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">huff</span><span class="op">)</span></span>
+<p><img src="fca-methods_files/figure-html/selection-map-1.png" class="r-plt" alt="Three raster maps of mainland Cornwall on the color scale of the first map, in GP FTE per 1,000 residents: E2SFCA changes smoothly and is low on Bodmin Moor and at the tips of the peninsulas, while 3SFCA and Huff-2SFCA are patchier, stay low on Bodmin Moor and are higher than E2SFCA at the tips of the peninsulas, most clearly at the Lizard." width="900"></p>
+<p>The same summaries as before compare the three.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sfca3_values</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">sfca3</span><span class="op">)</span></span>
+<span><span class="va">huff2sfca_values</span> <span class="op">&lt;-</span> <span class="fu">per_1000</span><span class="op">(</span><span class="va">huff2sfca</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Cell quantiles and the resident-weighted index, as for the other methods</span></span>
+<span><span class="co"># Cell quantiles and the resident-weighted index</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>    E2SFCA <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">a</span><span class="op">)</span>,</span>
-<span>    `3SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">a3</span><span class="op">)</span>,</span>
-<span>    `Huff-2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">ah</span><span class="op">)</span></span>
+<span>    E2SFCA <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">e2sfca_values</span><span class="op">)</span>,</span>
+<span>    `3SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">sfca3_values</span><span class="op">)</span>,</span>
+<span>    `Huff-2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/describe.html" class="external-link">describe</a></span><span class="op">(</span><span class="va">huff2sfca_values</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fl">2</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -509,98 +400,164 @@ first map, in GP FTE per 1,000 residents.</p>
 E2SFCA     0.24 0.49 0.73              0.58
 3SFCA      0.25 0.51 0.70              0.58
 Huff-2SFCA 0.25 0.52 0.72              0.58</code></pre>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Agreement across cells</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  correlation_e2sfca_3sfca <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">a3</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span>  correlation_e2sfca_huff <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">ah</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span>  correlation_3sfca_huff <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">a3</span>, <span class="va">ah</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Correlations across cells</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    `E2SFCA, 3SFCA` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">e2sfca_values</span>, <span class="va">sfca3_values</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>,</span>
+<span>    `E2SFCA, Huff-2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">e2sfca_values</span>, <span class="va">huff2sfca_values</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>,</span>
+<span>    `3SFCA, Huff-2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">sfca3_values</span>, <span class="va">huff2sfca_values</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  <span class="fl">2</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>correlation_e2sfca_3sfca  correlation_e2sfca_huff   correlation_3sfca_huff 
-                    0.64                     0.55                     0.97 </code></pre>
-<p>The resident-weighted index is the same for the three, because each
-returns the total supply. They differ in which cells the supply is
-credited to: across cells E2SFCA correlates at 0.64 with 3SFCA, while
-adding attractiveness to 3SFCA changes the surface less (a correlation
-of 0.97). On the maps, 3SFCA and Huff-2SFCA are higher than E2SFCA at
-the ends of the Lizard and Land’s End peninsulas, where E2SFCA is
-lowest, and they are lowest on Bodmin Moor, where E2SFCA is also low.
-With <code>alpha = 0</code> attractiveness has no effect and Huff-2SFCA
-equals 3SFCA.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">no_attractiveness</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_huff2sfca.html">spax_huff2sfca</a></span><span class="op">(</span></span>
+<pre class="spax-output"><code>     E2SFCA, 3SFCA E2SFCA, Huff-2SFCA  3SFCA, Huff-2SFCA 
+              0.64               0.55               0.97 </code></pre>
+<p>The resident-weighted index is the same for the three. They differ in
+which cells the supply is credited to. E2SFCA correlates at 0.64 with
+3SFCA, while adding attractiveness to 3SFCA changes the surface less (a
+correlation of 0.97). On the maps, 3SFCA and Huff-2SFCA are higher than
+E2SFCA at the southern tip (the Lizard) and the western tip (Land’s
+End), where E2SFCA is low. All three have their lowest values on Bodmin
+Moor.</p>
+<p>With <code>alpha = 0</code>, attractiveness has no effect and
+Huff-2SFCA gives the 3SFCA surface:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">no_attractiveness</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_huff2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="va">gaussian_10</span>, alpha <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">no_attractiveness</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">sfca3</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] TRUE</code></pre>
+<p><code>selection</code> can give the selection weights another decay,
+for example <code>decay_step(30)</code> to share each cell’s demand only
+among practices within 30 minutes. <code><a href="../reference/spec_e2sfca.html">?spec_e2sfca</a></code> describes
+the options, and <code><a href="../reference/spax_3sfca.html">?spax_3sfca</a></code> and
+<code><a href="../reference/spax_huff2sfca.html">?spax_huff2sfca</a></code> cite the methods.</p>
+</div>
+<div class="section level2">
+<h2 id="how-much-supply-each-index-hands-back">How much supply each index hands back<a class="anchor" aria-label="anchor" href="#how-much-supply-each-index-hands-back"></a>
+</h2>
+<p>Multiply each cell’s index by its residents and add up over cells:
+the result is the GP FTE that the index hands back to residents. The
+table gives it as a percentage of the total GP FTE.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Residents times index, summed over cells, as a share of total GP FTE</span></span>
+<span><span class="va">returned</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">residents</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">/</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
+<span>  <span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    E2SFCA <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">e2sfca</span><span class="op">)</span>,</span>
+<span>    `2SFCA` <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">twosfca</span><span class="op">)</span>,</span>
+<span>    M2SFCA <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">m2sfca</span><span class="op">)</span>,</span>
+<span>    `3SFCA` <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">sfca3</span><span class="op">)</span>,</span>
+<span>    `Huff-2SFCA` <span class="op">=</span> <span class="fu">returned</span><span class="op">(</span><span class="va">huff2sfca</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  <span class="fl">1</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>    E2SFCA      2SFCA     M2SFCA      3SFCA Huff-2SFCA 
+     100.0      100.0       61.6      100.0      100.0 </code></pre>
+<p>This is the resident-weighted column of the tables above, divided by
+the mainland ratio. The four indices that use the same weights in both
+steps hand back all of the GP FTE, and M2SFCA hands back 61.6%.</p>
+</div>
+<div class="section level2">
+<h2 id="choosing-an-index">Choosing an index<a class="anchor" aria-label="anchor" href="#choosing-an-index"></a>
+</h2>
+<ul>
+<li>
+<strong>A fixed catchment</strong>, such as a 15-minute standard:
+2SFCA. Everyone beyond it gets an index of zero.</li>
+<li>
+<strong>Access that fades with travel time</strong>: E2SFCA, with a
+decay and a travel scale you choose. A Gaussian, exponential or power
+decay can also take a raster of σ values, for a travel scale that varies
+in space.</li>
+<li>
+<strong>Remoteness counted against a place</strong>: M2SFCA. It
+weights the ratios a second time on the way back, so a cell far from
+every practice gets a lower index even where those practices are not
+crowded. Part of the supply goes to no one, so its values are lower than
+those of E2SFCA.</li>
+<li>
+<strong>Residents near many practices counted at most once</strong>:
+3SFCA, which shares each cell’s demand among its practices. Huff-2SFCA
+also gives larger practices a larger share.</li>
+<li>
+<strong>Expected use, fitted to where people register</strong>: an
+allocation model, described in <a href="model-choice.html">An FCA index
+or an allocation model?</a>.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="a-one-call-shortcut">A one-call shortcut<a class="anchor" aria-label="anchor" href="#a-one-call-shortcut"></a>
+</h2>
+<p>Once you have chosen an index, its one-call function computes it
+directly from the inputs: <code><a href="../reference/spax_2sfca.html">spax_2sfca()</a></code>,
+<code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>, <code><a href="../reference/spax_m2sfca.html">spax_m2sfca()</a></code>,
+<code><a href="../reference/spax_3sfca.html">spax_3sfca()</a></code> or <code><a href="../reference/spax_huff2sfca.html">spax_huff2sfca()</a></code>. The one-call
+functions take the travel stack as <code>distance</code> and the decay
+as a list in <code>decay_params</code>. They return the same object as
+<code><a href="../reference/spax.html">spax()</a></code>, so the E2SFCA surface is identical.</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">e2sfca_one_call</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
 <span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
+<span>  distance <span class="op">=</span> <span class="va">travel_grid</span>,</span>
 <span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  alpha <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
+<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,  <span class="co"># matches supply rows to travel layers</span></span>
 <span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">no_attractiveness</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">sfca3</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>  tolerance <span class="op">=</span> <span class="fl">1e-10</span>,</span>
-<span>  check.attributes <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>As for the other methods, the index has supply-per-demand units, and
-the decay scale, the attractiveness measure and <code>alpha</code> are
-choices that this guide does not estimate from data.
-<code><a href="../reference/spax_3sfca.html">?spax_3sfca</a></code> and <code><a href="../reference/spax_huff2sfca.html">?spax_huff2sfca</a></code> describe
-<code>selection_params</code>, which gives the selection weights another
-decay or a catchment limit, and cite the methods. In
-<code><a href="../reference/spec_e2sfca.html">spec_3sfca()</a></code> and <code><a href="../reference/spec_e2sfca.html">spec_huff2sfca()</a></code> the same
-choice is <code>selection</code>, a decay; <code>NULL</code>, the
-default, uses <code>decay</code>.</p>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">e2sfca_one_call</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] TRUE</code></pre>
+<p>The one-call functions suit a single index. Specifications suit a
+comparison like this one, where several indices run on the same prepared
+data.</p>
 </div>
 <div class="section level2">
 <h2 id="several-demand-groups">Several demand groups<a class="anchor" aria-label="anchor" href="#several-demand-groups"></a>
 </h2>
 <p>Residents can differ in how far they travel, for example by age or by
-the transport they have. Give <code>demand</code> as a named list of
-single-layer rasters, one per group, and each group gets its own
-surface. The Cornwall data have no age split, so this section builds one
-for illustration. It is not data: it assumes that the share of residents
-in an older group rises in a straight line from 15% at the western edge
-of the grid to 35% at the eastern edge, and that the older group travels
-less far to a practice, with a Gaussian scale of 8 minutes against 12
-for the younger group. All of these numbers are illustrative
-choices.</p>
+the transport they have. Give <code><a href="../reference/prep_data.html">prep_data()</a></code> the demand as a
+named list of single-layer rasters, one per group, and give the
+specification one decay per group. Each group then gets its own
+surface.</p>
+<p>The Cornwall data have no age split, so this section builds one. It
+assumes that the share of residents in an older group rises in a
+straight line from 15% at the western edge of the grid to 35% at the
+eastern edge. It also assumes that the older group travels less far to a
+practice, with a travel scale of 8 minutes against 12 for the younger
+group. All of these numbers are illustrative choices. The code builds
+the two group grids, prepares them, and computes the index with one
+decay per group.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># An illustrative older share that rises from west to east, not data</span></span>
+<code class="sourceCode R"><span><span class="co"># An illustrative older share that rises from west to east</span></span>
 <span><span class="va">older_share</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/init.html" class="external-link">init</a></span><span class="op">(</span><span class="va">pop</span>, <span class="st">"x"</span><span class="op">)</span>, <span class="va">pop</span><span class="op">)</span></span>
-<span><span class="va">rng</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/global.html" class="external-link">global</a></span><span class="op">(</span><span class="va">older_share</span>, <span class="va">range</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">older_share</span> <span class="op">&lt;-</span> <span class="fl">0.15</span> <span class="op">+</span> <span class="fl">0.20</span> <span class="op">*</span> <span class="op">(</span><span class="va">older_share</span> <span class="op">-</span> <span class="va">rng</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">rng</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">rng</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">x_range</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/global.html" class="external-link">global</a></span><span class="op">(</span><span class="va">older_share</span>, <span class="va">range</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">older_share</span> <span class="op">&lt;-</span> <span class="fl">0.15</span> <span class="op">+</span> <span class="fl">0.20</span> <span class="op">*</span> <span class="op">(</span><span class="va">older_share</span> <span class="op">-</span> <span class="va">x_range</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">x_range</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x_range</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">groups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  younger <span class="op">=</span> <span class="va">pop</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">older_share</span><span class="op">)</span>,</span>
 <span>  older <span class="op">=</span> <span class="va">pop</span> <span class="op">*</span> <span class="va">older_share</span></span>
 <span><span class="op">)</span></span>
+<span><span class="va">group_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">groups</span>, <span class="va">gp</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># One decay per group, named by the group IDs</span></span>
-<span><span class="va">by_group</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">groups</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    younger <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
-<span>    older <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
+<span><span class="va">by_group</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span></span>
+<span>  <span class="va">group_data</span>,</span>
+<span>  <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    younger <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
+<span>    older <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">by_group</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>[1] "gp_fte_extg.younger" "gp_fte_extg.older"   "gp_fte_extg.all"    </code></pre>
-<p>All groups compete for the same GP time: step 1 adds up the demand of
-the groups that reaches each practice, each with its own weights, so a
-practice has one demand total and one supply-to-demand ratio. Step 2
-then gives each group its own surface from those shared ratios, using
-its own weights. The layer ending in <code>.all</code> is the overall
-surface, the average of the group surfaces weighted by the demand of
-each cell. A group whose travel reaches no practice from a cell counts
-with an index of 0 there, so the overall layer shows it as no
-access.</p>
+<p>All groups compete for the same GP time. The gathering step adds up
+the demand of the groups that reaches each practice, each group with its
+own weights, so a practice has one demand total and one supply-to-demand
+ratio. The spreading step then gives each group its own surface from
+those shared ratios, using its own weights. The layer ending in
+<code>.all</code> is the overall surface: the average of the group
+surfaces, weighted by each cell’s demand. The maps show the three layers
+on one color scale of their own, not the scale of the earlier maps.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">group_maps</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="va">by_group</span><span class="op">$</span><span class="va">accessibility</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">group_maps</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
@@ -615,15 +572,18 @@ access.</p>
 <span>  col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"viridis"</span><span class="op">)</span>,</span>
 <span>  range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">group_maps</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span>,</span>
-<span>  plg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span><span class="op">)</span></span>
+<span>  plg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span><span class="op">)</span>,</span>
+<span>  fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">outline</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="fca-methods_files/figure-html/groups-map-1.png" class="r-plt" alt="Three raster maps of mainland Cornwall on one colour scale in GP FTE per 1,000 residents: the younger group, the older group with a shorter travel scale, which is lower everywhere, and the overall surface between the two." width="900"></p>
+<p><img src="fca-methods_files/figure-html/groups-map-1.png" class="r-plt" alt="Three raster maps of mainland Cornwall on one color scale in GP FTE per 1,000 residents: the younger group, the older group with a shorter travel scale, which is lower everywhere, and the overall surface between the two." width="900"></p>
+<p>The older group’s map is darker everywhere, and the overall map is
+close to the younger one. The table gives the index of the average
+resident in each group, and overall.</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Demand-weighted mean index per 1,000 residents of each group, and overall</span></span>
-<span><span class="va">mean_index</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">layer</span>, <span class="va">weight</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">by_group</span><span class="op">$</span><span class="va">accessibility</span><span class="op">[[</span><span class="va">layer</span><span class="op">]</span><span class="op">]</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">weight</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">mean_index</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">layer</span>, <span class="va">demand</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">index</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">by_group</span><span class="op">$</span><span class="va">accessibility</span><span class="op">[[</span><span class="va">layer</span><span class="op">]</span><span class="op">]</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">index</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">demand</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
@@ -636,44 +596,43 @@ access.</p>
 <pre class="spax-output"><code>younger   older overall 
    0.65    0.36    0.58 </code></pre>
 <p>The average younger resident sees 0.65 GP FTE per 1,000 residents and
-the average older resident 0.36; the overall value lies between them,
+the average older resident 0.36. The overall value lies between them,
 nearer the younger group because that group is the larger one in every
-cell. With a shorter scale, every practice at a positive travel time
-gets a smaller weight for the older group, so its index is lower. The
-gap reflects the assumed travel scales and the assumed split, not any
-observed difference between age groups.</p>
-<p>Transport modes are another use. Give <code>distance</code> as a
-named list with one travel stack per group, for example one for car and
-one for public transport; the stacks must name the same practices in the
-same order, and <code>decay_params</code> can be given per group in the
-same way. This follows the structure of the multi-modal 2SFCA of <a href="https://doi.org/10.1186/s12913-018-3132-8" class="external-link">Tao et al. (2018)</a>
+cell. With a shorter travel scale, every practice at a positive travel
+time gets a smaller weight for the older group, so its index is lower.
+The gap comes from the assumed travel scales and the assumed split.</p>
+<p>Transport modes work the same way. Split the residents by mode, for
+example by the share of households with a car. Give
+<code><a href="../reference/prep_data.html">prep_data()</a></code> the demand as a named list by mode, and the
+travel as a named list with the same names: one travel stack per mode,
+naming the same practices in the same order. This follows the
+multi-modal 2SFCA of <a href="https://doi.org/10.1186/s12913-018-3132-8" class="external-link">Tao et al. (2018)</a>
 (their equations 3-5), in which the modes share the supply and the
-travel times differ by mode, and generalizes it to a decay that differs
-by group. Earlier multi-modal 2SFCA work includes <a href="https://doi.org/10.1016/j.healthplace.2013.08.008" class="external-link">Mao and
+travel times differ by mode, and extends it to a decay that differs by
+group. Earlier multi-modal 2SFCA work includes <a href="https://doi.org/10.1016/j.healthplace.2013.08.008" class="external-link">Mao and
 Nekorchuk (2013)</a> and <a href="https://doi.org/10.1016/j.healthplace.2015.11.007" class="external-link">Langford, Higgs
-and Fry (2016)</a>. <code><a href="../reference/spax_e2sfca.html">?spax_e2sfca</a></code> lists which arguments can
-be given per group. In a specification, <code>decay</code> and
-<code>selection</code> can be a named list by group and
-<code>threshold</code> a named vector by group; <code><a href="../reference/prep_data.html">prep_data()</a></code>
-takes the list of group rasters as <code>demand</code>.</p>
+and Fry (2016)</a>. In a specification, <code>decay</code> and
+<code>selection</code> can be a named list by group, and
+<code>threshold</code> a named vector by group.</p>
 </div>
 <div class="section level2">
-<h2 id="continue">Continue<a class="anchor" aria-label="anchor" href="#continue"></a>
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
 </h2>
 <ul>
 <li>
-<a href="data-prep.html">Preparing your own data</a>: small-area
-counts to a demand grid, facility IDs and unknown travel times.</li>
+<a href="e2sfca-steps.html">Inside the E2SFCA calculation</a>:
+rebuild the index one step at a time, and 3SFCA from the same building
+blocks.</li>
 <li>
-<a href="e2sfca-steps.html">The E2SFCA calculation step by
-step</a>.</li>
+<a href="grid-resolution.html">Grid resolution and computational
+cost</a>: how cell size changes the index and the run time.</li>
 <li>
-<a href="grid-resolution.html">Grid resolution, support and
-computational cost</a>.</li>
+<a href="model-choice.html">An FCA index or an allocation
+model?</a>: when you need choice probabilities and a fit to observed
+registrations.</li>
 <li>
-<a href="model-choice.html">Choosing an FCA index or an allocation
-model</a> when expected use, an explicit outside option and a fit to
-observations are required.</li>
+<a href="reading-results.html">Reading results</a>: what an FCA
+index measures, and what it does not.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

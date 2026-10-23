@@ -3,15 +3,19 @@
 compared to what would be expected under a reference distribution. This is
 useful for Bayesian updating of spatial probability distributions.
 The likelihood surface shows where values are higher or lower than expected:
-- Values &amp;gt; 1 indicate higher than expected
-- Values = 1 indicate as expected
-- Values &amp;lt; 1 indicate lower than expected"><meta property="og:description" content="Creates a likelihood surface representing the relative intensity of values
+Values &amp;gt; 1 indicate higher than expected
+Values = 1 indicate as expected
+Values &amp;lt; 1 indicate lower than expected
+
+"><meta property="og:description" content="Creates a likelihood surface representing the relative intensity of values
 compared to what would be expected under a reference distribution. This is
 useful for Bayesian updating of spatial probability distributions.
 The likelihood surface shows where values are higher or lower than expected:
-- Values &amp;gt; 1 indicate higher than expected
-- Values = 1 indicate as expected
-- Values &amp;lt; 1 indicate lower than expected"></head><body>
+Values &amp;gt; 1 indicate higher than expected
+Values = 1 indicate as expected
+Values &amp;lt; 1 indicate lower than expected
+
+"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -19,7 +23,7 @@ The likelihood surface shows where values are higher or lower than expected:
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,20 +38,23 @@ The likelihood surface shows where values are higher or lower than expected:
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -62,7 +69,7 @@ The likelihood surface shows where values are higher or lower than expected:
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Transform Input to Likelihood Surface</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/09-transform_likelihood.R" class="external-link"><code>R/09-transform_likelihood.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/09-transform_likelihood.R" class="external-link"><code>R/09-transform_likelihood.R</code></a></small>
       <div class="d-none name"><code>transform_likelihood.Rd</code></div>
     </div>
 
@@ -70,11 +77,10 @@ The likelihood surface shows where values are higher or lower than expected:
     <p>Creates a likelihood surface representing the relative intensity of values
 compared to what would be expected under a reference distribution. This is
 useful for Bayesian updating of spatial probability distributions.</p>
-<p>The likelihood surface shows where values are higher or lower than expected:
-- Values &gt; 1 indicate higher than expected
-- Values = 1 indicate as expected
-- Values &lt; 1 indicate lower than expected</p>
-    </div>
+<p>The likelihood surface shows where values are higher or lower than expected:</p><ul><li><p>Values &gt; 1 indicate higher than expected</p></li>
+<li><p>Values = 1 indicate as expected</p></li>
+<li><p>Values &lt; 1 indicate lower than expected</p></li>
+</ul></div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
@@ -108,14 +114,14 @@ copied to every cell it covers.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>Character; method to compute reference value:
-- "mean": Compare to mean value (default)
-- "sum": Compare to sum
-- "custom": Compare to provided ref_value</p></dd>
+<dd><p>Character; method to compute reference value:</p><ul><li><p><code>"mean"</code>: Compare to mean value (default)</p></li>
+<li><p><code>"sum"</code>: Compare to sum</p></li>
+<li><p><code>"custom"</code>: Compare to provided <code>ref_value</code></p></li>
+</ul></dd>
 
 
 <dt id="arg-ref-value">ref_value<a class="anchor" aria-label="anchor" href="#arg-ref-value"></a></dt>
-<dd><p>Numeric; custom reference value if method = "custom"</p></dd>
+<dd><p>Numeric; custom reference value if <code>method = "custom"</code></p></dd>
 
 
 <dt id="arg-standardize">standardize<a class="anchor" aria-label="anchor" href="#arg-standardize"></a></dt>
@@ -139,7 +145,7 @@ copied to every cell it covers.</p></dd>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># From vector input: density of residents aged 65+ by small area. Rasterizing</span></span></span>
 <span class="r-in"><span><span class="co"># copies a polygon's value to every cell it covers, so use a density, not a count.</span></span></span>
-<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span>, <span class="fl">4326</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">areas</span><span class="op">$</span><span class="va">dens_65</span> <span class="op">&lt;-</span> <span class="va">areas</span><span class="op">$</span><span class="va">pop_65p</span> <span class="op">/</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/expanse.html" class="external-link">expanse</a></span><span class="op">(</span><span class="va">areas</span>, unit <span class="op">=</span> <span class="st">"km"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">lik2</span> <span class="op">&lt;-</span> <span class="fu">transform_likelihood</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">areas</span>,</span></span>

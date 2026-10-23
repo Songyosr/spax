@@ -21,26 +21,26 @@ calc_normalize(
 - x:
 
   Numeric vector, matrix, or SpatRaster of weights. The built-in methods
-  require non-negative weights; a custom method receives \`x\` as is.
+  require non-negative weights; a custom method receives `x` as is.
 
 - method:
 
   Character string specifying normalization method:
 
-  \- "standard": Divide by sum + a0 (default)
+  - `"standard"`: divide by sum + a0 (default)
 
-  \- "semi": Normalize only if sum + a0 \> 1
+  - `"semi"`: normalize only if sum + a0 \> 1
 
-  \- "reference": Normalize by reference value
+  - `"reference"`: normalize by reference value
 
-  \- "identity": Return unchanged
+  - `"identity"`: return unchanged
 
-  \- Or a custom function(x, ...)
+  - or a custom `function(x, ...)`
 
 - ref_value:
 
-  Optional reference value for "reference" method. When \`NULL\`, the
-  maximum of \`x\` is used; for a SpatRaster that is each cell's maximum
+  Optional reference value for "reference" method. When `NULL`, the
+  maximum of `x` is used; for a SpatRaster that is each cell's maximum
   across layers.
 
 - a0:

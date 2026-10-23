@@ -28,8 +28,12 @@ sample_pmf(
 - x:
 
   Single-layer SpatRaster representing spatial distribution. Can be
-  either: - A PMF where values sum to 1 - Raw density values that will
-  be converted to PMF (except in snap mode)
+  either:
+
+  - A PMF where values sum to 1
+
+  - Raw density values that will be converted to PMF (except in snap
+    mode)
 
 - n:
 
@@ -49,11 +53,15 @@ sample_pmf(
 
 - method:
 
-  Character string or function specifying sampling method: - "poisson":
-  Random size with mean = size \* prob - "binomial": Random size from
-  binomial(size, prob) - "nbinom": Random size from negative
-  binomial(size, prob) - custom function: Must return vector of length
-  'iterations'
+  Character string or function specifying sampling method:
+
+  - `"poisson"`: Random size with mean `size * prob`
+
+  - `"binomial"`: Random size from binomial(`size`, `prob`)
+
+  - `"nbinom"`: Random size from negative binomial(`size`, `prob`)
+
+  - custom function: Must return vector of length `iterations`
 
 - iterations:
 
@@ -61,10 +69,13 @@ sample_pmf(
 
 - evolve_prop:
 
-  Numeric between 0 and 1. Controls sample evolution between
-  iterations: - 1 (default): Independent sampling, all new samples each
-  iteration - 0: No new samples, returns only first iteration - (0,1):
-  Proportion of samples that evolve each iteration
+  Numeric between 0 and 1. Controls sample evolution between iterations:
+
+  - 1 (default): Independent sampling, all new samples each iteration
+
+  - 0: No new samples, returns only first iteration
+
+  - Between 0 and 1: Proportion of samples that evolve each iteration
 
 - seed:
 
@@ -86,8 +97,8 @@ sample_pmf(
 ## Value
 
 SpatRaster with one layer per realization (or single layer if
-evolve_prop = 0), containing counts of samples per cell. If replace_0 =
-TRUE, cells with zero counts contain NA.
+`evolve_prop = 0`), containing counts of samples per cell. If
+`replace_0 = TRUE`, cells with zero counts contain NA.
 
 ## Examples
 

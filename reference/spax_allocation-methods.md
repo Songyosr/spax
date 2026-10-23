@@ -179,3 +179,126 @@ Other allocation interface:
 [`spax_access_values-methods`](https://songyosr.github.io/spax/reference/spax_access_values-methods.md),
 [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md),
 [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice), travel)
+
+# The conditional logit model fitted to the registrations of these residents
+# at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+                          cornwall_flows$practice %in% gp$practice, ]
+totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+clm <- spax(d, spec_clm(), observed = totals)
+clm
+#> <spax allocation> conditional logit with an outside option
+#>   decay       gaussian (sigma = travel scale): fit
+#>   attraction  (kappa * supply)^beta: kappa = 1, beta = 1
+#>   outside     v0: fit
+#>   data        85 origins x 15 facilities
+#> 
+#>   parameter  value  status
+#>   sigma      13.22  fitted
+#>   v0         1.002  fitted
+#>   beta       1      held
+#>   kappa      1      held
+#> 
+#>   selected    scan1 (start 1 of 3); 3 of 3 starts converged
+#>   boundary    none
+#>   starts      default search, 45 of 45 grid points, loss poisson
+summary(clm)
+#> <spax allocation summary> conditional logit with an outside option
+#>   decay       gaussian (sigma = travel scale): fit
+#>   attraction  (kappa * supply)^beta: kappa = 1, beta = 1
+#>   outside     v0: fit
+#> 
+#>   parameter  value  status
+#>   sigma      13.22  fitted
+#>   v0         1.002  fitted
+#>   beta       1      held
+#>   kappa      1      held
+#> 
+#> <allocation fit summary>
+#> status: selected; selected start: scan1
+#> loss disagreement: FALSE; parameter disagreement: FALSE
+#> Supplied-start diagnostics (not a global-optimum or identification guarantee):
+#>  start     loss eligible optim_convergence solver_converged residual seconds
+#>  scan1 -1201000     TRUE                 0             TRUE        0   0.021
+#>  scan2 -1201000     TRUE                 0             TRUE        0   0.028
+#>  scan3 -1201000     TRUE                 0             TRUE        0   0.020
+#>  boundary   status                                    optim_message
+#>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+#>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+#>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+#>  solver_message log_parameter_gap  loss_gap
+#>       converged         0.000e+00 0.000e+00
+#>       converged         8.567e-07 0.000e+00
+#>       converged         6.216e-06 1.164e-09
+#> 
+#> Selected fit:
+#> <allocation fit result summary>
+#> model: conditional logit
+#> family: gaussian (sigma = travel scale)
+#> allocation_form: clm
+#> 
+#> theta:
+#>  parameter estimate
+#>      sigma   13.220
+#>         v0    1.002
+#> 
+#> fit:
+#>      loss convergence seconds spectral_radius gradient
+#>  -1201000           0    0.02               0     TRUE
+#> 
+#> predicted:
+#>   min  q25 median mean   q75   max
+#>  2851 4559  10000 9738 12490 22440
+#> 
+#> state:
+#>  min  q25 median  mean   q75   max
+#>    2 3.47  5.893 6.025 7.913 13.27
+#> 
+#> residual:
+#>    min   q25 median  mean  q75  max
+#>  -4876 -1292 -925.6 41.65 2210 5251
+coef(clm)
+#>     sigma        v0 
+#> 13.223212  1.001842 
+round(fitted(clm))
+#> L82018 L82036 L82038 L82041 L82042 L82044 L82047 L82056 L82059 L82068 L82070 
+#>  17829  15924  13051  22441  11935  10758   6762   2851   3674   7954   5444 
+#> L82620 Y01050 Y01051 Y01922 
+#>   3535  10004   3367  10545 
+
+# The practices with their observed and modeled registrations, and the
+# small areas with the modeled share of their residents at these practices
+head(as.data.frame(clm, type = "facilities"))
+#>   facility_id    supply attractiveness utilization observed
+#> 1      L82018 12.280000      12.280000    17829.37    12578
+#> 2      L82036  7.946667       7.946667    15923.55    12284
+#> 3      L82038  7.880000       7.880000    13051.36    11932
+#> 4      L82041 13.266667      13.266667    22441.46    25799
+#> 5      L82042  8.013333       8.013333    11934.83     9403
+#> 6      L82044  5.893333       5.893333    10758.49     8687
+head(as.data.frame(clm, type = "origins"))
+#>   origin_id demand    access outside_share
+#> 1 E01018825   1883 0.9714886    0.02851144
+#> 2 E01018861   1639 0.9818273    0.01817269
+#> 3 E01018862   1519 0.9820142    0.01798584
+#> 4 E01018863   1927 0.9828645    0.01713554
+#> 5 E01018864   1898 0.9830059    0.01699405
+#> 6 E01018865   2368 0.9822427    0.01775733
+
+# Modeled outside shares from travel times, here of three of the small areas
+predict(clm, travel[1:3, ], outputs = "outside_share")$outputs$outside_share
+#>  E01018825  E01018861  E01018862 
+#> 0.02851144 0.01817269 0.01798584 
+```

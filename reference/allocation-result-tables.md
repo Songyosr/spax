@@ -96,3 +96,61 @@ Bootstrap tables contain saved point/interval estimates, every attempted
 draw, or every attempted start. Failed draws, inner boundaries and
 refusal statuses are retained. Extraction neither creates intervals nor
 changes eligibility.
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# A fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+                          cornwall_flows$practice %in% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+model <- clm_allocation(inputs, fit_v0 = TRUE)
+fit <- fit_allocation(model, totals, loss = "poisson")
+as.data.frame(fit)
+#>   parameter  estimate
+#> 1     sigma 13.223212
+#> 2        v0  1.001842
+
+# Coverage at the estimates: for the region, by small area, and by the
+# rural-urban class of the small areas
+coverage <- evaluate_allocation(model, coef(fit))$coverage
+as.data.frame(coverage)
+#>     zone demand       rho            A contact_need     abar_raw masked
+#> 1 region 149306 0.9783587 0.0006053144     146074.8 0.0006187039  FALSE
+#>           abar     quadrant
+#> 1 0.0006187039 unclassified
+head(as.data.frame(coverage, type = "cells"))
+#>           origin_id registry_index demand       rho            A contact_need
+#> E01018825 E01018825              1   1883 0.9714886 0.0005915637     1829.313
+#> E01018861 E01018861              2   1639 0.9818273 0.0006340469     1609.215
+#> E01018862 E01018862              3   1519 0.9820142 0.0006239507     1491.680
+#> E01018863 E01018863              4   1927 0.9828645 0.0006160261     1893.980
+#> E01018864 E01018864              5   1898 0.9830059 0.0006125868     1865.745
+#> E01018865 E01018865              6   2368 0.9822427 0.0005996822     2325.951
+#>               abar_raw masked         abar     quadrant
+#> E01018825 0.0006089250  FALSE 0.0006089250 unclassified
+#> E01018861 0.0006457825  FALSE 0.0006457825 unclassified
+#> E01018862 0.0006353785  FALSE 0.0006353785 unclassified
+#> E01018863 0.0006267661  FALSE 0.0006267661 unclassified
+#> E01018864 0.0006231772  FALSE 0.0006231772 unclassified
+#> E01018865 0.0006105234  FALSE 0.0006105234 unclassified
+zones <- data.frame(origin_id = areas$lsoa, zone = areas$ruc21)
+as.data.frame(coverage, type = "zones", zones = zones)
+#>                                               zone demand       rho
+#> 1 Smaller rural: Further from a major town or city  36789 0.9750877
+#> 2         Urban: Further from a major town or city  80364 0.9801664
+#> 3  Larger rural: Further from a major town or city  32153 0.9775829
+#>              A contact_need     abar_raw masked         abar     quadrant
+#> 1 0.0006014435     35872.50 0.0006168096  FALSE 0.0006168096 unclassified
+#> 2 0.0006064560     78770.09 0.0006187276  FALSE 0.0006187276 unclassified
+#> 3 0.0006068900     31432.22 0.0006208066  FALSE 0.0006208066 unclassified
+```

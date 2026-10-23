@@ -1,7 +1,7 @@
 # Calibrate a declared allocation model, by default from starts found in the data
 
-Count targets and loss choice are separate. Weighted SSE retains the
-existing default when `starts` are given; Poisson is explicit. Custom
+Count targets and loss choice are separate. When `starts` are given, the
+loss defaults to weighted SSE; name Poisson explicitly. Custom
 loss/gradient functions pass through. Observation-indexed loss arguments
 must be in canonical order. Starts, boundaries, failed runs and
 disagreement retain the existing multistart result; a selected fit is
@@ -29,18 +29,28 @@ fit_allocation(
 
 - model:
 
-  A corrected CLM declared over checked prepared inputs. A kernel
-  declared `smooth = FALSE` cannot be fitted.
+  A static CLM from
+  [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
+  or
+  [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md).
+  A kernel declared `smooth = FALSE` cannot be fitted.
 
 - observed:
 
-  Numeric vector or origin-by-facility matrix. Named axes match declared
-  IDs independently; unnamed axes are positional. Keep all IDs and use
-  NA for unobserved entries. The count-valued `utilization`, `flow`,
-  `utilization_by_group` and outside-count targets reject negative
-  nonmissing observations; fractional counts are allowed. Other output
-  domains pass through to the existing fitter. For
-  `utilization_by_group` (a model with demand groups) a
+  Numeric vector or origin-by-facility matrix. A one-dimensional array
+  or table, such as the result of
+  [`tapply()`](https://rdrr.io/r/base/tapply.html) or
+  [`table()`](https://rdrr.io/r/base/table.html), is read as the vector
+  named by its names. For a factor level without records
+  [`tapply()`](https://rdrr.io/r/base/tapply.html) gives `NA`, which the
+  fit reads as unobserved: give it `default = 0` (or use
+  [`table()`](https://rdrr.io/r/base/table.html)) when no record means a
+  count of zero. Named axes match declared IDs independently; unnamed
+  axes are positional. Keep all IDs and use NA for unobserved entries.
+  The count-valued `utilization`, `flow`, `utilization_by_group` and
+  outside-count targets reject negative nonmissing observations;
+  fractional counts are allowed. Other output domains pass to the fitter
+  as given. For `utilization_by_group` (a model with demand groups) a
   facility-by-group matrix of observed counts with both axes named
   (group columns by group ID, facility rows by facility ID, any order).
   For the outside-count outputs the same shapes with the outside count
@@ -115,15 +125,15 @@ fit_allocation(
 - loss_grad:
 
   Optional matching parameter-gradient callback. Built-in choices supply
-  their existing analytic loss-gradient adapters. A custom loss requires
-  its own loss_grad when gradient=TRUE; none is invented.
+  their analytic loss gradients. A custom loss requires its own
+  loss_grad when gradient=TRUE; none is invented.
 
 - gradient:
 
-  Logical; use the existing implicit sensitivity route when TRUE. FALSE
-  retains the underlying fitter's default behavior. When `starts` is
-  `NULL` and `gradient` is not given, it is `TRUE` if the loss has a
-  gradient (the built-in losses, or a custom loss with `loss_grad`).
+  Logical; use the implicit sensitivity route when TRUE. FALSE retains
+  the underlying fitter's default behavior. When `starts` is `NULL` and
+  `gradient` is not given, it is `TRUE` if the loss has a gradient (the
+  built-in losses, or a custom loss with `loss_grad`).
 
 - ...:
 
@@ -134,7 +144,7 @@ fit_allocation(
 
 ## Value
 
-The existing `ae_multistart_fit`, retaining selected fit, all per-start
+An `ae_multistart_fit`, retaining selected fit, all per-start
 diagnostics, boundaries, warnings/errors and descriptive disagreement. A
 fit whose starts came from the default search also has a
 `default_search` element: the rule, the sigma range, the number of grid
@@ -270,3 +280,67 @@ Other allocation steps:
 [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             travel)
+model <- clm_allocation(inputs, fit_v0 = TRUE)
+
+# Registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+                          cornwall_flows$practice %in% gp$practice, ]
+
+# Fit to the practice totals. Without starts, the search finds starts and
+# bounds from the data, and the loss must be named
+totals <- sapply(split(flows$patients, flows$practice), sum)
+fit <- fit_allocation(model, totals, loss = "poisson")
+fit
+#> <allocation fit> 3 starts, selected scan1
+#> eligible starts: 3 / 3
+#> selected start: scan1
+#> starts: default search, 45 of 45 grid points, loss poisson
+#> loss disagreement: FALSE; parameter disagreement: FALSE
+#>  start     loss eligible optim_convergence solver_converged residual seconds
+#>  scan1 -1200843     TRUE                 0             TRUE        0   0.017
+#>  scan2 -1200843     TRUE                 0             TRUE        0   0.029
+#>  scan3 -1200843     TRUE                 0             TRUE        0   0.025
+#>  boundary   status                                    optim_message
+#>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+#>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+#>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+#>  solver_message log_parameter_gap     loss_gap
+#>       converged      0.000000e+00 0.000000e+00
+#>       converged      8.566946e-07 0.000000e+00
+#>       converged      6.215664e-06 1.164153e-09
+coef(fit)
+#>     sigma        v0 
+#> 13.223212  1.001842 
+
+# Fit to the flows: a matrix of small areas by practices, 0 where none. Demand
+# counts every registered resident, so the residents registered elsewhere are
+# known: they are one more column, "(outside)", fitted by the outside option
+flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+flow_matrix <- cbind(flow_matrix, "(outside)" = areas$registered - rowSums(flow_matrix))
+coef(fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poisson"))
+#>      sigma         v0 
+#> 3.97012750 0.09627051 
+
+# Starts and bounds of your own: one start per row
+starts <- rbind(near = c(sigma = 5, v0 = 0.5), far = c(sigma = 30, v0 = 5))
+fit_own <- fit_allocation(model, totals, starts = starts,
+                          lower = c(sigma = 1, v0 = 0.001),
+                          upper = c(sigma = 100, v0 = 100), loss = "poisson")
+coef(fit_own)
+#>     sigma        v0 
+#> 13.223190  1.001846 
+```

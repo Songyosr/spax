@@ -17,9 +17,9 @@ prediction and scenarios. Output meanings remain model-specific.
 [`spax_e2sfca`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
 and
 [`spax_m2sfca`](https://songyosr.github.io/spax/reference/spax_m2sfca.md)
-remain supported public FCA entry points;
+compute FCA indices, and
 [`compute_access`](https://songyosr.github.io/spax/reference/compute_access.md)
-is also retained. The experimental
+computes them from given decay weights. The experimental
 [`spax_3sfca`](https://songyosr.github.io/spax/reference/spax_3sfca.md)
 and
 [`spax_huff2sfca`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
@@ -133,69 +133,71 @@ while facility observation multiplicities are resampled. Every physical
 facility remains in the allocation network.
 
 Conditional percentile intervals require an eligible original fit, a
-complete run of 399 attempts and at least 380 finite successful values
-per quantity. Refused and incomplete results remain inspectable. Failed
-attempts are not replaced; successful inner-boundary estimates remain in
-the distribution. Coverage was evaluated for Gaussian decay with fitted
-`sigma` and `v0`, in generated 80-origin/40-facility designs under
-tested fixed-input laws; other kernels and a fitted `beta` use the same
-procedure without a separate coverage study. This is not a universal
-coverage guarantee or validation of an application's observation law.
-Regional attributed capacity per demand is a fixed-input identity and
-has no bootstrap interval. No simultaneous spatial intervals are
-provided. See
+complete run (399 attempts by default) and finite successful values from
+at least 95 percent of the attempts per quantity (380 of 399). Refused
+and incomplete results remain inspectable. Failed attempts are not
+replaced; successful inner-boundary estimates remain in the
+distribution. Coverage was evaluated for Gaussian decay with fitted
+`sigma` and `v0` and 399 attempts, in generated 80-origin/40-facility
+designs under tested fixed-input laws; other kernels, a fitted `beta`
+and other numbers of attempts use the same procedure without a separate
+coverage study. This is not a universal coverage guarantee or validation
+of an application's observation law. Regional attributed capacity per
+demand is a fixed-input identity and has no bootstrap interval. No
+simultaneous spatial intervals are provided. See
 [`bootstrap_allocation`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
 for the full restrictions.
 
-## Compatibility and migration
+## FCA indices, saved results
 
-Existing public FCA calls remain supported. Their independent supply
-columns and accessibility scores do not become CLM probabilities by
-changing function names. Normalization choices remain part of the FCA
-model specification. Internal feedback models are private, and a shared
-execution engine does not establish universal mathematical nesting among
-the models.
+FCA indices and the allocation model answer different questions: the
+independent supply columns and accessibility scores of an FCA index are
+not choice probabilities. Normalization choices are part of the FCA
+model specification. One numeric engine computing several models does
+not make them nested.
 
-Corrected static CLM and the older private `huff_decay` route have
-different equations and output meanings. Do not reinterpret saved legacy
-outputs as corrected contact or count outputs. Older private fits may
-lack the compact source snapshot or metadata needed for prediction and
-reporting; regenerate them from verified inputs rather than renaming
-their classes. Named observation axes align to canonical input IDs.
-Custom loss arguments indexed by observations must already use that
-canonical order.
+Named observation axes align to the input IDs. Custom loss arguments
+indexed by observations must already use that order.
 
 Save input declarations and support metadata with fitted results,
-preferably in an RDS bundle. CSV exports discard R attributes. Inspect
+preferably in an RDS file. CSV exports discard R attributes. Inspect
 saved results with `coef`, `fitted`, `summary`, `plot` and
-`as.data.frame`; these methods do not silently fit or bootstrap again.
-Record the package version, and the source commit when using a
-development version from the `develop` branch.
+`as.data.frame`; these methods do not fit or bootstrap again. Results
+saved by earlier versions may lack what prediction and reporting need;
+fit them again from the inputs. Record the package version with saved
+results.
 
 ## Installed guides and status
 
-Version 0.3.0 is the first release that includes the experimental
-allocation interface, which may change in later versions. Package and
-function help are installed with the package. Use
+The [`spax()`](https://songyosr.github.io/spax/reference/spax.md)
+interface and the allocation model are experimental and may change in
+later versions. Package and function help are installed with the
+package; use
 [`help(package = "spax")`](https://songyosr.github.io/spax/reference) to
 browse them. Installations with built articles also expose
 `browseVignettes("spax")`. Start with
 [`vignette("spax", package = "spax")`](https://songyosr.github.io/spax/articles/spax.md),
-which computes one FCA surface;
+which computes one FCA index for Cornwall;
 [`vignette("cornwall-data", package = "spax")`](https://songyosr.github.io/spax/articles/cornwall-data.md)
-describes the bundled Cornwall GP example data. The allocation workflow,
-[`vignette("allocation-workflow", package = "spax")`](https://songyosr.github.io/spax/articles/allocation-workflow.md),
-fits the model to the Cornwall GP registrations and covers prediction, a
-supply scenario, maps, export and fresh-session save/reload. The
-conditional bootstrap,
-[`vignette("facility-bootstrap", package = "spax")`](https://songyosr.github.io/spax/articles/facility-bootstrap.md),
-uses a generated network.
+describes the bundled example data.
+[`vignette("model-choice", package = "spax")`](https://songyosr.github.io/spax/articles/model-choice.md)
+compares an FCA index with the allocation model,
+[`vignette("allocation-workflow", package = "spax")`](https://songyosr.github.io/spax/articles/allocation-workflow.md)
+fits the model to the Cornwall GP registrations,
+[`vignette("scenario", package = "spax")`](https://songyosr.github.io/spax/articles/scenario.md)
+compares a practice closure at the fitted values, and
+[`vignette("extending", package = "spax")`](https://songyosr.github.io/spax/articles/extending.md)
+covers your own decay curve, raster data and grid maps.
+[`vignette("facility-bootstrap", package = "spax")`](https://songyosr.github.io/spax/articles/facility-bootstrap.md)
+gives bootstrap intervals on a generated network, and
+[`vignette("reading-results", package = "spax")`](https://songyosr.github.io/spax/articles/reading-results.md)
+says what each result measures.
 
 ## See also
 
 Useful links:
 
-- <https://github.com/songyosr/spax>
+- <https://github.com/Songyosr/spax>
 
 - <https://songyosr.github.io/spax/>
 

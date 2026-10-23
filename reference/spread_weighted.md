@@ -21,10 +21,13 @@ spread_weighted(
 
 - values:
 
-  Numeric vector, matrix, or data.frame of values to distribute: -
-  Vector: Must match number of weight layers - Matrix: Rows match weight
-  layers, columns are different measures - Data.frame: Same as matrix
-  but requires value_cols parameter
+  Numeric vector, matrix, or data.frame of values to distribute:
+
+  - Vector: Must match number of weight layers
+
+  - Matrix: Rows match weight layers, columns are different measures
+
+  - Data.frame: Same as matrix but requires `value_cols`
 
 - weights:
 
@@ -50,10 +53,15 @@ spread_weighted(
 
 ## Value
 
-If full_output = TRUE, returns list containing: - total_distribution:
-SpatRaster stack of total distribution per measure - unit_distribution:
-List of unit-specific distribution SpatRasters If full_output = FALSE,
-returns only total_distribution SpatRaster
+If `full_output = FALSE`, the total distribution only: a SpatRaster with
+one layer per measure. If `full_output = TRUE`, a list containing:
+
+- `total_distribution`: SpatRaster stack of total distribution per
+  measure
+
+- `unit_distribution`: the distribution of each unit, a SpatRaster with
+  one layer per unit (for several measures, a list of them, one per
+  measure)
 
 ## Examples
 

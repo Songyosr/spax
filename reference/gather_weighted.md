@@ -20,9 +20,13 @@ gather_weighted(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE)
 
 - weights:
 
-  Multi-layer SpatRaster where: - Each layer represents one aggregation
-  unit - Values are weights (typically 0-1) for aggregation - Layer
-  names should match unit IDs
+  Multi-layer SpatRaster where:
+
+  - Each layer represents one aggregation unit
+
+  - Values are weights (typically 0-1) for aggregation
+
+  - Layer names should match unit IDs
 
 - na.rm:
 
@@ -41,10 +45,15 @@ gather_weighted(values, weights, na.rm = TRUE, simplify = FALSE, snap = FALSE)
 
 ## Value
 
-Depending on input and simplify parameter: - If simplify=TRUE and single
-layer: named vector - If simplify=TRUE and multi-layer: matrix with
-rownames=units, colnames=scenarios - If simplify=FALSE: data.frame in
-wide format with unit_id column
+Depending on input and `simplify`:
+
+- If `simplify = TRUE` and single layer: named vector
+
+- If `simplify = TRUE` and multi-layer: matrix with rows for the units
+  and columns for the scenarios (the layers of `values`)
+
+- If `simplify = FALSE`: data.frame in wide format with a `unit_id`
+  column
 
 ## Examples
 

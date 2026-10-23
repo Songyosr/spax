@@ -11,7 +11,7 @@ spatial weights to a demand raster."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,20 +26,23 @@ spatial weights to a demand raster."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -54,12 +57,12 @@ spatial weights to a demand raster."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Calculate demand captured by each service site</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/01-gather_functions.R" class="external-link"><code>R/01-gather_functions.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/01-gather_functions.R" class="external-link"><code>R/01-gather_functions.R</code></a></small>
       <div class="d-none name"><code>gather_demand.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Specialized version of gather_weighted() for accessibility analysis.
+    <p>Specialized version of <code><a href="gather_weighted.html">gather_weighted()</a></code> for accessibility analysis.
 Calculates the potential demand for each service site by applying pre-computed
 spatial weights to a demand raster.</p>
     </div>
@@ -78,18 +81,17 @@ spatial weights to a demand raster.</p>
 
 
 <dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
-<dd><p>Multi-layer SpatRaster where:
-- Each layer represents one service site
-- Values are probability weights (0-1) from distance decay
-- Layer names should match site IDs</p></dd>
+<dd><p>Multi-layer SpatRaster where:</p><ul><li><p>Each layer represents one service site</p></li>
+<li><p>Values are probability weights (0-1) from distance decay</p></li>
+<li><p>Layer names should match site IDs</p></li>
+</ul></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>data.frame with:
-        - location_id: identifier matching weight layer names
-        - potential_demand: weighted sum of demand for each site</p>
-    </div>
+    <p>data.frame with:</p><ul><li><p><code>location_id</code>: identifier matching weight layer names</p></li>
+<li><p><code>potential_demand</code>: weighted sum of demand for each site</p></li>
+</ul></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

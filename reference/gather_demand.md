@@ -1,8 +1,10 @@
 # Calculate demand captured by each service site
 
-Specialized version of gather_weighted() for accessibility analysis.
-Calculates the potential demand for each service site by applying
-pre-computed spatial weights to a demand raster.
+Specialized version of
+[`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md)
+for accessibility analysis. Calculates the potential demand for each
+service site by applying pre-computed spatial weights to a demand
+raster.
 
 ## Usage
 
@@ -18,14 +20,21 @@ gather_demand(demand, weights)
 
 - weights:
 
-  Multi-layer SpatRaster where: - Each layer represents one service
-  site - Values are probability weights (0-1) from distance decay -
-  Layer names should match site IDs
+  Multi-layer SpatRaster where:
+
+  - Each layer represents one service site
+
+  - Values are probability weights (0-1) from distance decay
+
+  - Layer names should match site IDs
 
 ## Value
 
-data.frame with: - location_id: identifier matching weight layer names -
-potential_demand: weighted sum of demand for each site
+data.frame with:
+
+- `location_id`: identifier matching weight layer names
+
+- `potential_demand`: weighted sum of demand for each site
 
 ## Examples
 

@@ -11,7 +11,7 @@ with fixed sample sizes and probabilistic sampling based on population parameter
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,20 +26,23 @@ with fixed sample sizes and probabilistic sampling based on population parameter
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -54,7 +57,7 @@ with fixed sample sizes and probabilistic sampling based on population parameter
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Sample Points from Probability Surface with Multiple Realizations</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/09-sample_pmf.R" class="external-link"><code>R/09-sample_pmf.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/09-sample_pmf.R" class="external-link"><code>R/09-sample_pmf.R</code></a></small>
       <div class="d-none name"><code>sample_pmf.Rd</code></div>
     </div>
 
@@ -86,9 +89,9 @@ with fixed sample sizes and probabilistic sampling based on population parameter
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>Single-layer SpatRaster representing spatial distribution. Can be either:
-- A PMF where values sum to 1
-- Raw density values that will be converted to PMF (except in snap mode)</p></dd>
+<dd><p>Single-layer SpatRaster representing spatial distribution. Can be either:</p><ul><li><p>A PMF where values sum to 1</p></li>
+<li><p>Raw density values that will be converted to PMF (except in snap mode)</p></li>
+</ul></dd>
 
 
 <dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
@@ -108,11 +111,11 @@ is used.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>Character string or function specifying sampling method:
-- "poisson": Random size with mean = size * prob
-- "binomial": Random size from binomial(size, prob)
-- "nbinom": Random size from negative binomial(size, prob)
-- custom function: Must return vector of length 'iterations'</p></dd>
+<dd><p>Character string or function specifying sampling method:</p><ul><li><p><code>"poisson"</code>: Random size with mean <code>size * prob</code></p></li>
+<li><p><code>"binomial"</code>: Random size from binomial(<code>size</code>, <code>prob</code>)</p></li>
+<li><p><code>"nbinom"</code>: Random size from negative binomial(<code>size</code>, <code>prob</code>)</p></li>
+<li><p>custom function: Must return vector of length <code>iterations</code></p></li>
+</ul></dd>
 
 
 <dt id="arg-iterations">iterations<a class="anchor" aria-label="anchor" href="#arg-iterations"></a></dt>
@@ -120,10 +123,10 @@ is used.</p></dd>
 
 
 <dt id="arg-evolve-prop">evolve_prop<a class="anchor" aria-label="anchor" href="#arg-evolve-prop"></a></dt>
-<dd><p>Numeric between 0 and 1. Controls sample evolution between iterations:
-- 1 (default): Independent sampling, all new samples each iteration
-- 0: No new samples, returns only first iteration
-- (0,1): Proportion of samples that evolve each iteration</p></dd>
+<dd><p>Numeric between 0 and 1. Controls sample evolution between iterations:</p><ul><li><p>1 (default): Independent sampling, all new samples each iteration</p></li>
+<li><p>0: No new samples, returns only first iteration</p></li>
+<li><p>Between 0 and 1: Proportion of samples that evolve each iteration</p></li>
+</ul></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
@@ -144,9 +147,9 @@ is used.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>SpatRaster with one layer per realization (or single layer if evolve_prop = 0),
-        containing counts of samples per cell. If replace_0 = TRUE, cells with zero
-        counts contain NA.</p>
+    <p>SpatRaster with one layer per realization (or single layer if <code>evolve_prop = 0</code>),
+containing counts of samples per cell. If <code>replace_0 = TRUE</code>, cells with zero
+counts contain NA.</p>
     </div>
 
     <div class="section level2">

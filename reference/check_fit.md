@@ -23,7 +23,7 @@ as.data.frame(x, row.names = NULL, optional = FALSE, ...)
 
 - model:
 
-  The corrected CLM from
+  The CLM from
   [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
   that was fitted, or a result of
   [`spax()`](https://songyosr.github.io/spax/reference/spax.md) that
@@ -141,3 +141,53 @@ Other allocation steps:
 [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice),
+               cornwall_travel[areas$lsoa, gp$practice],
+               metadata = list(travel_units = "minutes"))
+
+# Fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+                          cornwall_flows$practice %in% gp$practice, ]
+totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+clm <- spax(d, spec_clm(), observed = totals)
+
+# The fit against no decay and against capacity shares alone, with the
+# shares of trips longer than 10 and 20 minutes
+check <- check_fit(clm, trip_breaks = c(10, 20))
+check
+#> <allocation check>
+#>     comparator     loss loss_difference contact trip_median trip_p90
+#>         fitted -1200843               0  0.9784          10       21
+#>       no_decay -1199419            1424  0.9742          16       26
+#>  capacity_only -1199419            1424      NA          16       26
+#> Trip lengths are one-way, in minutes, weighted by expected flows.
+#> 
+#> The fitted allocation reproduces the counts better than both comparators.
+as.data.frame(check)[, c("comparator", "parameters", "trips_over_10",
+                         "trips_over_20")]
+#>      comparator            parameters trips_over_10 trips_over_20
+#> 1        fitted sigma=13.22, v0=1.002     0.4770478     0.1093308
+#> 2      no_decay    no decay; v0=2.396     0.6817231     0.2935631
+#> 3 capacity_only            scale=1609     0.6817231     0.2935631
+
+# The same check from a model and its fit
+check_allocation(clm$model, clm$fit)
+#> <allocation check>
+#>     comparator     loss loss_difference contact trip_median trip_p90
+#>         fitted -1200843               0  0.9784          10       21
+#>       no_decay -1199419            1424  0.9742          16       26
+#>  capacity_only -1199419            1424      NA          16       26
+#> Trip lengths are one-way, in minutes, weighted by expected flows.
+#> 
+#> The fitted allocation reproduces the counts better than both comparators.
+```

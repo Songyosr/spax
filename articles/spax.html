@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Getting started with spax • spax</title>
+<title>Getting started: how accessible is GP care in Cornwall? • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Getting started with spax">
+<meta property="og:title" content="Getting started: how accessible is GP care in Cornwall?">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,101 +76,202 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Getting started with spax</h1>
+      <h1>Getting started: how accessible is GP care in Cornwall?</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/spax.Rmd" class="external-link"><code>vignettes/spax.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/spax.Rmd" class="external-link"><code>vignettes/spax.Rmd</code></a></small>
       <div class="d-none name"><code>spax.Rmd</code></div>
     </div>
 
     
     
+<p>This guide measures how accessible general practice (GP) care is
+across mainland Cornwall and maps the answer. By the end you will
+understand the idea behind a floating catchment area (FCA) index,
+compute one from a population grid, a table of practices and travel
+times, and read its map. The data are the open Cornwall GP data that
+ship with spax, described in <a href="cornwall-data.html">The Cornwall
+GP example data</a>. The <code><a href="../reference/spax.html">spax()</a></code> interface and the
+allocation model are experimental and may change in later versions.</p>
+<p>The guide uses spax with terra for grids, sf and dplyr for tables and
+ggplot2 for the practices map.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
-<p>spax measures spatial access to services. You give it where people
-live (demand), what each facility offers (supply) and how long it takes
-to travel between them. It returns a floating catchment area (FCA)
-accessibility index: supply per resident, after discounting facilities
-that are further away. This guide computes one FCA index and maps it.
-spax also has an experimental allocation model that is fitted to where
-people actually go; the last section points to it.</p>
 <div class="section level2">
-<h2 id="the-example-data">The example data<a class="anchor" aria-label="anchor" href="#the-example-data"></a>
+<h2 id="the-question">The question<a class="anchor" aria-label="anchor" href="#the-question"></a>
 </h2>
-<p>spax ships open data for general practice (GP) care in Cornwall and
-the Isles of Scilly, in south-west England: the 55 GP practices with
-their GP full-time equivalents (FTE), 337 small areas with their
-registered residents, who is registered at which practice, and travel
-times. Two grids cover the same area: a population grid and one layer of
-travel minutes per practice. Everything runs offline. The Isles of
-Scilly have no road link to the mainland, so this guide uses mainland
-Cornwall only. <a href="cornwall-data.html">The Cornwall GP example
-data</a> describes each object, its sources and its limits.</p>
+<p>Some residents live next to a practice with many GPs. Others live far
+from any practice, or near one that many people share. An accessibility
+index puts both into one number per place: the <strong>supply</strong>
+of a service (here GP full-time equivalents, FTE) relative to the
+<strong>demand</strong> that competes for it (here residents), with
+distant practices counting for less. Where in Cornwall is that number
+high, and where is it low?</p>
+</div>
+<div class="section level2">
+<h2 id="the-idea-in-two-steps">The idea in two steps<a class="anchor" aria-label="anchor" href="#the-idea-in-two-steps"></a>
+</h2>
+<p>An FCA index answers the question in two steps. A tiny example with
+three areas and two practices shows both. The weights say how much each
+practice counts for each area: 1 next door, less further away.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Mainland practices and small areas</span></span>
-<span><span class="va">mainland_gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cornwall_gp</span>, <span class="op">!</span><span class="va">scilly</span><span class="op">)</span></span>
-<span><span class="va">mainland_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span>, <span class="op">!</span><span class="va">scilly</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Residents of three areas, and GP FTE at two practices</span></span>
+<span><span class="va">demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>village <span class="op">=</span> <span class="fl">1000</span>, town <span class="op">=</span> <span class="fl">4000</span>, coast <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
+<span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>north <span class="op">=</span> <span class="fl">3</span>, south <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Weight of each practice (columns) for each area (rows)</span></span>
+<span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>  village <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>north <span class="op">=</span> <span class="fl">1.0</span>, south <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>,</span>
+<span>  town    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>north <span class="op">=</span> <span class="fl">0.5</span>, south <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
+<span>  coast   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>north <span class="op">=</span> <span class="fl">0.1</span>, south <span class="op">=</span> <span class="fl">1.0</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">weights</span></span></code></pre></div>
+<pre class="spax-output"><code>        north south
+village   1.0   0.1
+town      0.5   0.5
+coast     0.1   1.0</code></pre>
+<p>The village is next to the north practice, the coast next to the
+south practice, and the town lies between the two.</p>
+<p><strong>Step 1.</strong> Each practice gathers the residents around
+it, each counted with its weight, and divides its GP FTE by that
+weighted count.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># For each practice: residents times weight, summed over the areas</span></span>
+<span><span class="va">gathered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">weights</span> <span class="op">*</span> <span class="va">demand</span><span class="op">)</span></span>
+<span><span class="va">gathered</span></span></code></pre></div>
+<pre class="spax-output"><code>north south 
+ 3200  4100 </code></pre>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># GP FTE per 1,000 weighted residents</span></span>
+<span><span class="va">ratio</span> <span class="op">&lt;-</span> <span class="va">supply</span> <span class="op">/</span> <span class="va">gathered</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">1000</span> <span class="op">*</span> <span class="va">ratio</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>north south 
+ 0.94  0.49 </code></pre>
+<p>The north practice has 3 GP FTE for 3,200 weighted residents, about
+0.94 per 1,000. The south practice has 2 for 4,100, about 0.49 per
+1,000.</p>
+<p><strong>Step 2.</strong> Each area adds up the ratios of the
+practices around it, weighted again.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># For each area: practice ratios times weight, summed over the practices</span></span>
+<span><span class="va">index</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/drop.html" class="external-link">drop</a></span><span class="op">(</span><span class="va">weights</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">ratio</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">1000</span> <span class="op">*</span> <span class="va">index</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>village    town   coast 
+   0.99    0.71    0.58 </code></pre>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Residents times the index, summed over the areas</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">index</span> <span class="op">*</span> <span class="va">demand</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] 5</code></pre>
+<p>The village leans on the better-supplied north practice and scores
+highest, at 0.99 GP FTE per 1,000 residents. The coast leans on the
+south practice and scores lowest, at 0.58. Residents times the index add
+up to the 5 GP FTE of the two practices: the index shares the supply out
+among residents and creates none.</p>
+<p>The weighted residents around a practice are its catchment, which
+floats with the practice instead of following area borders. With weights
+of only 1 within a travel-time limit and 0 beyond it, these two steps
+are the original two-step FCA (2SFCA). Graded weights, as here, give the
+enhanced two-step FCA, or <strong>E2SFCA</strong>. In a real study the
+weights come from travel times through a decay curve, and spax computes
+them for every place and every practice. With the curve used below, a
+weight of 0.5 means about 12 minutes away and 0.1 about 21 minutes.</p>
+</div>
+<div class="section level2">
+<h2 id="the-cornwall-data">The Cornwall data<a class="anchor" aria-label="anchor" href="#the-cornwall-data"></a>
+</h2>
+<p>spax ships open data for GP care in Cornwall and the Isles of Scilly:
+the 55 practices with their GP FTE, 337 small areas with their
+registered residents, who is registered at which practice, and travel
+times. A population grid of about 1 km cells and one layer of travel
+minutes per practice cover the same area. The Isles of Scilly have no
+road link to the mainland, so the guides use mainland Cornwall only,
+with its 54 practices. <a href="cornwall-data.html">The Cornwall GP
+example data</a> describes each object, its sources and its limits. The
+map shows the mainland practices, sized by their GP FTE, with a few
+towns named for reference.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Mainland practices and small areas, with their geometry</span></span>
+<span><span class="va">practices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cornwall_gp</span>, <span class="op">!</span><span class="va">scilly</span><span class="op">)</span></span>
+<span><span class="va">small_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span>, <span class="op">!</span><span class="va">scilly</span><span class="op">)</span></span>
+<span><span class="va">outline</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="va">small_areas</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># A few towns, by longitude and latitude, to find places on the maps</span></span>
+<span><span class="va">towns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    town <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Penzance"</span>, <span class="st">"Helston"</span>, <span class="st">"Redruth"</span>, <span class="st">"Truro"</span>, <span class="st">"Falmouth"</span>, <span class="st">"Bodmin"</span>, <span class="st">"Bude"</span>, <span class="st">"Launceston"</span><span class="op">)</span>,</span>
+<span>    lon <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5.54</span>, <span class="op">-</span><span class="fl">5.27</span>, <span class="op">-</span><span class="fl">5.23</span>, <span class="op">-</span><span class="fl">5.05</span>, <span class="op">-</span><span class="fl">5.07</span>, <span class="op">-</span><span class="fl">4.72</span>, <span class="op">-</span><span class="fl">4.54</span>, <span class="op">-</span><span class="fl">4.36</span><span class="op">)</span>,</span>
+<span>    lat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50.12</span>, <span class="fl">50.10</span>, <span class="fl">50.23</span>, <span class="fl">50.26</span>, <span class="fl">50.15</span>, <span class="fl">50.47</span>, <span class="fl">50.83</span>, <span class="fl">50.64</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lon"</span>, <span class="st">"lat"</span><span class="op">)</span>,</span>
+<span>  crs <span class="op">=</span> <span class="fl">4326</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
-<span>    data <span class="op">=</span> <span class="va">mainland_areas</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">small_areas</span>,</span>
 <span>    fill <span class="op">=</span> <span class="st">"grey95"</span>,</span>
-<span>    colour <span class="op">=</span> <span class="st">"grey70"</span>,</span>
+<span>    color <span class="op">=</span> <span class="st">"grey70"</span>,</span>
 <span>    linewidth <span class="op">=</span> <span class="fl">0.1</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
-<span>    data <span class="op">=</span> <span class="va">mainland_gp</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">practices</span>,</span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>size <span class="op">=</span> <span class="va">gp_fte_extg</span><span class="op">)</span>,</span>
 <span>    shape <span class="op">=</span> <span class="fl">21</span>,</span>
 <span>    fill <span class="op">=</span> <span class="st">"orange"</span>,</span>
 <span>    alpha <span class="op">=</span> <span class="fl">0.8</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">outline</span>, fill <span class="op">=</span> <span class="cn">NA</span>, color <span class="op">=</span> <span class="st">"grey20"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span></span>
+<span>    data <span class="op">=</span> <span class="va">towns</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">town</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">3</span>, vjust <span class="op">=</span> <span class="op">-</span><span class="fl">0.9</span>,</span>
+<span>    fun.geometry <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="va"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html" class="external-link">st_centroid</a></span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_size.html" class="external-link">scale_size_area</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"GP FTE"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"GP practices in mainland Cornwall"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_void</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax_files/figure-html/practices-map-1.png" class="r-plt" alt="Map of mainland Cornwall's small areas in grey, with the 54 mainland GP practices as orange circles sized by GP full-time equivalents." width="700"></p>
+<p><img src="spax_files/figure-html/practices-map-1.png" class="r-plt" alt="Map of mainland Cornwall's small areas in light grey, with the 54 mainland GP practices as orange circles sized by GP full-time equivalents, and eight towns named: Penzance, Helston, Redruth, Truro, Falmouth, Bodmin, Bude and Launceston." width="700"></p>
+<p>Practices are densest in the west, around Redruth, Truro and
+Falmouth. The largest has 13.4 GP FTE. Bodmin Moor, the upland
+north-east of Bodmin, has none.</p>
 </div>
 <div class="section level2">
-<h2 id="compute-an-e2sfca-surface">Compute an E2SFCA surface<a class="anchor" aria-label="anchor" href="#compute-an-e2sfca-surface"></a>
+<h2 id="compute-the-index">Compute the index<a class="anchor" aria-label="anchor" href="#compute-the-index"></a>
 </h2>
-<p>An FCA calculation needs three aligned inputs. Demand is a population
-grid of residents per cell, supply is a table of practices, and travel
-is a grid of minutes with one layer per practice, named by practice
-code.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Residents per grid cell, and travel minutes with one layer per practice</span></span>
+<p>An FCA index needs three inputs that line up: a population grid of
+residents per cell (demand), a table of practices with their GP FTE
+(supply), and a stack of travel-time grids with one layer of minutes per
+practice, named by practice code. These lines read them and keep the
+mainland cells that have a travel time to every practice. Every FCA
+guide starts from them.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Mainland practices as a plain table, and their travel layers</span></span>
-<span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">mainland_gp</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">travel</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
-<span></span>
-<span><span class="co"># Keep cells with a travel time to every mainland practice, then drop the</span></span>
-<span><span class="co"># empty margin the islands leave behind</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel</span>, <span class="va">pop</span><span class="op">)</span></span></code></pre></div>
-<p>The enhanced two-step FCA (E2SFCA) first lets each practice gather
-the residents around it, weighted by travel time, and divides its GP FTE
-by that weighted count. It then gives each cell the weighted sum of the
-ratios of the practices it can reach. Here the weight is a Gaussian
-curve with a scale of 10 minutes: a practice 10 minutes away keeps about
-61% of its weight and one 20 minutes away about 14%. The scale is a
-choice for this guide, not an estimate.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,  <span class="co"># matches supply rows to travel layers</span></span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co"># Keep cells with a travel time to every mainland practice</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel_grid</span>, <span class="va">pop</span><span class="op">)</span></span>
+<span><span class="va">grid_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">gp</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span></code></pre></div>
+<p><code>gp</code> is the practices table without its map geometry.
+<code><a href="../reference/prep_data.html">prep_data()</a></code> takes the table and holds the three inputs
+together. <code>id_col</code> names the column of practice codes that
+matches the travel layers, and <code>supply_cols</code> the column of
+supply.</p>
+<p><code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code> says which index to compute and how.
+<code><a href="../reference/spax.html">spax()</a></code> then computes it on <code>grid_data</code>. The
+decay turns travel minutes into weights. Here it is a Gaussian curve
+whose travel scale σ, in minutes, sets how fast the weights fall. With σ
+= 10, a practice 10 minutes away counts about 61% as much as one next
+door, and one 20 minutes away about 14%. The scale is a choice for this
+guide. <a href="allocation-workflow.html">Where do residents
+register?</a> estimates a travel scale from observed registrations. This
+line computes the index on the Cornwall data and prints a summary.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">e2sfca</span></span></code></pre></div>
 <pre class="spax-output"><code>&lt;spax access&gt; E2SFCA, 1 layer on 117 x 187 cells
 
@@ -183,12 +287,20 @@ Facilities: 54
 Parameters:
 - Decay function: gaussian (sigma = 10)
 - Demand normalization: identity </code></pre>
-<p>The result is a <code>spax</code> object. Its
-<code>accessibility</code> member is a raster of GP FTE per resident; we
-map it per 1,000 residents.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Practice locations in the grid's coordinates (longitude/latitude)</span></span>
-<span><span class="va">practices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="va">mainland_gp</span>, <span class="fl">4326</span><span class="op">)</span></span>
+<p>The print gives the grid: 117 rows by 187 columns of cells about 1 km
+across (the resolution is in degrees, 30 arc-seconds). It also gives the
+supply column it used (<code>gp_fte_extg</code>), the 54 practices and
+the settings: the Gaussian decay with σ = 10, and the default
+normalization <code>identity</code>, which uses the weights unchanged
+when practices gather residents. The <code>accessibility</code> member
+is the index on the grid, a raster in GP FTE per resident. We map it per
+1,000 residents, with the practices as red crosses and the same towns
+named.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Practice and town locations in the grid's coordinates (longitude and latitude)</span></span>
+<span><span class="va">practice_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">practices</span><span class="op">)</span></span>
+<span><span class="va">town_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">towns</span><span class="op">)</span></span>
+<span><span class="va">outline_lonlat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">outline</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span></span>
 <span>  <span class="fl">1000</span> <span class="op">*</span> <span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span>,</span>
@@ -196,38 +308,49 @@ map it per 1,000 residents.</p>
 <span>  col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"viridis"</span><span class="op">)</span>,</span>
 <span>  main <span class="op">=</span> <span class="st">"E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">points</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="va">practices</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fl">3</span>, cex <span class="op">=</span> <span class="fl">0.5</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spax_files/figure-html/e2sfca-map-1.png" class="r-plt" alt="Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses; values are highest in the west between Camborne, Redruth, Truro and Falmouth and lowest on Bodmin Moor and at the western and southern tips." width="700"></p>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">outline_lonlat</span>, lwd <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">points</a></span><span class="op">(</span><span class="va">practice_points</span>, pch <span class="op">=</span> <span class="fl">3</span>, cex <span class="op">=</span> <span class="fl">0.5</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/text.html" class="external-link">text</a></span><span class="op">(</span><span class="va">town_points</span>, labels <span class="op">=</span> <span class="va">town_points</span><span class="op">$</span><span class="va">town</span>, pos <span class="op">=</span> <span class="fl">3</span>, cex <span class="op">=</span> <span class="fl">0.7</span>, halo <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spax_files/figure-html/e2sfca-map-1.png" class="r-plt" alt="Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses and eight towns named; values are highest in the west between Redruth, Truro and Falmouth, lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas, and lower in the far north-east." width="700"></p>
 </div>
 <div class="section level2">
-<h2 id="read-the-result">Read the result<a class="anchor" aria-label="anchor" href="#read-the-result"></a>
+<h2 id="read-the-map">Read the map<a class="anchor" aria-label="anchor" href="#read-the-map"></a>
 </h2>
-<p>Each cross is a practice. The index is highest in the west of the
-county, from around Camborne and Redruth towards Truro and Falmouth,
+<p>The index runs from 0.03 to 0.81 GP FTE per 1,000 residents. Averaged
+over residents it is 0.58, the same as the mainland’s 311 GP FTE for its
+541,000 residents on the grid. As in the small example, the index shares
+out the supply and creates none.</p>
+<p>It is highest in the bright band between Redruth, Truro and Falmouth,
 where several practices with many GP FTE lie within a short drive. It is
-lowest on Bodmin Moor and at the tips of the Land’s End and Lizard
-peninsulas, where the nearest practices are further away. The index is
-GP supply relative to nearby demand; it is not the share of people who
-use a practice, a waiting time or a rate of care.</p>
+lowest on Bodmin Moor, the dark patch north-east of Bodmin, and at the
+tips of the Land’s End peninsula, west of Penzance, and the Lizard,
+south of Helston. There the nearest practices are further away. Read the
+values along the border with Devon, at the right edge of the map, with
+care: the data cover Cornwall only, so the index leaves out the Devon
+practices that some residents there use, and the Devon residents who
+compete for Cornish practices.</p>
+<p>The index compares GP supply with nearby demand and says nothing
+about who uses a practice, waiting times or the care received (<a href="reading-results.html">Reading results</a> explains).</p>
 </div>
 <div class="section level2">
-<h2 id="where-next">Where next<a class="anchor" aria-label="anchor" href="#where-next"></a>
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
 </h2>
 <ul>
 <li>
-<strong>The data.</strong> <a href="cornwall-data.html">The Cornwall
-GP example data</a> introduces every bundled object, and <a href="data-prep.html">Preparing your own data</a> shows how to line up
-counts, facility IDs and travel times for your own study area.</li>
+<a href="fca-methods.html">Which FCA index?</a>: set E2SFCA beside
+2SFCA, M2SFCA, 3SFCA and Huff-2SFCA on the same grid, and see what
+changes.</li>
 <li>
-<strong>FCA indices.</strong> <a href="fca-methods.html">Comparing
-FCA methods</a> sets E2SFCA beside 2SFCA, M2SFCA, 3SFCA and Huff-2SFCA,
-<a href="e2sfca-steps.html">The E2SFCA calculation step by step</a>
-rebuilds this surface by hand, and <a href="grid-resolution.html">Grid
-resolution</a> weighs resolution against cost.</li>
+<a href="data-prep.html">Bringing your own data</a>: line up your
+own counts, facility IDs and travel times.</li>
 <li>
-<strong>Allocation model.</strong> To model where residents register
-rather than score supply, start with <a href="model-choice.html">Choosing an FCA index or an allocation
-model</a>, then continue to the <a href="allocation-workflow.html">allocation workflow</a> and <a href="facility-bootstrap.html">facility bootstrap intervals</a>.</li>
+<a href="allocation-workflow.html">Where do residents register?</a>:
+model which practice the residents of each area register with, and
+estimate the travel scale from those registrations instead of choosing
+it.</li>
+<li>
+<a href="model-choice.html">An FCA index or an allocation
+model?</a>: choose between the two for your question.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

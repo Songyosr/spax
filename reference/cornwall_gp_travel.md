@@ -29,6 +29,13 @@ Computed as for
 [cornwall_travel](https://songyosr.github.io/spax/reference/cornwall_travel.md);
 see its details for method and limitations.
 
+## References
+
+Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., et al. (2020). Global maps
+of travel time to healthcare facilities. *Nature Medicine*, 26,
+1835-1838.
+[doi:10.1038/s41591-020-1059-1](https://doi.org/10.1038/s41591-020-1059-1)
+
 ## See also
 
 [cornwall_travel](https://songyosr.github.io/spax/reference/cornwall_travel.md),

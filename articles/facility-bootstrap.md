@@ -1,30 +1,33 @@
-# Bootstrap intervals for a fitted allocation model
+# How sure are the estimates? Bootstrap intervals
 
-This guide uses generated data instead of the Cornwall GP data described
-in [The Cornwall GP example
+A fitted allocation model gives one value for each parameter. This guide
+puts a range around those values: bootstrap intervals for the model’s
+two fitted parameters, for the share of demand that reaches a facility,
+and for the change that a supply scenario makes. The question is how far
+the estimates could move if the observed facility totals had come out
+differently.
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+(also named
+[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md))
+answers it by refitting the model many times to resampled facility
+totals. The guide runs on generated data with a known truth instead of
+[The Cornwall GP example
 data](https://songyosr.github.io/spax/articles/cornwall-data.md), for
-the reasons below.
-
-[`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
-adds conditional bootstrap intervals to a fitted static allocation
-model. It resamples facility totals, refits the model to each resample
-and reports percentile intervals for the parameters and for derived
-quantities, including a paired supply scenario. The interface is
-experimental.
+the reasons in the next section. The
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) interface
+and the allocation model are experimental and may change in later
+versions.
 
 ## Why generated data
 
-The bootstrap is shown on a generated network, not on Cornwall, for
-three reasons. Its eligibility rule (all 399 attempts made and at least
-380 finite successful values) was validated on generated designs of this
-size. A known truth lets you see whether the intervals cover it. And the
-method resamples facility totals treated as independent counts in one
-period, whereas Cornwall registrations are a stock of who is registered
-where; that observation law would need its own justification before an
-interval could be read. The [allocation
-workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)
-fits, checks and predicts the same kind of model on the Cornwall
-registrations.
+Generated data have a known truth, so you can see whether the intervals
+contain it. They also meet the bootstrap’s assumption that each
+facility’s total is an independent count over one period. The Cornwall
+data do not. The registrations are a stock: who is registered where on
+one date. The Cornwall model is also fitted to flows from small areas to
+practices, not to practice totals. [Where do residents
+register?](https://songyosr.github.io/spax/articles/allocation-workflow.md)
+fits that model.
 
 ``` r
 
@@ -34,12 +37,35 @@ library(dplyr)
 
 ## A generated network with a known truth
 
-The generated network has 80 origins and 40 facilities. Facility totals
-are drawn independently from a Poisson law with σ = 12 and v0 = 45.
-Independence across facilities is an assumption declared below; it does
-not follow from mutually exclusive destinations. The model is prepared,
-declared and fitted as in the [allocation
-workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md).
+The model is the conditional logit model (CLM) of [Where do residents
+register?](https://songyosr.github.io/spax/articles/allocation-workflow.md).
+Each origin’s demand, here service requests, is shared among the
+facilities in proportion to their supply, here service slots, discounted
+by travel time. An outside option competes with the facilities and takes
+the requests that go to none of them. For origin $`i`$ and facility
+$`j`$, the share of requests is
+
+``` math
+P_{ij} = \frac{S_j \, w(d_{ij})}{\sum_k S_k \, w(d_{ik}) + v_0},
+```
+
+where $`S_j`$ is the supply of facility $`j`$, $`d_{ij}`$ the travel
+time in minutes and $`w(d) = \exp(-d^2 / 2\sigma^2)`$ a Gaussian weight.
+The travel scale σ sets how fast a facility’s pull falls with travel
+time: at σ minutes it keeps about 61% of its weight, and at 2σ about
+14%. The outside weight v0 is set against the facilities’ weighted
+supply: an origin whose facilities add up to a weighted supply of v0
+sends half its requests outside.
+
+The code builds travel times between origins and facilities on a wavy
+strip, computes the shares at a known truth (`probability`) and draws
+each facility’s total as a Poisson count around its modeled total. It
+then fits the model with
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md), as in
+[Where do residents
+register?](https://songyosr.github.io/spax/articles/allocation-workflow.md),
+to the facility totals declared by
+[`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md).
 
 ``` r
 
@@ -52,89 +78,75 @@ units <- list(
 )
 
 # Travel minutes between 80 origins and 40 facilities on a wavy strip
-i <- seq_len(80)
-j <- seq_len(40)
-boot_travel <- sqrt(
-  outer(seq(2, 58, length.out = 80), seq(4, 56, length.out = 40), "-")^2 +
-  outer(8 * sin(i * .73), 7 * sin(j * 1.31), "-")^2) + 2
-dimnames(boot_travel) <- list(paste0("origin", i), paste0("facility", j))
+origin_x <- seq(2, 58, length.out = 80)
+origin_y <- 8 * sin(seq_len(80) * 0.73)
+facility_x <- seq(4, 56, length.out = 40)
+facility_y <- 7 * sin(seq_len(40) * 1.31)
+travel <- sqrt(
+  outer(origin_x, facility_x, "-")^2 + outer(origin_y, facility_y, "-")^2
+) + 2
+dimnames(travel) <- list(paste0("origin", 1:80), paste0("facility", 1:40))
 
 # Demand at each origin and supply at each facility
-boot_demand <- setNames(80 + 35 * (1 + sin(i * .23)), rownames(boot_travel))
-boot_supply <- setNames(rep(c(5, 7, 6, 8, 9), 8), colnames(boot_travel))
+demand <- setNames(80 + 35 * (1 + sin(seq_len(80) * 0.23)), rownames(travel))
+supply <- setNames(rep(c(5, 7, 6, 8, 9), 8), colnames(travel))
 
-# True choice probabilities under the static CLM
+# True choice probabilities under the CLM
 truth <- c(sigma = 12, v0 = 45)
-boot_score <- exp(-boot_travel^2 / (2 * truth[["sigma"]]^2)) *
-  rep(boot_supply, each = length(boot_demand))
-boot_probability <- boot_score / (rowSums(boot_score) + truth[["v0"]])
+attraction <- exp(-travel^2 / (2 * truth[["sigma"]]^2)) *
+  rep(supply, each = length(demand))
+probability <- attraction / (rowSums(attraction) + truth[["v0"]])
 
 # Observed facility totals: independent Poisson counts around the truth
 set.seed(2490001)
-boot_observed <- setNames(
-  rpois(40, colSums(boot_probability * boot_demand)),
-  names(boot_supply)
-)
+observed <- setNames(rpois(40, colSums(probability * demand)), names(supply))
 
-# Prepare, declare and fit, as for Cornwall
-boot_inputs <- prepare_allocation(
-  demand = boot_demand,
-  supply = boot_supply,
-  distance = boot_travel,
-  metadata = units
-)
-boot_model <- clm_allocation(boot_inputs, family = "gaussian", fit_v0 = TRUE)
-boot_starts <- rbind(
-  short = c(sigma = 8, v0 = 25),
-  medium = c(sigma = 15, v0 = 70),
-  wide = c(sigma = 25, v0 = 15)
-)
-boot_fit <- fit_allocation(
-  model = boot_model,
-  observed = boot_observed,
-  starts = boot_starts,
-  lower = c(sigma = 2, v0 = 1),
-  upper = c(sigma = 60, v0 = 500),
-  output = "utilization",  # facility totals
-  loss = "poisson",
-  gradient = TRUE,
-  control = list(maxit = 300, factr = 10, pgtol = 1e-8)
-)
-rbind(truth = truth, estimate = coef(boot_fit))
+# Fit the CLM to the facility totals
+data <- prep_data(demand, supply, travel, metadata = units)
+result <- spax(data, spec_clm(), observed = obs_totals(observed))
+rbind(truth = truth, estimate = coef(result))
 ```
 
 ``` spax-output
             sigma       v0
 truth    12.00000 45.00000
-estimate 13.27962 48.57499
+estimate 13.27969 48.57531
 ```
 
-The target here is facility totals (`output = "utilization"`), the
-observation unit the bootstrap resamples. The estimates differ from the
-truth because the 40 totals are one random sample; the bootstrap
-describes how much they could vary.
+The network has 80 origins and 40 facilities. The fit uses the facility
+totals, because they are what the bootstrap resamples.
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) found its
+starting values and search bounds from the data, and every bootstrap
+refit reuses them. The fit estimates σ = 13.3 minutes and v0 = 48.6,
+against a truth of 12 and 45. The gap is expected: the 40 totals are one
+random draw, and the bootstrap describes how much the estimates could
+vary from draw to draw.
 
-## Declare the observation and a paired scenario
+## Declare the observation and a scenario
 
-The bootstrap needs an explicit declaration of what was observed, over
-what period and how facilities were sampled. The paired scenario raises
-the second facility’s supply by 20%; each bootstrap draw evaluates
-baseline and scenario at the same parameters.
+The bootstrap needs a declaration of how the counts arose: what was
+counted, over what period, and how the facilities were sampled. This
+declaration is the observation law. spax stores it with the result but
+cannot check it. `sampling` must be `"independent_facilities"`, the only
+design the bootstrap supports. Independent sampling of facilities is
+your assumption. Here it holds, because the totals were drawn that way.
+
+A scenario is optional: the same model with changed supply. The
+bootstrap evaluates the baseline and the scenario together at each
+refitted set of parameter values, so the change between them gets an
+interval of its own. The scenario is a model declared with
+[`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
+on data prepared like the baseline, with only the supply changed;
+`fit_v0 = TRUE` matches the fitted outside weight of
+[`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md).
 
 ``` r
 
 # Scenario: 20% more supply at facility2
-boot_scenario_supply <- boot_supply
-boot_scenario_supply["facility2"] <- 1.2 * boot_scenario_supply["facility2"]
-boot_scenario_inputs <- prepare_allocation(
-  demand = boot_demand,
-  supply = boot_scenario_supply,
-  distance = boot_travel,
-  metadata = units
-)
-boot_scenario <- clm_allocation(
-  inputs = boot_scenario_inputs,
-  family = "gaussian",
+scenario_supply <- supply
+scenario_supply["facility2"] <- 1.2 * scenario_supply["facility2"]
+scenario <- clm_allocation(
+  prep_data(demand, scenario_supply, travel, metadata = units),
   fit_v0 = TRUE
 )
 
@@ -149,52 +161,64 @@ observation <- list(
 rebuild_boot <- identical(Sys.getenv("SPAX_REBUILD_VIGNETTE_BOOTSTRAP"), "true")
 ```
 
+The scenario raises the supply of facility2 from 7 to 8.4 service slots
+and changes nothing else.
+
 ## Run the bootstrap
+
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+makes 399 attempts by default. Each attempt draws 40 facilities with
+replacement from the 40, refits the model to their totals and records
+the new estimates. A facility drawn twice counts twice in the fit, and
+one not drawn does not count. Every facility and its supply stay in the
+network: only the weight of each total in the fit changes. Each attempt
+uses its own seed, the given seed plus the attempt number, so a run
+repeats exactly. The function takes the fitted result, the observation,
+the scenario and a seed. `attempts` sets another number of attempts, at
+least 199: more make the interval endpoints depend less on the random
+draws and take proportionally longer, while fewer give noisier intervals
+that tend to be narrower. Choose the number and the seed before the run.
+Runs with the same seed share their first attempts, so a larger run is
+the smaller one with more attempts added; changing the number after
+seeing a result is not part of the method.
 
 ``` r
 
-boot <- bootstrap_allocation(
-  model = boot_model,
-  fit = boot_fit,
+boot <- bootstrap_fit(
+  result,
   observation = observation,
-  scenario = boot_scenario,
+  scenario = scenario,
   seed = 20260930
 )
 ```
 
+Before the first attempt,
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+checks that the original fit is usable: converged, with a score close
+enough to zero, each parameter pinned down by the totals and away from
+the bounds of its search. A model declared with the step functions works
+too: give the model and its fit, as in
+`bootstrap_fit(model, fit, observation = observation, seed = 20260930)`.
+
 ### The stored result
 
-The chunk above is the exact call, but its 399 attempts take about three
-minutes, so it is not run while this guide is built. Its unmodified
-result is stored in `allocation-bootstrap.rds`, regenerated by
-`data-raw/precompute-vignette-bootstrap.R`, which renders this guide
-with `SPAX_REBUILD_VIGNETTE_BOOTSTRAP=true` so that the chunk runs live
-and saves its result. Nothing is subsampled or summarized; run the chunk
-yourself to reproduce it. The checks below confirm that the stored
-result matches the inputs and fit computed live here and that all 399
-attempts were made.
+The 399 refits take close to a minute, so the
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+call above does not run when this guide is built. The guide reads the
+result of that exact call from `allocation-bootstrap.rds`, which is
+installed with the package, so you can read it too. To follow along with
+your own run, run the
+[`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+call above and skip the next chunk. The script
+`data-raw/precompute-vignette-bootstrap.R`, in the package repository,
+rebuilds the file. The code below reads the stored result; when the
+guide is built, it also checks that the result belongs to the inputs and
+the fit computed above.
 
 ``` r
 
-# When rebuilding, store the fresh result with the spax version used
-boot_file <- "allocation-bootstrap.rds"
-if (rebuild_boot) {
-  attr(boot, "spax_version") <- as.character(packageVersion("spax"))
-  saveRDS(boot, boot_file, compress = "xz")
-}
-boot <- readRDS(boot_file)
-
-# The stored result belongs to these inputs, this fit and all 399 attempts
-stopifnot(
-  inherits(boot, "ae_allocation_bootstrap"),
-  boot$seed == 20260930L,
-  boot$planned == 399L,
-  boot$attempted == 399L,
-  identical(boot$facility_ids, names(boot_supply)),
-  identical(boot$observation, observation),
-  identical(boot$input_metadata, units),
-  isTRUE(all.equal(boot$original$theta, coef(boot_fit), tolerance = 1e-6))
-)
+# The stored result of the call above, installed with spax
+boot <- readRDS(system.file("extdata", "allocation-bootstrap.rds", package = "spax"))
 
 c(
   status = boot$status,
@@ -207,10 +231,18 @@ c(
 
 ``` spax-output
          status       attempted      successful built_with_spax    running_spax 
-     "complete"           "399"           "399"    "0.3.0.9000"         "0.6.0" 
+     "complete"           "399"           "399"    "0.6.0.9000"         "0.7.0" 
 ```
 
+All 399 attempts were made and 399 succeeded. The result was built with
+spax 0.6.0.9000 and is read under 0.7.0. Rerunning the call under the
+running version gives the same estimates and intervals.
+
 ## Read the intervals
+
+[`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html)
+gives the point estimate and the interval of each quantity, and
+`type = "draws"` gives every attempt.
 
 ``` r
 
@@ -223,8 +255,8 @@ filter(estimates, quantity %in% parameters)
 
 ``` spax-output
   quantity estimate    lower    upper                          status
-1    sigma 13.27962 10.54105 17.22121 conditional_pointwise_bootstrap
-2       v0 48.57499 35.02844 65.47782 conditional_pointwise_bootstrap
+1    sigma 13.27969 10.54105 18.61638 conditional_pointwise_bootstrap
+2       v0 48.57531 35.02844 69.06907 conditional_pointwise_bootstrap
   successful attempted planned
 1        399       399     399
 2        399       399     399
@@ -243,23 +275,65 @@ draws |>
   attempt   status    sigma       v0
 1       1 selected 12.86513 48.73043
 2       2 selected 13.21244 50.51980
-3       3 selected 12.14213 40.43821
-4       4 selected 12.43516 42.49470
+3       3 selected 12.14212 40.43821
+4       4 selected 12.43516 42.49469
 5       5 selected 12.10434 43.16452
 6       6 selected 14.70454 53.31157
 ```
 
-The procedure makes 399 predetermined attempts. It resamples facility
-observations while keeping every facility and its supply in the
-allocation. Failed attempts are kept and not replaced, and successful
-fits on an inner boundary stay in the distribution. An interval is
-reported only when all 399 attempts were made, at least 380 values are
-finite and the original fit is eligible; otherwise the result keeps its
-point estimates and reasons but withholds intervals.
+Each interval is a 95% percentile interval: the middle 95% of the
+refitted values. The status `conditional_pointwise_bootstrap` means that
+the interval holds the inputs fixed and covers that quantity on its own.
+The interval for σ runs from 10.5 to 18.6 minutes, and the interval for
+v0 from 35.0 to 69.1. Each row of the draws is one attempt with its
+refitted parameters, and `selected` marks an attempt whose refit
+succeeded.
 
-The tables above show the two model parameters; the saved result also
-holds regional and paired-scenario quantities, listed by
-`as.data.frame(boot)`.
+The table has three more rows:
+
+``` r
+
+filter(estimates, !quantity %in% parameters)
+```
+
+``` spax-output
+        quantity   estimate     lower      upper
+1   regional_rho 0.67108079 0.6511258  0.6896859
+2 delta_contacts 9.87225371 8.9083090 11.0227976
+3     regional_A 0.03041016        NA         NA
+                           status successful attempted planned
+1 conditional_pointwise_bootstrap        399       399     399
+2 conditional_pointwise_bootstrap        399       399     399
+3            fixed_input_identity        399       399     399
+```
+
+`regional_rho` is the share of all requests that the model sends to a
+facility rather than the outside option: 67.1%, with an interval from
+65.1% to 69.0%. `delta_contacts` is the change the scenario makes in the
+requests that reach a facility: 9.9 more, with an interval from 8.9 to
+11.0. `regional_A`, the supply per unit of demand, depends only on the
+inputs, so it has no interval.
+
+The intervals follow fixed rules:
+
+- A run makes all its attempts, 399 unless `attempts` says otherwise,
+  chosen before the run. A failed attempt stays in the record and is not
+  replaced. A refit that ends at a bound of its search range (an inner
+  boundary) stays in the distribution.
+- An interval needs all the attempts and finite values from at least 95%
+  of them, rounded up: 380 of 399. It also needs a usable original fit:
+  away from the bounds of its search, converged precisely, and with each
+  parameter pinned down by the totals.
+- Coverage was studied with 399 attempts. A result with another number
+  says so in a note.
+- Each refit starts from the same starting values and search bounds as
+  the original fit: the ones you gave, or the ones found from the data
+  when you gave none. Facility totals can fit almost as well at quite
+  different travel scales, so every refit tries all the starts and keeps
+  its best fit.
+
+When a rule fails, the result keeps its point estimates and the reasons,
+and withholds the intervals.
 
 ## Check against the truth
 
@@ -270,9 +344,9 @@ beside it.
 
 # Two panels side by side; each adds the true value as a dashed line
 oldpar <- par(mfrow = c(1, 2))
-for (q in c("sigma", "v0")) {
-  plot(boot, quantity = q, main = paste(q, "(dashed line: truth)"))
-  abline(v = truth[[q]], col = "orange", lwd = 2, lty = 2)
+for (parameter in c("sigma", "v0")) {
+  plot(boot, quantity = parameter, main = paste(parameter, "(dashed line: truth)"))
+  abline(v = truth[[parameter]], col = "orange", lwd = 2, lty = 2)
 }
 ```
 
@@ -286,26 +360,32 @@ interval.](facility-bootstrap_files/figure-html/bootstrap-truth-1.png)
 par(oldpar)
 ```
 
-In this generated design both intervals contain the true values
-(dashed). They are pointwise percentile intervals conditional on the
-declared observation law and on fixed demand, supply, travel and
-facilities. Acceptance in generated studies does not establish an
-application’s observation law or guarantee exact 95% coverage, and the
-paired scenario is model-based, not causal.
+The dot is the estimate and the line its 95% interval, with σ in
+minutes. Both intervals contain the true values, shown as dashed lines.
+The caption above each panel says that the run is complete, that the
+quantity has an interval and how many attempts gave a finite value.
+These are two separate intervals, not a joint range for σ and v0, and
+they rest on the declared sampling. One generated example whose
+intervals contain the truth does not show that 95% of intervals would
+contain it in another application.
 
 ## Tables and saving
 
-The result works with the same tools as a fit.
+The result has its own [`print()`](https://rdrr.io/r/base/print.html),
+[`summary()`](https://rspatial.github.io/terra/reference/summary.html),
+[`plot()`](https://rspatial.github.io/terra/reference/plot.html) and
 [`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html)
-returns the saved estimates and intervals, every attempted draw
-(`type = "draws"`) or every attempted start (`type = "starts"`),
-failures included;
+methods.
+[`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html)
+gives the estimates, every draw (`type = "draws"`) or every start of
+every attempt (`type = "starts"`), failures included.
 [`summary()`](https://rspatial.github.io/terra/reference/summary.html)
 and [`plot()`](https://rspatial.github.io/terra/reference/plot.html)
-read the saved values without resampling. Save the whole object as RDS
-to keep its declarations; CSV tables drop them. The [allocation
-workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)
-shows a full export and a reload in a fresh R session.
+read the saved values and resample nothing. Save the whole result with
+[`saveRDS()`](https://rspatial.github.io/terra/reference/serialize.html):
+it keeps the declared observation, units and seed, which a CSV table
+drops. The code below saves the result, reads it back and confirms that
+the draws are unchanged.
 
 ``` r
 
@@ -314,14 +394,31 @@ saved <- tempfile(fileext = ".rds")
 saveRDS(boot, saved)
 restored <- readRDS(saved)
 
-# The restored result gives the same tables, with nothing recomputed
-stopifnot(
-  identical(as.data.frame(restored), as.data.frame(boot)),
-  identical(
-    as.data.frame(restored, type = "draws"),
-    as.data.frame(boot, type = "draws")
-  ),
-  inherits(summary(restored), "summary.ae_allocation_bootstrap")
+# The restored result gives the same draws, with nothing recomputed
+identical(
+  as.data.frame(restored, type = "draws"),
+  as.data.frame(boot, type = "draws")
 )
+```
+
+``` spax-output
+[1] TRUE
+```
+
+``` r
+
 unlink(saved)
 ```
+
+## Next
+
+- [What if a practice
+  closed?](https://songyosr.github.io/spax/articles/scenario.md): a
+  supply scenario on the Cornwall data, at fixed parameter values.
+- [Where do residents
+  register?](https://songyosr.github.io/spax/articles/allocation-workflow.md):
+  the model fitted to the Cornwall registrations, and what those data
+  identify.
+- [Reading
+  results](https://songyosr.github.io/spax/articles/reading-results.md):
+  what intervals, scenarios and fits show, and what they do not.

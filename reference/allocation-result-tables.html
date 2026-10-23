@@ -15,7 +15,7 @@ to inspect all supplied starts instead."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,20 +30,23 @@ to inspect all supplied starts instead."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -58,7 +61,7 @@ to inspect all supplied starts instead."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Inspect saved allocation result tables</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/07-allocation_results.R" class="external-link"><code>R/07-allocation_results.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/07-allocation_results.R" class="external-link"><code>R/07-allocation_results.R</code></a></small>
       <div class="d-none name"><code>allocation-result-tables.Rd</code></div>
     </div>
 
@@ -158,6 +161,63 @@ or every attempted start. Failed draws, inner boundaries and refusal statuses
 are retained. Extraction neither creates intervals nor changes eligibility.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># West Cornwall: the small areas and practices west of easting 170 km</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">areas</span><span class="op">[</span><span class="op">!</span><span class="va">areas</span><span class="op">$</span><span class="va">scilly</span> <span class="op">&amp;</span> <span class="va">areas</span><span class="op">$</span><span class="va">cent_x</span> <span class="op">&lt;</span> <span class="fl">170000</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">gp</span><span class="op">[</span><span class="op">!</span><span class="va">gp</span><span class="op">$</span><span class="va">scilly</span> <span class="op">&amp;</span> <span class="va">gp</span><span class="op">$</span><span class="va">easting</span> <span class="op">&lt;</span> <span class="fl">170000</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                             <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                             <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># A fit to the registrations of these residents at these practices</span></span></span>
+<span class="r-in"><span><span class="va">flows</span> <span class="op">&lt;-</span> <span class="va">cornwall_flows</span><span class="op">[</span><span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span> <span class="op">&amp;</span></span></span>
+<span class="r-in"><span>                          <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">gp</span><span class="op">$</span><span class="va">practice</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">totals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/split.html" class="external-link">split</a></span><span class="op">(</span><span class="va">flows</span><span class="op">$</span><span class="va">patients</span>, <span class="va">flows</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>, <span class="va">sum</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="clm_allocation.html">clm_allocation</a></span><span class="op">(</span><span class="va">inputs</span>, fit_v0 <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="fit_allocation.html">fit_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">totals</span>, loss <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   parameter  estimate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     sigma 13.223212</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        v0  1.001842</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Coverage at the estimates: for the region, by small area, and by the</span></span></span>
+<span class="r-in"><span><span class="co"># rural-urban class of the small areas</span></span></span>
+<span class="r-in"><span><span class="va">coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="evaluate_allocation.html">evaluate_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">coverage</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">coverage</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     zone demand       rho            A contact_need     abar_raw masked</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 region 149306 0.9783587 0.0006053144     146074.8 0.0006187039  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           abar     quadrant</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.0006187039 unclassified</span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">coverage</span>, type <span class="op">=</span> <span class="st">"cells"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           origin_id registry_index demand       rho            A contact_need</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018825 E01018825              1   1883 0.9714886 0.0005915637     1829.313</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018861 E01018861              2   1639 0.9818273 0.0006340469     1609.215</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018862 E01018862              3   1519 0.9820142 0.0006239507     1491.680</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018863 E01018863              4   1927 0.9828645 0.0006160261     1893.980</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018864 E01018864              5   1898 0.9830059 0.0006125868     1865.745</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018865 E01018865              6   2368 0.9822427 0.0005996822     2325.951</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>               abar_raw masked         abar     quadrant</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018825 0.0006089250  FALSE 0.0006089250 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018861 0.0006457825  FALSE 0.0006457825 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018862 0.0006353785  FALSE 0.0006353785 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018863 0.0006267661  FALSE 0.0006267661 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018864 0.0006231772  FALSE 0.0006231772 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E01018865 0.0006105234  FALSE 0.0006105234 unclassified</span>
+<span class="r-in"><span><span class="va">zones</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>origin_id <span class="op">=</span> <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, zone <span class="op">=</span> <span class="va">areas</span><span class="op">$</span><span class="va">ruc21</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">coverage</span>, type <span class="op">=</span> <span class="st">"zones"</span>, zones <span class="op">=</span> <span class="va">zones</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                               zone demand       rho</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 Smaller rural: Further from a major town or city  36789 0.9750877</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2         Urban: Further from a major town or city  80364 0.9801664</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  Larger rural: Further from a major town or city  32153 0.9775829</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              A contact_need     abar_raw masked         abar     quadrant</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.0006014435     35872.50 0.0006168096  FALSE 0.0006168096 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 0.0006064560     78770.09 0.0006187276  FALSE 0.0006187276 unclassified</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 0.0006068900     31432.22 0.0006208066  FALSE 0.0006208066 unclassified</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

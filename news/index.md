@@ -1,5 +1,124 @@
 # Changelog
 
+## spax 0.7.0
+
+The first version prepared for CRAN. The Cornwall example data are now
+in WGS 84 longitude and latitude, the coordinate system of the bundled
+rasters, so the examples and guides never change datum; spax needs fewer
+packages; every exported function has an example; and fits, evaluations
+and predictions are easier to read. Fitted and computed values are the
+same as in 0.6.0. Code that used the British National Grid geometry of
+the example data, compared output vectors with unnamed ones, or relied
+on
+[`save_spax()`](https://songyosr.github.io/spax/reference/save_spax.md)
+writing single precision may need a small change (see below).
+
+- Preparing for CRAN. spax needs fewer packages: it imports terra, sf,
+  stats, tools and withr; ggplot2, dplyr and tibble are only suggested
+  (the guides use ggplot2 and dplyr), and raster, sp, data.table,
+  tidyverse and osrm are no longer listed. Results are unchanged.
+- Help pages are written for users: every exported function has an
+  example, internal helpers no longer have help pages, and pages written
+  in Markdown show it formatted.
+- The Cornwall example data `cornwall_gp` and `cornwall_lsoa` are now in
+  WGS 84 longitude and latitude (EPSG:4326), the coordinate system of
+  the bundled rasters; they were in British National Grid (EPSG:27700),
+  and were converted with the OSGB36 to WGS 84 Helmert transformation
+  (about 2 m). British National Grid coordinates are kept as columns:
+  new `easting` and `northing` for practices, and `cent_x` and `cent_y`
+  for small-area centroids as before; `cornwall_lsoa` gains `cent_lon`
+  and `cent_lat`, the origins of `cornwall_travel`. Code that read
+  metres from the geometry, such as `st_coordinates(cornwall_gp)`,
+  should use these columns, and sf measures such as
+  [`st_area()`](https://r-spatial.github.io/sf/reference/geos_measures.html)
+  now use the sphere (areas about 0.4% smaller than the planar British
+  National Grid areas). Combining the layers no longer changes datum:
+  with terra loaded, a change of datum can make PROJ download a datum
+  shift grid into your PROJ data folder (on Linux also for sf), so the
+  examples, tests and guides no longer make one. For map units in
+  metres, project to a system on the WGS 84 datum, such as UTM zone 30N
+  (EPSG:32630).
+  [`?calc_travel_time`](https://songyosr.github.io/spax/reference/calc_travel_time.md)
+  says when a download can happen.
+- `citation("spax")` gives the installed version and the DOI that refers
+  to all versions.
+- [`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+  and
+  [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)
+  take `attempts`, the number of bootstrap attempts: 399 by default, as
+  before, or a whole number from 199 to 1,000,000. An interval needs
+  finite values from at least 95% of the attempts, rounded up (380 of
+  399, unchanged). A result with a number other than 399 carries a note
+  that coverage was evaluated with 399 attempts; fewer attempts give
+  noisier intervals that tend to be narrower. Choose the number before
+  the run: runs with the same seed share their first attempts, and a
+  checkpoint cannot be resumed with another number.
+- Errors found by the checks of spax name the call you made, such as
+  `prep_data(...)` or `predict(fit, ...)`, rather than an internal
+  function you never called. The messages are unchanged.
+- `missing_travel = "omit"` in
+  [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md),
+  [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+  and
+  [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
+  leaves out pairs with unknown travel time. It is the new name of
+  `"legacy_zero"`, which still works and gives the same results; saved
+  data and fits are unchanged. The print of prepared data and the error
+  for unknown travel use the new name.
+- [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
+  takes a one-dimensional array or table, such as the result of
+  [`tapply()`](https://rdrr.io/r/base/tapply.html) or
+  [`table()`](https://rdrr.io/r/base/table.html), as the vector of
+  observed counts named by its names, as
+  [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+  does; it was refused. As there,
+  [`tapply()`](https://rdrr.io/r/base/tapply.html) gives `NA`, an
+  unobserved count, for a factor level without records: use
+  `default = 0` when no record means a count of zero.
+- The results of
+  [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md)
+  and the outputs a fit keeps (`fit$best$outputs`, and those of
+  [`spax()`](https://songyosr.github.io/spax/reference/spax.md) results)
+  name their vectors: by facility ID `target`, `utilization`,
+  `attractiveness` and `utilization_outside`, by origin ID `access` and
+  `outside_share` (the outside share of a Huff model was unnamed too),
+  as the matrices were already. The values are unchanged. Objects saved
+  earlier keep their unnamed outputs until they are evaluated again;
+  code that compares these vectors with unnamed ones, for example with
+  [`identical()`](https://rspatial.github.io/terra/reference/identical.html),
+  needs [`unname()`](https://rdrr.io/r/base/unname.html).
+- [`plot()`](https://rspatial.github.io/terra/reference/plot.html) of a
+  fit and of its selected fit `fit$best` takes `main`, `xlab` and `ylab`
+  (they were an error) and has plain titles, such as “Observed and
+  fitted values”; the convergence plot shows the single iteration of a
+  static model.
+  [`?plot.ae_multistart_fit`](https://songyosr.github.io/spax/reference/plot.ae_multistart_fit.md)
+  describes each `type` and what it returns.
+- [`save_spax()`](https://songyosr.github.io/spax/reference/save_spax.md)
+  writes rasters in double precision by default (new argument
+  `datatype = "FLT8S"`), so
+  [`read_spax()`](https://songyosr.github.io/spax/reference/read_spax.md)
+  returns the values that were saved; they were single precision,
+  rounded to about seven significant digits. `datatype = "FLT4S"` writes
+  the smaller files of before.
+- [`summary()`](https://rspatial.github.io/terra/reference/summary.html)
+  of an FCA result takes its argument as `object`, as
+  [`summary()`](https://rspatial.github.io/terra/reference/summary.html)
+  does, so `summary(object = result)` works.
+- Predictions from
+  [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
+  and
+  [`predict()`](https://rspatial.github.io/terra/reference/predict.html)
+  of a result print a short report: the origins by status, whether
+  demand was given, how unknown travel was treated and the range of each
+  output.
+- The print and summary methods of fits are documented on
+  `?allocation-fit-methods`, and help pages that showed lists as running
+  text show them as lists.
+- Version 0.6.0 is archived on Zenodo: cite it as
+  <doi:10.5281/zenodo.23538560>. <doi:10.5281/zenodo.23438611> refers to
+  all versions.
+
 ## spax 0.6.0
 
 FCA indices join the experimental interface:

@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Choosing an FCA index or an allocation model • spax</title>
+<title>An FCA index or an allocation model? • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Choosing an FCA index or an allocation model">
+<meta property="og:title" content="An FCA index or an allocation model?">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,27 +76,37 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Choosing an FCA index or an allocation model</h1>
+      <h1>An FCA index or an allocation model?</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/model-choice.Rmd" class="external-link"><code>vignettes/model-choice.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/model-choice.Rmd" class="external-link"><code>vignettes/model-choice.Rmd</code></a></small>
       <div class="d-none name"><code>model-choice.Rmd</code></div>
     </div>
 
     
     
-<p>This guide uses the bundled Cornwall GP data, described in <a href="cornwall-data.html">The Cornwall GP example data</a>.</p>
+<p>spax computes two kinds of result from the same demand, supply and
+travel times. A floating catchment area (FCA) index measures how much
+supply a place has relative to the demand that competes for it. An
+allocation model says where the residents of a place go: a probability
+for each facility and for an outside option, which stands for every
+choice outside the facilities in the data. Its parameters are fitted to
+the use you observed. This guide computes both for the same small areas
+and sets them side by side, so that you can choose the one that answers
+your question. It uses the GP registrations, practices and travel times
+of <a href="cornwall-data.html">The Cornwall GP example data</a>. The
+<code><a href="../reference/spax.html">spax()</a></code> interface and the allocation model are experimental
+and may change in later versions.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
-<p>Choose a model by the quantity you need and the observations that can
-support it. spax retains its public floating catchment area (FCA)
-workflow and adds an experimental corrected static conditional-logit
-allocation workflow with an explicit outside option. Existing FCA calls
-remain valid; they do not need to be rewritten as allocation fits.</p>
+<div class="section level2">
+<h2 id="which-one-answers-your-question">Which one answers your question?<a class="anchor" aria-label="anchor" href="#which-one-answers-your-question"></a>
+</h2>
+<p>Start from the quantity you need and the observations you have.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -102,292 +115,290 @@ remain valid; they do not need to be rewritten as allocation fits.</p>
 </colgroup>
 <thead><tr class="header">
 <th align="left">Question</th>
-<th align="left">Starting point</th>
-<th align="left">What the output means</th>
+<th align="left">Call</th>
+<th align="left">What you get</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left">How is weighted supply distributed relative to weighted
-demand?</td>
+<td align="left">How much supply does each place have, relative to the
+demand that can reach it?</td>
 <td align="left">
-<code><a href="../reference/spax_2sfca.html">spax_2sfca()</a></code>, <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>,
-<code><a href="../reference/spax_m2sfca.html">spax_m2sfca()</a></code>, <code><a href="../reference/spax_3sfca.html">spax_3sfca()</a></code>,
-<code><a href="../reference/spax_huff2sfca.html">spax_huff2sfca()</a></code>, or <code><a href="../reference/spax.html">spax()</a></code> with an FCA
-specification such as <code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>
+<code>spax(data, spec_e2sfca())</code>, or another FCA
+specification: <code><a href="../reference/spec_e2sfca.html">spec_2sfca()</a></code>, <code><a href="../reference/spec_e2sfca.html">spec_m2sfca()</a></code>,
+<code><a href="../reference/spec_e2sfca.html">spec_3sfca()</a></code>, <code><a href="../reference/spec_e2sfca.html">spec_huff2sfca()</a></code>
 </td>
-<td align="left">A model-specific supply-per-demand accessibility
-index</td>
+<td align="left">An index of supply per travel-weighted resident</td>
 </tr>
 <tr class="even">
-<td align="left">How are request opportunities allocated among
-facilities and an outside option?</td>
+<td align="left">Where do residents go, among the facilities and an
+outside option?</td>
 <td align="left">
-<code><a href="../reference/prep_data.html">prep_data()</a></code> and <code><a href="../reference/spec_clm.html">spec_clm()</a></code>
-with <code><a href="../reference/spax.html">spax()</a></code>, or the steps <code><a href="../reference/prepare_allocation.html">prepare_allocation()</a></code>
-then <code><a href="../reference/clm_allocation.html">clm_allocation()</a></code>
-</td>
-<td align="left">Choice probabilities and expected loads under a
-declared model</td>
+<code>spax(data, spec_clm(decay_gaussian(sigma = 5), outside = 0.03))</code>,
+with a value for every parameter</td>
+<td align="left">A probability for each facility and the outside option,
+and the expected number of users of each facility</td>
 </tr>
 <tr class="odd">
-<td align="left">Which parameters fit observed utilization or
-flows?</td>
+<td align="left">Which parameters fit the use you observed?</td>
 <td align="left">
-<code><a href="../reference/spax.html">spax()</a></code> with <code><a href="../reference/obs_flows.html">obs_flows()</a></code> or
-<code><a href="../reference/obs_flows.html">obs_totals()</a></code>, or the step
-<code><a href="../reference/fit_allocation.html">fit_allocation()</a></code>
+<code>spax(data, spec_clm(), observed = obs_flows())</code>,
+or <code><a href="../reference/obs_flows.html">obs_totals()</a></code> for facility totals</td>
+<td align="left">Fitted parameters, read with <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and
+checked with <code><a href="../reference/check_fit.html">check_fit()</a></code>
 </td>
-<td align="left">A calibrated mean model plus optimization
-diagnostics</td>
 </tr>
 <tr class="even">
-<td align="left">What changes under a supply scenario at the same
+<td align="left">What changes when supply changes, at the same
 parameters?</td>
-<td align="left">Reprepare and <code><a href="../reference/evaluate_allocation.html">evaluate_allocation()</a></code>
-</td>
-<td align="left">A model-based contrast, not an estimated causal
-effect</td>
+<td align="left">
+<code><a href="../reference/spax.html">spax()</a></code> on the changed data, with the
+fitted values held</td>
+<td align="left">The difference between two modeled scenarios</td>
 </tr>
 <tr class="odd">
-<td align="left">What can be predicted at additional locations?</td>
-<td align="left"><code><a href="../reference/predict_allocation.html">predict_allocation()</a></code></td>
-<td align="left">Requested outputs with probability, demand and capacity
-validity flags</td>
+<td align="left">What does the model give at other places?</td>
+<td align="left">
+<code><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict()</a></code> on the fitted result</td>
+<td align="left">Probabilities and outside shares at those places</td>
 </tr>
 <tr class="even">
-<td align="left">Are facility-count bootstrap intervals available?</td>
+<td align="left">How sure are the estimates?</td>
 <td align="left">
-<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code> after an eligible
-fit and observation declaration</td>
-<td align="left">Conditional pointwise intervals when the supported
-procedure’s gates pass</td>
+<code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> on an allocation model
+with a fitted outside weight, fitted to facility totals</td>
+<td align="left">Bootstrap intervals for the parameters and for a
+scenario</td>
 </tr>
 </tbody>
 </table>
-<p>An FCA index is not a choice probability. A fitted model is not
-automatically identified or empirically validated. A regional interval
-is not a cellwise map interval. These distinctions remain even when both
-workflows use the same travel data.</p>
+<p>An FCA index needs no observations, and the analyst chooses how fast
+its weights fall with travel time. An allocation model can be fitted to
+observed counts, and its fitted counts can then be checked against
+them.</p>
+</div>
 <div class="section level2">
 <h2 id="one-cornwall-system-two-calculations">One Cornwall system, two calculations<a class="anchor" aria-label="anchor" href="#one-cornwall-system-two-calculations"></a>
 </h2>
 <p>Both calculations below use the same inputs for mainland Cornwall:
-336 small areas (LSOAs) and 54 GP practices. Demand is the registered
-residents of each area, supply is GP full-time equivalents (FTE)
-excluding GPs in training, and travel is the small area × practice
-matrix of minutes.</p>
+small areas and their GP practices. Demand is the number of residents of
+each area registered with a GP practice, and supply is each practice’s
+GP full-time equivalents (FTE), excluding GPs in training. Travel is a
+matrix of minutes from each area to each practice.
+<code><a href="../reference/prep_data.html">prep_data()</a></code> lines the three up by their IDs, and
+<code><a href="../reference/obs_flows.html">obs_flows()</a></code> declares the observed registrations by area and
+practice.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Mainland small areas and practices, as plain tables</span></span>
-<span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Demand per area, supply per practice and the area x practice travel</span></span>
-<span><span class="co"># matrix, all named by ID</span></span>
-<span><span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span></span>
-<span><span class="va">S</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
-<span><span class="cn">T</span> <span class="op">&lt;-</span> <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>,</span>
-<span>  practices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">S</span><span class="op">)</span>,</span>
-<span>  missing_travel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>         areas      practices missing_travel 
-           336             54              0 </code></pre>
+<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span></span>
+<span><span class="va">demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span></span>
+<span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">demand</span>, <span class="va">supply</span>, <span class="va">travel</span>, metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  demand_units <span class="op">=</span> <span class="st">"registered residents"</span>, demand_period <span class="op">=</span> <span class="st">"July 2026"</span>,</span>
+<span>  supply_units <span class="op">=</span> <span class="st">"GP FTE excluding GPs in training"</span>, supply_period <span class="op">=</span> <span class="st">"June 2026"</span>,</span>
+<span>  travel_units <span class="op">=</span> <span class="st">"minutes"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">flows</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/obs_flows.html">obs_flows</a></span><span class="op">(</span><span class="va">cornwall_flows</span>, origin <span class="op">=</span> <span class="st">"lsoa"</span>, facility <span class="op">=</span> <span class="st">"practice"</span>, count <span class="op">=</span> <span class="st">"patients"</span><span class="op">)</span></span>
+<span><span class="va">d</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax data&gt; 336 origins (336 active) x 54 facilities
+  demand      604,471 registered residents (July 2026)
+  supply      GP FTE excluding GPs in training (June 2026)
+  travel      minutes; unknown for 0 active origins
+  policies    missing demand: error; missing travel: error</code></pre>
+<p>The prepared data hold 336 small areas (lower layer super output
+areas, LSOAs) and 54 practices. spax calls the small areas origins and
+the practices facilities, in the print and in its tables. The unit
+labels are kept with the data and every result, and spax does not
+convert units.</p>
 <div class="section level3">
 <h3 id="an-fca-index">An FCA index<a class="anchor" aria-label="anchor" href="#an-fca-index"></a>
 </h3>
-<p>An FCA specification also runs on the numeric inputs of the
-allocation model, so the FCA uses exactly the same demand and travel.
-<code><a href="../reference/prep_data.html">prep_data()</a></code> aligns them by ID, and <code><a href="../reference/spax.html">spax()</a></code>
-computes the index at each area, as a matrix with one row per area
-rather than a raster. This interface is experimental. The Gaussian scale
-of 10 minutes is a choice for this guide, not an estimate.</p>
+<p>The enhanced two-step floating catchment area method (E2SFCA) works
+in two steps. Each practice divides its supply by the demand that can
+reach it, weighted by travel time. Each area then adds up the ratios of
+the practices it can reach, with the same weights. Here the weight of a
+practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math>
+minutes away is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>−</mi><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">w(d) = \exp(-d^2 / 2\sigma^2)</annotation></semantics></math>,
+a Gaussian curve with a travel scale σ of 10 minutes, so a practice 10
+minutes away counts with weight 0.61. The 10 minutes is a choice for
+this guide. With small areas as the origins, <code><a href="../reference/spax.html">spax()</a></code> returns
+one value per area. On a population grid it returns a map.
+<code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives one row per area, with the index in a
+column named after the supply layer, <code>supply</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Demand, supply and travel aligned by ID once</span></span>
-<span><span class="va">dm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">D</span>, <span class="va">S</span>, <span class="cn">T</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># The E2SFCA index at each area, with a 10-minute Gaussian decay</span></span>
-<span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">fca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">dm</span>, <span class="va">e2sfca</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Numeric data hold one supply measure, so GP FTE including GPs in training</span></span>
-<span><span class="co"># needs data of its own</span></span>
-<span><span class="va">dm_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">D</span>, <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>, <span class="cn">T</span><span class="op">)</span></span>
-<span><span class="va">fca_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">dm_all</span>, <span class="va">e2sfca</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># One row per area, in the order of D, in GP FTE per 1,000</span></span>
-<span><span class="va">fca_index</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  gp_fte_extg <span class="op">=</span> <span class="fl">1000</span> <span class="op">*</span> <span class="va">fca</span><span class="op">$</span><span class="va">access</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>, <span class="st">"supply"</span><span class="op">]</span>,</span>
-<span>  gp_fte <span class="op">=</span> <span class="fl">1000</span> <span class="op">*</span> <span class="va">fca_all</span><span class="op">$</span><span class="va">access</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>, <span class="st">"supply"</span><span class="op">]</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fca_index</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>  gp_fte_extg         gp_fte      
- Min.   :0.1609   Min.   :0.2410  
- 1st Qu.:0.4535   1st Qu.:0.5652  
- Median :0.5094   Median :0.6381  
- Mean   :0.5131   Mean   :0.6371  
- 3rd Qu.:0.5988   3rd Qu.:0.7475  
- Max.   :0.6915   Max.   :0.8890  </code></pre>
-<p>Each supply measure gives its own index, in GP FTE per 1,000
-distance-weighted registered residents: <code>gp_fte_extg</code>
-excludes GPs in training and <code>gp_fte</code> includes them. The two
-are separate indicators computed side by side; the FCA does not combine
-them.</p>
+<code class="sourceCode R"><span><span class="co"># The E2SFCA index at each area, with a 10-minute Gaussian decay</span></span>
+<span><span class="va">fca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fca</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax access&gt; E2SFCA, 1 layer at 336 origins x 54 facilities
+  layers      supply
+  decay       gaussian (sigma = 10)
+  normalize   identity</code></pre>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># One row per area. The index column is named after the supply layer;</span></span>
+<span><span class="co"># times 1,000 it is in GP FTE per 1,000 travel-weighted registered residents</span></span>
+<span><span class="va">fca_index</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fca</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span>lsoa <span class="op">=</span> <span class="va">origin_id</span>, fca <span class="op">=</span> <span class="fl">1000</span> <span class="op">*</span> <span class="va">supply</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fca_index</span><span class="op">$</span><span class="va">fca</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.1609  0.4535  0.5094  0.5131  0.5988  0.6915 </code></pre>
+<p>The index ranges from 0.16 to 0.69 GP FTE per 1,000 travel-weighted
+registered residents across the areas. The print lists one layer,
+<code>supply</code>: with several supply measures, such as GP FTE with
+and without GPs in training, each gives a layer and an index of its own.
+<code>normalize identity</code> means that demand is used as it is.</p>
 </div>
 <div class="section level3">
-<h3 id="a-static-clm-fitted-to-registrations">A static CLM fitted to registrations<a class="anchor" aria-label="anchor" href="#a-static-clm-fitted-to-registrations"></a>
+<h3 id="an-allocation-model-fitted-to-registrations">An allocation model fitted to registrations<a class="anchor" aria-label="anchor" href="#an-allocation-model-fitted-to-registrations"></a>
 </h3>
-<p>The static CLM gives practice j an attraction S_j times its Gaussian
-decay weight, and divides by the sum of attractions plus an outside
-weight v0. Each area therefore has a probability for every practice plus
-an outside probability, and these sum to 1. Here the outside option
-stands for registration with a practice outside mainland Cornwall (for
-example in Devon or on the Isles of Scilly); it is not unmet need. The
-model uses one supply vector.</p>
-<p>The Huff model is this model without the outside option, and
-<code><a href="../reference/huff_allocation.html">huff_allocation()</a></code> declares it, with power decay and a
-fitted attractiveness exponent by default. This guide uses
-<code>clm_allocation(fit_v0 = TRUE)</code> because some registrations go
-to practices outside mainland Cornwall.</p>
-<p>Fitting needs a declared target. Here it is the observed small area ×
-practice registrations, a stock of who is registered where rather than a
-count of visits, fitted with a Poisson loss from three explicit starts.
-The guide uses the step functions;
-<code>spax(prep_data(D, S, T), spec_clm(), observed = obs_flows(observed))</code>
-fits the same model in one call, with starts found in the data (see the
-<a href="allocation-workflow.html">allocation workflow</a>).</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Observed registrations as an area x practice matrix (zero if none)</span></span>
-<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncol</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">keep</span> <span class="op">&lt;-</span> <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span> <span class="op">&amp;</span></span>
-<span>  <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="cn">T</span><span class="op">)</span></span>
-<span><span class="va">observed</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span>, <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span></span>
-<span>  <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">patients</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span></span>
-<span></span>
-<span><span class="co"># Check and align the inputs once; unit labels are recorded, not converted</span></span>
-<span><span class="va">inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">D</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">S</span>,</span>
-<span>  distance <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>  metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    demand_units <span class="op">=</span> <span class="st">"registered residents"</span>,</span>
-<span>    demand_period <span class="op">=</span> <span class="st">"July 2026"</span>,</span>
-<span>    supply_units <span class="op">=</span> <span class="st">"GP FTE excluding GPs in training"</span>,</span>
-<span>    supply_period <span class="op">=</span> <span class="st">"June 2026"</span>,</span>
-<span>    travel_units <span class="op">=</span> <span class="st">"minutes"</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Gaussian travel decay with a fitted outside weight v0</span></span>
-<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span><span class="va">inputs</span>, family <span class="op">=</span> <span class="st">"gaussian"</span>, fit_v0 <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Three starting points, from a short to a long travel scale</span></span>
-<span><span class="va">starts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  near <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">3</span>, v0 <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>,</span>
-<span>  middle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">6</span>, v0 <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span>,</span>
-<span>  far <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">12</span>, v0 <span class="op">=</span> <span class="fl">0.002</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Fit the area x practice flows with a Poisson loss</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_allocation.html">fit_allocation</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="va">model</span>,</span>
-<span>  observed <span class="op">=</span> <span class="va">observed</span>,</span>
-<span>  starts <span class="op">=</span> <span class="va">starts</span>,</span>
-<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">0.5</span>, v0 <span class="op">=</span> <span class="fl">1e-6</span><span class="op">)</span>,</span>
-<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">60</span>, v0 <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  output <span class="op">=</span> <span class="st">"flow"</span>,</span>
-<span>  loss <span class="op">=</span> <span class="st">"poisson"</span>,</span>
-<span>  gradient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">300</span>, factr <span class="op">=</span> <span class="fl">10</span>, pgtol <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">status</span>, <span class="st">"selected"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>     sigma         v0 
-4.59099725 0.02733455 </code></pre>
-<p>The fitted Gaussian scale is about 4.6 minutes, much shorter than the
-10 minutes chosen for the FCA: registration is very local. Inspect
-<code>summary(fit)</code> for all starts, failures and boundaries;
-agreement among starts does not establish identification or a global
-optimum.</p>
+<p>The conditional logit model (CLM) gives each practice an attraction:
+its GP FTE times a decay weight of the travel time. It adds an outside
+option with a weight v0 of its own. The residents of area
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+go to practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+with probability</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>S</mi><mi>j</mi></msub><mspace width="0.167em"></mspace><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>S</mi><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msub><mi>v</mi><mn>0</mn></msub></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">P_{ij} = \frac{S_j\, w(d_{ij})}{\sum_k S_k\, w(d_{ik}) + v_0},</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math>
+is the practice’s supply and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">w(d_{ij})</annotation></semantics></math>
+the decay weight of the travel time
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{ij}</annotation></semantics></math>.
+They go to the outside option with the remaining probability. Here the
+outside option stands for registration with a practice outside mainland
+Cornwall, in Devon for example. <code><a href="../reference/spec_clm.html">spec_clm()</a></code> declares the
+model with a Gaussian decay, and by default <code><a href="../reference/spax.html">spax()</a></code> fits
+both the travel scale σ and the outside weight v0. Fitting searches for
+the values whose expected registrations (demand times probability) come
+closest to the observed counts, as measured by a Poisson loss.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Gaussian decay and outside weight, both fitted to the registrations</span></span>
+<span><span class="va">clm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">flows</span><span class="op">)</span></span></code></pre></div>
+<pre><code>observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted (outside = "known" uses them as outside counts)</code></pre>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">clm</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax allocation&gt; conditional logit with an outside option
+  decay       gaussian (sigma = travel scale): fit
+  attraction  (kappa * supply)^beta: kappa = 1, beta = 1
+  outside     v0: fit
+  data        336 origins x 54 facilities
+
+  parameter  value    status
+  sigma      4.591    fitted
+  v0         0.02733  fitted
+  beta       1        held
+  kappa      1        held
+
+  selected    scan1 (start 1 of 3); 3 of 3 starts converged
+  boundary    none
+  starts      default search, 45 of 45 grid points, loss poisson</code></pre>
+<p>The message about the Isles of Scilly is explained in <a href="allocation-workflow.html#fit-the-model">Where do residents
+register?</a>. In the print, <code>beta</code> and <code>kappa</code>
+shape the attraction. Both are held at 1, so the attraction is the GP
+FTE itself, as in the formula. No starting values were given, so
+<code><a href="../reference/spax.html">spax()</a></code> evaluated the loss on a grid of σ and v0 values and
+started the search from 3 of them. Each of the 3 searches converged, and
+<code><a href="../reference/spax.html">spax()</a></code> kept the best fit.</p>
+<p>The fitted travel scale σ is about 4.6 minutes, much shorter than the
+10 minutes chosen for the FCA index: registration is very local. The
+outside weight v0 is on the scale of an attraction: 0.027 is the pull of
+a practice with that many GP FTE next door. So the outside option
+matters only where every practice is far away.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="what-one-area-sees">What one area sees<a class="anchor" aria-label="anchor" href="#what-one-area-sees"></a>
 </h2>
-<p>Take the area with the largest total FCA weight, one with many
-practices within a short drive. The table lists its four nearest
-practices.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Choice probabilities and outside shares for every area</span></span>
-<span><span class="va">prediction</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_allocation.html">predict_allocation</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">fit</span>,</span>
-<span>  distance <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>  demand <span class="op">=</span> <span class="va">D</span>,</span>
-<span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allocation"</span>, <span class="st">"outside_share"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">P</span> <span class="op">&lt;-</span> <span class="va">prediction</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">allocation</span></span>
+<p>The two calculations weight the same practices in different ways.
+Take the area with the largest total FCA weight, one with many practices
+within a short drive. <code><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict()</a></code> gives the CLM’s
+probabilities for every area, and the fit’s flow table gives the
+registrations by area and practice. The table lists the practices within
+7 minutes of the area. <code>clm_prob</code> is the CLM probability and
+<code>obs_share</code> the observed share of the area’s registered
+residents.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># CLM probabilities for every area and practice, and outside shares</span></span>
+<span><span class="va">prediction</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">clm</span>, <span class="va">travel</span>, <span class="va">demand</span>,</span>
+<span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allocation"</span>, <span class="st">"outside_share"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">probability</span> <span class="op">&lt;-</span> <span class="va">prediction</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">allocation</span></span>
 <span></span>
-<span><span class="co"># The area with the largest total FCA weight, and its four nearest practices</span></span>
-<span><span class="va">W</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="cn">T</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="fl">10</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span>  <span class="co"># the FCA's Gaussian weights</span></span>
-<span><span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">which.max</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">W</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">nearest</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="cn">T</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">]</span></span>
+<span><span class="co"># Registrations by area (rows) and practice (columns), from the flow table</span></span>
+<span><span class="va">flow_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm</span>, type <span class="op">=</span> <span class="st">"flows"</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span><span class="va">observed</span> <span class="op">~</span> <span class="va">origin_id</span> <span class="op">+</span> <span class="va">facility_id</span>, <span class="va">flow_table</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="va">observed</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># The FCA's Gaussian weights, with the 10-minute travel scale</span></span>
+<span><span class="va">fca_weight</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">travel</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="fl">10</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The area with the largest total FCA weight, and the practices within 7 minutes</span></span>
+<span><span class="va">area</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">which.max</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">fca_weight</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">nearest</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">travel</span><span class="op">[</span><span class="va">area</span>, <span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">nearest</span> <span class="op">&lt;-</span> <span class="va">nearest</span><span class="op">[</span><span class="va">travel</span><span class="op">[</span><span class="va">area</span>, <span class="va">nearest</span><span class="op">]</span> <span class="op">&lt;=</span> <span class="fl">7</span><span class="op">]</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  practice <span class="op">=</span> <span class="va">gp</span><span class="op">$</span><span class="va">name</span><span class="op">[</span><span class="va">nearest</span><span class="op">]</span>,</span>
-<span>  minutes <span class="op">=</span> <span class="cn">T</span><span class="op">[</span><span class="va">i</span>, <span class="va">nearest</span><span class="op">]</span>,</span>
-<span>  fca_weight <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">i</span>, <span class="va">nearest</span><span class="op">]</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span>  clm_probability <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">P</span><span class="op">[</span><span class="va">i</span>, <span class="va">nearest</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>,</span>
-<span>  observed_share <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">observed</span><span class="op">[</span><span class="va">i</span>, <span class="va">nearest</span><span class="op">]</span> <span class="op">/</span> <span class="va">D</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  practice <span class="op">=</span> <span class="fu">tools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/tools/toTitleCase.html" class="external-link">toTitleCase</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/chartr.html" class="external-link">tolower</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">name</span><span class="op">[</span><span class="va">nearest</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  gp_fte <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">supply</span><span class="op">[</span><span class="va">nearest</span><span class="op">]</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  minutes <span class="op">=</span> <span class="va">travel</span><span class="op">[</span><span class="va">area</span>, <span class="va">nearest</span><span class="op">]</span>,</span>
+<span>  fca_weight <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fca_weight</span><span class="op">[</span><span class="va">area</span>, <span class="va">nearest</span><span class="op">]</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>  clm_prob <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">probability</span><span class="op">[</span><span class="va">area</span>, <span class="va">nearest</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  obs_share <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">observed</span><span class="op">[</span><span class="va">area</span>, <span class="va">nearest</span><span class="op">]</span> <span class="op">/</span> <span class="va">demand</span><span class="op">[</span><span class="va">area</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>,</span>
 <span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>                  practice minutes fca_weight clm_probability observed_share
-1     CARNON DOWNS SURGERY       2       0.98           0.216          0.573
-2           PENRYN SURGERY       5       0.88           0.196          0.089
-3 CHACEWATER HEALTH CENTRE       6       0.84           0.071          0.171
-4  LANDER MEDICAL PRACTICE       7       0.78           0.143          0.028</code></pre>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<pre class="spax-output"><code>                       practice gp_fte minutes fca_weight clm_prob obs_share
+1          Carnon Downs Surgery    5.3       2       0.98    0.216     0.573
+2                Penryn Surgery    8.0       5       0.88    0.196     0.089
+3      Chacewater Health Centre    3.7       6       0.84    0.071     0.171
+4       Lander Medical Practice   10.3       7       0.78    0.143     0.028
+5 Three Spires Medical Practice   10.3       7       0.78    0.144     0.074
+6        Falmouth Health Centre    5.9       7       0.78    0.082     0.020
+7            Trescobeas Surgery    6.3       7       0.78    0.087     0.013</code></pre>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Totals over all practices for this area</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    fca_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span>,</span>
-<span>    clm_inside <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">P</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span>,</span>
-<span>    clm_outside <span class="op">=</span> <span class="va">prediction</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span></span>
+<span>    fca_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fca_weight</span><span class="op">[</span><span class="va">area</span>, <span class="op">]</span><span class="op">)</span>,</span>
+<span>    clm_practices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">probability</span><span class="op">[</span><span class="va">area</span>, <span class="op">]</span><span class="op">)</span>,</span>
+<span>    clm_outside <span class="op">=</span> <span class="va">prediction</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span><span class="op">[[</span><span class="va">area</span><span class="op">]</span><span class="op">]</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fl">4</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>fca_weights  clm_inside clm_outside 
-    10.3451      0.9988      0.0012 </code></pre>
-<p>The FCA weights are separate distance discounts, one per practice.
-They do not compete with each other and they sum to far more than 1
-here. The CLM probabilities do compete: a nearby practice with more GP
-FTE draws residents away from the others, and the probabilities over all
-practices plus the outside option sum to 1. Lander Medical Practice, 7
-minutes away with about 10 GP FTE, gets a higher probability than
-Chacewater Health Centre, 6 minutes away with under 4. Because they are
-probabilities, they can be set beside the observed shares of registered
-residents, which here differ markedly: the model has no term for
-anything other than travel time and GP FTE.</p>
+<pre class="spax-output"><code>  fca_weights clm_practices   clm_outside 
+      10.3451        0.9988        0.0012 </code></pre>
+<p>The FCA weights are separate discounts, one per practice. They do not
+compete with each other, and for this area they add up to 10.3, as much
+weight as 10 practices next door. The CLM probabilities compete: a
+nearby practice with more GP FTE draws residents away from the others,
+and the probabilities over all practices and the outside option add up
+to 1. Lander Medical Practice, 7 minutes away with 10.3 GP FTE, gets a
+higher probability than Chacewater Health Centre, 6 minutes away with
+3.7 GP FTE.</p>
+<p>Because they are probabilities, they can be set beside the observed
+shares. At this one area they differ markedly: 57% of residents are
+registered at the nearest practice, against a modeled 22%. The model
+knows only travel time and GP FTE, so the next section judges it across
+all areas.</p>
 </div>
 <div class="section level2">
 <h2 id="side-by-side">Side by side<a class="anchor" aria-label="anchor" href="#side-by-side"></a>
 </h2>
-<p>The FCA returns one index per area for each supply column. The CLM
-returns a distribution over practices for each area, from which other
-quantities follow: expected flows (demand times probability), practice
-loads (their column sums) and, for example, the mean travel time to the
-practice an area’s residents are modelled to register with.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Add the FCA index and the CLM's probability-weighted mean minutes</span></span>
+<p>The FCA index gives one value per area. The CLM gives each area a
+distribution over the practices, and other quantities follow from it:
+expected registrations (demand times probability), each practice’s
+expected list (the residents registered with it: its expected
+registrations summed over areas) and the mean travel time to the
+practice an area’s residents are modeled to register with. The maps show
+the FCA index and that mean travel time.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># The FCA index and the CLM's probability-weighted mean minutes per area</span></span>
 <span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">areas</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    fca <span class="op">=</span> <span class="va">fca_index</span><span class="op">$</span><span class="va">gp_fte_extg</span>,</span>
-<span>    clm_minutes <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">P</span> <span class="op">*</span> <span class="cn">T</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">P</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">fca_index</span>, by <span class="op">=</span> <span class="st">"lsoa"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>clm_minutes <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probability</span> <span class="op">*</span> <span class="va">travel</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probability</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Join to the small-area polygons for mapping</span></span>
 <span><span class="va">mapped</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
@@ -395,54 +406,72 @@ practice an area’s residents are modelled to register with.</p>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span><span class="va">areas</span>, by <span class="op">=</span> <span class="st">"lsoa"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">mapped</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">fca</span>, colour <span class="op">=</span> <span class="va">fca</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">fca</span>, color <span class="op">=</span> <span class="va">fca</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="va">mapped</span><span class="op">)</span>, fill <span class="op">=</span> <span class="cn">NA</span>, color <span class="op">=</span> <span class="st">"grey20"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span></span>
 <span>    name <span class="op">=</span> <span class="st">"GP FTE\nper 1,000"</span>,</span>
-<span>    aesthetics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fill"</span>, <span class="st">"colour"</span><span class="op">)</span></span>
+<span>    aesthetics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fill"</span>, <span class="st">"color"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"E2SFCA index (sigma = 10 min)"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_void</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">mapped</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">clm_minutes</span>, colour <span class="op">=</span> <span class="va">clm_minutes</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">clm_minutes</span>, color <span class="op">=</span> <span class="va">clm_minutes</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="va">mapped</span><span class="op">)</span>, fill <span class="op">=</span> <span class="cn">NA</span>, color <span class="op">=</span> <span class="st">"grey20"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span></span>
 <span>    name <span class="op">=</span> <span class="st">"Minutes"</span>,</span>
 <span>    option <span class="op">=</span> <span class="st">"magma"</span>,</span>
 <span>    direction <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>,</span>
-<span>    aesthetics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fill"</span>, <span class="st">"colour"</span><span class="op">)</span></span>
+<span>    aesthetics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fill"</span>, <span class="st">"color"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"CLM: mean minutes to modelled practice"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"CLM: mean minutes to modeled practice"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_void</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="model-choice_files/figure-html/maps-1.png" class="r-plt" alt="" width="49%"><img src="model-choice_files/figure-html/maps-2.png" class="r-plt" alt="" width="49%"></p>
-<p>The FCA map shows supply relative to distance-weighted demand. The
-CLM map shows how far residents are modelled to travel to their
-practice, longest in rural areas in the north-east and at the western
-tip. The fitted flows can be checked against the registrations; the FCA
-index has no corresponding observed quantity in these data.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Correlations of modelled with observed: area mean minutes, practice totals</span></span>
-<span><span class="va">observed_minutes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">observed</span> <span class="op">*</span> <span class="cn">T</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span></span>
+<p><img src="model-choice_files/figure-html/maps-1.png" class="r-plt" alt="Map of mainland Cornwall's small areas colored by the E2SFCA index with a 10-minute Gaussian decay, in GP FTE per 1,000 travel-weighted registered residents; it is lowest at the western tip, on the Lizard peninsula and on the north coast around Padstow, and highest in a few central and eastern areas." width="49%"><img src="model-choice_files/figure-html/maps-2.png" class="r-plt" alt="Map of mainland Cornwall's small areas colored by the CLM's mean travel time, in minutes, to the practice that residents are modeled to register with; the longest times are on the north coast around Padstow, in the rural north-east and at the western tip." width="49%"></p>
+<p>In both maps darker means less favorable: a lower index, or a longer
+modeled trip. Both are dark at the western tip, on the north coast
+around Padstow and inland in the north-east. Elsewhere they can part. In
+Bude, in the far north-east, the modeled trips are short, at most 3
+minutes, yet the index is in the lowest quarter of areas: few GP FTE lie
+within reach of the residents who share them. Across areas, a higher
+index goes with shorter modeled trips only loosely: the two correlate at
+-0.39.</p>
+<p>The CLM’s fitted registrations can be compared with the observed
+ones. The FCA index has no observed counterpart in these data.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Correlations of modeled with observed: area mean minutes, practice lists</span></span>
+<span><span class="va">observed_minutes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">observed</span> <span class="op">*</span> <span class="va">travel</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  mean_minutes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">clm_minutes</span>, <span class="va">observed_minutes</span><span class="op">)</span>,</span>
-<span>  practice_totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span><span class="op">)</span></span>
+<span>  practice_lists <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>   mean_minutes practice_totals 
-      0.9023549       0.9326925 </code></pre>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Share of residents registered outside mainland Cornwall, observed and</span></span>
-<span><span class="co"># modelled</span></span>
+<pre class="spax-output"><code>  mean_minutes practice_lists 
+     0.9023549      0.9326925 </code></pre>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Share of residents registered outside mainland Cornwall (%), observed and</span></span>
+<span><span class="co"># modeled</span></span>
 <span><span class="va">outside</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  observed <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>,</span>
-<span>  modelled <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span></span>
+<span>  observed <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span>,</span>
+<span>  modeled <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">outside</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>observed modelled 
+<pre class="spax-output"><code>observed  modeled 
     0.91     0.54 </code></pre>
-<p>Modelled and observed mean travel times correlate at 0.90 across
-areas, and modelled and observed practice totals at 0.93. One constant
-outside weight understates registration outside mainland Cornwall (the
-last line, in per cent of registered residents), which is concentrated
-in a few areas near the Devon border.</p>
+<p>Modeled and observed mean travel times correlate at 0.90 across
+areas, and modeled and observed practice lists at 0.93. The model puts
+fewer residents outside mainland Cornwall than observed (0.54% against
+0.91%). This fit uses only the counts at mainland practices, so nothing
+ties its outside total to the observed one.</p>
+<p>Declared as known, the outside counts make the two totals agree: see
+<a href="allocation-workflow.html#when-outside-counts-are-known">When
+outside counts are known</a>. Even then, one outside weight for every
+area cannot reproduce where registration outside mainland Cornwall
+happens: mostly in a few areas near the Devon border, as the
+outside-option map in <a href="allocation-workflow.html#the-outside-option">Where do residents
+register?</a> shows.</p>
+<p>Use an FCA index when you need supply relative to demand, have no
+counts of where people go, or want a decay you set yourself. Use the
+allocation model when you need to know where residents go, have counts
+to fit it to, and want to check it against them.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -452,81 +481,62 @@ in a few areas near the Devon border.</p>
 <thead><tr class="header">
 <th align="left"></th>
 <th align="left">E2SFCA index</th>
-<th align="left">Static CLM</th>
+<th align="left">CLM</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="left">Per area</td>
-<td align="left">One supply-per-demand score per supply column</td>
-<td align="left">A probability for each practice plus the outside
+<td align="left">One supply-per-demand value for each supply
+measure</td>
+<td align="left">A probability for each practice and for the outside
 option</td>
 </tr>
 <tr class="even">
 <td align="left">Supply</td>
-<td align="left">Each column is a separate indicator</td>
-<td align="left">One supply vector, which sets attraction</td>
+<td align="left">Each supply measure gives its own index</td>
+<td align="left">One supply measure, which sets the attraction and does
+not cap the list</td>
 </tr>
 <tr class="odd">
-<td align="left">Distance decay</td>
+<td align="left">Travel decay</td>
 <td align="left">Chosen by the analyst (10 minutes here)</td>
-<td align="left">Fitted to the declared target (about 4.6 minutes
+<td align="left">Fitted to the registrations (about 4.6 minutes
 here)</td>
 </tr>
 <tr class="even">
 <td align="left">Outside option</td>
 <td align="left">None</td>
-<td align="left">Explicit weight v0, fitted here</td>
+<td align="left">A weight v0, fitted here</td>
 </tr>
 <tr class="odd">
 <td align="left">Check against registrations</td>
 <td align="left">No observed counterpart</td>
-<td align="left">Fitted flows, practice totals and outside share</td>
+<td align="left">Fitted registrations, practice lists and outside
+share</td>
 </tr>
 </tbody>
 </table>
-<p>The table and maps place distinct measures beside one another; they
-are not an equivalence check or a ranking of model quality. Neither
-output measures delivered care, and supply in the CLM affects
-attraction; it is not a hard capacity limit.</p>
+<p><a href="reading-results.html">Reading results</a> says what each
+output measures.</p>
 </div>
 <div class="section level2">
-<h2 id="the-allocation-verbs">The allocation verbs<a class="anchor" aria-label="anchor" href="#the-allocation-verbs"></a>
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
 </h2>
-<p>The six experimental verbs are <strong>prepare, declare, fit,
-evaluate, predict and bootstrap</strong>. They are separate steps so
-that a chosen fixed model can be evaluated without fitting, while an
-eligible fit can be inspected without refitting. <code><a href="../reference/spax.html">spax()</a></code>
-runs the first three in one call (or prepare, declare and evaluate, when
-every parameter has a value); <code><a href="../reference/predict_allocation.html">predict_allocation()</a></code>,
-<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code>, <code><a href="../reference/check_fit.html">check_allocation()</a></code> and
-<code><a href="../reference/compare_fits.html">compare_allocations()</a></code> accept its result. An outside option
-does not automatically represent unmet need, and Poisson fitting does
-not impose exact total matching.</p>
-<p>This guide is not an uncertainty demonstration. The facility-case
-bootstrap needs a fit to whole facility counts, so the flow fit above is
-outside its scope. Continue to the <a href="allocation-workflow.html">full allocation workflow</a> for
-prediction, a supply scenario and fresh-process saved-result inspection
-on the Cornwall data, and to <a href="facility-bootstrap.html">Bootstrap
-intervals for a fitted allocation model</a> for the bootstrap on a
-generated 80-origin, 40-facility network with all 399 attempts and at
-least 380 finite successful values per reported quantity. Observation
-declarations and original-fit eligibility remain required; a bootstrap
-is not available for every fit.</p>
-</div>
-<div class="section level2">
-<h2 id="carry-these-checks-across-workflows">Carry these checks across workflows<a class="anchor" aria-label="anchor" href="#carry-these-checks-across-workflows"></a>
-</h2>
-<p>Use stable facility IDs, declare counts versus densities and
-reference periods, and check travel geometry and units before computing.
-Keep zero demand, unknown demand and absent travel edges distinct.
-Legacy FCA reductions and experimental allocation preparation have
-different missing-data policies; sharing a file does not prove that
-their included support is the same.</p>
-<p>For details, read <a href="data-prep.html">Preparing your own
-data</a>, <a href="e2sfca-steps.html">The E2SFCA calculation step by
-step</a>, <a href="grid-resolution.html">Grid resolution</a> and <a href="function-naming.html">saved-result inspection</a>. Data sources,
-dates and licences are listed in <a href="cornwall-data.html">The
-Cornwall GP example data</a>.</p>
+<ul>
+<li>
+<a href="allocation-workflow.html">Where do residents register?</a>:
+the allocation model in full, from the fit to the outside option.</li>
+<li>
+<a href="fca-methods.html">Which FCA index?</a>: if an index answers
+your question, choose among five variants and map them on the population
+grid.</li>
+<li>
+<a href="scenario.html">What if a practice closed?</a>: hold the
+fitted values and change the supply.</li>
+<li>
+<a href="reading-results.html">Reading results</a>: what an index, a
+probability and a fit can and cannot tell you.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

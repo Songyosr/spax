@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Preparing your own data: counts, facility IDs and travel • spax</title>
+<title>Bringing your own data • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Preparing your own data: counts, facility IDs and travel">
+<meta property="og:title" content="Bringing your own data">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,222 +76,228 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Preparing your own data: counts, facility IDs and travel</h1>
+      <h1>Bringing your own data</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/data-prep.Rmd" class="external-link"><code>vignettes/data-prep.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/data-prep.Rmd" class="external-link"><code>vignettes/data-prep.Rmd</code></a></small>
       <div class="d-none name"><code>data-prep.Rmd</code></div>
     </div>
 
     
     
-<p>This guide uses the bundled Cornwall GP data, described in <a href="cornwall-data.html">The Cornwall GP example data</a>.</p>
+<p>Every spax model needs three inputs that line up: demand (the people
+who may use a service, counted where they live), supply (what each
+facility offers) and the travel time between them. This guide answers
+one question: how do I get my own data into that shape? It prepares the
+inputs with <code><a href="../reference/prep_data.html">prep_data()</a></code> and works through three problems
+you are likely to meet: facility IDs that must match, travel times that
+are unknown, and demand that comes as area totals rather than a grid. It
+ends with the inputs of the allocation model, including observed counts
+in a long table. The examples use the Cornwall GP data, described in <a href="cornwall-data.html">The Cornwall GP example data</a>. The
+<code><a href="../reference/spax.html">spax()</a></code> interface and the allocation model are experimental
+and may change in later versions.</p>
+<p>The guide uses spax with terra for the grids, sf for the small areas
+and dplyr for tables.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></code></pre></div>
-<p>Every FCA or allocation analysis needs three aligned inputs: demand
-counts at origins, supply at facilities, and travel between them. This
-guide prepares them from the Cornwall data and shows three problems you
-are likely to meet with your own data: facility IDs that must match,
-unknown travel times, and demand that arrives as small-area totals
-rather than a grid.</p>
+<div class="section level2">
+<h2 id="the-inputs">The inputs<a class="anchor" aria-label="anchor" href="#the-inputs"></a>
+</h2>
+<p><code><a href="../reference/prep_data.html">prep_data()</a></code> takes two shapes of input. The first
+sections use rasters: a demand grid, a stack of travel layers and a
+table of facilities, as for the FCA indices. The last two use vectors
+and a travel matrix named by ID, as for the allocation model. The code
+reads the population grid, the stack of travel times and the table of
+all practices, the Isles of Scilly included.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># WorldPop 2020 residents per cell</span></span>
+<code class="sourceCode R"><span><span class="co"># Residents per grid cell (WorldPop 2020)</span></span>
 <span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
 <span><span class="co"># Travel minutes, one layer per practice</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span></span>
+<span><span class="co"># Practices as a plain table</span></span>
 <span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  practices <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">gp</span><span class="op">)</span>,</span>
-<span>  travel_layers <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nlyr</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>,</span>
-<span>  small_areas <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>    practices travel_layers   small_areas 
-           55            55           337 </code></pre>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>practices <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">gp</span><span class="op">)</span>, travel_layers <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nlyr</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>    practices travel_layers 
+           55            55 </code></pre>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] "L82001" "L82003" "L82004" "L82006" "L82007" "L82008"</code></pre>
+<p>Each travel layer is named with the practice’s NHS code, the same
+code as in <code>gp$practice</code>. That shared code is what lines the
+inputs up.</p>
+</div>
 <div class="section level2">
 <h2 id="match-facilities-by-id-not-by-order">Match facilities by ID, not by order<a class="anchor" aria-label="anchor" href="#match-facilities-by-id-not-by-order"></a>
 </h2>
-<p>Each travel layer is named with the practice’s NHS code, the same
-code as <code>cornwall_gp$practice</code>. Check that the two sets agree
-before any calculation.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Practice codes must be unique and match the travel layer names</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html" class="external-link">anyDuplicated</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/setops.html" class="external-link">setequal</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] "L82001" "L82003" "L82004" "L82006" "L82007" "L82008"</code></pre>
-<p>When supply is a data frame, <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>,
-<code><a href="../reference/spax_2sfca.html">spax_2sfca()</a></code>, <code><a href="../reference/spax_3sfca.html">spax_3sfca()</a></code> and
-<code><a href="../reference/spax_huff2sfca.html">spax_huff2sfca()</a></code> match its rows to the travel layers
-through <code>id_col</code>, so the row order does not matter.</p>
+<p><code><a href="../reference/prep_data.html">prep_data()</a></code> takes the table of practices with two more
+arguments: <code>id_col</code> names the column of facility IDs and
+<code>supply_cols</code> the column of supply. spax then matches each
+row of the table to the travel layer with the same ID. To see this, the
+code computes an accessibility index from the table in its own order and
+in reverse order. The index is an enhanced two-step floating catchment
+area index (E2SFCA, one of the FCA indices): GP full-time equivalents
+(FTE) per resident, with nearer practices counting more. Its weights
+fall with travel time on a Gaussian curve, and the travel scale σ, which
+sets how fast they fall, is 10 minutes, as in <a href="spax.html">Getting started</a>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The E2SFCA surface for a given supply table</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">supply</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>    demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>    supply <span class="op">=</span> <span class="va">supply</span>,</span>
-<span>    distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>    decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>    id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>    supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span>  <span class="op">)</span></span>
-<span>  <span class="va">result</span><span class="op">$</span><span class="va">accessibility</span></span>
-<span><span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Reversing the row order gives the same surface</span></span>
-<span><span class="va">shuffled</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">gp</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">practice</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu">fit</span><span class="op">(</span><span class="va">gp</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu">fit</span><span class="op">(</span><span class="va">shuffled</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># The practices in their own order, and in reverse order</span></span>
+<span><span class="va">in_order</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">gp</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span>
+<span><span class="va">reversed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">gp</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">practice</span><span class="op">)</span><span class="op">)</span>, <span class="va">travel_grid</span>,</span>
+<span>                      id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">index_in_order</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">in_order</span>, <span class="va">e2sfca</span><span class="op">)</span></span>
+<span><span class="va">index_reversed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">reversed</span>, <span class="va">e2sfca</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">index_in_order</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">index_reversed</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>[1] TRUE</code></pre>
-<p>A named supply vector is also matched by name, but an unnamed vector
-or a matrix is used in layer order: then keeping the order right is your
-job. The number of supply rows must equal the number of travel layers.
-Dropping a facility from one input and not the other stops with an
-error:</p>
+<p><code><a href="../reference/spax.html">spax()</a></code> returns the index as a raster in the result’s
+<code>accessibility</code> element, in GP FTE per resident. The two
+indices are equal: the row order of the table does not matter. A named
+supply vector is matched by name in the same way. An unnamed vector or a
+matrix is used in layer order, and then keeping the order right is your
+job.</p>
+<p>A facility that is in one input and not the other stops with an
+error. Here the table drops the Scilly practice while the travel stack
+keeps its layer:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 54 travel layers, but 55 rows of supply</span></span>
-<span><span class="va">mainland_layers</span> <span class="op">&lt;-</span> <span class="va">travel</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">[</span><span class="op">!</span><span class="va">gp</span><span class="op">$</span><span class="va">scilly</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
-<span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>    demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>    supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>    distance <span class="op">=</span> <span class="va">mainland_layers</span>,</span>
-<span>    decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>    id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>    supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">e</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] "Length of distance layers (54) must match length of facilities (55)"</code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">gp</span>, <span class="op">!</span><span class="va">scilly</span><span class="op">)</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span></code></pre></div>
+<pre><code> [1m [33mError [39m in `prep_data()`: [22m
+ [33m! [39m Length of travel layers (55) must match length of facilities (54)</code></pre>
+<p>The error compares counts: 55 travel layers against 54 practices. To
+keep only some facilities, select their layers by ID,
+<code>travel_grid[[ids]]</code>, as the grid recipe in the next section
+does with <code>[[gp$practice]]</code>. A code in the table that matches
+no layer, such as a typing error, passes <code><a href="../reference/prep_data.html">prep_data()</a></code> but
+stops with an error when <code><a href="../reference/spax.html">spax()</a></code> runs the model.</p>
 </div>
 <div class="section level2">
 <h2 id="decide-what-unknown-travel-means">Decide what unknown travel means<a class="anchor" aria-label="anchor" href="#decide-what-unknown-travel-means"></a>
 </h2>
-<p>Travel is <code>NA</code> where a cell is unpopulated, where there is
-no road connection and for journeys over 180 minutes. In Cornwall the
-gaps come from the Isles of Scilly: their practice cannot be reached by
-road from the mainland, mainland practices cannot be reached from the
-islands, and some cells on the smaller islands reach no practice at
-all.</p>
+<p>For an FCA index, an unknown (<code>NA</code>) travel time means no
+access: the pair is left out of the sums. Decide whether that is true
+for your gaps before you compute an index. In the Cornwall travel grid,
+<code>NA</code> marks cells with no residents, pairs with no road
+connection and journeys over 180 minutes. Here the gaps come from the
+Isles of Scilly: their practice cannot be reached by road from the
+mainland, mainland practices cannot be reached from the islands, and
+some cells on the smaller islands reach no practice at all. The code
+counts the populated cells with unknown travel in each practice’s layer,
+then the residents of the cells with a road route to each side.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Count the cells with unknown travel in each practice's layer</span></span>
-<span><span class="va">missing_cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/global.html" class="external-link">global</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>, <span class="st">"sum"</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<code class="sourceCode R"><span><span class="co"># Count the populated cells with unknown travel in each practice's layer</span></span>
+<span><span class="va">populated</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span></span>
+<span><span class="va">missing_cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/global.html" class="external-link">global</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">populated</span>, <span class="st">"sum"</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>scilly_practice <span class="op">=</span> <span class="va">gp</span><span class="op">$</span><span class="va">scilly</span>, <span class="va">missing_cells</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>               missing_cells
-scilly_practice 28860 35750
-          FALSE    54     0
-          TRUE      0     1</code></pre>
+scilly_practice 73 6963
+          FALSE 54    0
+          TRUE   0    1</code></pre>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Cells with a road route to the Scilly practice (L82017) or to the</span></span>
 <span><span class="co"># mainland (here the first layer, a mainland practice)</span></span>
-<span><span class="va">road_scilly</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel</span><span class="op">[[</span><span class="st">"L82017"</span><span class="op">]</span><span class="op">]</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">road_mainland</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">road_scilly</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">[[</span><span class="st">"L82017"</span><span class="op">]</span><span class="op">]</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">road_mainland</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Residents in each group</span></span>
 <span><span class="va">residents</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span><span class="va">by_route</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  to_mainland <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">residents</span><span class="op">[</span><span class="va">road_mainland</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  to_scilly_practice <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">residents</span><span class="op">[</span><span class="va">road_scilly</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  no_road_link <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">residents</span><span class="op">[</span><span class="op">!</span><span class="va">road_mainland</span> <span class="op">&amp;</span> <span class="op">!</span><span class="va">road_scilly</span><span class="op">]</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">by_route</span></span></code></pre></div>
 <pre class="spax-output"><code>       to_mainland to_scilly_practice       no_road_link 
             541184               1206                277 </code></pre>
-<p>The FCA functions drop unknown weights from their sums
-(<code><a href="../reference/gather_weighted.html">gather_weighted()</a></code> defaults to <code>na.rm = TRUE</code>),
-so an <code>NA</code> travel time acts like “no access”. Run on all 55
-practices, the islands become a separate system with one practice and
-few residents, so their index is far above the mainland’s. The residents
-with no route drop out of that practice’s demand and get no index at
-all.</p>
+<p>Each mainland layer has 73 populated cells with unknown travel, all
+on the islands, and the Scilly layer has 6,963, every mainland cell
+among them. Of the residents, 541,184 live in cells with a road route to
+the mainland practices, 1,206 in cells that reach the Scilly practice
+and 277 in cells that reach neither.</p>
+<p>The index above used all 55 practices. The code compares its median
+in the two groups of cells, per 1,000 residents.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Index per 1,000 residents with all 55 practices</span></span>
-<span><span class="va">with_scilly</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu">fit</span><span class="op">(</span><span class="va">gp</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    mainland_median <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">median</a></span><span class="op">(</span><span class="va">with_scilly</span><span class="op">[</span><span class="va">road_mainland</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>    scilly_median <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">median</a></span><span class="op">(</span><span class="va">with_scilly</span><span class="op">[</span><span class="va">road_scilly</span><span class="op">]</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  <span class="fl">2</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># Index per 1,000 residents with all practices</span></span>
+<span><span class="va">with_scilly</span> <span class="op">&lt;-</span> <span class="fl">1000</span> <span class="op">*</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">index_in_order</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">scilly_medians</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  mainland_median <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">median</a></span><span class="op">(</span><span class="va">with_scilly</span><span class="op">[</span><span class="va">road_mainland</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>  scilly_median <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">median</a></span><span class="op">(</span><span class="va">with_scilly</span><span class="op">[</span><span class="va">road_scilly</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">scilly_medians</span></span></code></pre></div>
 <pre class="spax-output"><code>mainland_median   scilly_median 
            0.49            7.59 </code></pre>
+<p>The islands become a separate system with one practice and few
+residents, so their median index is 7.59 GP FTE per 1,000 residents
+against 0.49 on the mainland. The cells that reach no practice get no
+index (<code>NA</code>), and their residents drop out of every
+practice’s demand.</p>
 <p>The islands do have access, by boat and air, which the road-based
-travel times do not represent. Rather than read these numbers as access,
-the FCA guides model <strong>mainland Cornwall only</strong>: the 54
-mainland practices and the cells with a travel time to every one of
-them.</p>
+travel times do not represent. So the guides model mainland Cornwall
+only, with the grid recipe from <a href="cornwall-data.html">The
+Cornwall GP example data</a>. The last line looks for populated cells
+with an unknown travel time.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Mainland practices and their travel layers</span></span>
-<span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">gp</span>, <span class="op">!</span><span class="va">scilly</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">travel</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
+<code class="sourceCode R"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co"># Keep cells with a travel time to every mainland practice</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel_grid</span>, <span class="va">pop</span><span class="op">)</span></span>
+<span><span class="va">grid_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">gp</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Keep cells with complete travel, then trim the empty margin</span></span>
-<span><span class="va">pop_mainland</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel</span>, <span class="va">pop_mainland</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Same grid, same practice order, and no populated cell with unknown travel</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/compareGeom.html" class="external-link">compareGeom</a></span><span class="op">(</span><span class="va">pop_mainland</span>, <span class="va">travel</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>,</span>
-<span>  <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">anyNA</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop_mainland</span><span class="op">)</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/global.html" class="external-link">global</a></span><span class="op">(</span><span class="va">pop_mainland</span>, <span class="st">"sum"</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] 541184</code></pre>
-<p><code>sum(travel)</code> is <code>NA</code> wherever any layer is
-<code>NA</code>, so the mask keeps exactly the cells with complete
-travel. The check confirms that no populated cell has unknown travel
-left.</p>
+<span><span class="co"># Any populated cell with an unknown travel time?</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">anyNA</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] FALSE</code></pre>
+<p><code>FALSE</code>: every populated cell of the mainland grid has a
+travel time to every mainland practice. <a href="cornwall-data.html#a-grid-for-the-fca-indices">The Cornwall GP
+example data</a> explains each line of the recipe. For the allocation
+model, <code><a href="../reference/prep_data.html">prep_data()</a></code> asks you to choose what unknown travel
+means, as <a href="#inputs-for-the-allocation-model">Inputs for the
+allocation model</a> shows below.</p>
 </div>
 <div class="section level2">
-<h2 id="turn-small-area-counts-into-a-demand-grid">Turn small-area counts into a demand grid<a class="anchor" aria-label="anchor" href="#turn-small-area-counts-into-a-demand-grid"></a>
+<h2 id="turn-area-totals-into-a-demand-grid">Turn area totals into a demand grid<a class="anchor" aria-label="anchor" href="#turn-area-totals-into-a-demand-grid"></a>
 </h2>
-<p>Demand often comes as totals for administrative areas.
-<code>cornwall_lsoa</code> holds ONS mid-2024 population estimates for
-the 337 small areas (LSOAs). To use them on the grid, each area’s total
-must be spread over its cells. Spreading it uniformly would ignore where
-people live inside the area, so we use the WorldPop grid as a pattern:
+<p>Demand often comes as totals for administrative areas, while an index
+on a grid needs a count of people per cell. <code>cornwall_lsoa</code>
+holds ONS mid-2024 population estimates for 336 mainland small areas
+(LSOAs). Spreading each total evenly over its cells would ignore where
+people live inside the area, so the WorldPop grid serves as a pattern:
 <code><a href="../reference/transform_pmf.html">transform_pmf()</a></code> turns it into shares that sum to 1, and
 <code><a href="../reference/transform_demand.html">transform_demand()</a></code> rescales those shares so that each area
-keeps its own total.</p>
+keeps its own total. The code spreads the totals of the small areas.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Mainland small areas as a terra vector in the grid's coordinates</span></span>
-<span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
+<span><span class="va">lsoa</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crs.html" class="external-link">crs</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># The WorldPop grid as shares that sum to 1</span></span>
 <span><span class="va">pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/transform_pmf.html">transform_pmf</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Spread each area's total over its cells; show any warning as a message</span></span>
-<span><span class="va">lsoa_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">withCallingHandlers</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/transform_demand.html">transform_demand</a></span><span class="op">(</span></span>
-<span>    x <span class="op">=</span> <span class="va">areas</span>,</span>
-<span>    value_col <span class="op">=</span> <span class="st">"pop"</span>,</span>
-<span>    pmf <span class="op">=</span> <span class="va">pattern</span>,</span>
-<span>    density <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  warning <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">w</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Warning: "</span>, <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">invokeRestart</a></span><span class="op">(</span><span class="st">"muffleWarning"</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre><code>Warning: 41 area(s) cover no grid cell or have zero weight; their counts are dropped and the surface is rescaled. Use larger areas or a finer template.</code></pre>
-<p>The grid cells are about 1 km across, and many town LSOAs are smaller
-than that: an area whose polygon contains no cell centre cannot receive
-its count, and the function warns rather than silently losing people.
-The fix is to use larger areas or a finer grid. Here we merge LSOAs into
+<span><span class="co"># Spread each area's total over its cells</span></span>
+<span><span class="co"># (density = TRUE returns people per cell; FALSE returns shares)</span></span>
+<span><span class="va">lsoa_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/transform_demand.html">transform_demand</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">lsoa</span>, value_col <span class="op">=</span> <span class="st">"pop"</span>, pmf <span class="op">=</span> <span class="va">pattern</span>, density <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<pre><code>Warning: 40 area(s) cover no grid cell or have zero weight; their counts are
+dropped and the surface is rescaled. Use larger areas or a finer template.</code></pre>
+<p>The grid cells are about 1 km across, and many town LSOAs are
+smaller. An area whose polygon contains no cell center cannot receive
+its count. The function drops those areas and rescales the grid to the
+overall total, so their residents would land in other areas’ cells. The
+fix is larger areas or a finer grid. Here the code merges the LSOAs into
 their middle-layer areas (MSOAs): an LSOA name ends in a letter, and
-dropping it gives the MSOA name.</p>
+dropping it gives the MSOA name (Cornwall 013A is in Cornwall 013).</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Merge LSOAs into MSOAs, adding up their counts</span></span>
-<span><span class="va">areas</span><span class="op">$</span><span class="va">msoa</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span><span class="st">"[A-Z]$"</span>, <span class="st">""</span>, <span class="va">areas</span><span class="op">$</span><span class="va">name</span><span class="op">)</span></span>
-<span><span class="va">msoa</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">areas</span>, by <span class="op">=</span> <span class="st">"msoa"</span>, fun <span class="op">=</span> <span class="st">"sum"</span><span class="op">)</span></span>
+<span><span class="co"># (terra names the summed columns sum_pop, sum_pop_65p, ...)</span></span>
+<span><span class="va">lsoa</span><span class="op">$</span><span class="va">msoa</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span><span class="st">"[A-Z]$"</span>, <span class="st">""</span>, <span class="va">lsoa</span><span class="op">$</span><span class="va">name</span><span class="op">)</span></span>
+<span><span class="va">msoa</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">lsoa</span>, by <span class="op">=</span> <span class="st">"msoa"</span>, fun <span class="op">=</span> <span class="st">"sum"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Spread each MSOA total over its cells with the WorldPop pattern</span></span>
 <span><span class="va">ons</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/transform_demand.html">transform_demand</a></span><span class="op">(</span></span>
@@ -308,18 +317,20 @@ dropping it gives the MSOA name.</p>
         73     583289     583289 </code></pre>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Largest difference between an area's total and its grid total</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">ons</span><span class="op">$</span><span class="va">totals</span><span class="op">$</span><span class="va">original</span> <span class="op">-</span> <span class="va">ons</span><span class="op">$</span><span class="va">totals</span><span class="op">$</span><span class="va">redistributed</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] 0.00053</code></pre>
-<p>All 73 areas keep their totals: the largest error is a fraction of a
-person. The new grid has the ONS counts with the WorldPop pattern inside
-each area. The two sources differ in date and method, so the ratio
-between them varies by area. The map caps the colour scale at 0.5 and
+<span><span class="va">largest_gap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">ons</span><span class="op">$</span><span class="va">totals</span><span class="op">$</span><span class="va">original</span> <span class="op">-</span> <span class="va">ons</span><span class="op">$</span><span class="va">totals</span><span class="op">$</span><span class="va">redistributed</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">largest_gap</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] 0.00069</code></pre>
+<p>All 73 areas keep their totals: the largest difference is a tiny
+fraction of a person. The new grid has the ONS counts with the WorldPop
+pattern inside each area. The two sources differ in date and method, so
+their ratio varies by area. The code summarizes the median ratio per
+area and maps the ratio per cell, with the color scale capped at 0.5 and
 1.5.</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ONS count over WorldPop count in each cell, and its median per area</span></span>
 <span><span class="va">ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">ons</span><span class="op">$</span><span class="va">surface</span> <span class="op">/</span> <span class="va">pop</span>, <span class="va">msoa</span><span class="op">)</span></span>
-<span><span class="va">by_area</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/extract.html" class="external-link">extract</a></span><span class="op">(</span><span class="va">ratio</span>, <span class="va">msoa</span>, fun <span class="op">=</span> <span class="va">median</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">by_area</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">ratio_by_area</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/extract.html" class="external-link">extract</a></span><span class="op">(</span><span class="va">ratio</span>, <span class="va">msoa</span>, fun <span class="op">=</span> <span class="va">median</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">ratio_by_area</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
    0.74    1.00    1.07    1.15    1.18    3.73 </code></pre>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
@@ -331,24 +342,30 @@ between them varies by area. The map caps the colour scale at 0.5 and
 <span>  main <span class="op">=</span> <span class="st">"ONS mid-2024 / WorldPop 2020 residents per cell"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">msoa</span>, lwd <span class="op">=</span> <span class="fl">0.3</span>, col <span class="op">=</span> <span class="st">"grey40"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="data-prep_files/figure-html/ratio-map-1.png" class="r-plt" alt="" width="700"></p>
-<p>In most areas the ONS estimate is higher, and in one it is more than
-three times the WorldPop count. Decide which source matches your
-question and say which you used; do not mix them within one analysis.
-The other FCA guides use the WorldPop grid directly.</p>
-<p>Two more cautions. If a source raster is a density (people per square
-kilometre), multiply it by <code><a href="https://rspatial.github.io/terra/reference/cellSize.html" class="external-link">terra::cellSize()</a></code> in the same
-area unit before use: summing densities does not conserve counts, and
-longitude-latitude cells are not all the same size. And
-<code><a href="../reference/rasterize_demand.html">rasterize_demand()</a></code> does a different job: it reweights a
-prior pattern by an area <strong>rate</strong> and returns shares, not
-counts that respect area totals. For example, the share of residents
-aged 65 and over:</p>
+<p><img src="data-prep_files/figure-html/ratio-map-1.png" class="r-plt" alt="Raster map of mainland Cornwall showing, for each grid cell, the ONS mid-2024 count divided by the WorldPop 2020 count, on a blue-to-red scale capped at 0.5 and 1.5, with the 73 MSOA boundaries in gray; each area has nearly one color, most areas are close to 1 or light red (ONS higher), a few are deep red and a few are blue (WorldPop higher)." width="700"></p>
+<p>Within an area both grids follow the WorldPop pattern, so each area
+has nearly one color: the ratio of its two totals. In 55 of the 73 areas
+the ONS estimate is higher (the median ratio is 1.07), and in one it is
+3.7 times the WorldPop count. Choose the source that matches your
+question, say which you used, and keep to it within one analysis. The
+other guides use the WorldPop grid directly.</p>
+<p>If your raster is a density, people per square kilometer, multiply it
+by <code>terra::cellSize(x, unit = "km")</code> first:
+longitude-latitude cells are not all the same size.</p>
+<div class="section level3">
+<h3 id="spread-a-rate-rather-than-a-count">Spread a rate rather than a count<a class="anchor" aria-label="anchor" href="#spread-a-rate-rather-than-a-count"></a>
+</h3>
+<p><code><a href="../reference/rasterize_demand.html">rasterize_demand()</a></code> does a different job: it reweights a
+pattern by an area <strong>rate</strong>, such as the share of residents
+aged 65 and over, and returns shares of one total rather than counts
+that keep each area’s total. The code builds the older population on the
+grid this way and measures how much of each area’s known count it
+keeps.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Share of residents aged 65 and over in each MSOA</span></span>
 <span><span class="va">msoa</span><span class="op">$</span><span class="va">share_65</span> <span class="op">&lt;-</span> <span class="va">msoa</span><span class="op">$</span><span class="va">sum_pop_65p</span> <span class="op">/</span> <span class="va">msoa</span><span class="op">$</span><span class="va">sum_pop</span></span>
 <span></span>
-<span><span class="co"># Reweight the WorldPop pattern by that share; the result is shares</span></span>
+<span><span class="co"># Reweight the WorldPop pattern by that share: the result is shares</span></span>
 <span><span class="va">older</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rasterize_demand.html">rasterize_demand</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">msoa</span>,</span>
 <span>  value_col <span class="op">=</span> <span class="st">"share_65"</span>,</span>
@@ -362,70 +379,159 @@ aged 65 and over:</p>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">kept</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>  0%  50% 100% 
 0.29 1.01 1.46 </code></pre>
-<p>The shape is plausible (population times the local 65+ share), but
-area totals are not kept: some areas end up with well under or over
-their known count. For counts, use <code><a href="../reference/transform_demand.html">transform_demand()</a></code>.</p>
+<p>The shape is plausible: population times the local share aged 65 and
+over. Area totals are not kept, though: the areas end up with between
+0.29 and 1.46 times their known count. To place the older residents
+themselves, spread their counts:
+<code>transform_demand(x = msoa, value_col = "sum_pop_65p", pmf = pattern, density = TRUE)</code>
+keeps every area’s total. Use <code><a href="../reference/rasterize_demand.html">rasterize_demand()</a></code> when only
+the shape matters, such as a relative weight per cell.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="the-same-rules-for-allocation-inputs">The same rules for allocation inputs<a class="anchor" aria-label="anchor" href="#the-same-rules-for-allocation-inputs"></a>
+<h2 id="inputs-for-the-allocation-model">Inputs for the allocation model<a class="anchor" aria-label="anchor" href="#inputs-for-the-allocation-model"></a>
 </h2>
-<p>The experimental allocation workflow takes a numeric
-origin-by-facility matrix, <code>cornwall_travel</code>, from small-area
-centroids to practices. Its preparation is strict: unknown travel on an
-active origin is an error unless you declare a policy.</p>
+<p>The allocation model, a conditional logit model (CLM, the standard
+model of a choice among several options), gives each small area’s
+residents a probability of registering at each practice, or with the
+outside option: a practice outside the data. It takes numeric inputs
+named by ID: demand by small area, supply by practice and a matrix of
+travel minutes between them, here <code>cornwall_travel</code>. The code
+prepares every small area and practice, the Isles of Scilly
+included.</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Named vectors: registered residents per area, GP FTE per practice</span></span>
-<span><span class="va">demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">$</span><span class="va">registered</span>, <span class="va">cornwall_lsoa</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span></span>
-<span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">cornwall_gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Every small area and practice, the Isles of Scilly included</span></span>
+<span><span class="va">all_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span>
+<span><span class="va">all_gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">)</span></span>
+<span><span class="va">all_demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">all_areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">all_areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span></span>
+<span><span class="va">all_supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">all_gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">all_gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
 <span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>    demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>    supply <span class="op">=</span> <span class="va">supply</span>,</span>
-<span>    distance <span class="op">=</span> <span class="va">cornwall_travel</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">e</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] "active travel is missing; declare missing_travel = 'legacy_zero' to omit unknown edges"</code></pre>
-<p><code>missing_travel = "legacy_zero"</code> would omit unknown pairs,
-as the FCA functions do. Positive infinity declares a known absent link.
-Neither describes the islands’ boat and air links, so we keep the
-mainland, matching IDs by name:</p>
+<span><span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">all_demand</span>, <span class="va">all_supply</span>, <span class="va">cornwall_travel</span><span class="op">)</span></span></code></pre></div>
+<pre><code> [1m [33mError [39m in `prep_data()`: [22m
+ [33m! [39m active travel is missing; declare missing_travel = 'omit' to leave out unknown pairs</code></pre>
+<p>Here an origin is a small area, where people live, and an active
+origin is one with demand above zero. Unknown travel from an active
+origin is an error unless you say what it means. There are three ways to
+say it. <code>missing_travel = "omit"</code> leaves the unknown pairs
+out of the model, as the FCA indices do, and records that it did. A
+travel time of <code>Inf</code> declares a pair known to have no link.
+That is a known value, so <code><a href="../reference/prep_data.html">prep_data()</a></code> accepts it. Or you
+drop the rows and columns with unknown times. The code shows the first
+two.</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mainland_area</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="va">cornwall_lsoa</span><span class="op">$</span><span class="va">scilly</span></span>
-<span></span>
-<span><span class="va">inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">demand</span><span class="op">[</span><span class="va">mainland_area</span><span class="op">]</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">supply</span><span class="op">[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">mainland_area</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span>,</span>
-<span>  <span class="co"># Unit labels are recorded with the inputs, not converted</span></span>
-<span>  metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    demand_units <span class="op">=</span> <span class="st">"registered residents"</span>,</span>
-<span>    supply_units <span class="op">=</span> <span class="st">"GP FTE excluding GPs in training"</span>,</span>
-<span>    travel_units <span class="op">=</span> <span class="st">"minutes"</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">inputs</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] "ae_prepared_inputs"</code></pre>
-<p><code><a href="../reference/prep_data.html">prep_data()</a></code> is the same preparation with
-<code>travel</code> in place of <code>distance</code>, the first step of
-<code><a href="../reference/spax.html">spax()</a></code> (see the <a href="allocation-workflow.html">allocation workflow</a>). The unit
-declarations are recorded, not converted. See the <a href="allocation-workflow.html">allocation workflow</a> for what the
-prepared inputs feed into.</p>
+<code class="sourceCode R"><span><span class="co"># Leave the unknown pairs out, and record that policy</span></span>
+<span><span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">all_demand</span>, <span class="va">all_supply</span>, <span class="va">cornwall_travel</span>, missing_travel <span class="op">=</span> <span class="st">"omit"</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax data&gt; 337 origins (337 active) x 55 facilities
+  demand      606,796
+  travel      unknown for 337 active origins
+  policies    missing demand: error; missing travel: omit</code></pre>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Declare the unknown pairs known to have no link</span></span>
+<span><span class="va">no_link</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/replace.html" class="external-link">replace</a></span><span class="op">(</span><span class="va">cornwall_travel</span>, <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">cornwall_travel</span><span class="op">)</span>, <span class="cn">Inf</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">all_demand</span>, <span class="va">all_supply</span>, <span class="va">no_link</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax data&gt; 337 origins (337 active) x 55 facilities
+  demand      606,796
+  travel      unknown for 0 active origins
+  policies    missing demand: error; missing travel: error</code></pre>
+<p>The first print records that every area has an unknown time (each
+mainland area to the Scilly practice, and the Scilly area to the
+mainland practices) and the policy that left them out. The second
+records none. In the allocation model both give the pair no weight, so a
+model gives the same results with either. They differ in what the data
+records: an unknown time for <code>omit</code>, a known absence for
+<code>Inf</code>.</p>
+<p>The guides drop the islands instead, as for the grid, with the
+small-area recipe from <a href="cornwall-data.html#small-areas-for-the-allocation-model">The
+Cornwall GP example data</a>. Its last line, <code><a href="../reference/obs_flows.html">obs_flows()</a></code>,
+comes in the next section:</p>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span></span>
+<span><span class="va">demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span></span>
+<span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">demand</span>, <span class="va">supply</span>, <span class="va">travel</span>, metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  demand_units <span class="op">=</span> <span class="st">"registered residents"</span>, demand_period <span class="op">=</span> <span class="st">"July 2026"</span>,</span>
+<span>  supply_units <span class="op">=</span> <span class="st">"GP FTE excluding GPs in training"</span>, supply_period <span class="op">=</span> <span class="st">"June 2026"</span>,</span>
+<span>  travel_units <span class="op">=</span> <span class="st">"minutes"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax data&gt; 336 origins (336 active) x 54 facilities
+  demand      604,471 registered residents (July 2026)
+  supply      GP FTE excluding GPs in training (June 2026)
+  travel      minutes; unknown for 0 active origins
+  policies    missing demand: error; missing travel: error</code></pre>
+<p><code><a href="../reference/prep_data.html">prep_data()</a></code> lines up demand, supply and travel by their
+names, so their order does not matter, and a supply name that matches no
+travel column stops with an error. No area is left with an unknown
+travel time. The labels in <code>metadata</code> stay with the data and
+with every result. spax does not convert units.</p>
 </div>
 <div class="section level2">
-<h2 id="continue">Continue<a class="anchor" aria-label="anchor" href="#continue"></a>
+<h2 id="observed-counts-in-a-long-table">Observed counts in a long table<a class="anchor" aria-label="anchor" href="#observed-counts-in-a-long-table"></a>
+</h2>
+<p>Observed counts usually arrive as a long table, one row per origin
+and facility. <code>cornwall_flows</code> has one row per small area and
+practice with at least one registration. <code><a href="../reference/obs_flows.html">obs_flows()</a></code> says
+which column holds the origin IDs, which the facility IDs and which the
+counts. A pair missing from the table counts as 0, and duplicate pairs
+are added up.</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cornwall_flows</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>       lsoa practice patients
+1 E01018750   L82012     2185
+2 E01018750   L82016       35
+3 E01018750   L82025        1
+4 E01018750   L82046        4
+5 E01018750   L82066        1
+6 E01018751   L82012     1691</code></pre>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">flows</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/obs_flows.html">obs_flows</a></span><span class="op">(</span><span class="va">cornwall_flows</span>, origin <span class="op">=</span> <span class="st">"lsoa"</span>, facility <span class="op">=</span> <span class="st">"practice"</span>, count <span class="op">=</span> <span class="st">"patients"</span><span class="op">)</span></span>
+<span><span class="va">flows</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax obs&gt; flows: 3,188 origin-facility counts, total 601,269; loss poisson</code></pre>
+<p><code>flows</code> declares all 3,188 rows, the Isles of Scilly
+included. The print names the loss, Poisson by default, which is how a
+fit compares modeled with observed counts. <code><a href="../reference/spax.html">spax()</a></code> matches
+the rows to the IDs of the data when it fits a model, and says in a
+message what it sets aside. The code fits the conditional logit model to
+the mainland data.</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">clm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">flows</span><span class="op">)</span></span></code></pre></div>
+<pre><code>observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted (outside = "known" uses them as outside counts)</code></pre>
+<p>The 2,290 registrations of residents of the Scilly small area are
+dropped, because that area is not in the data. The 5 registrations of
+mainland residents at the Scilly practice are at a practice outside the
+data, so they belong to the outside option. By default the fit does not
+know how many of an area’s residents registered outside the data, so it
+fits only the counts at the 54 practices, and these 5 are left out. <a href="allocation-workflow.html">Where do residents register?</a> reads
+the fit and shows when the outside counts can be declared known.</p>
+<p><code><a href="../reference/spax.html">spax()</a></code> matches the IDs of the observed counts to the
+data as text. If your codes were read as numbers and lost their leading
+zeros, it matches each one by its numeric value (1234 to
+<code>"01234"</code>) when exactly one ID of the data has that value,
+and says so in a message. <code><a href="../reference/prep_data.html">prep_data()</a></code> makes no such
+allowance, so keep IDs as text from the start.</p>
+</div>
+<div class="section level2">
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
 </h2>
 <ul>
 <li>
-<a href="fca-methods.html">Comparing FCA methods</a>: E2SFCA, 2SFCA,
-M2SFCA, 3SFCA and Huff-2SFCA on these inputs.</li>
+<a href="fca-methods.html">Which FCA index?</a>: five FCA indices on
+the prepared grid, side by side.</li>
 <li>
-<a href="e2sfca-steps.html">The E2SFCA calculation step by
-step</a>.</li>
+<a href="allocation-workflow.html">Where do residents register?</a>:
+fit and read the allocation model on the small-area inputs.</li>
 <li>
-<a href="grid-resolution.html">Grid resolution, support and
-computational cost</a>.</li>
+<a href="reading-results.html">Reading results</a>: zero, unknown
+and excluded demand, and <code>NA</code> against <code>Inf</code>
+travel.</li>
+<li>
+<a href="grid-resolution.html">Grid resolution and computational
+cost</a>: how the cell size changes the index and the run time.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -9,7 +9,7 @@ This is a placeholder until S3 method export issues are resolved."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -24,20 +24,23 @@ This is a placeholder until S3 method export issues are resolved."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -52,7 +55,7 @@ This is a placeholder until S3 method export issues are resolved."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Print function for spax summary objects</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/00-utils-spax_methods.R" class="external-link"><code>R/00-utils-spax_methods.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/00-utils-spax_methods.R" class="external-link"><code>R/00-utils-spax_methods.R</code></a></small>
       <div class="d-none name"><code>print.summary.spax.Rd</code></div>
     </div>
 
@@ -88,6 +91,44 @@ This is a placeholder until S3 method export issues are resolved.</p>
     <p>Invisibly returns the input object</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes</span></span></span>
+<span class="r-in"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">)</span>, <span class="va">travel</span>,</span></span>
+<span class="r-in"><span>                      decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                      id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The summary, to three significant digits</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;spax access summary&gt; E2SFCA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> --------------------------------------------- </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Accessibility Measures:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> gp_fte_extg:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Range: 2.67e-05 to 0.0077</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Mean (SD): 0.00051 (0.000428)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Quantiles:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Min.:    2.67e-05</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     1st Qu.: 0.000378</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Median:  0.000488</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     3rd Qu.: 0.000606</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Max.:    0.0077</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Coverage: 100.0% (6934 of 6934 cells with a value have accessibility &gt; 0)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Facility Statistics:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -------------------</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Total Facilities: 55</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> gp_fte_extg:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Total Supply: 321</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Mean (SD): 5.83 (3.11)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Range: 1.13 to 13.4</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

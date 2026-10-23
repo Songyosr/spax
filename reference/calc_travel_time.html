@@ -15,7 +15,7 @@ prepare_allocation() as its travel matrix."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,20 +30,23 @@ prepare_allocation() as its travel matrix."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -58,7 +61,7 @@ prepare_allocation() as its travel matrix."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Travel times to facilities over a friction surface</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/08-calc_travel_time.R" class="external-link"><code>R/08-calc_travel_time.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/08-calc_travel_time.R" class="external-link"><code>R/08-calc_travel_time.R</code></a></small>
       <div class="d-none name"><code>calc_travel_time.Rd</code></div>
     </div>
 
@@ -153,7 +156,11 @@ can be passed to <code><a href="prepare_allocation.html">prepare_allocation()</a
 <code>mask</code> are treated as barriers (for example, to keep routes within one
 country). Global motorized friction surfaces, such as those of the Malaria
 Atlas Project, give minutes per metre; the travel times are then in minutes.
-The function downloads nothing.</p>
+Inputs in another coordinate reference system are projected to the grid's
+with terra, which lets PROJ fetch files from the internet. When a projection
+changes datum, for example from WGS 84 to British National Grid, PROJ may
+download a datum shift grid and keep it in the user's PROJ data folder; give
+the inputs in the grid's system, or in one on the same datum, to avoid this.</p>
 <p>Times are measured between cell centers; the facility's own cell has time
 zero. Paths that leave the facility cell diagonally are underestimated by at
 most about a fifth of one cell crossing. Because paths move between
@@ -178,22 +185,22 @@ the straight-line time by up to about 8%.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Linking to GEOS 3.14.1, GDAL 3.12.2, PROJ 9.7.1; sf_use_s2() is TRUE</span>
-<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Cornwall population grid in British National Grid (metres)</span></span></span>
-<span class="r-in"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/project.html" class="external-link">project</a></span><span class="op">(</span><span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span>, <span class="st">"EPSG:27700"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Cornwall population grid in WGS 84 / UTM zone 30N (metres), on the same</span></span></span>
+<span class="r-in"><span><span class="co"># datum as the bundled data</span></span></span>
+<span class="r-in"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/project.html" class="external-link">project</a></span><span class="op">(</span><span class="fu"><a href="read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span>, <span class="st">"EPSG:32630"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># A uniform friction surface of 50 km/h, in minutes per metre</span></span></span>
 <span class="r-in"><span><span class="va">friction</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/init.html" class="external-link">init</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fl">60</span> <span class="op">/</span> <span class="fl">50000</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Minutes from five practices to every populated cell</span></span></span>
-<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span></span></span>
-<span class="r-in"><span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu">calc_travel_time</span><span class="op">(</span><span class="va">friction</span>, <span class="va">gp</span>, <span class="va">pop</span>, ids <span class="op">=</span> <span class="st">"practice"</span>, buffer <span class="op">=</span> <span class="fl">5000</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Minutes from five practices to every populated cell; the practices are</span></span></span>
+<span class="r-in"><span><span class="co"># projected to the grid's system</span></span></span>
+<span class="r-in"><span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu">calc_travel_time</span><span class="op">(</span><span class="va">friction</span>, <span class="va">cornwall_gp</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span>, <span class="va">pop</span>, ids <span class="op">=</span> <span class="st">"practice"</span>,</span></span>
+<span class="r-in"><span>                           buffer <span class="op">=</span> <span class="fl">5000</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">travel</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.00   25.54   45.03   47.18   67.17  134.35 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.00   25.66   45.42   47.55   67.79  133.83 </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

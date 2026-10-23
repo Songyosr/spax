@@ -14,8 +14,8 @@ cornwall_gp
 
 ## Format
 
-An `sf` point object (EPSG:27700, British National Grid) with 55 rows
-and columns:
+An `sf` point object in WGS 84 longitude and latitude (EPSG:4326), the
+coordinate system of the bundled rasters, with 55 rows and columns:
 
 - practice:
 
@@ -59,9 +59,15 @@ and columns:
 
   `TRUE` for the practice on the Isles of Scilly.
 
+- easting, northing:
+
+  British National Grid coordinates (EPSG:27700) of the main-site
+  postcode, in metres.
+
 - geometry:
 
-  Main-site location from the postcode.
+  Main-site location from the postcode, the origin of
+  `cornwall_gp_travel.tif`.
 
 ## Source
 
@@ -74,7 +80,12 @@ Locations from the ONS Postcode Directory (November 2025). See
 
 Registrations are a July 2026 snapshot and workforce a June 2026
 snapshot. Only the main site of each practice is represented; branch
-surgeries are not.
+surgeries are not. All the bundled data use the WGS 84 datum, so they
+combine without a change of datum; for map units in metres project them
+to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
+British National Grid uses another datum (OSGB36): the geometry was
+converted from it with the OSGB36 to WGS 84 Helmert transformation
+(about 2 m), and `easting`/`northing` keep its coordinates.
 
 ## See also
 

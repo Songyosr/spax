@@ -13,7 +13,7 @@ accessibility as a ratio of supply to demand within these catchments."></head><b
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,20 +28,23 @@ accessibility as a ratio of supply to demand within these catchments."></head><b
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -56,7 +59,7 @@ accessibility as a ratio of supply to demand within these catchments."></head><b
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Calculate Original Two-Step Floating Catchment Area (2SFCA) accessibility scores</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/03-spax_e2sfca.R" class="external-link"><code>R/03-spax_e2sfca.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/03-spax_e2sfca.R" class="external-link"><code>R/03-spax_e2sfca.R</code></a></small>
       <div class="d-none name"><code>spax_2sfca.Rd</code></div>
     </div>
 
@@ -88,7 +91,7 @@ accessibility as a ratio of supply to demand within these catchments.</p>
 <dd><p>SpatRaster representing spatial distribution of demand, or a
 named list of single-layer SpatRasters, one per demand group (see
 "Demand groups"). A multi-layer SpatRaster is refused. Demand
-must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+must be finite and nonnegative (use NA for unknown) unless <code>snap = TRUE</code>,
 which ignores other cells.</p></dd>
 
 
@@ -99,7 +102,7 @@ which ignores other cells.</p></dd>
 <dt id="arg-distance">distance<a class="anchor" aria-label="anchor" href="#arg-distance"></a></dt>
 <dd><p>SpatRaster stack of travel times/distances to facilities.
 With demand groups, one stack shared by every group or a list of
-stacks named by the groups (see [spax_e2sfca()]).</p></dd>
+stacks named by the groups (see <code><a href="spax_e2sfca.html">spax_e2sfca()</a></code>).</p></dd>
 
 
 <dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
@@ -124,73 +127,71 @@ group.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A spax object containing:</p><ul><li><p>accessibility: SpatRaster of accessibility scores (with demand
-           groups, named as in [spax_e2sfca()])</p></li>
+groups, named as in <code><a href="spax_e2sfca.html">spax_e2sfca()</a></code>)</p></li>
 <li><p>type: Character string "2SFCA"</p></li>
 <li><p>parameters: List containing threshold and binary decay
-           parameters (and `groups` and `layers` with demand groups)</p></li>
+parameters (and <code>groups</code> and <code>layers</code> with demand groups)</p></li>
 <li><p>facilities: data.frame of facility-level information</p></li>
 <li><p>call: The original function call</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The original Two-Step Floating Catchment Area (2SFCA) method operates in two steps:</p>
-<p>Step 1: For each facility j:
-* Define a catchment area within threshold distance/time
-* Sum the population of all demand locations i within the catchment
-* Calculate supply-to-demand ratio Rj = Sj/sum(Pi)</p>
-<p>Step 2: For each demand location i:
-* Define a catchment area within threshold distance/time
-* Sum all facility ratios Rj within the catchment
-* Final accessibility score Ai = sum(Rj)</p>
-<p>Key characteristics:
-1. Binary catchment areas (within threshold = 1, beyond = 0)
-2. Equal weights for all locations within catchment
-3. No normalization of demand weights
-4. Single threshold value for both steps</p>
-<p>Limitations addressed by later methods:
-* No distance decay within catchments
-* Artificial barriers at catchment boundaries
-* Potential demand overestimation in overlapping areas</p>
-    </div>
+<p>Step 1: For each facility j:</p><ul><li><p>Define a catchment area within threshold distance/time</p></li>
+<li><p>Sum the population of all demand locations i within the catchment</p></li>
+<li><p>Calculate supply-to-demand ratio Rj = Sj/sum(Pi)</p></li>
+</ul><p>Step 2: For each demand location i:</p><ul><li><p>Define a catchment area within threshold distance/time</p></li>
+<li><p>Sum all facility ratios Rj within the catchment</p></li>
+<li><p>Final accessibility score Ai = sum(Rj)</p></li>
+</ul><p>Key characteristics:</p><ol><li><p>Binary catchment areas (within threshold = 1, beyond = 0)</p></li>
+<li><p>Equal weights for all locations within catchment</p></li>
+<li><p>No normalization of demand weights</p></li>
+<li><p>Single threshold value for both steps</p></li>
+</ol><p>Limitations addressed by later methods:</p><ul><li><p>No distance decay within catchments</p></li>
+<li><p>Artificial barriers at catchment boundaries</p></li>
+<li><p>Potential demand overestimation in overlapping areas</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="demand-groups">Demand groups<a class="anchor" aria-label="anchor" href="#demand-groups"></a></h2>
 
 
-<p>Give `demand` as a named list of single-layer rasters (for example age
+<p>Give <code>demand</code> as a named list of single-layer rasters (for example age
 bands) to let several groups compete for the same facilities. The names are
-the group IDs: unique, non-empty, not `"all"` and without a `.`; all rasters
+the group IDs: unique, non-empty, not <code>"all"</code> and without a <code>.</code>; all rasters
 need the same geometry. A multi-layer raster is not taken as groups.</p>
 <p>Step 1 sums, over all groups, the demand that reaches each facility, with
 the demand weights of each group; step 2 gives each group its own
 accessibility from the shared ratios, with its own weights. The result has
-one layer per group, and an overall layer `&lt;measure&gt;.all`: the average of
+one layer per group, and an overall layer <code>&lt;measure&gt;.all</code>: the average of
 the group scores weighted by the demand of the cell. A group with demand in
 a cell that its travel cannot reach counts with accessibility 0 in the
 overall layer; the overall layer is NA where any group's demand is missing
 or the total demand is 0. With one group the group layer equals the
 ungrouped result.</p>
-<p>`decay_params` and `distance` (and `selection_params` of
-[spax_3sfca()] and [spax_huff2sfca()], `threshold` of [spax_2sfca()]) are
+<p><code>decay_params</code> and <code>distance</code> (and <code>selection_params</code> of
+<code><a href="spax_3sfca.html">spax_3sfca()</a></code> and <code><a href="spax_huff2sfca.html">spax_huff2sfca()</a></code>, <code>threshold</code> of <code>spax_2sfca()</code>) are
 each either shared by every group or given per group. An argument is per
-group when it is a list (for `threshold`, a named numeric vector) whose
+group when it is a list (for <code>threshold</code>, a named numeric vector) whose
 names are the group IDs, in any order; names that match only some of the
 groups are refused. Any other value is shared and checked as for one
-group. Pass a shared `distance` as one object, so that it is read once. A
+group. Pass a shared <code>distance</code> as one object, so that it is read once. A
 plain-function decay builds a whole in-memory weight raster for each group.
-`demand_normalize`, `indicator_names`, `id_col`, `supply_cols` and the
-attractiveness of [spax_huff2sfca()] are shared.</p>
+<code>demand_normalize</code>, <code>indicator_names</code>, <code>id_col</code>, <code>supply_cols</code> and the
+attractiveness of <code><a href="spax_huff2sfca.html">spax_huff2sfca()</a></code> are shared.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Luo, W., &amp; Wang, F. (2003). Measures of Spatial Accessibility to Health Care in
 a GIS Environment: Synthesis and a Case Study in the Chicago Region.
-*Environment and Planning B: Planning and Design*, *30*(6), 865-884.
+<em>Environment and Planning B: Planning and Design</em>, <em>30</em>(6), 865-884.
 https://doi.org/10.1068/b29120</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>* [spax_e2sfca()] for the enhanced version with distance decay
-* [compute_access()] for more flexible accessibility calculations</p></div>
+    <div class="dont-index">
+<ul><li><p><code><a href="spax_e2sfca.html">spax_e2sfca()</a></code> for the enhanced version with distance decay</p></li>
+<li><p><code><a href="compute_access.html">compute_access()</a></code> for more flexible accessibility calculations</p></li>
+</ul></div>
     </div>
 
     <div class="section level2">

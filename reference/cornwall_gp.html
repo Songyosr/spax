@@ -13,7 +13,7 @@ recording changed in June 2018 and who cluster in training practices."></head><b
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,20 +28,23 @@ recording changed in June 2018 and who cluster in training practices."></head><b
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -56,7 +59,7 @@ recording changed in June 2018 and who cluster in training practices."></head><b
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>GP practices in Cornwall and the Isles of Scilly</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/data_cornwall.R" class="external-link"><code>R/data_cornwall.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/data_cornwall.R" class="external-link"><code>R/data_cornwall.R</code></a></small>
       <div class="d-none name"><code>cornwall_gp.Rd</code></div>
     </div>
 
@@ -74,8 +77,8 @@ recording changed in June 2018 and who cluster in training practices.</p>
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>An <code>sf</code> point object (EPSG:27700, British National Grid) with 55
-rows and columns:</p><dl><dt>practice</dt>
+    <p>An <code>sf</code> point object in WGS 84 longitude and latitude (EPSG:4326),
+the coordinate system of the bundled rasters, with 55 rows and columns:</p><dl><dt>practice</dt>
 <dd><p>NHS ODS practice code; matches <code>cornwall_flows</code>,
 the columns of <code>cornwall_travel</code> and the layers of
 <code>cornwall_gp_travel.tif</code>.</p></dd>
@@ -110,8 +113,13 @@ of Scilly.</p></dd>
 <dt>scilly</dt>
 <dd><p><code>TRUE</code> for the practice on the Isles of Scilly.</p></dd>
 
+<dt>easting, northing</dt>
+<dd><p>British National Grid coordinates (EPSG:27700)
+of the main-site postcode, in metres.</p></dd>
+
 <dt>geometry</dt>
-<dd><p>Main-site location from the postcode.</p></dd>
+<dd><p>Main-site location from the postcode, the origin of
+<code>cornwall_gp_travel.tif</code>.</p></dd>
 
 
 </dl></div>
@@ -126,7 +134,12 @@ Locations from the ONS Postcode Directory (November 2025). See
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Registrations are a July 2026 snapshot and workforce a June 2026
 snapshot. Only the main site of each practice is represented; branch
-surgeries are not.</p>
+surgeries are not. All the bundled data use the WGS 84 datum, so they
+combine without a change of datum; for map units in metres project them
+to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
+British National Grid uses another datum (OSGB36): the geometry was
+converted from it with the OSGB36 to WGS 84 Helmert transformation (about
+2 m), and <code>easting</code>/<code>northing</code> keep its coordinates.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

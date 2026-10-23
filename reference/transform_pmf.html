@@ -17,7 +17,7 @@ value), and a polygon's value is copied to every cell it covers."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,20 +32,23 @@ value), and a polygon's value is copied to every cell it covers."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -60,7 +63,7 @@ value), and a polygon's value is copied to every cell it covers."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Transform input into a probability mass function (PMF)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/09-transform_pmf.R" class="external-link"><code>R/09-transform_pmf.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/09-transform_pmf.R" class="external-link"><code>R/09-transform_pmf.R</code></a></small>
       <div class="d-none name"><code>transform_pmf.Rd</code></div>
     </div>
 
@@ -89,36 +92,36 @@ value), and a polygon's value is copied to every cell it covers.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A `SpatRaster` containing values to normalise, or a `SpatVector`
+<dd><p>A <code>SpatRaster</code> containing values to normalise, or a <code>SpatVector</code>
 whose attribute values will be rasterised.</p></dd>
 
 
 <dt id="arg-value-col">value_col<a class="anchor" aria-label="anchor" href="#arg-value-col"></a></dt>
-<dd><p>Character name of the attribute column to use when `x` is a
-`SpatVector`. Ignored for raster inputs.</p></dd>
+<dd><p>Character name of the attribute column to use when <code>x</code> is a
+<code>SpatVector</code>. Ignored for raster inputs.</p></dd>
 
 
 <dt id="arg-template">template<a class="anchor" aria-label="anchor" href="#arg-template"></a></dt>
-<dd><p>`SpatRaster` providing geometry for rasterising vector
-inputs. Required when `x` is a `SpatVector`.</p></dd>
+<dd><p><code>SpatRaster</code> providing geometry for rasterising vector
+inputs. Required when <code>x</code> is a <code>SpatVector</code>.</p></dd>
 
 
 <dt id="arg-return-total">return_total<a class="anchor" aria-label="anchor" href="#arg-return-total"></a></dt>
-<dd><p>Logical; when `TRUE`, return both the PMF raster and the
-total sum of the input values. Default is `FALSE`.</p></dd>
+<dd><p>Logical; when <code>TRUE</code>, return both the PMF raster and the
+total sum of the input values. Default is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-snap">snap<a class="anchor" aria-label="anchor" href="#arg-snap"></a></dt>
-<dd><p>Logical; skip validation checks when `TRUE`. Default is `FALSE`.</p></dd>
+<dd><p>Logical; skip validation checks when <code>TRUE</code>. Default is <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>If `return_total = FALSE`, returns a `SpatRaster` whose cells sum to
-  1 in each layer. If `return_total = TRUE`, returns a list with components:</p><dl><dt>pmf</dt>
-<dd><p>`SpatRaster` of probabilities</p></dd>
+    <p>If <code>return_total = FALSE</code>, returns a <code>SpatRaster</code> whose cells sum to
+1 in each layer. If <code>return_total = TRUE</code>, returns a list with components:</p><dl><dt>pmf</dt>
+<dd><p><code>SpatRaster</code> of probabilities</p></dd>
 
-    <dt>total</dt>
+<dt>total</dt>
 <dd><p>Numeric total of the original values, one per layer</p></dd>
 
 

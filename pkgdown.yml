@@ -6,13 +6,16 @@ articles:
   cornwall-data: cornwall-data.html
   data-prep: data-prep.html
   e2sfca-steps: e2sfca-steps.html
+  extending: extending.html
   facility-bootstrap: facility-bootstrap.html
   fca-methods: fca-methods.html
   function-naming: function-naming.html
   grid-resolution: grid-resolution.html
   model-choice: model-choice.html
+  reading-results: reading-results.html
+  scenario: scenario.html
   spax: spax.html
-last_built: 2026-10-21T15:57Z
+last_built: 2026-10-23T01:07Z
 urls:
   reference: https://songyosr.github.io/spax/reference
   article: https://songyosr.github.io/spax/articles

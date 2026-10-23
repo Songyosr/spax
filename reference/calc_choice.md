@@ -14,7 +14,8 @@ calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 
 - weights:
 
-  Multi-layer SpatRaster of spatial weights (e.g., from calc_decay)
+  Multi-layer SpatRaster of spatial weights (e.g., from
+  [`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md))
 
 - attractiveness:
 
@@ -31,9 +32,12 @@ calc_choice(weights, attractiveness = NULL, alpha = 1, a0 = 0, snap = FALSE)
 
 - snap:
 
-  Logical; if TRUE enables fast computation mode with: - Minimal
-  validation - Essential preprocessing only Only use when inputs are
-  known to be valid.
+  Logical; if `TRUE`, a fast computation mode, only for inputs known to
+  be valid, with:
+
+  - Minimal validation
+
+  - Essential preprocessing only
 
 ## Value
 
@@ -60,11 +64,12 @@ p2 <- calc_choice(weights,
   alpha = 1.5
 )
 
-# Plot to compare
-par(mfrow = c(1, 2)) # Set up 2 panels side by side
+# Plot to compare, two panels side by side
+old_par <- par(mfrow = c(1, 2))
 plot(p1[[1]], main = "Basic Choice Prob.")
 plot(p2[[1]], main = "GP-weighted Choice Prob.")
 
+par(old_par)
 
 # With outside option (a0)
 p3 <- calc_choice(weights,

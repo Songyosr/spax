@@ -161,3 +161,40 @@ Other allocation steps:
 [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice),
+               cornwall_travel[areas$lsoa, gp$practice])
+
+# Registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+                          cornwall_flows$practice %in% gp$practice, ]
+totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+
+# The same counts fitted with two decay kernels
+gaussian <- spax(d, spec_clm(decay_gaussian()), observed = totals)
+exponential <- spax(d, spec_clm(decay_exponential()), observed = totals)
+
+# Loss differences are measured from the first fit
+comparison <- compare_fits(list(gaussian = gaussian, exponential = exponential))
+comparison
+#> <allocation comparison> reference: gaussian
+#>  specification contact capacity_per_contact cv_contact count_correlation
+#>       gaussian  0.9784            0.0006187   0.007782            0.8850
+#>    exponential  0.9781            0.0006189   0.007585            0.9016
+#>  loss_difference
+#>              0.0
+#>           -124.4
+as.data.frame(comparison)[, c("specification", "parameters", "loss_difference")]
+#>   specification             parameters loss_difference
+#> 1      gaussian  sigma=13.22, v0=1.002          0.0000
+#> 2   exponential sigma=0.081, v0=0.7139       -124.4451
+```

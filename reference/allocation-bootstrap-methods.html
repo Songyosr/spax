@@ -13,7 +13,7 @@ count and reporting status. Fixed-input identities have no sampling interval."><
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,20 +28,23 @@ count and reporting status. Fixed-input identities have no sampling interval."><
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -56,7 +59,7 @@ count and reporting status. Fixed-input identities have no sampling interval."><
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Inspect a saved facility bootstrap</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/07-allocation_results.R" class="external-link"><code>R/07-allocation_results.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/07-allocation_results.R" class="external-link"><code>R/07-allocation_results.R</code></a></small>
       <div class="d-none name"><code>allocation-bootstrap-methods.Rd</code></div>
     </div>
 
@@ -126,6 +129,72 @@ displaying the number plotted. Neither view implies empirical observation-law
 validation, simultaneous coverage or causal interpretation of a scenario.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># A stored result: the 399-attempt bootstrap of the guide</span></span></span>
+<span class="r-in"><span><span class="co"># vignette("facility-bootstrap", package = "spax"), on a generated network,</span></span></span>
+<span class="r-in"><span><span class="co"># with a scenario of more supply at one facility</span></span></span>
+<span class="r-in"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"allocation-bootstrap.rds"</span>, package <span class="op">=</span> <span class="st">"spax"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The run, its attempts and the intervals</span></span></span>
+<span class="r-in"><span><span class="va">boot</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation bootstrap&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> status: complete</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  planned attempted successful</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      399       399        399</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> failed attempts: 0; retained inner-boundary attempts: 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sampling: independent_facilities; event: allocated service requests; period: one_reference_period</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> supply (service_slots): total: 280; attributed: 280; unsupported: 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> facilities: total: 40; with retained-demand support: 40; positive supply without support: 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> fixed inputs: demand, supply, travel, included network and support policy</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> regional_A is supported raw supply per retained need; positive supply</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> with no finite edge on retained demand support is excluded from</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attributed capacity and disclosed separately </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Conditional percentile intervals; coverage evidence is limited to the</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> package's coverage study, a fixed 80-origin/40-facility generated</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> design. Facility independence and the empirical observation law are</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> assumptions. No simultaneous-map or causal coverage claim. </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Available bounds: conditional bootstrap intervals.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        quantity estimate   lower   upper                          status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           sigma 13.28000 10.5400 18.6200 conditional_pointwise_bootstrap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              v0 48.58000 35.0300 69.0700 conditional_pointwise_bootstrap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    regional_rho  0.67110  0.6511  0.6897 conditional_pointwise_bootstrap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  delta_contacts  9.87200  8.9080 11.0200 conditional_pointwise_bootstrap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      regional_A  0.03041      NA      NA            fixed_input_identity</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  successful attempted planned</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         399       399     399</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         399       399     399</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         399       399     399</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         399       399     399</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         399       399     399</span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span><span class="op">$</span><span class="va">counts</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   planned attempted successful</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     399       399        399</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The interval of sigma, and the draws of v0</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span></span></span>
+<span class="r-plt img"><img src="allocation-bootstrap-methods-1.png" alt="" width="700" height="433"></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">boot</span>, quantity <span class="op">=</span> <span class="st">"v0"</span>, type <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span></span></span>
+<span class="r-plt img"><img src="allocation-bootstrap-methods-2.png" alt="" width="700" height="433"></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Every attempt, as a table</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">boot</span>, type <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   attempt     seed   status success    sigma       v0 boundary best_start</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1       1 20260931 selected    TRUE 12.86513 48.73043    FALSE      scan1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2       2 20260932 selected    TRUE 13.21244 50.51980    FALSE      scan1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3       3 20260933 selected    TRUE 12.14212 40.43821    FALSE      scan1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4 20260934 selected    TRUE 12.43516 42.49469    FALSE      scan1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5 20260935 selected    TRUE 12.10434 43.16452    FALSE      scan1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6       6 20260936 selected    TRUE 14.70454 53.31157    FALSE      scan2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        loss   score_norm regional_rho delta_contacts regional_A</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -24662.98 1.863487e-08    0.6615665      10.107813 0.03041016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -26035.29 1.692454e-06    0.6610622      10.005567 0.03041016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -26106.98 2.820174e-07    0.6856066      10.067934 0.03041016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -25975.61 1.041708e-06    0.6817678      10.012932 0.03041016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -24227.62 2.861920e-08    0.6706570      10.268063 0.03041016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 -26422.12 5.651187e-08    0.6775333       9.425824 0.03041016</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

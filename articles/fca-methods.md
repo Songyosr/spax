@@ -1,8 +1,19 @@
-# Comparing FCA methods
+# Which FCA index?
 
-This guide uses the bundled Cornwall GP data, described in [The Cornwall
-GP example
-data](https://songyosr.github.io/spax/articles/cornwall-data.md).
+A floating catchment area (FCA) index measures access as supply per
+resident. Each facility divides its supply, here GP full-time
+equivalents (FTE), by the demand it can reach, here residents. Each
+place then adds up the ratios of the facilities it can reach. Weights
+that fall with travel time decide what “can reach” means, and the FCA
+methods differ in those weights. This guide computes five indices on the
+same inputs, maps them on one color scale and shows how much of the GP
+supply each one hands back to residents. By the end you can choose an
+index and say what changes when you switch. The inputs are the mainland
+grids of [The Cornwall GP example
+data](https://songyosr.github.io/spax/articles/cornwall-data.md). The
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) interface
+and the allocation model are experimental and may change in later
+versions.
 
 ``` r
 
@@ -12,145 +23,29 @@ library(sf)
 library(dplyr)
 ```
 
-Floating catchment area (FCA) methods combine demand, facility supply
-and travel weights into an accessibility index. They differ in how they
-weight travel. This guide computes three of them on the same inputs and
-compares the results: the enhanced two-step FCA (E2SFCA) from [Getting
-started](https://songyosr.github.io/spax/articles/spax.md), the original
-2SFCA and the modified 2SFCA (M2SFCA). A last section adds two variants
-that first share each cell’s demand among practices, 3SFCA and
-Huff-2SFCA, and a final one lets several demand groups, such as age
-bands, have their own decay. For a fitted allocation model with an
-outside option, see [Choosing an FCA index or an allocation
-model](https://songyosr.github.io/spax/articles/model-choice.md).
-
 ## The inputs
 
-The inputs are those of [Getting
-started](https://songyosr.github.io/spax/articles/spax.md): the WorldPop
-2020 population grid (estimated residents per cell of about 1 km, a
-count rather than a density), GP FTE excluding GPs in training, and
-travel minutes to each mainland practice. The grid and the workforce
-come from different sources and dates (2020 and 2026).
+The setup code shared by every grid guide, explained in [The Cornwall GP
+example
+data](https://songyosr.github.io/spax/articles/cornwall-data.md), reads
+the population grid (residents per grid cell), the mainland practices
+with their GP FTE excluding GPs in training, and the travel stack: one
+raster layer of travel minutes per practice.
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+holds them together for
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md).
 
 ``` r
 
-# Residents per grid cell, and travel minutes with one layer per practice
-pop <- read_spax_example("cornwall_pop.tif")
-travel <- read_spax_example("cornwall_gp_travel.tif")
-
-# Mainland only: the Isles of Scilly have no road link to the mainland
 gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
-travel <- travel[[gp$practice]]
-
-# Keep cells with a travel time to every mainland practice, then drop the
-# empty margin the islands leave behind
-pop <- trim(mask(pop, sum(travel)))
-travel <- crop(travel, pop)
-
-# Layers must line up with the practice table and the population grid
-stopifnot(
-  identical(names(travel), gp$practice),
-  compareGeom(pop, travel)
-)
-
-c(
-  cells = sum(!is.na(values(pop))),
-  practices = nrow(gp),
-  residents = round(global(pop, "sum", na.rm = TRUE)[[1]]),
-  gp_fte = round(sum(gp$gp_fte_extg), 1)
-)
-```
-
-``` spax-output
-    cells practices residents    gp_fte 
-   6912.0      54.0  541184.0     311.3 
-```
-
-[Preparing your own
-data](https://songyosr.github.io/spax/articles/data-prep.md) explains
-these steps in detail.
-
-## Three ways to weight travel
-
-Each method gathers demand to practices with one set of weights, divides
-each practice’s supply by the demand it gathered, and spreads those
-ratios back to cells with a second set of weights.
-
-| Method | Weights when gathering demand    | Weights when spreading ratios |
-|:-------|:---------------------------------|:------------------------------|
-| 2SFCA  | 1 within 15 minutes, 0 beyond    | The same                      |
-| E2SFCA | Gaussian decay, scale 10 minutes | The same                      |
-| M2SFCA | Gaussian decay, scale 10 minutes | The Gaussian weight squared   |
-
-The 15-minute threshold and the 10-minute scale are choices for this
-guide, not estimates. With the Gaussian scale of 10 minutes, a practice
-10 minutes away keeps about 61% of its weight and one 20 minutes away
-about 14%. `demand_normalize = "identity"` uses the weights unchanged
-when practices gather demand, as in the original E2SFCA.
-
-``` r
-
-twosfca <- spax_2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  threshold = 15,  # minutes
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
-
-e2sfca <- spax_e2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
-  id_col = "practice",  # matches supply rows to travel layers
-  supply_cols = "gp_fte_extg"
-)
-
-m2sfca <- spax_m2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  demand_normalize = "identity",
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
-```
-
-The same three indices can be specified without data and computed with
-[`spax()`](https://songyosr.github.io/spax/reference/spax.md) on data
-prepared once with
-[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md).
-This interface is experimental.
-[`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
-takes the 15-minute catchment as `threshold`; the other specifications
-take a decay:
-[`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
-here, or
-[`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
-[`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
-[`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md)
-(a binary catchment) and
-[`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md).
-A Gaussian, exponential or power decay can also take a raster of `sigma`
-values, for a catchment that varies in space.
-
-``` r
-
-# Demand grid, practice table and travel stack, held together
-grid_data <- prep_data(
-  pop,
-  gp,
-  travel,
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
+pop <- read_spax_example("cornwall_pop.tif")
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")[[gp$practice]]
+# Keep cells with a travel time to every mainland practice
+pop <- trim(mask(pop, sum(travel_grid)))
+travel_grid <- crop(travel_grid, pop)
+grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 grid_data
 ```
 
@@ -160,34 +55,89 @@ grid_data
   note      holds terra rasters: prepare the data again after saveRDS()
 ```
 
+The print gives the grid size, the 54 practices and the supply column.
+Its note means that a saved `grid_data` cannot be reused: run
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+again after loading. The grid has 6,912 populated cells holding 541,184
+residents, and the practices hold 311.3 GP FTE: 0.58 GP FTE per 1,000
+residents across the mainland.
+
+## Three ways to weight travel
+
+The first three methods are the original two-step FCA (2SFCA), the
+enhanced two-step FCA (E2SFCA) and the modified two-step FCA (M2SFCA).
+Each gathers demand to practices with one set of weights, divides each
+practice’s supply by the demand it gathered, and spreads those ratios
+back to cells with a second set of weights.
+
+Each method needs a rule for how much a practice counts at a given
+travel time. A Gaussian decay is a bell-shaped weight: 1 at zero
+minutes, falling smoothly as travel time grows. Its travel scale σ, in
+minutes, sets how fast it falls: with σ = 10, a practice 10 minutes away
+keeps 61% of its weight and one 20 minutes away 14%. The 15-minute
+catchment and σ = 10 minutes are choices for this guide.
+
+| Method | Weights when gathering demand | Weights when spreading ratios |
+|:---|:---|:---|
+| 2SFCA | 1 within 15 minutes, 0 beyond | The same |
+| E2SFCA | Gaussian decay, travel scale 10 minutes | The same |
+| M2SFCA | Gaussian decay, travel scale 10 minutes | The Gaussian weight squared |
+
+You describe each index with a `spec_*()` function, which records the
+method and its settings but no data.
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) then runs
+it on the prepared data.
+[`spec_2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+takes the catchment as `threshold`. The other specifications take a
+decay:
+[`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md)
+here, or
+[`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
+[`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md),
+[`decay_step()`](https://songyosr.github.io/spax/reference/decay_step.md)
+(a binary catchment) and
+[`decay_inverse()`](https://songyosr.github.io/spax/reference/decay_step.md).
+
 ``` r
 
-# The same three indices from specifications
 gaussian_10 <- decay_gaussian(sigma = 10)
-by_spec <- list(
-  twosfca = spax(grid_data, spec_2sfca(threshold = 15)),
-  e2sfca = spax(grid_data, spec_e2sfca(decay = gaussian_10)),
-  m2sfca = spax(grid_data, spec_m2sfca(decay = gaussian_10))
-)
 
-# Each surface is identical to that of the one-call function
-same <- function(x, y) {
-  identical(values(x$accessibility), values(y$accessibility))
-}
-stopifnot(
-  same(by_spec$twosfca, twosfca),
-  same(by_spec$e2sfca, e2sfca),
-  same(by_spec$m2sfca, m2sfca)
-)
+twosfca <- spax(grid_data, spec_2sfca(threshold = 15))
+e2sfca <- spax(grid_data, spec_e2sfca(decay = gaussian_10))
+m2sfca <- spax(grid_data, spec_m2sfca(decay = gaussian_10))
+
+e2sfca
 ```
 
-Each result is a `spax` object whose `accessibility` member is a raster
-of GP FTE per resident. The maps show all three in GP FTE per 1,000
-residents on one colour scale.
+``` spax-output
+<spax access> E2SFCA, 1 layer on 117 x 187 cells
+
+Spatial Properties:
+- Resolution: 0.00833333 x 0.00833333
+- Dimensions: 117 x 187
+
+Measures: 1
+- gp_fte_extg
+
+Facilities: 54
+
+Parameters:
+- Decay function: gaussian (sigma = 10)
+- Demand normalization: identity 
+```
+
+The print names the method, the grid, the 54 practices and the decay.
+The index itself is the raster `e2sfca$accessibility`, in GP FTE per
+resident, so the maps multiply it by 1,000. Step 2 of [Inside the E2SFCA
+calculation](https://songyosr.github.io/spax/articles/e2sfca-steps.md)
+explains the print’s last line, the demand normalization.
+
+The maps show the three surfaces in GP FTE per 1,000 residents on one
+color scale.
 
 ``` r
 
-# Stack the three surfaces and draw them on one shared colour scale
+# Stack the three surfaces and draw them on one shared color scale
 all_three <- 1000 * c(
   e2sfca$accessibility,
   twosfca$accessibility,
@@ -199,6 +149,11 @@ names(all_three) <- c(
   "M2SFCA, Gaussian 10 min"
 )
 shared_range <- range(values(all_three), na.rm = TRUE)
+# Mainland Cornwall's outline, in the grid's longitude and latitude
+outline <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  vect()
 plot(
   all_three,
   nc = 3,
@@ -206,38 +161,49 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = shared_range,
   mar = c(1, 1, 2, 5),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 
-![Three raster maps of mainland Cornwall on one colour scale in GP FTE
+![Three raster maps of mainland Cornwall on one color scale in GP FTE
 per 1,000 residents: E2SFCA changes smoothly, 2SFCA has sharp steps at
 the 15-minute catchment edges, and M2SFCA is lower
 throughout.](fca-methods_files/figure-html/methods-map-1.png)
 
+E2SFCA changes smoothly. It is highest in the west, between Redruth,
+Truro and Falmouth, and lowest on Bodmin Moor, the upland north-east of
+the map’s center. 2SFCA is patchy, with sharp edges where the 15-minute
+catchments end, and its highest patches lie in the west and at the
+eastern edge near Callington. M2SFCA has the E2SFCA pattern but is
+darker everywhere, for a reason the next section shows.
+
 ## Compare the values
+
+The table gives three cell quantiles and the index of the average
+resident, for each method, in GP FTE per 1,000 residents.
 
 ``` r
 
-# Cell values as plain vectors, per 1,000 residents, and residents per cell
-per_1000 <- function(x) 1000 * values(x$accessibility, mat = FALSE)
-a <- per_1000(e2sfca)
-b <- per_1000(twosfca)
-m <- per_1000(m2sfca)
-p <- values(pop, mat = FALSE)
+# Residents per cell, and each index per 1,000 residents, as plain vectors
+residents <- values(pop, mat = FALSE)
+per_1000 <- function(result) 1000 * values(result$accessibility, mat = FALSE)
+e2sfca_values <- per_1000(e2sfca)
+twosfca_values <- per_1000(twosfca)
+m2sfca_values <- per_1000(m2sfca)
 
 # Cell quantiles and the index of the average resident
-describe <- function(x) {
+describe <- function(index) {
   c(
-    quantile(x, c(0.05, 0.5, 0.95), na.rm = TRUE),
-    resident_weighted = weighted.mean(x, p, na.rm = TRUE)
+    quantile(index, c(0.05, 0.5, 0.95), na.rm = TRUE),
+    resident_weighted = weighted.mean(index, residents, na.rm = TRUE)
   )
 }
 round(
   rbind(
-    E2SFCA = describe(a),
-    `2SFCA` = describe(b),
-    M2SFCA = describe(m)
+    E2SFCA = describe(e2sfca_values),
+    `2SFCA` = describe(twosfca_values),
+    M2SFCA = describe(m2sfca_values)
   ),
   2
 )
@@ -250,194 +216,101 @@ E2SFCA 0.24 0.49 0.73              0.58
 M2SFCA 0.08 0.28 0.45              0.35
 ```
 
+The quantiles describe grid cells, and most cells are rural. The
+resident-weighted column answers a different question: what does the
+average resident see? For E2SFCA and 2SFCA it equals the mainland ratio
+of 0.58 GP FTE per 1,000 residents. Each uses the same weights in both
+steps and every practice gathers some demand, so the two indices move
+supply between places without adding or losing any. M2SFCA gives the
+average resident 0.35. Its squared weights are smaller than the weights
+that gathered the demand, so part of the supply goes back to no one, and
+cells whose practices are far away lose the most.
+
+Correlations across cells show how far the surfaces agree on where
+access is higher. The second output counts the residents with no
+practice within 15 minutes. 2SFCA gives them an index of zero.
+
 ``` r
 
-# Total supply per 1,000 residents, for comparison
-round(1000 * sum(gp$gp_fte_extg) / sum(p, na.rm = TRUE), 2)
-```
-
-``` spax-output
-[1] 0.58
-```
-
-``` r
-
-# An index of zero in 2SFCA means no practice within 15 minutes
-c(
-  residents_beyond_15_min = round(sum(p[b == 0], na.rm = TRUE)),
-  correlation_2sfca = round(cor(a, b, use = "complete.obs"), 2),
-  correlation_m2sfca = round(cor(a, m, use = "complete.obs"), 2)
+# Correlation of E2SFCA with the other two, across cells
+round(
+  c(
+    with_2sfca = cor(e2sfca_values, twosfca_values, use = "complete.obs"),
+    with_m2sfca = cor(e2sfca_values, m2sfca_values, use = "complete.obs")
+  ),
+  2
 )
 ```
 
 ``` spax-output
-residents_beyond_15_min       correlation_2sfca      correlation_m2sfca 
-                 720.00                    0.79                    0.90 
+ with_2sfca with_m2sfca 
+       0.79        0.90 
 ```
 
-The quantiles describe grid cells, and most cells are rural. Weighting
-by residents answers a different question: the index the average
-resident sees. For E2SFCA and 2SFCA that average equals total GP FTE per
-1,000 residents, because each uses the same weights in both steps and
-every practice gathers some demand. These indices redistribute the
-supply; they do not create or lose any. M2SFCA does not keep that total:
-its squared weights are smaller than the weights used to gather demand,
-so part of the supply is not spread back to anyone, and it discounts
-most strongly the cells whose practices are far away.
+``` r
 
-The three surfaces broadly agree on where access is higher: E2SFCA
-correlates at 0.79 with 2SFCA and at 0.9 with M2SFCA across cells. 2SFCA
-shows sharp steps at the 15-minute edges and a longer upper tail, and
-the 720 residents with no practice within 15 minutes get an index of
-zero. The decay versions change gradually instead. All three depend on
-choices, the threshold or the decay scale, that this guide does not
-estimate from data. [The E2SFCA calculation step by
-step](https://songyosr.github.io/spax/articles/e2sfca-steps.md) rebuilds
-the E2SFCA and M2SFCA surfaces from their parts.
+# Residents with no practice within 15 minutes
+round(sum(residents[twosfca_values == 0], na.rm = TRUE))
+```
 
-The index has supply-per-demand units. It is not a share of people who
-use a practice, a waiting time or an observed rate of care.
+``` spax-output
+[1] 720
+```
+
+The three surfaces broadly agree: E2SFCA correlates at 0.79 with 2SFCA
+and at 0.90 with M2SFCA. 2SFCA has sharp steps at the 15-minute edges, a
+longer upper tail and 720 residents at zero. The decay versions change
+gradually instead. The catchment and the travel scale are choices, so it
+is worth repeating a comparison like this one with the values you plan
+to use. [Reading
+results](https://songyosr.github.io/spax/articles/reading-results.md)
+says what an FCA index measures.
 
 ## Selection weights: 3SFCA and Huff-2SFCA
 
-With the weights above, the weights of all practices at one cell need
-not add up to 1, so where many practices are close each of them counts
-the same residents. Two further variants first share each cell’s demand
-among the practices. At each cell, the **selection weight** `G` of a
-practice is its share of the cell’s weights, so the shares at a cell add
-up to 1. Both steps then use the kernel `K = W * G` in place of the
-decay weights `W`: a practice gathers demand and spreads its ratio back
-to cells with the same weights.
+In the three methods above, the weights of all practices at one cell can
+add up to more than 1: where many practices are close, each of them
+counts the same residents. Two further methods, the three-step FCA
+(3SFCA) and Huff-2SFCA, first share each cell’s demand among the
+practices. At each cell, the **selection weight** of a practice is its
+share of the cell’s weights, as the table defines, so the selection
+weights at a cell add up to 1. Both steps then use the decay weight
+times the selection weight.
 
-| Method | Selection weight `G` of a practice at a cell | Weights in both steps |
+| Method | Selection weight of a practice at a cell | Weights in both steps |
 |:---|:---|:---|
-| 3SFCA | Its Gaussian weight, divided by the sum of these weights over the cell’s practices | `W * G` |
-| Huff-2SFCA | Its Gaussian weight times its GP FTE, divided by the sum of these products over the cell’s practices | `W * G` |
+| 3SFCA | Its Gaussian weight, divided by the sum of these weights over the cell’s practices | Decay weight × selection weight |
+| Huff-2SFCA | Its Gaussian weight times its GP FTE, divided by the sum of these products over the cell’s practices | Decay weight × selection weight |
 
-Huff-2SFCA puts the attractiveness of a practice into the share. By
-default the attractiveness is the supply measure, here GP FTE, raised to
-the power `alpha = 1`. Both functions also use the Gaussian decay for
-the selection weights, because `selection_params` defaults to
-`decay_params`; they have no `demand_normalize` argument, because the
-shares already divide each cell’s demand. This differs from
-`demand_normalize = "standard"` in
-[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md),
-which divides the weights that gather demand only.
-[`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
-uses Huff shares inside an FCA score;
-[`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
-fits the Huff model itself to observed use (see
-[`vignette("allocation-workflow", package = "spax")`](https://songyosr.github.io/spax/articles/allocation-workflow.md)).
+Huff-2SFCA is named after the Huff model of where shoppers go, in which
+a larger, nearer facility draws a larger share. Its selection weights
+multiply each practice’s decay weight by its attractiveness, by default
+its GP FTE (`alpha = 1` is the power on GP FTE). To fit the Huff model
+itself to observed registrations, see [Where do residents
+register?](https://songyosr.github.io/spax/articles/allocation-workflow.md).
+
+Both run like the others.
 
 ``` r
 
-sfca3 <- spax_3sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
-
-huff <- spax_huff2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"  # also the attractiveness
-)
+sfca3 <- spax(grid_data, spec_3sfca(decay = gaussian_10))
+huff2sfca <- spax(grid_data, spec_huff2sfca(decay = gaussian_10))
 ```
 
-3SFCA is the shared FCA calculation with a different kernel, so it can
-be rebuilt from
-[`calc_decay()`](https://songyosr.github.io/spax/reference/calc_decay.md),
-[`calc_choice()`](https://songyosr.github.io/spax/reference/calc_choice.md)
-and
-[`compute_access()`](https://songyosr.github.io/spax/reference/compute_access.md).
-The check is silent when the selection weights add up to 1 at every cell
-and the building blocks reproduce
-[`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md).
-
-``` r
-
-w <- calc_decay(travel, method = "gaussian", sigma = 10)  # decay weights W
-g <- calc_choice(w)  # selection weights G: each cell's weights over their sum
-k <- w * g           # the kernel of both steps
-
-by_blocks <- compute_access(
-  demand = pop,
-  supply = gp,
-  demand_weights = k,
-  access_weights = k,
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
-
-stopifnot(
-  isTRUE(all.equal(
-    range(values(sum(g), mat = FALSE), na.rm = TRUE),
-    c(1, 1)
-  )),
-  isTRUE(all.equal(
-    values(by_blocks, mat = FALSE),
-    values(sfca3$accessibility, mat = FALSE),
-    tolerance = 1e-10,
-    check.attributes = FALSE
-  ))
-)
-```
-
-Each variant uses one kernel in both steps, as E2SFCA and 2SFCA do, so
-it returns the supply of every practice that gathers demand, here all of
-them: residents times index, summed over cells, equals the total GP FTE.
-The check shows that sum as a share of total GP FTE. M2SFCA squares the
-access-side weights and returns only part of it.
-
-``` r
-
-# Residents times index, summed over cells, as a share of total GP FTE
-returned <- function(x) {
-  sum(p * values(x$accessibility, mat = FALSE), na.rm = TRUE) /
-    sum(gp$gp_fte_extg)
-}
-round(
-  c(
-    E2SFCA = returned(e2sfca),
-    `2SFCA` = returned(twosfca),
-    M2SFCA = returned(m2sfca),
-    `3SFCA` = returned(sfca3),
-    `Huff-2SFCA` = returned(huff)
-  ),
-  6
-)
-```
-
-``` spax-output
-    E2SFCA      2SFCA     M2SFCA      3SFCA Huff-2SFCA 
-  1.000000   1.000000   0.615978   1.000000   1.000000 
-```
-
-The maps put E2SFCA, 3SFCA and Huff-2SFCA on the colour scale of the
+The maps put E2SFCA, 3SFCA and Huff-2SFCA on the color scale of the
 first map, in GP FTE per 1,000 residents.
 
 ``` r
 
-# Same colour scale as the first map; the new surfaces lie within its range
 selection_maps <- 1000 * c(
   e2sfca$accessibility,
   sfca3$accessibility,
-  huff$accessibility
+  huff2sfca$accessibility
 )
 names(selection_maps) <- c(
   "E2SFCA, Gaussian 10 min",
   "3SFCA, Gaussian 10 min",
   "Huff-2SFCA, Gaussian 10 min"
-)
-stopifnot(
-  min(values(selection_maps), na.rm = TRUE) >= shared_range[1],
-  max(values(selection_maps), na.rm = TRUE) <= shared_range[2]
 )
 plot(
   selection_maps,
@@ -446,28 +319,31 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = shared_range,
   mar = c(1, 1, 2, 5),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 
-![Three raster maps of mainland Cornwall on the colour scale of the
-first map, in GP FTE per 1,000 residents: E2SFCA changes smoothly and is
-low on Bodmin Moor and at the tips of the peninsulas, while 3SFCA and
+![Three raster maps of mainland Cornwall on the color scale of the first
+map, in GP FTE per 1,000 residents: E2SFCA changes smoothly and is low
+on Bodmin Moor and at the tips of the peninsulas, while 3SFCA and
 Huff-2SFCA are patchier, stay low on Bodmin Moor and are higher than
 E2SFCA at the tips of the peninsulas, most clearly at the
 Lizard.](fca-methods_files/figure-html/selection-map-1.png)
 
+The same summaries as before compare the three.
+
 ``` r
 
-a3 <- per_1000(sfca3)
-ah <- per_1000(huff)
+sfca3_values <- per_1000(sfca3)
+huff2sfca_values <- per_1000(huff2sfca)
 
-# Cell quantiles and the resident-weighted index, as for the other methods
+# Cell quantiles and the resident-weighted index
 round(
   rbind(
-    E2SFCA = describe(a),
-    `3SFCA` = describe(a3),
-    `Huff-2SFCA` = describe(ah)
+    E2SFCA = describe(e2sfca_values),
+    `3SFCA` = describe(sfca3_values),
+    `Huff-2SFCA` = describe(huff2sfca_values)
   ),
   2
 )
@@ -482,98 +358,180 @@ Huff-2SFCA 0.25 0.52 0.72              0.58
 
 ``` r
 
-# Agreement across cells
-c(
-  correlation_e2sfca_3sfca = round(cor(a, a3, use = "complete.obs"), 2),
-  correlation_e2sfca_huff = round(cor(a, ah, use = "complete.obs"), 2),
-  correlation_3sfca_huff = round(cor(a3, ah, use = "complete.obs"), 2)
+# Correlations across cells
+round(
+  c(
+    `E2SFCA, 3SFCA` = cor(e2sfca_values, sfca3_values, use = "complete.obs"),
+    `E2SFCA, Huff-2SFCA` = cor(e2sfca_values, huff2sfca_values, use = "complete.obs"),
+    `3SFCA, Huff-2SFCA` = cor(sfca3_values, huff2sfca_values, use = "complete.obs")
+  ),
+  2
 )
 ```
 
 ``` spax-output
-correlation_e2sfca_3sfca  correlation_e2sfca_huff   correlation_3sfca_huff 
-                    0.64                     0.55                     0.97 
+     E2SFCA, 3SFCA E2SFCA, Huff-2SFCA  3SFCA, Huff-2SFCA 
+              0.64               0.55               0.97 
 ```
 
-The resident-weighted index is the same for the three, because each
-returns the total supply. They differ in which cells the supply is
-credited to: across cells E2SFCA correlates at 0.64 with 3SFCA, while
-adding attractiveness to 3SFCA changes the surface less (a correlation
-of 0.97). On the maps, 3SFCA and Huff-2SFCA are higher than E2SFCA at
-the ends of the Lizard and Land’s End peninsulas, where E2SFCA is
-lowest, and they are lowest on Bodmin Moor, where E2SFCA is also low.
-With `alpha = 0` attractiveness has no effect and Huff-2SFCA equals
-3SFCA.
+The resident-weighted index is the same for the three. They differ in
+which cells the supply is credited to. E2SFCA correlates at 0.64 with
+3SFCA, while adding attractiveness to 3SFCA changes the surface less (a
+correlation of 0.97). On the maps, 3SFCA and Huff-2SFCA are higher than
+E2SFCA at the southern tip (the Lizard) and the western tip (Land’s
+End), where E2SFCA is low. All three have their lowest values on Bodmin
+Moor.
+
+With `alpha = 0`, attractiveness has no effect and Huff-2SFCA gives the
+3SFCA surface:
 
 ``` r
 
-no_attractiveness <- spax_huff2sfca(
-  demand = pop,
-  supply = gp,
-  distance = travel,
-  decay_params = list(method = "gaussian", sigma = 10),
-  alpha = 0,
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
-)
-stopifnot(isTRUE(all.equal(
-  values(no_attractiveness$accessibility, mat = FALSE),
-  values(sfca3$accessibility, mat = FALSE),
-  tolerance = 1e-10,
-  check.attributes = FALSE
-)))
+no_attractiveness <- spax(grid_data, spec_huff2sfca(decay = gaussian_10, alpha = 0))
+all.equal(values(no_attractiveness$accessibility), values(sfca3$accessibility))
 ```
 
-As for the other methods, the index has supply-per-demand units, and the
-decay scale, the attractiveness measure and `alpha` are choices that
-this guide does not estimate from data.
+``` spax-output
+[1] TRUE
+```
+
+`selection` can give the selection weights another decay, for example
+`decay_step(30)` to share each cell’s demand only among practices within
+30 minutes.
+[`?spec_e2sfca`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
+describes the options, and
 [`?spax_3sfca`](https://songyosr.github.io/spax/reference/spax_3sfca.md)
 and
 [`?spax_huff2sfca`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
-describe `selection_params`, which gives the selection weights another
-decay or a catchment limit, and cite the methods. In
-[`spec_3sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
-and
-[`spec_huff2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
-the same choice is `selection`, a decay; `NULL`, the default, uses
-`decay`.
+cite the methods.
+
+## How much supply each index hands back
+
+Multiply each cell’s index by its residents and add up over cells: the
+result is the GP FTE that the index hands back to residents. The table
+gives it as a percentage of the total GP FTE.
+
+``` r
+
+# Residents times index, summed over cells, as a share of total GP FTE
+returned <- function(result) {
+  sum(residents * values(result$accessibility, mat = FALSE), na.rm = TRUE) /
+    sum(gp$gp_fte_extg)
+}
+round(
+  100 * c(
+    E2SFCA = returned(e2sfca),
+    `2SFCA` = returned(twosfca),
+    M2SFCA = returned(m2sfca),
+    `3SFCA` = returned(sfca3),
+    `Huff-2SFCA` = returned(huff2sfca)
+  ),
+  1
+)
+```
+
+``` spax-output
+    E2SFCA      2SFCA     M2SFCA      3SFCA Huff-2SFCA 
+     100.0      100.0       61.6      100.0      100.0 
+```
+
+This is the resident-weighted column of the tables above, divided by the
+mainland ratio. The four indices that use the same weights in both steps
+hand back all of the GP FTE, and M2SFCA hands back 61.6%.
+
+## Choosing an index
+
+- **A fixed catchment**, such as a 15-minute standard: 2SFCA. Everyone
+  beyond it gets an index of zero.
+- **Access that fades with travel time**: E2SFCA, with a decay and a
+  travel scale you choose. A Gaussian, exponential or power decay can
+  also take a raster of σ values, for a travel scale that varies in
+  space.
+- **Remoteness counted against a place**: M2SFCA. It weights the ratios
+  a second time on the way back, so a cell far from every practice gets
+  a lower index even where those practices are not crowded. Part of the
+  supply goes to no one, so its values are lower than those of E2SFCA.
+- **Residents near many practices counted at most once**: 3SFCA, which
+  shares each cell’s demand among its practices. Huff-2SFCA also gives
+  larger practices a larger share.
+- **Expected use, fitted to where people register**: an allocation
+  model, described in [An FCA index or an allocation
+  model?](https://songyosr.github.io/spax/articles/model-choice.md).
+
+## A one-call shortcut
+
+Once you have chosen an index, its one-call function computes it
+directly from the inputs:
+[`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md),
+[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md),
+[`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md),
+[`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md)
+or
+[`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md).
+The one-call functions take the travel stack as `distance` and the decay
+as a list in `decay_params`. They return the same object as
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md), so the
+E2SFCA surface is identical.
+
+``` r
+
+e2sfca_one_call <- spax_e2sfca(
+  demand = pop,
+  supply = gp,
+  distance = travel_grid,
+  decay_params = list(method = "gaussian", sigma = 10),
+  id_col = "practice",  # matches supply rows to travel layers
+  supply_cols = "gp_fte_extg"
+)
+identical(values(e2sfca_one_call$accessibility), values(e2sfca$accessibility))
+```
+
+``` spax-output
+[1] TRUE
+```
+
+The one-call functions suit a single index. Specifications suit a
+comparison like this one, where several indices run on the same prepared
+data.
 
 ## Several demand groups
 
 Residents can differ in how far they travel, for example by age or by
-the transport they have. Give `demand` as a named list of single-layer
-rasters, one per group, and each group gets its own surface. The
-Cornwall data have no age split, so this section builds one for
-illustration. It is not data: it assumes that the share of residents in
-an older group rises in a straight line from 15% at the western edge of
-the grid to 35% at the eastern edge, and that the older group travels
-less far to a practice, with a Gaussian scale of 8 minutes against 12
-for the younger group. All of these numbers are illustrative choices.
+the transport they have. Give
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+the demand as a named list of single-layer rasters, one per group, and
+give the specification one decay per group. Each group then gets its own
+surface.
+
+The Cornwall data have no age split, so this section builds one. It
+assumes that the share of residents in an older group rises in a
+straight line from 15% at the western edge of the grid to 35% at the
+eastern edge. It also assumes that the older group travels less far to a
+practice, with a travel scale of 8 minutes against 12 for the younger
+group. All of these numbers are illustrative choices. The code builds
+the two group grids, prepares them, and computes the index with one
+decay per group.
 
 ``` r
 
-# An illustrative older share that rises from west to east, not data
+# An illustrative older share that rises from west to east
 older_share <- mask(init(pop, "x"), pop)
-rng <- unlist(global(older_share, range, na.rm = TRUE))
-older_share <- 0.15 + 0.20 * (older_share - rng[1]) / (rng[2] - rng[1])
+x_range <- unlist(global(older_share, range, na.rm = TRUE))
+older_share <- 0.15 + 0.20 * (older_share - x_range[1]) / (x_range[2] - x_range[1])
 
 groups <- list(
   younger = pop * (1 - older_share),
   older = pop * older_share
 )
+group_data <- prep_data(groups, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 
 # One decay per group, named by the group IDs
-by_group <- spax_e2sfca(
-  demand = groups,
-  supply = gp,
-  distance = travel,
-  decay_params = list(
-    younger = list(method = "gaussian", sigma = 12),
-    older = list(method = "gaussian", sigma = 8)
-  ),
-  demand_normalize = "identity",
-  id_col = "practice",
-  supply_cols = "gp_fte_extg"
+by_group <- spax(
+  group_data,
+  spec_e2sfca(decay = list(
+    younger = decay_gaussian(sigma = 12),
+    older = decay_gaussian(sigma = 8)
+  ))
 )
 names(by_group$accessibility)
 ```
@@ -582,14 +540,14 @@ names(by_group$accessibility)
 [1] "gp_fte_extg.younger" "gp_fte_extg.older"   "gp_fte_extg.all"    
 ```
 
-All groups compete for the same GP time: step 1 adds up the demand of
-the groups that reaches each practice, each with its own weights, so a
-practice has one demand total and one supply-to-demand ratio. Step 2
-then gives each group its own surface from those shared ratios, using
-its own weights. The layer ending in `.all` is the overall surface, the
-average of the group surfaces weighted by the demand of each cell. A
-group whose travel reaches no practice from a cell counts with an index
-of 0 there, so the overall layer shows it as no access.
+All groups compete for the same GP time. The gathering step adds up the
+demand of the groups that reaches each practice, each group with its own
+weights, so a practice has one demand total and one supply-to-demand
+ratio. The spreading step then gives each group its own surface from
+those shared ratios, using its own weights. The layer ending in `.all`
+is the overall surface: the average of the group surfaces, weighted by
+each cell’s demand. The maps show the three layers on one color scale of
+their own, not the scale of the earlier maps.
 
 ``` r
 
@@ -606,22 +564,26 @@ plot(
   col = hcl.colors(50, "viridis"),
   range = range(values(group_maps), na.rm = TRUE),
   mar = c(1, 1, 2, 5),
-  plg = list(title = "GP FTE\nper 1,000")
+  plg = list(title = "GP FTE\nper 1,000"),
+  fun = function() lines(outline, lwd = 0.5)
 )
 ```
 
-![Three raster maps of mainland Cornwall on one colour scale in GP FTE
+![Three raster maps of mainland Cornwall on one color scale in GP FTE
 per 1,000 residents: the younger group, the older group with a shorter
 travel scale, which is lower everywhere, and the overall surface between
 the two.](fca-methods_files/figure-html/groups-map-1.png)
 
+The older group’s map is darker everywhere, and the overall map is close
+to the younger one. The table gives the index of the average resident in
+each group, and overall.
+
 ``` r
 
 # Demand-weighted mean index per 1,000 residents of each group, and overall
-mean_index <- function(layer, weight) {
-  x <- 1000 * values(by_group$accessibility[[layer]], mat = FALSE)
-  w <- values(weight, mat = FALSE)
-  weighted.mean(x, w, na.rm = TRUE)
+mean_index <- function(layer, demand) {
+  index <- 1000 * values(by_group$accessibility[[layer]], mat = FALSE)
+  weighted.mean(index, values(demand, mat = FALSE), na.rm = TRUE)
 }
 round(
   c(
@@ -639,43 +601,41 @@ younger   older overall
 ```
 
 The average younger resident sees 0.65 GP FTE per 1,000 residents and
-the average older resident 0.36; the overall value lies between them,
+the average older resident 0.36. The overall value lies between them,
 nearer the younger group because that group is the larger one in every
-cell. With a shorter scale, every practice at a positive travel time
-gets a smaller weight for the older group, so its index is lower. The
-gap reflects the assumed travel scales and the assumed split, not any
-observed difference between age groups.
+cell. With a shorter travel scale, every practice at a positive travel
+time gets a smaller weight for the older group, so its index is lower.
+The gap comes from the assumed travel scales and the assumed split.
 
-Transport modes are another use. Give `distance` as a named list with
-one travel stack per group, for example one for car and one for public
-transport; the stacks must name the same practices in the same order,
-and `decay_params` can be given per group in the same way. This follows
-the structure of the multi-modal 2SFCA of [Tao et al.
+Transport modes work the same way. Split the residents by mode, for
+example by the share of households with a car. Give
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+the demand as a named list by mode, and the travel as a named list with
+the same names: one travel stack per mode, naming the same practices in
+the same order. This follows the multi-modal 2SFCA of [Tao et al.
 (2018)](https://doi.org/10.1186/s12913-018-3132-8) (their equations
 3-5), in which the modes share the supply and the travel times differ by
-mode, and generalizes it to a decay that differs by group. Earlier
+mode, and extends it to a decay that differs by group. Earlier
 multi-modal 2SFCA work includes [Mao and Nekorchuk
 (2013)](https://doi.org/10.1016/j.healthplace.2013.08.008) and
 [Langford, Higgs and Fry
-(2016)](https://doi.org/10.1016/j.healthplace.2015.11.007).
-[`?spax_e2sfca`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
-lists which arguments can be given per group. In a specification,
-`decay` and `selection` can be a named list by group and `threshold` a
-named vector by group;
-[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
-takes the list of group rasters as `demand`.
+(2016)](https://doi.org/10.1016/j.healthplace.2015.11.007). In a
+specification, `decay` and `selection` can be a named list by group, and
+`threshold` a named vector by group.
 
-## Continue
+## Next
 
-- [Preparing your own
-  data](https://songyosr.github.io/spax/articles/data-prep.md):
-  small-area counts to a demand grid, facility IDs and unknown travel
-  times.
-- [The E2SFCA calculation step by
-  step](https://songyosr.github.io/spax/articles/e2sfca-steps.md).
-- [Grid resolution, support and computational
-  cost](https://songyosr.github.io/spax/articles/grid-resolution.md).
-- [Choosing an FCA index or an allocation
-  model](https://songyosr.github.io/spax/articles/model-choice.md) when
-  expected use, an explicit outside option and a fit to observations are
-  required.
+- [Inside the E2SFCA
+  calculation](https://songyosr.github.io/spax/articles/e2sfca-steps.md):
+  rebuild the index one step at a time, and 3SFCA from the same building
+  blocks.
+- [Grid resolution and computational
+  cost](https://songyosr.github.io/spax/articles/grid-resolution.md):
+  how cell size changes the index and the run time.
+- [An FCA index or an allocation
+  model?](https://songyosr.github.io/spax/articles/model-choice.md):
+  when you need choice probabilities and a fit to observed
+  registrations.
+- [Reading
+  results](https://songyosr.github.io/spax/articles/reading-results.md):
+  what an FCA index measures, and what it does not.

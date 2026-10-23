@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Fitting an allocation model to GP registrations in Cornwall • spax</title>
+<title>Where do residents register? Fitting an allocation model • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Fitting an allocation model to GP registrations in Cornwall">
+<meta property="og:title" content="Where do residents register? Fitting an allocation model">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,124 +76,132 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Fitting an allocation model to GP registrations in Cornwall</h1>
+      <h1>Where do residents register? Fitting an allocation model</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/allocation-workflow.Rmd" class="external-link"><code>vignettes/allocation-workflow.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/allocation-workflow.Rmd" class="external-link"><code>vignettes/allocation-workflow.Rmd</code></a></small>
       <div class="d-none name"><code>allocation-workflow.Rmd</code></div>
     </div>
 
     
     
-<p>This guide uses the bundled Cornwall GP data, described in <a href="cornwall-data.html">The Cornwall GP example data</a>.</p>
-<p>This guide runs the experimental allocation workflow from start to
-finish. It first fits the model in one call with <code><a href="../reference/spax.html">spax()</a></code>,
-then works through the steps one at a time: prepare inputs, declare a
-model, fit it to observed registrations, inspect the saved fit, predict
-at new locations, compare a change in one practice’s supply, declare a
-decay function of your own, and export the results and read them back in
-a fresh R session. Bootstrap intervals have their own guide, <a href="facility-bootstrap.html">Bootstrap intervals for a fitted
-allocation model</a>, on generated data.</p>
-<p>The model is a corrected static conditional logit (CLM) with an
-explicit outside option. Each practice attracts residents in proportion
-to its supply, discounted by travel time; the outside option competes
-with all practices. For choosing between this model and an FCA index,
-see <a href="model-choice.html">Choosing an FCA index or an allocation
-model</a>. <a href="data-prep.html">Preparing your own data</a> explains
-counts, units, IDs and missing travel, and <a href="function-naming.html">saved-result inspection</a> describes the
-standard R methods used below. The interface is experimental.</p>
+<p>How strongly does travel time shape where people register with a GP?
+This guide answers that question for mainland Cornwall by fitting an
+allocation model to the observed registrations. You will estimate how
+fast the pull of a practice fades with travel time, compare each
+practice’s modeled list with its observed list, check what the
+registrations can tell the model, see how much the outside option adds,
+and save the results. The data are the bundled small areas, practices,
+registrations and travel times described in <a href="cornwall-data.html">The Cornwall GP example data</a>. The
+<code><a href="../reference/spax.html">spax()</a></code> interface and the allocation model are experimental
+and may change in later versions.</p>
+<p>The guide uses spax, with sf, dplyr and ggplot2 for tables and
+maps.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
+<h2 id="the-model-in-words">The model in words<a class="anchor" aria-label="anchor" href="#the-model-in-words"></a>
+</h2>
+<p>The model shares the residents of each small area among the practices
+they can reach. Each practice attracts residents in proportion to its
+supply, here its GP full-time equivalents (FTE), discounted by the
+travel time from the area. Residents can also take an outside option:
+here, registering with a practice outside mainland Cornwall, in Devon or
+on the Isles of Scilly for example. This is a conditional logit model
+(CLM). For small area
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+and practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
+the share of residents registered at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>S</mi><mi>j</mi></msub><mspace width="0.167em"></mspace><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>S</mi><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msub><mi>v</mi><mn>0</mn></msub></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">P_{ij} = \frac{S_j \, w(d_{ij})}{\sum_k S_k \, w(d_{ik}) + v_0},</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math>
+is the GP FTE of practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{ij}</annotation></semantics></math>
+the travel time in minutes. The decay weight
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math>
+is 1 at zero minutes and falls with travel time. This guide uses a
+Gaussian weight,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>−</mi><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">w(d) = \exp(-d^2 / 2\sigma^2)</annotation></semantics></math>,
+where the travel scale σ, in minutes, sets how fast a practice’s pull
+fades. The outside weight v0 is the pull of the outside option, the same
+in every area, and the outside share of an area is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>v</mi><mn>0</mn></msub><annotation encoding="application/x-tex">v_0</annotation></semantics></math>
+over the same denominator.</p>
+<p>The shares over all practices and the outside option add up to 1, so
+a near practice with many GP FTE draws residents away from the others.
+Demand, the number of residents of an area, times these shares gives the
+modeled registrations. Fitting finds the values of σ and v0 that bring
+the modeled registrations closest to the observed ones. Closeness is
+measured by the Poisson loss, the negative Poisson log-likelihood up to
+a constant. Lower is better, only differences between fits to the same
+counts mean anything, and the value itself can be negative.</p>
+</div>
+<div class="section level2">
 <h2 id="the-data">The data<a class="anchor" aria-label="anchor" href="#the-data"></a>
 </h2>
-<p>The model uses four of the bundled objects: small areas with their
-registered residents (<code>cornwall_lsoa</code>), practices with their
-GP full-time equivalents (FTE, <code>cornwall_gp</code>), registrations
-by small area and practice (<code>cornwall_flows</code>) and travel
-minutes between them (<code>cornwall_travel</code>). As in the other
-guides, it covers mainland Cornwall only, because the Isles of Scilly
-have no road link to the mainland.</p>
+<p>The model needs demand by small area, supply by practice, the travel
+times between them and the observed registrations. Demand is the
+residents of each small area registered with any GP practice in England,
+and supply is GP FTE excluding GPs in training. The recipe covers
+mainland Cornwall, because the Isles of Scilly have no road link to the
+mainland. <code><a href="../reference/prep_data.html">prep_data()</a></code> lines up demand, supply and travel by
+their IDs and records the units, and <code><a href="../reference/obs_flows.html">obs_flows()</a></code> reads the
+registrations from a long table with one row per small area and
+practice.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Mainland small areas and practices, as plain tables</span></span>
-<span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Travel minutes: small areas in rows, practices in columns</span></span>
 <span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span></span>
-<span></span>
-<span><span class="co"># Demand: residents registered with any practice in England.</span></span>
 <span><span class="va">demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span></span>
-<span><span class="co"># Supply: GP FTE excluding GPs in training.</span></span>
 <span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">demand</span>, <span class="va">supply</span>, <span class="va">travel</span>, metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  demand_units <span class="op">=</span> <span class="st">"registered residents"</span>, demand_period <span class="op">=</span> <span class="st">"July 2026"</span>,</span>
+<span>  supply_units <span class="op">=</span> <span class="st">"GP FTE excluding GPs in training"</span>, supply_period <span class="op">=</span> <span class="st">"June 2026"</span>,</span>
+<span>  travel_units <span class="op">=</span> <span class="st">"minutes"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">flows</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/obs_flows.html">obs_flows</a></span><span class="op">(</span><span class="va">cornwall_flows</span>, origin <span class="op">=</span> <span class="st">"lsoa"</span>, facility <span class="op">=</span> <span class="st">"practice"</span>, count <span class="op">=</span> <span class="st">"patients"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Observed flows: registered residents by small area (rows) and practice.</span></span>
-<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
-<span>  <span class="fl">0</span>,</span>
-<span>  nrow <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>,</span>
-<span>  ncol <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/dimensions.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span>,</span>
-<span>  dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">keep</span> <span class="op">&lt;-</span> <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span> <span class="op">&amp;</span></span>
-<span>  <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span></span>
-<span><span class="va">observed</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span>, <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span></span>
-<span>  <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">patients</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] 336  54</code></pre>
+<span><span class="va">d</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax data&gt; 336 origins (336 active) x 54 facilities
+  demand      604,471 registered residents (July 2026)
+  supply      GP FTE excluding GPs in training (June 2026)
+  travel      minutes; unknown for 0 active origins
+  policies    missing demand: error; missing travel: error</code></pre>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>registered <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span>, at_mainland_practices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>           registered at_mainland_practices 
-               604471                598974 </code></pre>
-<p>Registrations are a stock: who is registered where in July 2026, not
-a count of visits. Because demand counts every registered resident, the
-outside option stands for registration with a practice outside mainland
-Cornwall (in Devon, for example, or on the Isles of Scilly). It is not
-unmet need: almost everyone is registered with some practice.</p>
+<code class="sourceCode R"><span><span class="va">flows</span></span></code></pre></div>
+<pre class="spax-output"><code>&lt;spax obs&gt; flows: 3,188 origin-facility counts, total 601,269; loss poisson</code></pre>
+<p>The data hold 336 small areas and 54 practices, with a travel time
+for every pair (<code>unknown for 0 active origins</code>). The
+<code>policies</code> line says that a missing demand or travel value
+would stop <code><a href="../reference/prep_data.html">prep_data()</a></code> with an error. <a href="data-prep.html">Bringing your own data</a> shows the alternatives
+for missing travel times. <code>flows</code> lists the 3,188
+area-practice pairs with registrations, and a pair it does not list
+counts as 0. The registrations are a stock: who is registered where in
+July 2026, not a count of visits.</p>
 </div>
 <div class="section level2">
-<h2 id="fit-in-one-call">Fit in one call<a class="anchor" aria-label="anchor" href="#fit-in-one-call"></a>
+<h2 id="fit-the-model">Fit the model<a class="anchor" aria-label="anchor" href="#fit-the-model"></a>
 </h2>
-<p><code><a href="../reference/spax.html">spax()</a></code> runs an allocation model in one call. It takes
-three pieces: the data from <code><a href="../reference/prep_data.html">prep_data()</a></code>, a model
-specification and the observed counts. <code><a href="../reference/spec_clm.html">spec_clm()</a></code> specifies
-the conditional logit: here a Gaussian travel kernel with scale σ
-(minutes) and an outside weight v0, both <code>"fit"</code>, that is,
-estimated. <code><a href="../reference/obs_flows.html">obs_flows()</a></code> declares the observed small area ×
-practice matrix and the loss that fits it, Poisson by default. Unit and
-period labels are declarations attached to the results; spax does not
-convert units.</p>
+<p><code><a href="../reference/spec_clm.html">spec_clm()</a></code> specifies the model without data. By default
+the travel scale σ of a Gaussian decay and the outside weight v0 are
+both <code>"fit"</code>, that is, estimated from the observations.
+<code><a href="../reference/spax.html">spax()</a></code> fits the specification to the registrations.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Labels kept with the inputs and every result derived from them</span></span>
-<span><span class="va">cornwall_units</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  demand_units <span class="op">=</span> <span class="st">"registered residents"</span>,</span>
-<span>  demand_period <span class="op">=</span> <span class="st">"July 2026"</span>,</span>
-<span>  supply_units <span class="op">=</span> <span class="st">"GP FTE excluding GPs in training"</span>,</span>
-<span>  supply_period <span class="op">=</span> <span class="st">"June 2026"</span>,</span>
-<span>  travel_units <span class="op">=</span> <span class="st">"minutes"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">supply</span>,</span>
-<span>  travel <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  metadata <span class="op">=</span> <span class="va">cornwall_units</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">clm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span></span>
-<span>  data <span class="op">=</span> <span class="va">d</span>,</span>
-<span>  model <span class="op">=</span> <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="st">"fit"</span><span class="op">)</span>, outside <span class="op">=</span> <span class="st">"fit"</span><span class="op">)</span>,</span>
-<span>  observed <span class="op">=</span> <span class="fu"><a href="../reference/obs_flows.html">obs_flows</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">clm</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">clm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">flows</span><span class="op">)</span></span></code></pre></div>
+<pre><code>observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted (outside = "known" uses them as outside counts)</code></pre>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">clm</span></span></code></pre></div>
 <pre class="spax-output"><code>&lt;spax allocation&gt; conditional logit with an outside option
   decay       gaussian (sigma = travel scale): fit
   attraction  (kappa * supply)^beta: kappa = 1, beta = 1
@@ -206,186 +217,87 @@ convert units.</p>
   selected    scan1 (start 1 of 3); 3 of 3 starts converged
   boundary    none
   starts      default search, 45 of 45 grid points, loss poisson</code></pre>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>The message says what <code><a href="../reference/spax.html">spax()</a></code> left out when it lined the
+registrations up with the data. One small area, on the Isles of Scilly,
+is not in the data, so its registrations are dropped. Also, 5 mainland
+residents are registered at the Scilly practice, which is not in the
+data either. This fit leaves them out. With
+<code>outside = "known"</code>, used in <a href="#when-outside-counts-are-known">When outside counts are known</a>,
+they count as registered outside mainland Cornwall.</p>
+<p>The table lists the fitted σ and v0. <code>beta</code> and
+<code>kappa</code> are held at 1. Attraction is
+<code>(kappa * supply)^beta</code>, so at 1 a practice attracts in
+proportion to its GP FTE, the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math>
+of the formula.</p>
+<p>Fitting is a numerical search, and a search needs starting values.
+Without them, <code><a href="../reference/spax.html">spax()</a></code> scans a grid of σ and v0 values (the
+<code>starts</code> line) and starts the search from the best few grid
+points. The <code>selected</code> line says which search gave the fit
+and how many converged. <code>boundary none</code> says that no fitted
+value ended at the edge of its allowed range. <code>summary(clm)</code>
+lists every start.</p>
+<p><code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> returns the fitted values.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>     sigma         v0 
 4.59099725 0.02733454 </code></pre>
-<p>No starts were given, so <code><a href="../reference/spax.html">spax()</a></code> found them from the
-data. It probes the Gaussian kernel for the range of σ over which it
-decays across these travel times, scans that range with outside weights
-seeded from the observed outside share, and fits from the best points of
-the scan. The last line of the print records the search, and
-<code>summary(clm)</code> shows every start. To choose the starts and
-bounds yourself, give <code>starts</code>, <code>lower</code> and
-<code>upper</code>, as in <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code>.</p>
-</div>
-<div class="section level2">
-<h2 id="the-same-fit-step-by-step">The same fit step by step<a class="anchor" aria-label="anchor" href="#the-same-fit-step-by-step"></a>
-</h2>
-<p><code><a href="../reference/spax.html">spax()</a></code> builds the objects of this section: the model
-bound to the data (<code>clm$model</code>, the same model that
-<code><a href="../reference/clm_allocation.html">clm_allocation()</a></code> declares below) and the multistart fit of
-<code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> (<code>clm$fit</code>), from the starts it
-found. The step functions accept the result itself, for example
-<code>check_allocation(clm)</code>.</p>
-<p><code><a href="../reference/prepare_allocation.html">prepare_allocation()</a></code> aligns demand, supply and travel by
-their names and checks them once; <code><a href="../reference/prep_data.html">prep_data()</a></code> returns the
-same object. <code><a href="../reference/clm_allocation.html">clm_allocation()</a></code> then declares the model: a
-Gaussian travel kernel with scale σ (minutes) and a fitted outside
-weight v0.</p>
-<p>The Huff model is this model without the outside option, and
-<code><a href="../reference/huff_allocation.html">huff_allocation()</a></code> declares it. The guide uses
-<code>clm_allocation(fit_v0 = TRUE)</code> because some registrations go
-to practices outside mainland Cornwall.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The same inputs, with the labels declared above</span></span>
-<span><span class="va">inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">supply</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  metadata <span class="op">=</span> <span class="va">cornwall_units</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span></span>
-<span>  inputs <span class="op">=</span> <span class="va">inputs</span>,</span>
-<span>  family <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
-<span>  fit_v0 <span class="op">=</span> <span class="cn">TRUE</span>  <span class="co"># estimate the outside weight</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> runs one fit from each supplied start
-and keeps the best converged one. Here the target is the small area ×
-practice flow matrix and the loss is Poisson, chosen explicitly: asking
-for counts does not choose a likelihood. Registrations are not
-independent event counts, so treat the Poisson loss as a fitting
-criterion rather than a full observation model. Joint Poisson fitting
-does not force the modelled total to match the observed total.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Three starting points, from a short to a long travel scale</span></span>
-<span><span class="va">starts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  near <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">3</span>, v0 <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>,</span>
-<span>  middle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">6</span>, v0 <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span>,</span>
-<span>  far <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">12</span>, v0 <span class="op">=</span> <span class="fl">0.002</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_allocation.html">fit_allocation</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="va">model</span>,</span>
-<span>  observed <span class="op">=</span> <span class="va">observed</span>,</span>
-<span>  starts <span class="op">=</span> <span class="va">starts</span>,</span>
-<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">0.5</span>, v0 <span class="op">=</span> <span class="fl">1e-6</span><span class="op">)</span>,</span>
-<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">60</span>, v0 <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  output <span class="op">=</span> <span class="st">"flow"</span>,  <span class="co"># fit the small area x practice matrix</span></span>
-<span>  loss <span class="op">=</span> <span class="st">"poisson"</span>,</span>
-<span>  gradient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">300</span>, factr <span class="op">=</span> <span class="fl">10</span>, pgtol <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Every start, then the selected parameters as a table</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>&lt;allocation fit summary&gt;
-status: selected; selected start: near
-loss disagreement: FALSE; parameter disagreement: FALSE
-Supplied-start diagnostics (not a global-optimum or identification guarantee):
-  start     loss eligible optim_convergence solver_converged residual seconds
-   near -3168000     TRUE                 0             TRUE        0   0.169
- middle -3168000     TRUE                 0             TRUE        0   0.122
-    far -3168000     TRUE                 0             TRUE        0   0.216
- boundary   status                                   optim_message
-    FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
-    FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
-    FALSE eligible CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH
- solver_message log_parameter_gap loss_gap
-      converged         0.000e+00        0
-      converged         1.762e-07        0
-      converged         2.760e-07        0
-
-Selected fit:
-&lt;allocation fit result summary&gt;
-model: conditional logit
-family: gaussian (sigma = travel scale)
-allocation_form: clm
-
-theta:
- parameter estimate
-     sigma  4.59100
-        v0  0.02733
-
-fit:
-     loss convergence seconds spectral_radius gradient
- -3168000           0   0.166               0     TRUE
-
-predicted:
-        min       q25   median  mean      q75  max
- 1.072e-162 8.783e-40 8.28e-15 33.14 0.002554 2872
-
-state:
-   min   q25 median  mean  q75   max
- 1.133 3.272   4.88 5.765 7.93 13.36
-
-residual:
-   min       q25   median   mean       q75  max
- -1932 6.052e-59 6.31e-22 0.1232 2.367e-06 1135</code></pre>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>  parameter   estimate
-1     sigma 4.59099725
-2        v0 0.02733455</code></pre>
-<p>The summary keeps every start, its convergence, boundaries and
-messages. The estimates agree with the one-call fit above. The starts
-stop away from the bounds and very close to each other. With the strict
-tolerance used here (<code>factr = 10</code>), a start can end with a
-line-search message at practically the same loss, so judge agreement by
-the losses and parameters in the per-start table rather than by the
-convergence codes alone. The disagreement flag uses deliberately strict
-default tolerances, so read the gaps in the per-start table rather than
-the flag alone. Agreement among the supplied starts is a numerical
-check; it does not prove a global optimum or that the parameters are
-identified.</p>
-<p>A σ of about 4.6 minutes means registration is very local: a practice
-9 minutes away keeps only about 15% of the pull it would have next
-door.</p>
+<p>The travel scale σ is about 4.6 minutes, so registration is very
+local: a practice 9 minutes away, about twice σ, keeps only about 15% of
+the pull it would have next door. The outside weight v0, about 0.027, is
+on the scale of GP FTE. The outside option pulls like a practice with
+that many GP FTE next door to every area, so it matters only where no
+practice is near.</p>
 </div>
 <div class="section level2">
 <h2 id="fitted-against-observed">Fitted against observed<a class="anchor" aria-label="anchor" href="#fitted-against-observed"></a>
 </h2>
-<p><code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> returns the saved fitted flows; nothing is
-recomputed. Summing over small areas gives each practice’s modelled
-registered list.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Observed and modelled list size of each practice</span></span>
-<span><span class="va">practices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  practice <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span>,</span>
-<span>  observed <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span>,</span>
-<span>  fitted <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">practices</span><span class="op">$</span><span class="va">observed</span>, <span class="va">practices</span><span class="op">$</span><span class="va">fitted</span><span class="op">)</span></span></code></pre></div>
+<p><code>as.data.frame(clm, type = "flows")</code> gives one row per
+small area and practice, with the modeled flow and the observed count.
+Summed by practice, they give each practice’s modeled and observed list
+of mainland residents.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">flow_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm</span>, type <span class="op">=</span> <span class="st">"flows"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Observed and modeled list of each practice</span></span>
+<span><span class="va">practices</span> <span class="op">&lt;-</span> <span class="va">flow_table</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span>practice <span class="op">=</span> <span class="va">facility_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>observed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span>, modeled <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">flow</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">practices</span><span class="op">$</span><span class="va">observed</span>, <span class="va">practices</span><span class="op">$</span><span class="va">modeled</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>[1] 0.9326925</code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">practices</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">observed</span> <span class="op">/</span> <span class="fl">1000</span>, <span class="va">fitted</span> <span class="op">/</span> <span class="fl">1000</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_abline</a></span><span class="op">(</span>linetype <span class="op">=</span> <span class="fl">2</span>, colour <span class="op">=</span> <span class="st">"grey50"</span><span class="op">)</span> <span class="op">+</span></span>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">practices</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">observed</span> <span class="op">/</span> <span class="fl">1000</span>, <span class="va">modeled</span> <span class="op">/</span> <span class="fl">1000</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_abline</a></span><span class="op">(</span>linetype <span class="op">=</span> <span class="fl">2</span>, color <span class="op">=</span> <span class="st">"grey50"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_fixed.html" class="external-link">coord_equal</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="st">"Observed registered residents (thousands)"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Modelled registered residents (thousands)"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"Modeled registered residents (thousands)"</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"Practice lists from mainland residents"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="allocation-workflow_files/figure-html/practice-fit-1.png" class="r-plt" alt="" width="500"></p>
-<p>The model gives each practice an attraction proportional to its GP
-FTE and uses only supply and travel. Practices with more registered
-patients per GP FTE than their neighbours therefore have larger observed
-than modelled lists and sit below the dashed line.</p>
+<p><img src="allocation-workflow_files/figure-html/practice-fit-1.png" class="r-plt" alt="Scatter plot of modeled against observed registered residents for the 54 mainland practices, in thousands, with a dashed equality line; the points scatter around the line, the largest practice lies well above it and a few practices lie well below it." width="500"></p>
+<p>Modeled and observed lists correlate at 0.93. The model knows only GP
+FTE and travel time, so a practice with more registered patients per GP
+FTE than its neighbors has a larger observed than modeled list and sits
+below the dashed line. Fowey River Practice is the clearest case: it has
+8,494 registered mainland residents but 1.13 GP FTE excluding GPs in
+training, and the model gives it 1,708. The opposite holds for the
+largest practice, St Austell Health Group, which sits well above the
+line. The model gives it 44,271 residents against 32,755 observed.</p>
 </div>
 <div class="section level2">
-<h2 id="what-the-observations-identify">What the observations identify<a class="anchor" aria-label="anchor" href="#what-the-observations-identify"></a>
+<h2 id="what-the-data-identify">What the data identify<a class="anchor" aria-label="anchor" href="#what-the-data-identify"></a>
 </h2>
-<p>A good fit does not show that the travel kernel is right.
-<code><a href="../reference/check_fit.html">check_allocation()</a></code> never changes the fit; it compares the
-fitted model, on the same loss, with the same model without distance
-decay (each small area chooses among the practices it can reach in
-proportion to GP FTE), and reports the one-way trips each implies.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The fit against an allocation without distance decay</span></span>
-<span><span class="fu"><a href="../reference/check_fit.html">check_allocation</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/check_fit.html">check_fit()</a></code> asks whether the registrations carry
+information about distance decay. It refits the model with distance
+decay switched off: every practice with a travel time, here all 54, gets
+the same weight, so each area splits its residents by GP FTE alone, with
+v0 fitted again. It compares the two fits on the same loss and reports
+the one-way trips each fit implies.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_fit.html">check_fit</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span></span>
+<span><span class="va">check</span></span></code></pre></div>
 <pre class="spax-output"><code>&lt;allocation check&gt;
     comparator     loss loss_difference contact trip_median trip_p90
         fitted -3168283               0  0.9946           3       10
@@ -395,47 +307,48 @@ Trip lengths are one-way, in minutes, weighted by expected flows.
 
 The fitted allocation reproduces the observations better than the allocation
 without distance decay. The capacity-only comparator applies to facility totals only.</code></pre>
-<p>Here the target is the small area × practice matrix, which records
-where each practice’s patients live, so dropping distance decay worsens
-the fit by a wide margin, and the fitted model’s trips are short (a
-median of a few minutes). When only practice totals are observed, the
-check also fits an allocation that shares the totals by capacity alone.
-If that, or the no-decay allocation, fits at least as well as the model,
-the totals do not identify distance decay: the fitted value then depends
-on which travel times were treated as reachable, not on the counts.</p>
-<p>The outside share is the other observable output. Each small area’s
-modelled outside share can be compared with the share of its residents
-registered outside mainland Cornwall.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Solve the model once at the fitted parameters</span></span>
-<span><span class="va">evaluated</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/evaluate_allocation.html">evaluate_allocation</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">model</span>, theta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span>
+<p>Without distance decay the Poisson loss rises by 1,601,207, and the
+median trip grows from 3 to 39 minutes. <code>trip_p90</code> is the
+time within which 90% of modeled trips fall. The flows record where each
+practice’s patients live, so they pin the decay down firmly. The
+<code>contact</code> column is the share of demand that the model sends
+to a mainland practice.</p>
+<p>The <code>capacity_only</code> comparator ignores where residents
+live: it sets each practice’s total in proportion to its GP FTE, with
+one fitted scale. It applies only to fits to practice totals, so its row
+is <code>NA</code> here. <a href="reading-results.html">Reading
+results</a> explains how to read the check for those fits.</p>
+</div>
+<div class="section level2">
+<h2 id="the-outside-option">The outside option<a class="anchor" aria-label="anchor" href="#the-outside-option"></a>
+</h2>
+<p><code><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict()</a></code> gives the outside share for any set of small
+areas with travel times to the practices, here the fitted areas. For
+those, the <code>"origins"</code> table holds the same values, and
+<code><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict()</a></code> also works for areas that were not fitted. The
+observed share is the part of each area’s residents not registered at a
+mainland practice.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prediction</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">clm</span>, <span class="va">travel</span>, <span class="va">demand</span>, outputs <span class="op">=</span> <span class="st">"outside_share"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Outside shares and flows for the fitted small areas</span></span>
-<span><span class="va">baseline</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_allocation.html">predict_allocation</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">evaluated</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"outside_share"</span>, <span class="st">"flow"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">baseline</span><span class="op">$</span><span class="va">validity</span><span class="op">$</span><span class="va">status</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code><span></span>
-<span><span class="va">valid</span> </span>
-<span>  <span class="fl">336</span> </span></code></pre>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Observed and modelled outside shares in one long table</span></span>
+<span><span class="co"># Observed and modeled outside shares by small area, in one long table</span></span>
+<span><span class="va">registered_here</span> <span class="op">&lt;-</span> <span class="va">flow_table</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span>lsoa <span class="op">=</span> <span class="va">origin_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>at_mainland_practices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">outside</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    lsoa <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span>,</span>
-<span>    share <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span> <span class="op">/</span> <span class="va">demand</span>,</span>
+<span>    lsoa <span class="op">=</span> <span class="va">registered_here</span><span class="op">$</span><span class="va">lsoa</span>,</span>
+<span>    share <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="va">registered_here</span><span class="op">$</span><span class="va">at_mainland_practices</span> <span class="op">/</span></span>
+<span>      <span class="va">demand</span><span class="op">[</span><span class="va">registered_here</span><span class="op">$</span><span class="va">lsoa</span><span class="op">]</span>,</span>
 <span>    source <span class="op">=</span> <span class="st">"Observed"</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    lsoa <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span>,</span>
-<span>    share <span class="op">=</span> <span class="va">baseline</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span>,</span>
-<span>    source <span class="op">=</span> <span class="st">"Modelled"</span></span>
+<span>    lsoa <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">prediction</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span><span class="op">)</span>,</span>
+<span>    share <span class="op">=</span> <span class="va">prediction</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span>,</span>
+<span>    source <span class="op">=</span> <span class="st">"Modeled"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">source</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Observed"</span>, <span class="st">"Modelled"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">source</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Observed"</span>, <span class="st">"Modeled"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Join to the small-area polygons for mapping</span></span>
 <span><span class="va">outside_map</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
@@ -443,7 +356,8 @@ registered outside mainland Cornwall.</p>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span><span class="va">outside</span>, by <span class="op">=</span> <span class="st">"lsoa"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">outside_map</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="va">share</span><span class="op">)</span>, colour <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="va">share</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="va">outside_map</span><span class="op">)</span>, fill <span class="op">=</span> <span class="cn">NA</span>, color <span class="op">=</span> <span class="st">"grey20"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">source</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span></span>
 <span>    option <span class="op">=</span> <span class="st">"mako"</span>,</span>
@@ -453,503 +367,194 @@ registered outside mainland Cornwall.</p>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Share of residents registered outside mainland Cornwall"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_void</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="allocation-workflow_files/figure-html/outside-map-1.png" class="r-plt" alt="" width="700"></p>
-<p><code><a href="../reference/evaluate_allocation.html">evaluate_allocation()</a></code> solves the model once at fixed
-parameters; it estimates nothing. <code><a href="../reference/predict_allocation.html">predict_allocation()</a></code> then
-returns the requested outputs for any set of origins, with separate
-validity flags. Here <code>flow</code> is requested demand times choice
-probability, in registered residents. Requested demand only scales the
-predicted flows; it never changes the saved practice loads.</p>
+<p><img src="allocation-workflow_files/figure-html/outside-map-1.png" class="r-plt" alt="Two maps of mainland Cornwall's small areas. Observed: the share of residents registered outside mainland Cornwall is low almost everywhere and highest in a few areas in the north-east and east, along the Devon border. Modeled: a small share everywhere, highest in a few rural areas far from practices, such as in the north-east and at the western tip." width="700"></p>
 <p>Observed registration outside mainland Cornwall is concentrated in a
-few areas along the Devon border. A single constant outside weight
-cannot reproduce that pattern: the model spreads a small outside share
-everywhere and puts its largest values where practices are far away, so
-treat the modelled outside share as approximate.</p>
+few areas in the east, along the Devon border: the ten areas with the
+highest shares hold 56% of all residents registered outside. Many
+residents there are probably registered with practices just across the
+border in Devon, which the model does not include. The model has one
+outside weight for every area, so it spreads a small outside share
+everywhere and puts its largest values where few GP FTE lie within a
+short drive. Read the modeled outside share of a single area as
+approximate.</p>
 </div>
 <div class="section level2">
-<h2 id="known-outside-counts">Known outside counts<a class="anchor" aria-label="anchor" href="#known-outside-counts"></a>
+<h2 id="when-outside-counts-are-known">When outside counts are known<a class="anchor" aria-label="anchor" href="#when-outside-counts-are-known"></a>
 </h2>
-<p>The fits above see only the counts at the mainland practices, so the
-outside option has no count of its own. Here each small area’s outside
-count is known: demand counts every resident registered with any
-practice in England, so the residents of a small area who are not
-registered at a mainland practice are exactly its outside count, its
-demand less its counts at the mainland practices.
-<code>outside = "known"</code> in <code><a href="../reference/obs_flows.html">obs_flows()</a></code> declares
-this, and <code><a href="../reference/spax.html">spax()</a></code> then fits the outside count as one more
-cell of each small area, with the same Poisson loss.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">clm_known</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span></span>
-<span>  data <span class="op">=</span> <span class="va">d</span>,</span>
-<span>  model <span class="op">=</span> <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  observed <span class="op">=</span> <span class="fu"><a href="../reference/obs_flows.html">obs_flows</a></span><span class="op">(</span><span class="va">observed</span>, outside <span class="op">=</span> <span class="st">"known"</span><span class="op">)</span></span>
+<p>The fit above sees only the counts at the mainland practices, so the
+outside option has no count of its own. In Cornwall each area’s outside
+count is known. Demand counts every resident registered with any
+practice in England, so the residents not registered at a mainland
+practice are exactly the outside count: demand minus the counts at the
+mainland practices. <code>outside = "known"</code> in
+<code><a href="../reference/obs_flows.html">obs_flows()</a></code> declares this, and <code><a href="../reference/spax.html">spax()</a></code> then
+fits the outside count as one more cell of each area. The chunk also
+compares the percent of residents registered outside mainland Cornwall,
+observed and modeled by each fit.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">flows_known</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/obs_flows.html">obs_flows</a></span><span class="op">(</span></span>
+<span>  <span class="va">cornwall_flows</span>,</span>
+<span>  origin <span class="op">=</span> <span class="st">"lsoa"</span>,</span>
+<span>  facility <span class="op">=</span> <span class="st">"practice"</span>,</span>
+<span>  count <span class="op">=</span> <span class="st">"patients"</span>,</span>
+<span>  outside <span class="op">=</span> <span class="st">"known"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">clm_known</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">clm_known</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">flows_known</span><span class="op">)</span></span></code></pre></div>
+<pre><code>observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are treated as the outside option</code></pre>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">clm_known</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>     sigma         v0 
 4.61941762 0.04864483 </code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Observed and modelled outside share, in per cent of registered residents</span></span>
-<span><span class="va">known_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm_known</span>, type <span class="op">=</span> <span class="st">"origins"</span><span class="op">)</span></span>
-<span><span class="va">known_shares</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  observed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">known_areas</span><span class="op">$</span><span class="va">outside_observed</span><span class="op">)</span>,</span>
-<span>  `fit without outside counts` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  `fit with known outside counts` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">known_areas</span><span class="op">$</span><span class="va">outside_modelled</span><span class="op">)</span></span>
-<span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">known_shares</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>                     observed    fit without outside counts 
-                         0.91                          0.54 
-fit with known outside counts 
-                         0.91 </code></pre>
-<p>With every outside count known by subtraction (demand minus the
-counts), the fit is the multinomial likelihood of each small area’s
-choices, and a constant outside weight reproduces the total outside
-count: the modelled share equals the observed one, where the fit without
-outside counts understates it. The travel scale hardly moves. Per-area
-outside counts are in
-<code>as.data.frame(clm_known, type = "origins")</code>
-(<code>outside_observed</code> and <code>outside_modelled</code>), and
-<code>fitted(clm_known)</code> is the whole target, with the outside
-count as its last column, <code>"(outside)"</code>.</p>
-<p>Declare outside counts as known only when demand counts the same
-people as the observations, as here: registrations by residence from the
-same extract and date. They are not a population estimate. List sizes
-and population differ by several percent, and the gap would go straight
-into the outside counts. A model without an outside option, such as
-<code><a href="../reference/spec_clm.html">spec_huff()</a></code>, cannot use them, and for facility totals the
-outside count is one number you give, never derived from the totals (see
-<code><a href="../reference/obs_flows.html">?obs_flows</a></code>).</p>
-<p>Fits are compared on the same observation. <code>clm</code> and
-<code>clm_known</code> are fits to different data, so
-<code><a href="../reference/compare_fits.html">compare_allocations()</a></code> gives no loss difference between
-them; to compare the Huff model with the conditional logit, use the same
-observation without outside counts for both.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Different observations: the loss difference is withheld</span></span>
-<span><span class="va">compared_known</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_fits.html">compare_allocations</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>without <span class="op">=</span> <span class="va">clm</span>, with <span class="op">=</span> <span class="va">clm_known</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">compared_known</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"comparable"</span>, <span class="st">"loss_difference"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre class="spax-output"><code>  specification comparable loss_difference
-1       without       TRUE               0
-2          with      FALSE              NA</code></pre>
-</div>
-<div class="section level2">
-<h2 id="predict-at-new-locations">Predict at new locations<a class="anchor" aria-label="anchor" href="#predict-at-new-locations"></a>
-</h2>
-<p>Prediction does not need the fitted small areas. Each cell of the
-bundled 1 km population grid has its own travel times to every practice,
-so the saved model can predict at every populated cell. A
-<code>spatial</code> mapping from requested origins to raster cells
-turns one output into a map.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Population grid, and the travel grid as a cell x practice matrix</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
-<span><span class="va">grid_travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Keep populated cells and the fitted practices, in the fitted order</span></span>
-<span><span class="va">populated</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span></span>
-<span><span class="va">grid_travel</span> <span class="op">&lt;-</span> <span class="va">grid_travel</span><span class="op">[</span><span class="va">populated</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">grid_travel</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"cell"</span>, <span class="va">populated</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Predict at each cell; no demand is needed for probabilities</span></span>
-<span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_allocation.html">predict_allocation</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">evaluated</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">grid_travel</span>,</span>
-<span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"outside_share"</span>, <span class="st">"allocation"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">grid</span><span class="op">$</span><span class="va">validity</span><span class="op">$</span><span class="va">status</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>
-unknown_travel          valid 
-            73           6912 </code></pre>
-<p>Cells on the Isles of Scilly have no travel time to mainland
-practices, so their prediction is marked unknown rather than imputed.
-Inspect these flags before reading a map.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Which raster cell each requested origin belongs to</span></span>
-<span><span class="va">grid_spatial</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  template <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  cell_index <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">populated</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">grid_travel</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">grid_outside</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_allocation.html">predict_allocation</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">evaluated</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">grid_travel</span>,</span>
-<span>  outputs <span class="op">=</span> <span class="st">"outside_share"</span>,</span>
-<span>  spatial <span class="op">=</span> <span class="va">grid_spatial</span>,</span>
-<span>  type <span class="op">=</span> <span class="st">"raster"</span>  <span class="co"># return a map instead of a table</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span></span>
-<span>  <span class="va">grid_outside</span>,</span>
-<span>  axes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"Mako"</span>, rev <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>  main <span class="op">=</span> <span class="st">"Modelled outside share (proportion), 1 km grid"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p><img src="allocation-workflow_files/figure-html/grid-map-1.png" class="r-plt" alt="" width="700"></p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Cells with an outside share above 0.5, and their share of the population</span></span>
-<span><span class="va">grid_pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">[</span><span class="va">populated</span>, <span class="fl">1</span><span class="op">]</span></span>
-<span><span class="va">far_out</span> <span class="op">&lt;-</span> <span class="va">grid</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span> <span class="op">&gt;</span> <span class="fl">0.5</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">far_out</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>  population_percent <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
-<span>    <span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">grid_pop</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">far_out</span><span class="op">)</span><span class="op">]</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">grid_pop</span><span class="op">)</span>,</span>
-<span>    <span class="fl">2</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>             cells population_percent 
-             74.00               0.06 </code></pre>
-<p>Some grid cells far from every practice get a high outside share
-because the fitted travel scale is short and the outside weight is
-constant. The 74 cells above 0.5 hold 0.06% of the grid’s population,
-but their values are an extrapolation of the model, not a measure of
-unmet need. The grid population (WorldPop 2020) and the registrations
-(NHS England 2026) are different sources and dates, so the grid is used
-here only for locations.</p>
-<p><code><a href="../reference/spax.html">spax()</a></code> can also fit the model on the grid itself: given
-the population raster and the travel stack, <code><a href="../reference/prep_data.html">prep_data()</a></code>
-holds raster data, and <code><a href="../reference/spax.html">spax()</a></code> turns the cells with demand
-into origins on each call. The examples of <code><a href="../reference/prep_data.html">?prep_data</a></code> fit
-the model to practice totals that way; demand must then count the same
-people as the totals.</p>
-</div>
-<div class="section level2">
-<h2 id="change-one-practices-supply">Change one practice’s supply<a class="anchor" aria-label="anchor" href="#change-one-practices-supply"></a>
-</h2>
-<p>A scenario changes the system and evaluates it again at the same
-parameters. Here Marazion Surgery is closed by setting its GP FTE to
-zero; known zero supply is kept, so the practice stays in the network
-with no attraction. This is a model-based, fixed-parameter scenario, not
-an estimate of what a real closure would cause: changing supply moves
-attraction, allocation and every practice’s modelled load together.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">closed</span> <span class="op">&lt;-</span> <span class="st">"L82047"</span></span>
-<span><span class="va">gp</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">practice</span> <span class="op">==</span> <span class="va">closed</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] "MARAZION SURGERY"</code></pre>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Same inputs, with zero GP FTE at the closed practice</span></span>
-<span><span class="va">scenario_supply</span> <span class="op">&lt;-</span> <span class="va">supply</span></span>
-<span><span class="va">scenario_supply</span><span class="op">[</span><span class="va">closed</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span><span class="va">scenario_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span></span>
-<span>  inputs <span class="op">=</span> <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>    demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>    supply <span class="op">=</span> <span class="va">scenario_supply</span>,</span>
-<span>    distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>    metadata <span class="op">=</span> <span class="va">cornwall_units</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  family <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
-<span>  fit_v0 <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Evaluate at the fitted parameters; nothing is refitted</span></span>
-<span><span class="va">scenario</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/evaluate_allocation.html">evaluate_allocation</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">scenario_model</span>, theta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">changed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_allocation.html">predict_allocation</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">scenario</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"outside_share"</span>, <span class="st">"flow"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Modelled list sizes before and after</span></span>
-<span><span class="va">baseline_lists</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">baseline</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">flow</span><span class="op">)</span></span>
-<span><span class="va">scenario_lists</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">changed</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">flow</span><span class="op">)</span></span>
-<span><span class="va">practices</span> <span class="op">&lt;-</span> <span class="va">practices</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    baseline <span class="op">=</span> <span class="va">baseline_lists</span>,</span>
-<span>    scenario <span class="op">=</span> <span class="va">scenario_lists</span>,</span>
-<span>    change <span class="op">=</span> <span class="va">scenario</span> <span class="op">-</span> <span class="va">baseline</span>,</span>
-<span>    name <span class="op">=</span> <span class="va">gp</span><span class="op">$</span><span class="va">name</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">practice</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span><span class="op">]</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="co"># The seven largest changes</span></span>
-<span><span class="va">practices</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">change</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">name</span>, <span class="va">baseline</span>, <span class="va">scenario</span>, <span class="va">change</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>                         name  baseline  scenario     change
-L82047       MARAZION SURGERY  5723.246     0.000 -5723.2461
-L82036 BODRIGGY HEALTH CENTRE 16060.322 17480.494  1420.1723
-L82038 ATLANTIC MEDICAL GROUP 14575.930 15774.507  1198.5775
-Y01050      ROSMELLYN SURGERY 11172.413 12091.120   918.7066
-Y01922       STENNACK SURGERY  9742.274 10434.108   691.8340
-L82070      SUNNYSIDE SURGERY  6079.470  6579.384   499.9143
-L82018 HELSTON MEDICAL CENTRE 18359.690 18711.998   352.3076</code></pre>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Change in the number of residents modelled outside mainland practices</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  outside_change <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span> <span class="op">*</span> <span class="va">changed</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span><span class="op">)</span> <span class="op">-</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">demand</span> <span class="op">*</span> <span class="va">baseline</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code><span><span class="va">outside_change</span> </span>
-<span>      <span class="fl">14.75119</span> </span></code></pre>
-<p>The modelled list of the closed practice moves mostly to nearby
-practices in Penzance, Hayle and St Ives Bay. A farther practice,
-Helston Medical Centre, gains less, and a small part goes to the outside
-option. Where a closed practice has no near neighbour, a larger part
-goes to the outside option; that follows from the constant outside
-weight, not from evidence about where patients would go.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Each area's modelled share of residents at the closed practice</span></span>
-<span><span class="va">moved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  lsoa <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span>,</span>
-<span>  share <span class="op">=</span> <span class="va">baseline</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">flow</span><span class="op">[</span>, <span class="va">closed</span><span class="op">]</span> <span class="op">/</span> <span class="va">demand</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">moved_map</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">lsoa</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span><span class="va">moved</span>, by <span class="op">=</span> <span class="st">"lsoa"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Practices that gain more than 10 modelled registrations, with locations</span></span>
-<span><span class="va">gained</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">practice</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
-<span>    <span class="va">practices</span> <span class="op">|&gt;</span></span>
-<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">change</span> <span class="op">&gt;</span> <span class="fl">10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">practice</span>, <span class="va">change</span><span class="op">)</span>,</span>
-<span>    by <span class="op">=</span> <span class="st">"practice"</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Map window over west Cornwall, in British National Grid metres</span></span>
-<span><span class="va">west</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_bbox.html" class="external-link">st_bbox</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>xmin <span class="op">=</span> <span class="fl">130000</span>, ymin <span class="op">=</span> <span class="fl">18000</span>, xmax <span class="op">=</span> <span class="fl">185000</span>, ymax <span class="op">=</span> <span class="fl">48000</span><span class="op">)</span>,</span>
-<span>  crs <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">st_crs</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
-<span>    data <span class="op">=</span> <span class="va">moved_map</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="va">share</span><span class="op">)</span>,</span>
-<span>    colour <span class="op">=</span> <span class="st">"white"</span>,</span>
-<span>    linewidth <span class="op">=</span> <span class="fl">0.05</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">gained</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>size <span class="op">=</span> <span class="va">change</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fl">21</span>, fill <span class="op">=</span> <span class="st">"orange"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
-<span>    data <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cornwall_gp</span>, <span class="va">practice</span> <span class="op">==</span> <span class="va">closed</span><span class="op">)</span>,</span>
-<span>    shape <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>    size <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>    stroke <span class="op">=</span> <span class="fl">1.2</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span></span>
-<span>    option <span class="op">=</span> <span class="st">"mako"</span>,</span>
-<span>    direction <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>,</span>
-<span>    name <span class="op">=</span> <span class="st">"Residents at the\nclosed practice (%)"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_size.html" class="external-link">scale_size_area</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"Modelled\nregistrations\ngained"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">coord_sf</a></span><span class="op">(</span>xlim <span class="op">=</span> <span class="va">west</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"xmin"</span>, <span class="st">"xmax"</span><span class="op">)</span><span class="op">]</span>, ylim <span class="op">=</span> <span class="va">west</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ymin"</span>, <span class="st">"ymax"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"Closing Marazion Surgery (x): who moves and where to"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>      <span class="st">"Modelled baseline share of residents at the practice;"</span>,</span>
-<span>      <span class="st">"points are receiving practices"</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_void</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="allocation-workflow_files/figure-html/scenario-map-1.png" class="r-plt" alt="" width="700"></p>
-</div>
-<div class="section level2">
-<h2 id="your-own-decay-function">Your own decay function<a class="anchor" aria-label="anchor" href="#your-own-decay-function"></a>
-</h2>
-<p><code><a href="../reference/decay_kernel.html">decay_kernel()</a></code> declares a decay function of your own. It
-takes a function of <code>distance</code> and <code>sigma</code>, a
-<code>name</code>, a label for what <code>sigma</code> means
-(<code>parameter</code>) and any fixed extra arguments
-(<code>args</code>). The kernel below gives full weight to practices
-within 3 minutes and decays as a Gaussian beyond that, with
-<code>sigma</code> the scale of the decay.</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Full weight within `plateau` minutes, Gaussian decay beyond</span></span>
-<span><span class="va">plateau_kernel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/decay_kernel.html">decay_kernel</a></span><span class="op">(</span></span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">distance</span>, <span class="va">sigma</span>, <span class="va">plateau</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
-<span>      <span class="va">distance</span> <span class="op">&lt;=</span> <span class="va">plateau</span>,</span>
-<span>      <span class="fl">1</span>,</span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="va">distance</span> <span class="op">-</span> <span class="va">plateau</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">sigma</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">}</span>,</span>
-<span>  name <span class="op">=</span> <span class="st">"plateau"</span>,</span>
-<span>  parameter <span class="op">=</span> <span class="st">"scale"</span>,</span>
-<span>  args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>plateau <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">plateau_kernel</span></span></code></pre></div>
-<pre class="spax-output"><code>&lt;spax_decay_kernel&gt; plateau
-sigma: scale
-bounds on sigma: 0 to Inf
-defined at distance 0: yes
-smooth in sigma: yes
-fixed arguments: plateau = 3
-function:
-function (distance, sigma, plateau) 
-{
-    ifelse(distance &lt;= plateau, 1, exp(-(distance - plateau)^2/(2 * 
-        sigma^2)))
-}</code></pre>
-<p>A declaration is plain data. It keeps the function’s source text and
-rebuilds the function whenever it is used, so the function can use only
-its arguments, base R, <code>pkg::fn</code> calls and <code>args</code>.
-Declaring it also runs the function on a grid of distances and refuses
-one whose weights are not finite, nonnegative and non-increasing in
-distance; <code><a href="../reference/decay_kernel.html">?decay_kernel</a></code> lists the rules. A declaration
-works wherever a decay method is accepted, including
-<code><a href="../reference/calc_decay.html">calc_decay()</a></code> and the FCA functions. Here it takes the place
-of <code>"gaussian"</code> in <code><a href="../reference/clm_allocation.html">clm_allocation()</a></code>, and the fit
-below repeats the Gaussian fit’s starts and bounds.</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">plateau_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span></span>
-<span>  inputs <span class="op">=</span> <span class="va">inputs</span>,</span>
-<span>  family <span class="op">=</span> <span class="va">plateau_kernel</span>,  <span class="co"># a declaration instead of "gaussian"</span></span>
-<span>  fit_v0 <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">plateau_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_allocation.html">fit_allocation</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="va">plateau_model</span>,</span>
-<span>  observed <span class="op">=</span> <span class="va">observed</span>,</span>
-<span>  starts <span class="op">=</span> <span class="va">starts</span>,</span>
-<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">0.5</span>, v0 <span class="op">=</span> <span class="fl">1e-6</span><span class="op">)</span>,</span>
-<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">60</span>, v0 <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  output <span class="op">=</span> <span class="st">"flow"</span>,</span>
-<span>  loss <span class="op">=</span> <span class="st">"poisson"</span>,</span>
-<span>  gradient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">300</span>, factr <span class="op">=</span> <span class="fl">10</span>, pgtol <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">plateau_fit</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>     sigma         v0 
-3.88744084 0.05433508 </code></pre>
-<p><code>summary(plateau_fit)</code> shows how closely the starts agree.
-The <code>sigma</code> of a declared kernel is the scale of that kernel,
-so 3.89 minutes for the plateau kernel and 4.59 minutes for the Gaussian
-kernel are not comparable values. <code><a href="../reference/compare_fits.html">compare_allocations()</a></code>
-puts the two fits side by side. Given the models as well, it checks that
-both fits use the same flow matrix, loss, inputs and travel times, which
-it requires before it reports a loss difference.</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Loss differences are measured from the first fit, the Gaussian</span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_fits.html">compare_allocations</a></span><span class="op">(</span></span>
-<span>  fits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>gaussian <span class="op">=</span> <span class="va">fit</span>, plateau <span class="op">=</span> <span class="va">plateau_fit</span><span class="op">)</span>,</span>
-<span>  models <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>gaussian <span class="op">=</span> <span class="va">model</span>, plateau <span class="op">=</span> <span class="va">plateau_model</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"parameters"</span>, <span class="st">"loss_difference"</span>, <span class="st">"count_correlation"</span><span class="op">)</span></span>
-<span><span class="op">]</span></span></code></pre></div>
-<pre class="spax-output"><code>  specification              parameters loss_difference count_correlation
-1      gaussian sigma=4.591, v0=0.02733            0.00         0.8846533
-2       plateau sigma=3.887, v0=0.05434        62248.12         0.8464323</code></pre>
-<p>Measured from the Gaussian fit, the plateau fit’s Poisson loss is
-higher by 62,248 and its fitted flows correlate with the observed flows
-at 0.85, against 0.88 for the Gaussian fit. These figures say how close
-each kernel’s fitted flows come to these registrations under one
-criterion; they do not show which kernel describes how residents choose
-practices. A saved fit that uses a declared kernel keeps the kernel’s
-code and runs it when the fit is used, so read saved fits only from
-sources you trust; a kernel declared with <code>smooth = FALSE</code>,
-such as a cutoff, can be evaluated but not fitted.</p>
-</div>
-<div class="section level2">
-<h2 id="save-and-reload">Save and reload<a class="anchor" aria-label="anchor" href="#save-and-reload"></a>
-</h2>
-<p>The evaluated scenario carries a small prediction snapshot. Saving it
-does not keep the model or the travel matrix, and the restored object
-predicts the same values.</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Save the evaluated scenario and read it back</span></span>
-<span><span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".rds"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">scenario</span>, <span class="va">saved</span><span class="op">)</span></span>
-<span><span class="va">restored</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># The restored object predicts exactly what the original did</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/predict_allocation.html">predict_allocation</a></span><span class="op">(</span></span>
-<span>    source <span class="op">=</span> <span class="va">restored</span>,</span>
-<span>    distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>    demand <span class="op">=</span> <span class="va">demand</span>,</span>
-<span>    outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"outside_share"</span>, <span class="st">"flow"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  <span class="va">changed</span></span>
-<span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="export-and-reload-in-a-fresh-session">Export and reload in a fresh session<a class="anchor" aria-label="anchor" href="#export-and-reload-in-a-fresh-session"></a>
-</h2>
-<p>CSV files make saved tables available to other software but drop R
-classes and attributes. Keep an RDS bundle alongside them to preserve
-the fit, declarations, units and the complete results.</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">export_dir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"allocation-results-"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">export_dir</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># One CSV file per table</span></span>
-<span><span class="va">export_tables</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  parameters <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>,</span>
-<span>  practices <span class="op">=</span> <span class="va">practices</span></span>
-<span><span class="op">)</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">name</span> <span class="kw">in</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">export_tables</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span></span>
-<span>    <span class="va">export_tables</span><span class="op">[[</span><span class="va">name</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">export_dir</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">name</span>, <span class="st">".csv"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    row.names <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span></span>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Percent of registered residents outside mainland Cornwall</span></span>
+<span><span class="va">outside_percent</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">by_area</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">result</span>, type <span class="op">=</span> <span class="st">"origins"</span><span class="op">)</span></span>
+<span>  <span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">by_area</span><span class="op">$</span><span class="va">demand</span> <span class="op">*</span> <span class="va">by_area</span><span class="op">$</span><span class="va">outside_share</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">by_area</span><span class="op">$</span><span class="va">demand</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span></span>
-<span><span class="co"># One RDS bundle with the full R objects</span></span>
-<span><span class="va">bundle_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">export_dir</span>, <span class="st">"allocation-results.rds"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    fit <span class="op">=</span> <span class="va">fit</span>,</span>
-<span>    scenario <span class="op">=</span> <span class="va">scenario</span>,</span>
-<span>    closed <span class="op">=</span> <span class="va">closed</span>,</span>
-<span>    tables <span class="op">=</span> <span class="va">export_tables</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  <span class="va">bundle_path</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">export_dir</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>[1] "allocation-results.rds" "parameters.csv"         "practices.csv"         </code></pre>
-<p>Finally, a new R process with the installed package reads the bundle.
-It checks the saved tables, predicts the scenario again from the bundled
-Cornwall travel times, and prints and plots the saved fit without
-refitting.</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Write a short script for a new R process</span></span>
-<span><span class="va">child_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".R"</span><span class="op">)</span></span>
-<span><span class="va">literal</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/capture.output.html" class="external-link">capture.output</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/dput.html" class="external-link">dput</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="co"># Use the same installed spax and read the bundle</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">".libPaths(c("</span>, <span class="fu">literal</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/find.package.html" class="external-link">find.package</a></span><span class="op">(</span><span class="st">"spax"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="st">", .libPaths()))"</span><span class="op">)</span>,</span>
-<span>  <span class="st">"library(spax)"</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"saved &lt;- readRDS("</span>, <span class="fu">literal</span><span class="op">(</span><span class="va">bundle_path</span><span class="op">)</span>, <span class="st">")"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># The saved tables match the saved objects</span></span>
-<span>  <span class="st">"stopifnot(identical(as.data.frame(saved$fit), saved$tables$parameters))"</span>,</span>
-<span>  <span class="co"># Predict the closure scenario again from the bundled travel times</span></span>
-<span>  <span class="st">"areas &lt;- sf::st_drop_geometry(cornwall_lsoa)"</span>,</span>
-<span>  <span class="st">"gp &lt;- sf::st_drop_geometry(cornwall_gp)"</span>,</span>
-<span>  <span class="st">"travel &lt;- cornwall_travel[areas$lsoa[!areas$scilly], gp$practice[!gp$scilly]]"</span>,</span>
-<span>  <span class="st">"demand &lt;- setNames(areas$registered[!areas$scilly], areas$lsoa[!areas$scilly])"</span>,</span>
-<span>  <span class="st">"flow &lt;- predict_allocation(saved$scenario, travel, demand = demand, outputs = 'flow')$outputs$flow"</span>,</span>
-<span>  <span class="st">"stopifnot(isTRUE(all.equal(unname(colSums(flow)), unname(saved$tables$practices$scenario))))"</span>,</span>
-<span>  <span class="st">"stopifnot(colSums(flow)[[saved$closed]] == 0)"</span>,</span>
-<span>  <span class="co"># Summaries and plots work without refitting</span></span>
-<span>  <span class="st">"stopifnot(inherits(summary(saved$fit), 'summary.ae_multistart_fit'))"</span>,</span>
-<span>  <span class="st">"print(summary(saved$fit))"</span>,</span>
-<span>  <span class="st">"plot_path &lt;- tempfile(fileext = '.pdf')"</span>,</span>
-<span>  <span class="st">"grDevices::pdf(plot_path)"</span>,</span>
-<span>  <span class="st">"plot(saved$fit, type = 'fit')"</span>,</span>
-<span>  <span class="st">"grDevices::dev.off()"</span>,</span>
-<span>  <span class="st">"stopifnot(file.info(plot_path)$size &gt; 0)"</span>,</span>
-<span>  <span class="st">"unlink(plot_path)"</span>,</span>
-<span>  <span class="st">"cat('Fresh installed saved-result inspection passed\\n')"</span></span>
-<span><span class="op">)</span>, <span class="va">child_path</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Run it with a clean Rscript and stop if it fails</span></span>
-<span><span class="va">rscript</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Rhome.html" class="external-link">R.home</a></span><span class="op">(</span><span class="st">"bin"</span><span class="op">)</span>,</span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">.Platform</span><span class="op">$</span><span class="va">OS.type</span> <span class="op">==</span> <span class="st">"windows"</span><span class="op">)</span> <span class="st">"Rscript.exe"</span> <span class="kw">else</span> <span class="st">"Rscript"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2</a></span><span class="op">(</span><span class="va">rscript</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"--vanilla"</span>, <span class="fu"><a href="https://rdrr.io/r/base/shQuote.html" class="external-link">shQuote</a></span><span class="op">(</span><span class="va">child_path</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="va">status</span> <span class="op">==</span> <span class="fl">0L</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">child_path</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">known_areas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm_known</span>, type <span class="op">=</span> <span class="st">"origins"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  observed <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">known_areas</span><span class="op">$</span><span class="va">outside_observed</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">known_areas</span><span class="op">$</span><span class="va">demand</span><span class="op">)</span>,</span>
+<span>  `fit without outside counts` <span class="op">=</span> <span class="fu">outside_percent</span><span class="op">(</span><span class="va">clm</span><span class="op">)</span>,</span>
+<span>  `fit with outside counts` <span class="op">=</span> <span class="fu">outside_percent</span><span class="op">(</span><span class="va">clm_known</span><span class="op">)</span></span>
+<span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>                  observed fit without outside counts 
+                      0.91                       0.54 
+   fit with outside counts 
+                      0.91 </code></pre>
+<p>The message now says that the counts at the Scilly practice are
+treated as the outside option. The travel scale hardly moves (4.62
+against 4.59 minutes), while the outside weight rises from 0.027 to
+0.049. Without outside counts the fit understates registration outside
+mainland Cornwall. With every outside count known, the modeled total
+matches the observed one. When the outside counts are known, as in
+Cornwall, the fit that uses them is the one to report, and <a href="scenario.html">What if a practice closed?</a> builds on it. The
+next section keeps <code>clm</code> only because it compares fits to the
+same counts.</p>
+<p>Declare outside counts as known only when demand counts the same
+people as the observations, as here: registrations by residence from one
+extract and date. With a population estimate as demand, the gap between
+population and list sizes would go straight into the outside counts: in
+mainland Cornwall the lists exceed the mid-2024 population estimates by
+3.6%.</p>
 </div>
 <div class="section level2">
-<h2 id="sources">Sources<a class="anchor" aria-label="anchor" href="#sources"></a>
+<h2 id="without-an-outside-option-the-huff-model">Without an outside option: the Huff model<a class="anchor" aria-label="anchor" href="#without-an-outside-option-the-huff-model"></a>
 </h2>
-<p>Sources, dates and licences of the Cornwall data are listed in <a href="cornwall-data.html">The Cornwall GP example data</a> and in
-<code>system.file("COPYRIGHTS", package = "spax")</code>.</p>
+<p>Does the outside option earn its place? The Huff model answers by
+leaving it out: every resident goes to a mainland practice.
+<code><a href="../reference/spec_clm.html">spec_huff()</a></code> specifies it. Its defaults are a power decay
+and a fitted attractiveness exponent (<code>beta</code>). Here it takes
+the Gaussian decay and <code>beta = 1</code> of the conditional logit,
+so the two fits differ only in the outside option.</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">huff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="../reference/spec_clm.html">spec_huff</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span><span class="op">)</span>, beta <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">flows</span><span class="op">)</span></span></code></pre></div>
+<pre><code>observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are dropped (the Huff model has no outside option)</code></pre>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">huff</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code><span>   <span class="va">sigma</span> </span>
+<span><span class="fl">4.590493</span> </span></code></pre>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Loss differences are measured from the first fit, the Huff model</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_fits.html">compare_fits</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>huff <span class="op">=</span> <span class="va">huff</span>, clm <span class="op">=</span> <span class="va">clm</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"parameters"</span>, <span class="st">"loss_difference"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre class="spax-output"><code>  specification              parameters loss_difference
+1          huff              sigma=4.59         0.00000
+2           clm sigma=4.591, v0=0.02733       -72.51419</code></pre>
+<p>The Huff model is compared with <code>clm</code> because the two are
+fitted to the same <code>flows</code>. Adding the outside option moves
+the travel scale very little (from 4.590 to 4.591 minutes) and lowers
+the Poisson loss by 72.5. The Huff model is the conditional logit with
+v0 fixed at 0, so this difference measures what the outside option adds
+on these registrations. That is small next to the 1,601,207 that
+distance decay adds in <code><a href="../reference/check_fit.html">check_fit()</a></code>: travel time does almost
+all the work. Registrations are a stock rather than independent events,
+so read the loss as a fitting criterion, not as the basis of a formal
+test.</p>
+</div>
+<div class="section level2">
+<h2 id="keep-the-results">Keep the results<a class="anchor" aria-label="anchor" href="#keep-the-results"></a>
+</h2>
+<p><code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code> turns a result into tables:
+<code>"parameters"</code>, <code>"facilities"</code> (one row per
+practice), <code>"origins"</code> (one row per small area),
+<code>"flows"</code> and <code>"starts"</code>. Save tables as CSV files
+for other software, and the whole result as an RDS file, which keeps the
+specification, the data, the units and the fit. The code saves
+<code>clm_known</code>, the fit to report.</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># A temporary folder here; use your own, e.g. results_dir &lt;- "results"</span></span>
+<span><span class="va">results_dir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"cornwall-clm-"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">results_dir</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Tables for other software</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm_known</span>, type <span class="op">=</span> <span class="st">"facilities"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results_dir</span>, <span class="st">"practices.csv"</span><span class="op">)</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm_known</span>, type <span class="op">=</span> <span class="st">"origins"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results_dir</span>, <span class="st">"areas.csv"</span><span class="op">)</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The whole result</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">clm_known</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results_dir</span>, <span class="st">"clm_known.rds"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>A result read back from the RDS file works like the original, and
+nothing is refitted.</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results_dir</span>, <span class="st">"clm_known.rds"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>     sigma         v0 
+4.61941762 0.04864483 </code></pre>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">saved</span>, type <span class="op">=</span> <span class="st">"facilities"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>  facility_id    supply attractiveness utilization
+1      L82001 10.298887      10.298887   17305.337
+2      L82003  4.693333       4.693333    4917.449
+3      L82004  4.341333       4.341333   12126.462
+4      L82006  7.973333       7.973333   16429.501
+5      L82007  2.888800       2.888800    7052.424
+6      L82008  4.670400       4.670400   12557.216</code></pre>
+<p>The <code>utilization</code> column is each practice’s modeled list.
+Record the spax version (<code>packageVersion("spax")</code>) with saved
+results.</p>
+</div>
+<div class="section level2">
+<h2 id="under-the-hood">Under the hood<a class="anchor" aria-label="anchor" href="#under-the-hood"></a>
+</h2>
+<p><code><a href="../reference/spax.html">spax()</a></code> runs the step functions of the package, which the
+<a href="function-naming.html">Function map</a> lists. For numeric data
+such as these, <code><a href="../reference/prep_data.html">prep_data()</a></code> calls
+<code><a href="../reference/prepare_allocation.html">prepare_allocation()</a></code>. <code><a href="../reference/spax.html">spax()</a></code> binds the
+specification to the data with <code><a href="../reference/clm_allocation.html">clm_allocation()</a></code>, fits it
+with <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> or, when every parameter has a value,
+evaluates it with <code><a href="../reference/evaluate_allocation.html">evaluate_allocation()</a></code>, and
+<code><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict()</a></code> calls <code><a href="../reference/predict_allocation.html">predict_allocation()</a></code>. The
+result keeps the bound model (<code>clm$model</code>) and the fit
+(<code>clm$fit</code>). <code><a href="../reference/fit_allocation.html">fit_allocation()</a></code> and
+<code><a href="../reference/evaluate_allocation.html">evaluate_allocation()</a></code> take the bound model, and
+<code><a href="../reference/predict_allocation.html">predict_allocation()</a></code> accepts the result itself.</p>
+</div>
+<div class="section level2">
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
+</h2>
+<ul>
+<li>
+<a href="scenario.html">What if a practice closed?</a> holds the
+fitted values, closes one practice and maps where its residents go.</li>
+<li>
+<a href="facility-bootstrap.html">How sure are the estimates?</a>
+puts bootstrap intervals on σ, v0 and a supply scenario, using generated
+data fitted to facility totals.</li>
+<li>
+<a href="extending.html">Extending the model</a> fits your own decay
+function, fits on the population grid and maps the model on the
+grid.</li>
+<li>
+<a href="reading-results.html">Reading results</a> says what the
+outside option, a good fit and its check can and cannot tell you.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

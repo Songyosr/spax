@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Bootstrap intervals for a fitted allocation model • spax</title>
+<title>How sure are the estimates? Bootstrap intervals • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Bootstrap intervals for a fitted allocation model">
+<meta property="og:title" content="How sure are the estimates? Bootstrap intervals">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,47 +76,71 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Bootstrap intervals for a fitted allocation model</h1>
+      <h1>How sure are the estimates? Bootstrap intervals</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/facility-bootstrap.Rmd" class="external-link"><code>vignettes/facility-bootstrap.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/facility-bootstrap.Rmd" class="external-link"><code>vignettes/facility-bootstrap.Rmd</code></a></small>
       <div class="d-none name"><code>facility-bootstrap.Rmd</code></div>
     </div>
 
     
     
-<p>This guide uses generated data instead of the Cornwall GP data
-described in <a href="cornwall-data.html">The Cornwall GP example
-data</a>, for the reasons below.</p>
-<p><code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code> adds conditional bootstrap
-intervals to a fitted static allocation model. It resamples facility
-totals, refits the model to each resample and reports percentile
-intervals for the parameters and for derived quantities, including a
-paired supply scenario. The interface is experimental.</p>
+<p>A fitted allocation model gives one value for each parameter. This
+guide puts a range around those values: bootstrap intervals for the
+model’s two fitted parameters, for the share of demand that reaches a
+facility, and for the change that a supply scenario makes. The question
+is how far the estimates could move if the observed facility totals had
+come out differently. <code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> (also named
+<code><a href="../reference/bootstrap_fit.html">bootstrap_allocation()</a></code>) answers it by refitting the model
+many times to resampled facility totals. The guide runs on generated
+data with a known truth instead of <a href="cornwall-data.html">The
+Cornwall GP example data</a>, for the reasons in the next section. The
+<code><a href="../reference/spax.html">spax()</a></code> interface and the allocation model are experimental
+and may change in later versions.</p>
 <div class="section level2">
 <h2 id="why-generated-data">Why generated data<a class="anchor" aria-label="anchor" href="#why-generated-data"></a>
 </h2>
-<p>The bootstrap is shown on a generated network, not on Cornwall, for
-three reasons. Its eligibility rule (all 399 attempts made and at least
-380 finite successful values) was validated on generated designs of this
-size. A known truth lets you see whether the intervals cover it. And the
-method resamples facility totals treated as independent counts in one
-period, whereas Cornwall registrations are a stock of who is registered
-where; that observation law would need its own justification before an
-interval could be read. The <a href="allocation-workflow.html">allocation workflow</a> fits, checks and
-predicts the same kind of model on the Cornwall registrations.</p>
+<p>Generated data have a known truth, so you can see whether the
+intervals contain it. They also meet the bootstrap’s assumption that
+each facility’s total is an independent count over one period. The
+Cornwall data do not. The registrations are a stock: who is registered
+where on one date. The Cornwall model is also fitted to flows from small
+areas to practices, not to practice totals. <a href="allocation-workflow.html">Where do residents register?</a> fits
+that model.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="a-generated-network-with-a-known-truth">A generated network with a known truth<a class="anchor" aria-label="anchor" href="#a-generated-network-with-a-known-truth"></a>
 </h2>
-<p>The generated network has 80 origins and 40 facilities. Facility
-totals are drawn independently from a Poisson law with σ = 12 and v0 =
-45. Independence across facilities is an assumption declared below; it
-does not follow from mutually exclusive destinations. The model is
-prepared, declared and fitted as in the <a href="allocation-workflow.html">allocation workflow</a>.</p>
+<p>The model is the conditional logit model (CLM) of <a href="allocation-workflow.html">Where do residents register?</a>. Each
+origin’s demand, here service requests, is shared among the facilities
+in proportion to their supply, here service slots, discounted by travel
+time. An outside option competes with the facilities and takes the
+requests that go to none of them. For origin
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+and facility
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
+the share of requests is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>S</mi><mi>j</mi></msub><mspace width="0.167em"></mspace><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>S</mi><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msub><mi>v</mi><mn>0</mn></msub></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">P_{ij} = \frac{S_j \, w(d_{ij})}{\sum_k S_k \, w(d_{ik}) + v_0},</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math>
+is the supply of facility
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{ij}</annotation></semantics></math>
+the travel time in minutes and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>−</mi><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">w(d) = \exp(-d^2 / 2\sigma^2)</annotation></semantics></math>
+a Gaussian weight. The travel scale σ sets how fast a facility’s pull
+falls with travel time: at σ minutes it keeps about 61% of its weight,
+and at 2σ about 14%. The outside weight v0 is set against the
+facilities’ weighted supply: an origin whose facilities add up to a
+weighted supply of v0 sends half its requests outside.</p>
+<p>The code builds travel times between origins and facilities on a wavy
+strip, computes the shares at a known truth (<code>probability</code>)
+and draws each facility’s total as a Poisson count around its modeled
+total. It then fits the model with <code><a href="../reference/spax.html">spax()</a></code>, as in <a href="allocation-workflow.html">Where do residents register?</a>, to the
+facility totals declared by <code><a href="../reference/obs_flows.html">obs_totals()</a></code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">units</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  demand_units <span class="op">=</span> <span class="st">"requests"</span>,</span>
@@ -124,84 +151,67 @@ prepared, declared and fitted as in the <a href="allocation-workflow.html">alloc
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Travel minutes between 80 origins and 40 facilities on a wavy strip</span></span>
-<span><span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">80</span><span class="op">)</span></span>
-<span><span class="va">j</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">40</span><span class="op">)</span></span>
-<span><span class="va">boot_travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">58</span>, length.out <span class="op">=</span> <span class="fl">80</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">56</span>, length.out <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>, <span class="st">"-"</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="fl">8</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">i</span> <span class="op">*</span> <span class="fl">.73</span><span class="op">)</span>, <span class="fl">7</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">j</span> <span class="op">*</span> <span class="fl">1.31</span><span class="op">)</span>, <span class="st">"-"</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">+</span> <span class="fl">2</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="va">boot_travel</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"origin"</span>, <span class="va">i</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"facility"</span>, <span class="va">j</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">origin_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">58</span>, length.out <span class="op">=</span> <span class="fl">80</span><span class="op">)</span></span>
+<span><span class="va">origin_y</span> <span class="op">&lt;-</span> <span class="fl">8</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">80</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.73</span><span class="op">)</span></span>
+<span><span class="va">facility_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">56</span>, length.out <span class="op">=</span> <span class="fl">40</span><span class="op">)</span></span>
+<span><span class="va">facility_y</span> <span class="op">&lt;-</span> <span class="fl">7</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">40</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1.31</span><span class="op">)</span></span>
+<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">origin_x</span>, <span class="va">facility_x</span>, <span class="st">"-"</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">origin_y</span>, <span class="va">facility_y</span>, <span class="st">"-"</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
+<span><span class="op">)</span> <span class="op">+</span> <span class="fl">2</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"origin"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">80</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"facility"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">40</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Demand at each origin and supply at each facility</span></span>
-<span><span class="va">boot_demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fl">80</span> <span class="op">+</span> <span class="fl">35</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">i</span> <span class="op">*</span> <span class="fl">.23</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">boot_travel</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">boot_supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">7</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">9</span><span class="op">)</span>, <span class="fl">8</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">boot_travel</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">demand</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fl">80</span> <span class="op">+</span> <span class="fl">35</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">80</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.23</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">7</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">9</span><span class="op">)</span>, <span class="fl">8</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># True choice probabilities under the static CLM</span></span>
+<span><span class="co"># True choice probabilities under the CLM</span></span>
 <span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">12</span>, v0 <span class="op">=</span> <span class="fl">45</span><span class="op">)</span></span>
-<span><span class="va">boot_score</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">boot_travel</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">truth</span><span class="op">[[</span><span class="st">"sigma"</span><span class="op">]</span><span class="op">]</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">boot_supply</span>, each <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">boot_demand</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">boot_probability</span> <span class="op">&lt;-</span> <span class="va">boot_score</span> <span class="op">/</span> <span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">boot_score</span><span class="op">)</span> <span class="op">+</span> <span class="va">truth</span><span class="op">[[</span><span class="st">"v0"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">attraction</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">travel</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">truth</span><span class="op">[[</span><span class="st">"sigma"</span><span class="op">]</span><span class="op">]</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">supply</span>, each <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">demand</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">probability</span> <span class="op">&lt;-</span> <span class="va">attraction</span> <span class="op">/</span> <span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">attraction</span><span class="op">)</span> <span class="op">+</span> <span class="va">truth</span><span class="op">[[</span><span class="st">"v0"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Observed facility totals: independent Poisson counts around the truth</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2490001</span><span class="op">)</span></span>
-<span><span class="va">boot_observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fl">40</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">boot_probability</span> <span class="op">*</span> <span class="va">boot_demand</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">boot_supply</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fl">40</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">probability</span> <span class="op">*</span> <span class="va">demand</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">supply</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Prepare, declare and fit, as for Cornwall</span></span>
-<span><span class="va">boot_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">boot_demand</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">boot_supply</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">boot_travel</span>,</span>
-<span>  metadata <span class="op">=</span> <span class="va">units</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">boot_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span><span class="va">boot_inputs</span>, family <span class="op">=</span> <span class="st">"gaussian"</span>, fit_v0 <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">boot_starts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  short <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">8</span>, v0 <span class="op">=</span> <span class="fl">25</span><span class="op">)</span>,</span>
-<span>  medium <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">15</span>, v0 <span class="op">=</span> <span class="fl">70</span><span class="op">)</span>,</span>
-<span>  wide <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">25</span>, v0 <span class="op">=</span> <span class="fl">15</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">boot_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_allocation.html">fit_allocation</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="va">boot_model</span>,</span>
-<span>  observed <span class="op">=</span> <span class="va">boot_observed</span>,</span>
-<span>  starts <span class="op">=</span> <span class="va">boot_starts</span>,</span>
-<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">2</span>, v0 <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
-<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">60</span>, v0 <span class="op">=</span> <span class="fl">500</span><span class="op">)</span>,</span>
-<span>  output <span class="op">=</span> <span class="st">"utilization"</span>,  <span class="co"># facility totals</span></span>
-<span>  loss <span class="op">=</span> <span class="st">"poisson"</span>,</span>
-<span>  gradient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">300</span>, factr <span class="op">=</span> <span class="fl">10</span>, pgtol <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>truth <span class="op">=</span> <span class="va">truth</span>, estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">boot_fit</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Fit the CLM to the facility totals</span></span>
+<span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">demand</span>, <span class="va">supply</span>, <span class="va">travel</span>, metadata <span class="op">=</span> <span class="va">units</span><span class="op">)</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">data</span>, <span class="fu"><a href="../reference/spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>, observed <span class="op">=</span> <span class="fu"><a href="../reference/obs_flows.html">obs_totals</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>truth <span class="op">=</span> <span class="va">truth</span>, estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>            sigma       v0
 truth    12.00000 45.00000
-estimate 13.27962 48.57499</code></pre>
-<p>The target here is facility totals
-(<code>output = "utilization"</code>), the observation unit the
-bootstrap resamples. The estimates differ from the truth because the 40
-totals are one random sample; the bootstrap describes how much they
-could vary.</p>
+estimate 13.27969 48.57531</code></pre>
+<p>The network has 80 origins and 40 facilities. The fit uses the
+facility totals, because they are what the bootstrap resamples.
+<code><a href="../reference/spax.html">spax()</a></code> found its starting values and search bounds from the
+data, and every bootstrap refit reuses them. The fit estimates σ = 13.3
+minutes and v0 = 48.6, against a truth of 12 and 45. The gap is
+expected: the 40 totals are one random draw, and the bootstrap describes
+how much the estimates could vary from draw to draw.</p>
 </div>
 <div class="section level2">
-<h2 id="declare-the-observation-and-a-paired-scenario">Declare the observation and a paired scenario<a class="anchor" aria-label="anchor" href="#declare-the-observation-and-a-paired-scenario"></a>
+<h2 id="declare-the-observation-and-a-scenario">Declare the observation and a scenario<a class="anchor" aria-label="anchor" href="#declare-the-observation-and-a-scenario"></a>
 </h2>
-<p>The bootstrap needs an explicit declaration of what was observed,
-over what period and how facilities were sampled. The paired scenario
-raises the second facility’s supply by 20%; each bootstrap draw
-evaluates baseline and scenario at the same parameters.</p>
+<p>The bootstrap needs a declaration of how the counts arose: what was
+counted, over what period, and how the facilities were sampled. This
+declaration is the observation law. spax stores it with the result but
+cannot check it. <code>sampling</code> must be
+<code>"independent_facilities"</code>, the only design the bootstrap
+supports. Independent sampling of facilities is your assumption. Here it
+holds, because the totals were drawn that way.</p>
+<p>A scenario is optional: the same model with changed supply. The
+bootstrap evaluates the baseline and the scenario together at each
+refitted set of parameter values, so the change between them gets an
+interval of its own. The scenario is a model declared with
+<code><a href="../reference/clm_allocation.html">clm_allocation()</a></code> on data prepared like the baseline, with
+only the supply changed; <code>fit_v0 = TRUE</code> matches the fitted
+outside weight of <code><a href="../reference/spec_clm.html">spec_clm()</a></code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Scenario: 20% more supply at facility2</span></span>
-<span><span class="va">boot_scenario_supply</span> <span class="op">&lt;-</span> <span class="va">boot_supply</span></span>
-<span><span class="va">boot_scenario_supply</span><span class="op">[</span><span class="st">"facility2"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1.2</span> <span class="op">*</span> <span class="va">boot_scenario_supply</span><span class="op">[</span><span class="st">"facility2"</span><span class="op">]</span></span>
-<span><span class="va">boot_scenario_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_allocation.html">prepare_allocation</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="va">boot_demand</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">boot_scenario_supply</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">boot_travel</span>,</span>
-<span>  metadata <span class="op">=</span> <span class="va">units</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">boot_scenario</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span></span>
-<span>  inputs <span class="op">=</span> <span class="va">boot_scenario_inputs</span>,</span>
-<span>  family <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
+<span><span class="va">scenario_supply</span> <span class="op">&lt;-</span> <span class="va">supply</span></span>
+<span><span class="va">scenario_supply</span><span class="op">[</span><span class="st">"facility2"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1.2</span> <span class="op">*</span> <span class="va">scenario_supply</span><span class="op">[</span><span class="st">"facility2"</span><span class="op">]</span></span>
+<span><span class="va">scenario</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/clm_allocation.html">clm_allocation</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">demand</span>, <span class="va">scenario_supply</span>, <span class="va">travel</span>, metadata <span class="op">=</span> <span class="va">units</span><span class="op">)</span>,</span>
 <span>  fit_v0 <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -214,51 +224,56 @@ evaluates baseline and scenario at the same parameters.</p>
 <span></span>
 <span><span class="co"># Run the bootstrap only when rebuilding the stored result (see below)</span></span>
 <span><span class="va">rebuild_boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SPAX_REBUILD_VIGNETTE_BOOTSTRAP"</span><span class="op">)</span>, <span class="st">"true"</span><span class="op">)</span></span></code></pre></div>
+<p>The scenario raises the supply of facility2 from 7 to 8.4 service
+slots and changes nothing else.</p>
 </div>
 <div class="section level2">
 <h2 id="run-the-bootstrap">Run the bootstrap<a class="anchor" aria-label="anchor" href="#run-the-bootstrap"></a>
 </h2>
+<p><code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> makes 399 attempts by default. Each
+attempt draws 40 facilities with replacement from the 40, refits the
+model to their totals and records the new estimates. A facility drawn
+twice counts twice in the fit, and one not drawn does not count. Every
+facility and its supply stay in the network: only the weight of each
+total in the fit changes. Each attempt uses its own seed, the given seed
+plus the attempt number, so a run repeats exactly. The function takes
+the fitted result, the observation, the scenario and a seed.
+<code>attempts</code> sets another number of attempts, at least 199:
+more make the interval endpoints depend less on the random draws and
+take proportionally longer, while fewer give noisier intervals that tend
+to be narrower. Choose the number and the seed before the run. Runs with
+the same seed share their first attempts, so a larger run is the smaller
+one with more attempts added; changing the number after seeing a result
+is not part of the method.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_fit.html">bootstrap_allocation</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="va">boot_model</span>,</span>
-<span>  fit <span class="op">=</span> <span class="va">boot_fit</span>,</span>
+<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_fit.html">bootstrap_fit</a></span><span class="op">(</span></span>
+<span>  <span class="va">result</span>,</span>
 <span>  observation <span class="op">=</span> <span class="va">observation</span>,</span>
-<span>  scenario <span class="op">=</span> <span class="va">boot_scenario</span>,</span>
+<span>  scenario <span class="op">=</span> <span class="va">scenario</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">20260930</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Before the first attempt, <code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> checks that
+the original fit is usable: converged, with a score close enough to
+zero, each parameter pinned down by the totals and away from the bounds
+of its search. A model declared with the step functions works too: give
+the model and its fit, as in
+<code>bootstrap_fit(model, fit, observation = observation, seed = 20260930)</code>.</p>
 <div class="section level3">
 <h3 id="the-stored-result">The stored result<a class="anchor" aria-label="anchor" href="#the-stored-result"></a>
 </h3>
-<p>The chunk above is the exact call, but its 399 attempts take about
-three minutes, so it is not run while this guide is built. Its
-unmodified result is stored in <code>allocation-bootstrap.rds</code>,
-regenerated by <code>data-raw/precompute-vignette-bootstrap.R</code>,
-which renders this guide with
-<code>SPAX_REBUILD_VIGNETTE_BOOTSTRAP=true</code> so that the chunk runs
-live and saves its result. Nothing is subsampled or summarized; run the
-chunk yourself to reproduce it. The checks below confirm that the stored
-result matches the inputs and fit computed live here and that all 399
-attempts were made.</p>
+<p>The 399 refits take close to a minute, so the
+<code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> call above does not run when this guide is
+built. The guide reads the result of that exact call from
+<code>allocation-bootstrap.rds</code>, which is installed with the
+package, so you can read it too. To follow along with your own run, run
+the <code><a href="../reference/bootstrap_fit.html">bootstrap_fit()</a></code> call above and skip the next chunk. The
+script <code>data-raw/precompute-vignette-bootstrap.R</code>, in the
+package repository, rebuilds the file. The code below reads the stored
+result; when the guide is built, it also checks that the result belongs
+to the inputs and the fit computed above.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># When rebuilding, store the fresh result with the spax version used</span></span>
-<span><span class="va">boot_file</span> <span class="op">&lt;-</span> <span class="st">"allocation-bootstrap.rds"</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="va">rebuild_boot</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"spax_version"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"spax"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">boot</span>, <span class="va">boot_file</span>, compress <span class="op">=</span> <span class="st">"xz"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">boot_file</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># The stored result belongs to these inputs, this fit and all 399 attempts</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"ae_allocation_bootstrap"</span><span class="op">)</span>,</span>
-<span>  <span class="va">boot</span><span class="op">$</span><span class="va">seed</span> <span class="op">==</span> <span class="fl">20260930L</span>,</span>
-<span>  <span class="va">boot</span><span class="op">$</span><span class="va">planned</span> <span class="op">==</span> <span class="fl">399L</span>,</span>
-<span>  <span class="va">boot</span><span class="op">$</span><span class="va">attempted</span> <span class="op">==</span> <span class="fl">399L</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">boot</span><span class="op">$</span><span class="va">facility_ids</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">boot_supply</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">boot</span><span class="op">$</span><span class="va">observation</span>, <span class="va">observation</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">boot</span><span class="op">$</span><span class="va">input_metadata</span>, <span class="va">units</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">boot</span><span class="op">$</span><span class="va">original</span><span class="op">$</span><span class="va">theta</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">boot_fit</span><span class="op">)</span>, tolerance <span class="op">=</span> <span class="fl">1e-6</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># The stored result of the call above, installed with spax</span></span>
+<span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"allocation-bootstrap.rds"</span>, package <span class="op">=</span> <span class="st">"spax"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  status <span class="op">=</span> <span class="va">boot</span><span class="op">$</span><span class="va">status</span>,</span>
@@ -268,12 +283,18 @@ attempts were made.</p>
 <span>  running_spax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"spax"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>         status       attempted      successful built_with_spax    running_spax 
-     "complete"           "399"           "399"    "0.3.0.9000"         "0.6.0" </code></pre>
+     "complete"           "399"           "399"    "0.6.0.9000"         "0.7.0" </code></pre>
+<p>All 399 attempts were made and 399 succeeded. The result was built
+with spax 0.6.0.9000 and is read under 0.7.0. Rerunning the call under
+the running version gives the same estimates and intervals.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="read-the-intervals">Read the intervals<a class="anchor" aria-label="anchor" href="#read-the-intervals"></a>
 </h2>
+<p><code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the point estimate and the
+interval of each quantity, and <code>type = "draws"</code> gives every
+attempt.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sigma"</span>, <span class="st">"v0"</span><span class="op">)</span></span>
 <span></span>
@@ -281,8 +302,8 @@ attempts were made.</p>
 <span><span class="va">estimates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">estimates</span>, <span class="va">quantity</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">parameters</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>  quantity estimate    lower    upper                          status
-1    sigma 13.27962 10.54105 17.22121 conditional_pointwise_bootstrap
-2       v0 48.57499 35.02844 65.47782 conditional_pointwise_bootstrap
+1    sigma 13.27969 10.54105 18.61638 conditional_pointwise_bootstrap
+2       v0 48.57531 35.02844 69.06907 conditional_pointwise_bootstrap
   successful attempted planned
 1        399       399     399
 2        399       399     399</code></pre>
@@ -295,70 +316,122 @@ attempts were made.</p>
 <pre class="spax-output"><code>  attempt   status    sigma       v0
 1       1 selected 12.86513 48.73043
 2       2 selected 13.21244 50.51980
-3       3 selected 12.14213 40.43821
-4       4 selected 12.43516 42.49470
+3       3 selected 12.14212 40.43821
+4       4 selected 12.43516 42.49469
 5       5 selected 12.10434 43.16452
 6       6 selected 14.70454 53.31157</code></pre>
-<p>The procedure makes 399 predetermined attempts. It resamples facility
-observations while keeping every facility and its supply in the
-allocation. Failed attempts are kept and not replaced, and successful
-fits on an inner boundary stay in the distribution. An interval is
-reported only when all 399 attempts were made, at least 380 values are
-finite and the original fit is eligible; otherwise the result keeps its
-point estimates and reasons but withholds intervals.</p>
-<p>The tables above show the two model parameters; the saved result also
-holds regional and paired-scenario quantities, listed by
-<code>as.data.frame(boot)</code>.</p>
+<p>Each interval is a 95% percentile interval: the middle 95% of the
+refitted values. The status <code>conditional_pointwise_bootstrap</code>
+means that the interval holds the inputs fixed and covers that quantity
+on its own. The interval for σ runs from 10.5 to 18.6 minutes, and the
+interval for v0 from 35.0 to 69.1. Each row of the draws is one attempt
+with its refitted parameters, and <code>selected</code> marks an attempt
+whose refit succeeded.</p>
+<p>The table has three more rows:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">estimates</span>, <span class="op">!</span><span class="va">quantity</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">parameters</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>        quantity   estimate     lower      upper
+1   regional_rho 0.67108079 0.6511258  0.6896859
+2 delta_contacts 9.87225371 8.9083090 11.0227976
+3     regional_A 0.03041016        NA         NA
+                           status successful attempted planned
+1 conditional_pointwise_bootstrap        399       399     399
+2 conditional_pointwise_bootstrap        399       399     399
+3            fixed_input_identity        399       399     399</code></pre>
+<p><code>regional_rho</code> is the share of all requests that the model
+sends to a facility rather than the outside option: 67.1%, with an
+interval from 65.1% to 69.0%. <code>delta_contacts</code> is the change
+the scenario makes in the requests that reach a facility: 9.9 more, with
+an interval from 8.9 to 11.0. <code>regional_A</code>, the supply per
+unit of demand, depends only on the inputs, so it has no interval.</p>
+<p>The intervals follow fixed rules:</p>
+<ul>
+<li>A run makes all its attempts, 399 unless <code>attempts</code> says
+otherwise, chosen before the run. A failed attempt stays in the record
+and is not replaced. A refit that ends at a bound of its search range
+(an inner boundary) stays in the distribution.</li>
+<li>An interval needs all the attempts and finite values from at least
+95% of them, rounded up: 380 of 399. It also needs a usable original
+fit: away from the bounds of its search, converged precisely, and with
+each parameter pinned down by the totals.</li>
+<li>Coverage was studied with 399 attempts. A result with another number
+says so in a note.</li>
+<li>Each refit starts from the same starting values and search bounds as
+the original fit: the ones you gave, or the ones found from the data
+when you gave none. Facility totals can fit almost as well at quite
+different travel scales, so every refit tries all the starts and keeps
+its best fit.</li>
+</ul>
+<p>When a rule fails, the result keeps its point estimates and the
+reasons, and withholds the intervals.</p>
 </div>
 <div class="section level2">
 <h2 id="check-against-the-truth">Check against the truth<a class="anchor" aria-label="anchor" href="#check-against-the-truth"></a>
 </h2>
 <p>The generated data have a known truth, so the intervals can be set
 beside it.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Two panels side by side; each adds the true value as a dashed line</span></span>
 <span><span class="va">oldpar</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">q</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sigma"</span>, <span class="st">"v0"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">boot</span>, quantity <span class="op">=</span> <span class="va">q</span>, main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">q</span>, <span class="st">"(dashed line: truth)"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="va">truth</span><span class="op">[[</span><span class="va">q</span><span class="op">]</span><span class="op">]</span>, col <span class="op">=</span> <span class="st">"orange"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, lty <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">parameter</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sigma"</span>, <span class="st">"v0"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">boot</span>, quantity <span class="op">=</span> <span class="va">parameter</span>, main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">parameter</span>, <span class="st">"(dashed line: truth)"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="va">truth</span><span class="op">[[</span><span class="va">parameter</span><span class="op">]</span><span class="op">]</span>, col <span class="op">=</span> <span class="st">"orange"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, lty <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p><img src="facility-bootstrap_files/figure-html/bootstrap-truth-1.png" class="r-plt" alt="Two interval plots, for sigma and for v0, each showing the point estimate and its bootstrap percentile interval, with the true value as an orange dashed line inside the interval." width="700"></p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span><span class="va">oldpar</span><span class="op">)</span></span></code></pre></div>
-<p>In this generated design both intervals contain the true values
-(dashed). They are pointwise percentile intervals conditional on the
-declared observation law and on fixed demand, supply, travel and
-facilities. Acceptance in generated studies does not establish an
-application’s observation law or guarantee exact 95% coverage, and the
-paired scenario is model-based, not causal.</p>
+<p>The dot is the estimate and the line its 95% interval, with σ in
+minutes. Both intervals contain the true values, shown as dashed lines.
+The caption above each panel says that the run is complete, that the
+quantity has an interval and how many attempts gave a finite value.
+These are two separate intervals, not a joint range for σ and v0, and
+they rest on the declared sampling. One generated example whose
+intervals contain the truth does not show that 95% of intervals would
+contain it in another application.</p>
 </div>
 <div class="section level2">
 <h2 id="tables-and-saving">Tables and saving<a class="anchor" aria-label="anchor" href="#tables-and-saving"></a>
 </h2>
-<p>The result works with the same tools as a fit.
-<code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code> returns the saved estimates and intervals,
-every attempted draw (<code>type = "draws"</code>) or every attempted
-start (<code>type = "starts"</code>), failures included;
-<code><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot()</a></code> read the saved values
-without resampling. Save the whole object as RDS to keep its
-declarations; CSV tables drop them. The <a href="allocation-workflow.html">allocation workflow</a> shows a full
-export and a reload in a fresh R session.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<p>The result has its own <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary()</a></code>,
+<code><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot()</a></code> and <code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code> methods.
+<code><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the estimates, every draw
+(<code>type = "draws"</code>) or every start of every attempt
+(<code>type = "starts"</code>), failures included.
+<code><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot()</a></code> read the saved values and
+resample nothing. Save the whole result with <code><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS()</a></code>: it
+keeps the declared observation, units and seed, which a CSV table drops.
+The code below saves the result, reads it back and confirms that the
+draws are unchanged.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Save the result and read it back</span></span>
 <span><span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".rds"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">boot</span>, <span class="va">saved</span><span class="op">)</span></span>
 <span><span class="va">restored</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/serialize.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># The restored result gives the same tables, with nothing recomputed</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">restored</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">restored</span>, type <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">boot</span>, type <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">restored</span><span class="op">)</span>, <span class="st">"summary.ae_allocation_bootstrap"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># The restored result gives the same draws, with nothing recomputed</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">restored</span>, type <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">boot</span>, type <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] TRUE</code></pre>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
+</h2>
+<ul>
+<li>
+<a href="scenario.html">What if a practice closed?</a>: a supply
+scenario on the Cornwall data, at fixed parameter values.</li>
+<li>
+<a href="allocation-workflow.html">Where do residents register?</a>:
+the model fitted to the Cornwall registrations, and what those data
+identify.</li>
+<li>
+<a href="reading-results.html">Reading results</a>: what intervals,
+scenarios and fits show, and what they do not.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

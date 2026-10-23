@@ -1,7 +1,7 @@
-# Declare the Huff model over checked allocation inputs
+# Declare the Huff model
 
 Declare the Huff model, a conditional logit allocation without an
-outside option, over checked allocation inputs.
+outside option, on prepared allocation inputs.
 
 ## Usage
 
@@ -63,10 +63,9 @@ huff_allocation(
 
 ## Value
 
-The existing private `ae_problem` for corrected static CLM with no
-outside option. Parameter order is sigma, then beta when it is fitted.
-With demand groups sigma is `sigma.<group>` for the groups in
-`by_group`.
+The model: an `ae_problem` for the static CLM with no outside option.
+Parameter order is sigma, then beta when it is fitted. With demand
+groups sigma is `sigma.<group>` for the groups in `by_group`.
 
 ## Details
 

@@ -1,10 +1,10 @@
 # Predict requested origins against a saved fitted or evaluated CLM
 
-Numeric output preserves the existing prediction result and its separate
-probability, demand and capacity validity. Raster conversion is explicit
-and permits one vector only; inspect numeric validity before
-interpreting a map. Supply/theta overrides are deliberately absent. A
-changed system requires reevaluation.
+Numeric output keeps the prediction result and its separate probability,
+demand and capacity validity. Raster conversion is explicit and permits
+one vector only; inspect numeric validity before interpreting a map.
+Supply/theta overrides are deliberately absent. A changed system
+requires reevaluation.
 
 ## Usage
 
@@ -15,10 +15,13 @@ predict_allocation(
   origin_ids = rownames(distance),
   demand = NULL,
   outputs = c("rho", "A", "abar"),
-  missing_travel = c("unknown", "legacy_zero"),
+  missing_travel = c("unknown", "omit", "legacy_zero"),
   spatial = NULL,
   type = c("numeric", "raster")
 )
+
+# S3 method for class 'ae_clm_prediction'
+print(x, digits = 4, ...)
 ```
 
 ## Arguments
@@ -68,9 +71,10 @@ predict_allocation(
 - missing_travel:
 
   Default `"unknown"` makes a normalized row unknown when any
-  alternative's travel is unknown. Explicit `"legacy_zero"` preserves
-  its imputation flags; positive infinity remains known absence, while
-  negative travel and invalid finite kernel domains are rejected.
+  alternative's travel is unknown. Explicit `"omit"` (older name
+  `"legacy_zero"`) leaves unknown pairs out and flags them as imputed;
+  positive infinity remains known absence, while negative travel and
+  invalid finite kernel domains are rejected.
 
 - spatial:
 
@@ -85,12 +89,28 @@ predict_allocation(
   vector map, so inspect the numeric validity result before interpreting
   the map.
 
+- x:
+
+  For [`print()`](https://rdrr.io/r/base/print.html), a prediction: the
+  `ae_clm_prediction` of `predict_allocation()`. Its print shows the
+  number of origins with each status, what is known of their demand, how
+  unknown travel was treated, and the range of each requested vector
+  over the origins with a value.
+
+- digits:
+
+  Significant digits of the printed values.
+
+- ...:
+
+  Unused.
+
 ## Value
 
 An `ae_clm_prediction`, or an explicitly requested one-layer raster.
 Contact to positive-supply/zero-load facilities preserves valid
 probabilities but makes unqualified A/abar unknown; explicitly named
-supported-only outputs retain the existing zero-contribution convention.
+supported-only outputs retain the zero-contribution convention.
 Zero-denominator rows retain guarded zero mass and a false
 probability-valid flag.
 
@@ -108,3 +128,67 @@ Other allocation steps:
 [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md),
 [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md),
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
+
+## Examples
+
+``` r
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+
+# Fit on every other small area; predict the others, which lie among them,
+# so these practices are their real choice set
+fit_areas <- areas[seq(1, nrow(areas), by = 2), ]
+held_out <- areas[seq(2, nrow(areas), by = 2), ]
+
+# A fit to the registrations of the fitted areas' residents, with those
+# registered elsewhere as the outside column (see fit_allocation())
+travel <- cornwall_travel[fit_areas$lsoa, gp$practice]
+flows <- cornwall_flows[cornwall_flows$lsoa %in% fit_areas$lsoa &
+                          cornwall_flows$practice %in% gp$practice, ]
+flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+flow_matrix <- cbind(flow_matrix,
+                     "(outside)" = fit_areas$registered - rowSums(flow_matrix))
+model <- clm_allocation(prepare_allocation(
+  stats::setNames(fit_areas$registered, fit_areas$lsoa), supply, travel), fit_v0 = TRUE)
+fit <- fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poisson")
+
+# The held-out areas: no refit, the fitted values and practice loads are used
+pred <- predict_allocation(fit, cornwall_travel[held_out$lsoa, gp$practice],
+                           demand = stats::setNames(held_out$registered, held_out$lsoa),
+                           outputs = c("rho", "A", "flow"))
+pred
+#> <allocation prediction> 42 origins x 15 facilities
+#>   origins     42 valid
+#>   demand      42 positive
+#>   travel      an unknown travel time makes the origin unknown
+#>   outputs
+#>     rho   0.147 to 0.9912 (42 of 42 origins)
+#>     A     0.000187 to 0.001756 (42 of 42 origins)
+#>     flow  42 origins x 15 facilities
+#>   values in $outputs; the status of each origin in $validity
+
+# The modeled share of each area's residents at these practices, the share
+# registered there, and the GP FTE per 1,000 residents attributed to the area
+held <- cornwall_flows[cornwall_flows$lsoa %in% held_out$lsoa &
+                         cornwall_flows$practice %in% gp$practice, ]
+registered_here <- tapply(held$patients, factor(held$lsoa, levels = held_out$lsoa), sum)
+head(cbind(contact = pred$outputs$rho,
+           observed = registered_here / held_out$registered,
+           fte_per_1000 = 1000 * pred$outputs$A))
+#>             contact  observed fte_per_1000
+#> E01018861 0.9667815 0.9945088     1.550514
+#> E01018863 0.9747945 0.9979242     1.385976
+#> E01018865 0.9904890 0.9911318     1.129310
+#> E01018868 0.9889620 0.9973118     1.153529
+#> E01018870 0.9897772 0.9938229     1.147452
+#> E01018872 0.9870558 0.6741517     1.203248
+table(pred$validity$status)
+#> 
+#> valid 
+#>    42 
+```

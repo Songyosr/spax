@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>The E2SFCA calculation step by step • spax</title>
+<title>Inside the E2SFCA calculation • spax</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="The E2SFCA calculation step by step">
+<meta property="og:title" content="Inside the E2SFCA calculation">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,20 +37,23 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,129 +76,181 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>The E2SFCA calculation step by step</h1>
+      <h1>Inside the E2SFCA calculation</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/vignettes/e2sfca-steps.Rmd" class="external-link"><code>vignettes/e2sfca-steps.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/e2sfca-steps.Rmd" class="external-link"><code>vignettes/e2sfca-steps.Rmd</code></a></small>
       <div class="d-none name"><code>e2sfca-steps.Rmd</code></div>
     </div>
 
     
     
-<p>This guide uses the bundled Cornwall GP data, described in <a href="cornwall-data.html">The Cornwall GP example data</a>.</p>
+<p>The enhanced two-step floating catchment area (E2SFCA) index gives
+each place the GP supply per resident within reach, with weights that
+fall with travel time. This guide rebuilds the index of <a href="spax.html">Getting started</a> one step at a time from the
+building blocks of spax, and compares the result with
+<code><a href="../reference/spax.html">spax()</a></code>. By the end you can say where each cell’s number
+comes from, swap one set of weights to get another index, and see why
+the calculation has to cover the whole study area. The inputs are the
+mainland grids of <a href="cornwall-data.html">The Cornwall GP example
+data</a>. The <code><a href="../reference/spax.html">spax()</a></code> interface and the allocation model are
+experimental and may change in later versions.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Songyosr/spax" class="external-link">spax</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></code></pre></div>
-<p>An FCA calculation has two kernels: one decides how much demand each
-facility gathers, the other spreads each facility’s supply-to-demand
-ratio back to origins. Let demand at cell
+<div class="section level2">
+<h2 id="the-formula">The formula<a class="anchor" aria-label="anchor" href="#the-formula"></a>
+</h2>
+<p>A floating catchment area (FCA) index has two steps. First each
+facility gathers the demand around it and divides its supply by that
+demand. Then each place adds up the ratios of the facilities it can
+reach. Here demand is the residents of a grid cell and supply is a
+practice’s GP full-time equivalents (FTE).</p>
+<p>Let demand at cell
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
 be
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>i</mi></msub><annotation encoding="application/x-tex">D_i</annotation></semantics></math>,
-supply at practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>i</mi></msub><annotation encoding="application/x-tex">D_i</annotation></semantics></math>
+and supply at practice
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
 be
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math>,
-and the demand-side and access-side weights be
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math>.
+The weights
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">G_{ij}</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">H_{ij}</annotation></semantics></math>.
-Then</p>
+decide how much of cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>’s
+demand practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+gathers, and the weights
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">H_{ij}</annotation></semantics></math>
+how much of practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>’s
+ratio cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+receives. Then</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>j</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>D</mi><mi>i</mi></msub><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><msub><mi>S</mi><mi>j</mi></msub><mi>/</mi><msub><mi>L</mi><mi>j</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>H</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msub><mi>R</mi><mi>j</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
 L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 </annotation></semantics></math></p>
-<p>This guide rebuilds the E2SFCA surface of <a href="spax.html">Getting
-started</a> one step at a time and checks each step against
-<code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code>, with the same inputs and the same 10-minute
-Gaussian decay. The calculation covers all of mainland Cornwall; the
-maps zoom in on the area around Truro so that individual cells stay
-visible.</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mi>j</mi></msub><annotation encoding="application/x-tex">L_j</annotation></semantics></math>
+is the demand practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+gathers,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>j</mi></msub><annotation encoding="application/x-tex">R_j</annotation></semantics></math>
+its supply-to-demand ratio and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mi>i</mi></msub><annotation encoding="application/x-tex">A_i</annotation></semantics></math>
+the index at cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>.
+E2SFCA uses the same decay weights
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>W</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">W_{ij}</annotation></semantics></math>,
+which fall with the travel time from cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+to practice
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+(step 1), for both:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mi>H</mi><mo>=</mo><mi>W</mi></mrow><annotation encoding="application/x-tex">G = H = W</annotation></semantics></math>.</p>
+</div>
+<div class="section level2">
+<h2 id="the-inputs">The inputs<a class="anchor" aria-label="anchor" href="#the-inputs"></a>
+</h2>
+<p>The setup code shared by every grid guide, explained in <a href="cornwall-data.html">The Cornwall GP example data</a>, reads the
+population grid, the mainland practices and one layer of travel minutes
+per practice. The supply is also kept as a vector named by practice
+code, and a small helper maps a layer around Truro so that single cells
+stay visible.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Mainland only, as in the other guides</span></span>
-<span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">travel</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel</span>, <span class="va">pop</span><span class="op">)</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_pop.tif"</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_spax_example.html">read_spax_example</a></span><span class="op">(</span><span class="st">"cornwall_gp_travel.tif"</span><span class="op">)</span><span class="op">[[</span><span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co"># Keep cells with a travel time to every mainland practice</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/trim.html" class="external-link">trim</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">mask</a></span><span class="op">(</span><span class="va">pop</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">travel_grid</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">travel_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel_grid</span>, <span class="va">pop</span><span class="op">)</span></span>
+<span><span class="va">grid_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">gp</span>, <span class="va">travel_grid</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># GP FTE named by practice code</span></span>
 <span><span class="va">supply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Map helper: a layer within the Truro display window, with practices</span></span>
-<span><span class="va">truro</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/ext.html" class="external-link">ext</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5.30</span>, <span class="op">-</span><span class="fl">4.80</span>, <span class="fl">50.12</span>, <span class="fl">50.42</span><span class="op">)</span>  <span class="co"># display window only</span></span>
+<span><span class="va">truro_window</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/ext.html" class="external-link">ext</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5.30</span>, <span class="op">-</span><span class="fl">4.80</span>, <span class="fl">50.12</span>, <span class="fl">50.42</span><span class="op">)</span></span>
 <span><span class="va">practices</span> <span class="op">&lt;-</span> <span class="va">cornwall_gp</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crs.html" class="external-link">crs</a></span><span class="op">(</span><span class="va">pop</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">show</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">title</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="va">coast</span> <span class="op">&lt;-</span> <span class="va">cornwall_lsoa</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="va">scilly</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/vect.html" class="external-link">vect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">show</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">layer</span>, <span class="va">title</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">truro</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">layer</span>, <span class="va">truro_window</span><span class="op">)</span>,</span>
 <span>    axes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    main <span class="op">=</span> <span class="va">title</span>,</span>
 <span>    col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"viridis"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">points</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">practices</span>, <span class="va">truro</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fl">3</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">coast</span>, <span class="va">truro_window</span><span class="op">)</span>, lwd <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/lines.html" class="external-link">points</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">practices</span>, <span class="va">truro_window</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fl">3</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
+<p>The calculation covers all of mainland Cornwall. Only the maps zoom
+in.</p>
+</div>
 <div class="section level2">
 <h2 id="step-1-decay-weights">Step 1: decay weights<a class="anchor" aria-label="anchor" href="#step-1-decay-weights"></a>
 </h2>
 <p>With Gaussian decay,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>−</mi><msubsup><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mi>/</mi><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">W_{ij}=\exp(-d_{ij}^2/2\sigma^2)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mi>−</mi><msubsup><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W_{ij}=\exp\!\left(-d_{ij}^2/(2\sigma^2)\right)</annotation></semantics></math>,
 where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{ij}</annotation></semantics></math>
-is the travel time. We use
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">\sigma = 10</annotation></semantics></math>
-minutes, a choice rather than an estimate. <code><a href="../reference/calc_decay.html">calc_decay()</a></code>
-works on plain numbers and on rasters alike.</p>
+is the travel time and σ is the travel scale. We use σ = 10 minutes, a
+choice for this guide. <code><a href="../reference/calc_decay.html">calc_decay()</a></code> works on plain numbers
+and on rasters alike.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The weight left after a few travel times</span></span>
 <span><span class="va">minutes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span>, <span class="fl">10</span>, <span class="fl">15</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span></span>
-<span><span class="va">kernel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">minutes</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">kernel</span>, <span class="va">minutes</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">weight_left</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">minutes</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">weight_left</span>, <span class="va">minutes</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>    0     5    10    15    20    30 
 1.000 0.882 0.607 0.325 0.135 0.011 </code></pre>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The same decay applied to every travel layer</span></span>
-<span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">travel</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_decay.html">calc_decay</a></span><span class="op">(</span><span class="va">travel_grid</span>, method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/methods/show.html" class="external-link">show</a></span><span class="op">(</span></span>
 <span>  <span class="va">weights</span><span class="op">[[</span><span class="st">"L82001"</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>  <span class="st">"Step 1: weight of one Truro practice (L82001), 0 to 1"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="e2sfca-steps_files/figure-html/kernel-1.png" class="r-plt" alt="" width="700"></p>
-<p>Each practice has one weight layer. The map shows the layer for a
-practice in central Truro (the red crosses are practices): the weight is
-close to 1 near it and fades with travel time. The shape follows the
-travel-time surface, not straight-line distance; the gaps are
-estuaries.</p>
+<p><img src="e2sfca-steps_files/figure-html/kernel-1.png" class="r-plt" alt="Raster map of the area around Truro showing the Gaussian decay weight of one central Truro practice, from 0 to 1: close to 1 near the practice and fading with travel time, with gaps along the estuaries; red crosses mark the practices." width="700"></p>
+<p>A practice 10 minutes away keeps 61% of the weight it would have next
+door, and one 30 minutes away about 1%. Each practice has one weight
+layer. The map shows the layer for L82001, a practice in central Truro:
+it is the red cross at the center of the bright area (the other crosses
+are other practices). The weight is close to 1 near it and fades with
+travel time. The shape follows the travel-time surface rather than
+straight-line distance, and the gaps are estuaries.</p>
 </div>
 <div class="section level2">
 <h2 id="step-2-optional-normalize-the-demand-side-weights">Step 2 (optional): normalize the demand-side weights<a class="anchor" aria-label="anchor" href="#step-2-optional-normalize-the-demand-side-weights"></a>
 </h2>
-<p>The weights of all practices at one cell need not sum to 1. Where
-many practices are close, each of them counts the same resident.
-<code><a href="../reference/calc_normalize.html">calc_normalize()</a></code> offers alternatives:
-<code>"standard"</code> divides each cell’s weights by their sum, and
-<code>"semi"</code> does so only where the sum exceeds 1.</p>
+<p>The weights of all practices at one cell can add up to more than 1.
+Where many practices are close, each of them counts the same resident.
+<code><a href="../reference/calc_normalize.html">calc_normalize()</a></code> can rescale them: <code>"standard"</code>
+(its default) divides each cell’s weights by their sum, and
+<code>"semi"</code> does so only where the sum exceeds 1.
+<code>"identity"</code>, the default of <code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>,
+leaves them as they are. The table gives cell quantiles of the summed
+weights, before and after.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Sum of all practices' weights at each cell</span></span>
-<span><span class="va">row_sum</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">w</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">cell_sum</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">layers</span><span class="op">)</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">layers</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.5</span>, <span class="fl">0.95</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">standard</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span><span class="va">weights</span>, method <span class="op">=</span> <span class="st">"standard"</span><span class="op">)</span></span>
 <span><span class="va">semi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_normalize.html">calc_normalize</a></span><span class="op">(</span><span class="va">weights</span>, method <span class="op">=</span> <span class="st">"semi"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Cell quantiles of those sums, before and after normalizing</span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>    identity <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fu">row_sum</span><span class="op">(</span><span class="va">weights</span><span class="op">)</span>, <span class="va">probs</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    standard <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fu">row_sum</span><span class="op">(</span><span class="va">standard</span><span class="op">)</span>, <span class="va">probs</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    semi <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fu">row_sum</span><span class="op">(</span><span class="va">semi</span><span class="op">)</span>, <span class="va">probs</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>    identity <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fu">cell_sum</span><span class="op">(</span><span class="va">weights</span><span class="op">)</span>, <span class="va">probs</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    standard <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fu">cell_sum</span><span class="op">(</span><span class="va">standard</span><span class="op">)</span>, <span class="va">probs</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    semi <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fu">cell_sum</span><span class="op">(</span><span class="va">semi</span><span class="op">)</span>, <span class="va">probs</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fl">2</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -203,15 +258,13 @@ many practices are close, each of them counts the same resident.
 identity 1.23 3.96 9.06
 standard 1.00 1.00 1.00
 semi     1.00 1.00 1.00</code></pre>
-<p>In mainland Cornwall the weights at the median cell sum to about 4,
-and even the 5th percentile is above 1, so <code>"standard"</code> and
-<code>"semi"</code> give almost the same result here and both differ
+<p>At the median cell the weights sum to 3.96, and even at the 5th
+percentile they sum to 1.23. So <code>"standard"</code> and
+<code>"semi"</code> give almost the same result here, and both differ
 from <code>"identity"</code>. The choice changes the demand each
-practice gathers and so the index: normalization is a model choice, not
-a correction. In <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> the
-<code>demand_normalize</code> argument (<code>normalize</code> in
-<code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>) applies it to the demand side only. We keep
-<code>"identity"</code>, so
+practice gathers and so the index: normalization is part of the model
+you choose. <code>spec_e2sfca(normalize = )</code> applies it to the
+demand side only. We keep <code>"identity"</code>, the default, so
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mi>H</mi><mo>=</mo><mi>W</mi></mrow><annotation encoding="application/x-tex">G = H = W</annotation></semantics></math>.</p>
 </div>
 <div class="section level2">
@@ -223,21 +276,29 @@ cells for each practice:
 With <code>simplify = TRUE</code> it returns a vector named by the
 weight layers.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">load</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gather_weighted.html">gather_weighted</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">gathered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gather_weighted.html">gather_weighted</a></span><span class="op">(</span></span>
 <span>  values <span class="op">=</span> <span class="va">pop</span>,</span>
 <span>  weights <span class="op">=</span> <span class="va">weights</span>,</span>
 <span>  simplify <span class="op">=</span> <span class="cn">TRUE</span>  <span class="co"># one named value per practice</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">load</span><span class="op">)</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">gathered</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>L82001 L82003 L82004 L82006 L82007 L82008 
+ 95347  22747  42324  91637  21265  16840 </code></pre>
+<p>The names are the practice codes, which step 4 uses to line up the
+supply. Each value is the weighted number of residents a practice
+gathers. A resident within reach of several practices counts toward each
+of them, so these values, over all 54 practices, add up to 5.9 times the
+mainland’s residents.</p>
 </div>
 <div class="section level2">
 <h2 id="step-4-supply-to-demand-ratios">Step 4: supply-to-demand ratios<a class="anchor" aria-label="anchor" href="#step-4-supply-to-demand-ratios"></a>
 </h2>
 <p>Each practice’s ratio is its supply over the demand it gathered,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>j</mi></msub><mo>=</mo><msub><mi>S</mi><mi>j</mi></msub><mi>/</mi><msub><mi>L</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">R_j=S_j/L_j</annotation></semantics></math>.
-Index supply by the names of <code>load</code>, not by position.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ratio</span> <span class="op">&lt;-</span> <span class="va">supply</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">load</span><span class="op">)</span><span class="op">]</span> <span class="op">/</span> <span class="va">load</span></span>
+Index the supply by the names of <code>gathered</code>, not by position.
+The table shows six practices near Truro.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ratio</span> <span class="op">&lt;-</span> <span class="va">supply</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">gathered</span><span class="op">)</span><span class="op">]</span> <span class="op">/</span> <span class="va">gathered</span></span>
 <span></span>
 <span><span class="co"># Supply, gathered demand and ratio for six practices near Truro</span></span>
 <span><span class="va">near_truro</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L82001"</span>, <span class="st">"L82028"</span>, <span class="st">"L82015"</span>, <span class="st">"L82061"</span>, <span class="st">"L82045"</span>, <span class="st">"L82048"</span><span class="op">)</span></span>
@@ -245,7 +306,7 @@ Index supply by the names of <code>load</code>, not by position.</p>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">gp</span>, <span class="va">practice</span>, <span class="va">name</span><span class="op">)</span>, by <span class="op">=</span> <span class="st">"practice"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    gp_fte <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">supply</span><span class="op">[</span><span class="va">practice</span><span class="op">]</span>, <span class="fl">1</span><span class="op">)</span>,</span>
-<span>    weighted_residents <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">load</span><span class="op">[</span><span class="va">practice</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>    weighted_residents <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="va">gathered</span><span class="op">[</span><span class="va">practice</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>    fte_per_1000 <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">1000</span> <span class="op">*</span> <span class="va">ratio</span><span class="op">[</span><span class="va">practice</span><span class="op">]</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>  practice                          name gp_fte weighted_residents fte_per_1000
@@ -256,13 +317,12 @@ Index supply by the names of <code>load</code>, not by position.</p>
 5   L82045                PROBUS SURGERY    6.6              71415         0.09
 6   L82048            ROSELAND SURGERIES    3.3              42552         0.08</code></pre>
 <p>The ratios look small because, with identity weights, each resident
-is counted by several practices; step 5 adds them back up. The two
-central Truro practices share one site, so they gather the same
-demand.</p>
-<p><code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> uses a ratio of zero for a practice whose
-gathered demand is zero. That is a computational convention, not
-evidence of anything; with Gaussian weights every practice here gathers
-some demand, so it is not used.</p>
+is counted by several practices. Step 5 adds them back up. The two
+central Truro practices share one site, so they gather the same demand.
+With a decay that reaches zero, such as a fixed catchment, a practice
+can gather no demand. spax gives it a ratio of zero, but the division
+above gives <code>Inf</code>, so set those ratios to 0 when you
+calculate by hand.</p>
 </div>
 <div class="section level2">
 <h2 id="step-5-spread-the-ratios-back-to-cells">Step 5: spread the ratios back to cells<a class="anchor" aria-label="anchor" href="#step-5-spread-the-ratios-back-to-cells"></a>
@@ -272,56 +332,75 @@ its weight layer and sums over practices:
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>W</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msub><mi>R</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">A_i=\sum_j W_{ij}R_j</annotation></semantics></math>.
 It matches values to layers by position, so pass the ratios in layer
 order.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Ratios in layer order, without names: matching is by position</span></span>
 <span><span class="va">access</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spread_weighted.html">spread_weighted</a></span><span class="op">(</span></span>
 <span>  values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">ratio</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  weights <span class="op">=</span> <span class="va">weights</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/methods/show.html" class="external-link">show</a></span><span class="op">(</span><span class="fl">1000</span> <span class="op">*</span> <span class="va">access</span>, <span class="st">"Step 5: E2SFCA, GP FTE per 1,000 residents"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="e2sfca-steps_files/figure-html/spread-1.png" class="r-plt" alt="" width="700"></p>
-<p>A cell’s index is a sum of contributions from every practice. For the
-cell containing the central Truro practice, the largest contributions
-are:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<p><img src="e2sfca-steps_files/figure-html/spread-1.png" class="r-plt" alt="Raster map of the E2SFCA index around Truro in GP FTE per 1,000 residents, with practices as red crosses; values are highest in a band from Truro towards the south-west and lower in the east of the window." width="700"></p>
+<p>The index is highest in a band west and south-west of Truro and falls
+towards the east of the window, where fewer practices are close. A
+cell’s index is a sum of contributions from every practice. For the cell
+that contains the central Truro practice, the largest contributions are,
+in GP FTE per 1,000 residents:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The grid cell that contains practice L82001</span></span>
 <span><span class="va">site</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/geometry.html" class="external-link">geom</a></span><span class="op">(</span><span class="va">practices</span><span class="op">[</span><span class="va">practices</span><span class="op">$</span><span class="va">practice</span> <span class="op">==</span> <span class="st">"L82001"</span>, <span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">cell</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/xyCellFrom.html" class="external-link">cellFromXY</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">site</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Each practice's contribution: its weight at the cell times its ratio</span></span>
-<span><span class="va">w_cell</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/extract.html" class="external-link">extract</a></span><span class="op">(</span><span class="va">weights</span>, <span class="va">cell</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">parts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fl">1000</span> <span class="op">*</span> <span class="va">w_cell</span> <span class="op">*</span> <span class="va">ratio</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">w_cell</span><span class="op">)</span><span class="op">]</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">weights_at_cell</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/extract.html" class="external-link">extract</a></span><span class="op">(</span><span class="va">weights</span>, <span class="va">cell</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">contributions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/sort.html" class="external-link">sort</a></span><span class="op">(</span></span>
+<span>  <span class="fl">1000</span> <span class="op">*</span> <span class="va">weights_at_cell</span> <span class="op">*</span> <span class="va">ratio</span><span class="op">[</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">weights_at_cell</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>  decreasing <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">parts</span>, <span class="fl">5</span><span class="op">)</span>,</span>
-<span>    all_others <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">parts</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>    total <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">parts</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="va">contributions</span>, <span class="fl">5</span><span class="op">)</span>,</span>
+<span>    all_others <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">contributions</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>    total <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">contributions</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fl">3</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre class="spax-output"><code>    L82028     L82001     L82045     L82006     L82061 all_others      total 
      0.108      0.107      0.067      0.048      0.047      0.417      0.794 </code></pre>
+<p>The two practices at the central Truro site contribute most. The
+other 49 practices beyond the top five still add 53% of the cell’s
+index.</p>
 </div>
 <div class="section level2">
-<h2 id="check-against-the-packaged-functions">Check against the packaged functions<a class="anchor" aria-label="anchor" href="#check-against-the-packaged-functions"></a>
+<h2 id="the-same-index-from-spax">The same index from <code>spax()</code><a class="anchor" aria-label="anchor" href="#the-same-index-from-spax"></a>
 </h2>
-<p>The step-by-step surface, the <code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> wrapper, the
-more general <code><a href="../reference/compute_access.html">compute_access()</a></code> and a plain matrix
-calculation all agree:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The packaged wrapper</span></span>
-<span><span class="va">e2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
+<p>The surface built by hand, <code>access</code>, should match the
+index from <code><a href="../reference/spax.html">spax()</a></code>, the one-call function
+<code><a href="../reference/spax_e2sfca.html">spax_e2sfca()</a></code> and the more general
+<code><a href="../reference/compute_access.html">compute_access()</a></code>. <code><a href="../reference/compute_access.html">compute_access()</a></code> takes the
+two weight sets
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>H</mi><annotation encoding="application/x-tex">H</annotation></semantics></math>
+of the formula as <code>demand_weights</code> and
+<code>access_weights</code>, so it can build any index of this form.
+Each comparison below prints <code>TRUE</code> when the two surfaces
+agree, cell by cell and in which cells are empty.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># The index from a specification</span></span>
+<span><span class="va">by_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The one-call function</span></span>
+<span><span class="va">one_call</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
 <span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
+<span>  distance <span class="op">=</span> <span class="va">travel_grid</span>,</span>
 <span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
 <span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
 <span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># The general function, with the same weights on both sides</span></span>
+<span><span class="co"># The general function, with the decay weights on both sides</span></span>
 <span><span class="va">general</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_access.html">compute_access</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
 <span>  supply <span class="op">=</span> <span class="va">supply</span>,</span>
@@ -329,78 +408,25 @@ calculation all agree:</p>
 <span>  access_weights <span class="op">=</span> <span class="va">weights</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># The same formula with plain matrices: cells in rows, practices in columns</span></span>
-<span><span class="va">W</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span></span>
-<span><span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">pop</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">ok</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span></span>
-<span><span class="va">manual</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NA_real_</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">manual</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/drop.html" class="external-link">drop</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">ok</span>, <span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="op">(</span><span class="va">supply</span> <span class="op">/</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">ok</span>, <span class="op">]</span> <span class="op">*</span> <span class="va">D</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># All three surfaces match the matrix calculation, and so do the loads</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">answer</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">access</span>, <span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span>, <span class="va">general</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">answer</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>    <span class="va">manual</span>,</span>
-<span>    tolerance <span class="op">=</span> <span class="fl">1e-10</span>,</span>
-<span>    check.attributes <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Compare a surface with the one built by hand</span></span>
+<span><span class="va">same_as_by_hand</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">surface</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">surface</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">access</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/drop.html" class="external-link">drop</a></span><span class="op">(</span><span class="va">load</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">ok</span>, <span class="op">]</span> <span class="op">*</span> <span class="va">D</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  check.attributes <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The check verifies this calculation with these inputs; it does not
-make different accessibility models equivalent.</p>
-<p><code><a href="../reference/spax.html">spax()</a></code> computes the same index from a specification
-without data, <code><a href="../reference/spec_e2sfca.html">spec_e2sfca()</a></code>, on data prepared once with
-<code><a href="../reference/prep_data.html">prep_data()</a></code>; this interface is experimental. Its surface is
-identical to that of the wrapper:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">by_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">gp</span>, <span class="va">travel</span>, id_col <span class="op">=</span> <span class="st">"practice"</span>, supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>, normalize <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/identical.html" class="external-link">identical</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">by_spec</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  spax <span class="op">=</span> <span class="fu">same_as_by_hand</span><span class="op">(</span><span class="va">by_spec</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>,</span>
+<span>  spax_e2sfca <span class="op">=</span> <span class="fu">same_as_by_hand</span><span class="op">(</span><span class="va">one_call</span><span class="op">$</span><span class="va">accessibility</span><span class="op">)</span>,</span>
+<span>  compute_access <span class="op">=</span> <span class="fu">same_as_by_hand</span><span class="op">(</span><span class="va">general</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>          spax    spax_e2sfca compute_access 
+          TRUE           TRUE           TRUE </code></pre>
+<p><code><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal()</a></code> allows for rounding error in the last
+digits, and every route agrees. Each computes the same three quantities:
+gathered demand, ratios and the weighted sum of ratios.</p>
 </div>
 <div class="section level2">
-<h2 id="why-the-calculation-covers-the-whole-mainland">Why the calculation covers the whole mainland<a class="anchor" aria-label="anchor" href="#why-the-calculation-covers-the-whole-mainland"></a>
+<h2 id="change-the-access-side-weights-m2sfca">Change the access-side weights: M2SFCA<a class="anchor" aria-label="anchor" href="#change-the-access-side-weights-m2sfca"></a>
 </h2>
-<p>Cropping the inputs to the Truro window before calculating would be
-quicker, but every practice, including those outside the window, would
-then gather only the demand inside it.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Calculate on the Truro window only</span></span>
-<span><span class="va">cropped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_e2sfca.html">spax_e2sfca</a></span><span class="op">(</span></span>
-<span>  demand <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">truro</span><span class="op">)</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel</span>, <span class="va">truro</span><span class="op">)</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
-<span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
-<span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Compare with the full calculation over the same cells</span></span>
-<span><span class="va">in_window</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">e2sfca</span><span class="op">$</span><span class="va">accessibility</span>, <span class="va">truro</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">relative</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">cropped</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">/</span> <span class="va">in_window</span> <span class="op">-</span> <span class="fl">1</span></span>
-<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">relative</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">1</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<pre class="spax-output"><code>    0%    50%   100% 
-  15.5   54.5 4980.0 </code></pre>
-<p>These are percentage differences between the cropped and the full
-calculation for cells in the window. Every cell’s index rises: by about
-half at the median and about fifty-fold at the worst cell, on the
-window’s edge, which picks up practices outside the window whose small
-remaining demand gives them very high ratios. Calculate on the full
-study area and crop only for display.</p>
-</div>
-<div class="section level2">
-<h2 id="change-the-access-side-weights">Change the access-side weights<a class="anchor" aria-label="anchor" href="#change-the-access-side-weights"></a>
-</h2>
-<p><code><a href="../reference/spax_m2sfca.html">spax_m2sfca()</a></code> keeps
+<p>The modified 2SFCA (M2SFCA) keeps
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math>
 on the demand side but uses
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>W</mi><mn>2</mn></msup><annotation encoding="application/x-tex">W^2</annotation></semantics></math>
@@ -412,34 +438,122 @@ and
 is below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math>
 except at zero travel time, and far below it for distant practices, so
-M2SFCA discounts cells whose practices are far away. The same matrix
-formula reproduces it:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">m2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax_m2sfca.html">spax_m2sfca</a></span><span class="op">(</span></span>
+M2SFCA discounts cells whose practices are far away. Swap the
+access-side weights for their squares and <code><a href="../reference/compute_access.html">compute_access()</a></code>
+gives M2SFCA.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_m2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># M2SFCA from the blocks: squared weights on the access side only</span></span>
+<span><span class="va">m2sfca_by_blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_access.html">compute_access</a></span><span class="op">(</span></span>
 <span>  demand <span class="op">=</span> <span class="va">pop</span>,</span>
-<span>  supply <span class="op">=</span> <span class="va">gp</span>,</span>
-<span>  distance <span class="op">=</span> <span class="va">travel</span>,</span>
-<span>  decay_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"gaussian"</span>, sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  demand_normalize <span class="op">=</span> <span class="st">"identity"</span>,</span>
+<span>  supply <span class="op">=</span> <span class="va">supply</span>,</span>
+<span>  demand_weights <span class="op">=</span> <span class="va">weights</span>,</span>
+<span>  access_weights <span class="op">=</span> <span class="va">weights</span><span class="op">^</span><span class="fl">2</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">m2sfca_by_blocks</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">m2sfca</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] TRUE</code></pre>
+<p>The two agree: M2SFCA differs from E2SFCA only in the weights of step
+5.</p>
+</div>
+<div class="section level2">
+<h2 id="other-indices-from-the-same-blocks">Other indices from the same blocks<a class="anchor" aria-label="anchor" href="#other-indices-from-the-same-blocks"></a>
+</h2>
+<p>The three-step FCA (3SFCA) and Huff-2SFCA share each cell’s demand
+among its practices before the two steps. <code><a href="../reference/calc_choice.html">calc_choice()</a></code>
+turns the decay weights into <strong>selection weights</strong>: each
+practice’s share of the cell’s weights, which add up to 1 at every cell.
+With an attractiveness, here GP FTE, each weight is first multiplied by
+it, as in the Huff model. Both indices then use the decay weight times
+the selection weight in both steps, and <code><a href="../reference/compute_access.html">compute_access()</a></code>
+does the rest.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 3SFCA: each cell's weights divided by their sum</span></span>
+<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_choice.html">calc_choice</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">selection</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>[1] 1 1</code></pre>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sfca3_weights</span> <span class="op">&lt;-</span> <span class="va">weights</span> <span class="op">*</span> <span class="va">selection</span></span>
+<span><span class="va">sfca3_by_blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_access.html">compute_access</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">supply</span>, <span class="va">sfca3_weights</span>, <span class="va">sfca3_weights</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Huff-2SFCA: the same, with each weight times the practice's GP FTE</span></span>
+<span><span class="va">huff_selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calc_choice.html">calc_choice</a></span><span class="op">(</span><span class="va">weights</span>, attractiveness <span class="op">=</span> <span class="va">supply</span><span class="op">)</span></span>
+<span><span class="va">huff_weights</span> <span class="op">&lt;-</span> <span class="va">weights</span> <span class="op">*</span> <span class="va">huff_selection</span></span>
+<span><span class="va">huff_by_blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_access.html">compute_access</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">supply</span>, <span class="va">huff_weights</span>, <span class="va">huff_weights</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The same indices from spax()</span></span>
+<span><span class="va">sfca3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_3sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">huff2sfca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">grid_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_huff2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  `3SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">sfca3_by_blocks</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">sfca3</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  `Huff-2SFCA` <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">huff_by_blocks</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">huff2sfca</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>     3SFCA Huff-2SFCA 
+      TRUE       TRUE </code></pre>
+<p>The selection weights add up to 1 at every cell, as the range shows,
+and both rebuilds agree with <code><a href="../reference/spax.html">spax()</a></code>. The same blocks build
+an index of your own: any two weight stacks on the grid of the demand
+can go into <code><a href="../reference/compute_access.html">compute_access()</a></code>. <a href="fca-methods.html">Which FCA index?</a> maps these indices side by
+side.</p>
+</div>
+<div class="section level2">
+<h2 id="why-the-calculation-covers-the-whole-mainland">Why the calculation covers the whole mainland<a class="anchor" aria-label="anchor" href="#why-the-calculation-covers-the-whole-mainland"></a>
+</h2>
+<p>Cropping the inputs to the Truro window before calculating would be
+quicker. But every practice, including those outside the window, would
+then gather only the demand inside it. The output gives cell quantiles
+of the percentage difference between the cropped and the full
+calculation, for cells in the window.</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Calculate on the Truro window only</span></span>
+<span><span class="va">truro_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_data.html">prep_data</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">pop</span>, <span class="va">truro_window</span><span class="op">)</span>,</span>
+<span>  <span class="va">gp</span>,</span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">travel_grid</span>, <span class="va">truro_window</span><span class="op">)</span>,</span>
 <span>  id_col <span class="op">=</span> <span class="st">"practice"</span>,</span>
 <span>  supply_cols <span class="op">=</span> <span class="st">"gp_fte_extg"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="va">cropped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spax.html">spax</a></span><span class="op">(</span><span class="va">truro_data</span>, <span class="fu"><a href="../reference/spec_e2sfca.html">spec_e2sfca</a></span><span class="op">(</span>decay <span class="op">=</span> <span class="fu"><a href="../reference/decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># M2SFCA by hand: squared weights on the access side only</span></span>
-<span><span class="va">m2_manual</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NA_real_</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">m2_manual</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/drop.html" class="external-link">drop</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">ok</span>, <span class="op">]</span><span class="op">^</span><span class="fl">2</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="op">(</span><span class="va">supply</span> <span class="op">/</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/rowSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">W</span><span class="op">[</span><span class="va">ok</span>, <span class="op">]</span> <span class="op">*</span> <span class="va">D</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">m2sfca</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>  <span class="va">m2_manual</span>,</span>
-<span>  tolerance <span class="op">=</span> <span class="fl">1e-10</span>,</span>
-<span>  check.attributes <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><a href="fca-methods.html">Comparing FCA methods</a> maps E2SFCA,
-2SFCA, M2SFCA, 3SFCA and Huff-2SFCA side by side and explains why only
-M2SFCA loses part of the supply. None of these indices is a fitted
-statistical model. An allocation model instead defines choice
-probabilities with an outside option; see <a href="model-choice.html">Choosing an FCA index or an allocation
-model</a>.</p>
+<span><span class="co"># Compare with the full calculation over the same cells</span></span>
+<span><span class="va">in_window</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/crop.html" class="external-link">crop</a></span><span class="op">(</span><span class="va">by_spec</span><span class="op">$</span><span class="va">accessibility</span>, <span class="va">truro_window</span><span class="op">)</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">relative</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">values</a></span><span class="op">(</span><span class="va">cropped</span><span class="op">$</span><span class="va">accessibility</span>, mat <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">/</span> <span class="va">in_window</span> <span class="op">-</span> <span class="fl">1</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">relative</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">1</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<pre class="spax-output"><code>    0%    50%   100% 
+  15.5   54.5 4980.0 </code></pre>
+<p>Every cell’s index rises: by 15.5% at the least affected cell and
+54.5% at the median. The worst cell, on the window’s edge, rises to
+about 51 times its full value. It picks up practices outside the window,
+whose small remaining demand gives them very high ratios. Calculate on
+the full study area and crop only for display.</p>
+</div>
+<div class="section level2">
+<h2 id="next">Next<a class="anchor" aria-label="anchor" href="#next"></a>
+</h2>
+<ul>
+<li>
+<a href="fca-methods.html">Which FCA index?</a>: the five indices
+mapped side by side, and how much supply each hands back.</li>
+<li>
+<a href="grid-resolution.html">Grid resolution and computational
+cost</a>: what the cell size does to the index and the run time.</li>
+<li>
+<a href="model-choice.html">An FCA index or an allocation
+model?</a>: when the question is where people go rather than supply per
+resident.</li>
+<li>
+<a href="reading-results.html">Reading results</a>: what an FCA
+index measures.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

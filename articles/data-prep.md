@@ -1,8 +1,23 @@
-# Preparing your own data: counts, facility IDs and travel
+# Bringing your own data
 
-This guide uses the bundled Cornwall GP data, described in [The Cornwall
-GP example
-data](https://songyosr.github.io/spax/articles/cornwall-data.md).
+Every spax model needs three inputs that line up: demand (the people who
+may use a service, counted where they live), supply (what each facility
+offers) and the travel time between them. This guide answers one
+question: how do I get my own data into that shape? It prepares the
+inputs with
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+and works through three problems you are likely to meet: facility IDs
+that must match, travel times that are unknown, and demand that comes as
+area totals rather than a grid. It ends with the inputs of the
+allocation model, including observed counts in a long table. The
+examples use the Cornwall GP data, described in [The Cornwall GP example
+data](https://songyosr.github.io/spax/articles/cornwall-data.md). The
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) interface
+and the allocation model are experimental and may change in later
+versions.
+
+The guide uses spax with terra for the grids, sf for the small areas and
+dplyr for tables.
 
 ``` r
 
@@ -12,150 +27,149 @@ library(sf)
 library(dplyr)
 ```
 
-Every FCA or allocation analysis needs three aligned inputs: demand
-counts at origins, supply at facilities, and travel between them. This
-guide prepares them from the Cornwall data and shows three problems you
-are likely to meet with your own data: facility IDs that must match,
-unknown travel times, and demand that arrives as small-area totals
-rather than a grid.
+## The inputs
+
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+takes two shapes of input. The first sections use rasters: a demand
+grid, a stack of travel layers and a table of facilities, as for the FCA
+indices. The last two use vectors and a travel matrix named by ID, as
+for the allocation model. The code reads the population grid, the stack
+of travel times and the table of all practices, the Isles of Scilly
+included.
 
 ``` r
 
-# WorldPop 2020 residents per cell
+# Residents per grid cell (WorldPop 2020)
 pop <- read_spax_example("cornwall_pop.tif")
 # Travel minutes, one layer per practice
-travel <- read_spax_example("cornwall_gp_travel.tif")
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")
+# Practices as a plain table
 gp <- st_drop_geometry(cornwall_gp)
 
-c(
-  practices = nrow(gp),
-  travel_layers = nlyr(travel),
-  small_areas = nrow(cornwall_lsoa)
-)
+c(practices = nrow(gp), travel_layers = nlyr(travel_grid))
 ```
 
 ``` spax-output
-    practices travel_layers   small_areas 
-           55            55           337 
+    practices travel_layers 
+           55            55 
 ```
-
-## Match facilities by ID, not by order
-
-Each travel layer is named with the practice’s NHS code, the same code
-as `cornwall_gp$practice`. Check that the two sets agree before any
-calculation.
 
 ``` r
 
-# Practice codes must be unique and match the travel layer names
-stopifnot(
-  !anyDuplicated(gp$practice),
-  setequal(names(travel), gp$practice)
-)
-head(names(travel))
+head(names(travel_grid))
 ```
 
 ``` spax-output
 [1] "L82001" "L82003" "L82004" "L82006" "L82007" "L82008"
 ```
 
-When supply is a data frame,
-[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md),
-[`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md),
-[`spax_3sfca()`](https://songyosr.github.io/spax/reference/spax_3sfca.md)
-and
-[`spax_huff2sfca()`](https://songyosr.github.io/spax/reference/spax_huff2sfca.md)
-match its rows to the travel layers through `id_col`, so the row order
-does not matter.
+Each travel layer is named with the practice’s NHS code, the same code
+as in `gp$practice`. That shared code is what lines the inputs up.
+
+## Match facilities by ID, not by order
+
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+takes the table of practices with two more arguments: `id_col` names the
+column of facility IDs and `supply_cols` the column of supply. spax then
+matches each row of the table to the travel layer with the same ID. To
+see this, the code computes an accessibility index from the table in its
+own order and in reverse order. The index is an enhanced two-step
+floating catchment area index (E2SFCA, one of the FCA indices): GP
+full-time equivalents (FTE) per resident, with nearer practices counting
+more. Its weights fall with travel time on a Gaussian curve, and the
+travel scale σ, which sets how fast they fall, is 10 minutes, as in
+[Getting started](https://songyosr.github.io/spax/articles/spax.md).
 
 ``` r
 
-# The E2SFCA surface for a given supply table
-fit <- function(supply) {
-  result <- spax_e2sfca(
-    demand = pop,
-    supply = supply,
-    distance = travel,
-    decay_params = list(method = "gaussian", sigma = 10),
-    id_col = "practice",
-    supply_cols = "gp_fte_extg"
-  )
-  result$accessibility
-}
+e2sfca <- spec_e2sfca(decay = decay_gaussian(sigma = 10))
 
-# Reversing the row order gives the same surface
-shuffled <- arrange(gp, desc(practice))
-all.equal(values(fit(gp)), values(fit(shuffled)))
+# The practices in their own order, and in reverse order
+in_order <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
+reversed <- prep_data(pop, arrange(gp, desc(practice)), travel_grid,
+                      id_col = "practice", supply_cols = "gp_fte_extg")
+
+index_in_order <- spax(in_order, e2sfca)
+index_reversed <- spax(reversed, e2sfca)
+all.equal(values(index_in_order$accessibility), values(index_reversed$accessibility))
 ```
 
 ``` spax-output
 [1] TRUE
 ```
 
-A named supply vector is also matched by name, but an unnamed vector or
-a matrix is used in layer order: then keeping the order right is your
-job. The number of supply rows must equal the number of travel layers.
-Dropping a facility from one input and not the other stops with an
-error:
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) returns
+the index as a raster in the result’s `accessibility` element, in GP FTE
+per resident. The two indices are equal: the row order of the table does
+not matter. A named supply vector is matched by name in the same way. An
+unnamed vector or a matrix is used in layer order, and then keeping the
+order right is your job.
+
+A facility that is in one input and not the other stops with an error.
+Here the table drops the Scilly practice while the travel stack keeps
+its layer:
 
 ``` r
 
-# 54 travel layers, but 55 rows of supply
-mainland_layers <- travel[[gp$practice[!gp$scilly]]]
-
-tryCatch(
-  spax_e2sfca(
-    demand = pop,
-    supply = gp,
-    distance = mainland_layers,
-    decay_params = list(method = "gaussian", sigma = 10),
-    id_col = "practice",
-    supply_cols = "gp_fte_extg"
-  ),
-  error = function(e) conditionMessage(e)
-)
+prep_data(pop, filter(gp, !scilly), travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 ```
 
-``` spax-output
-[1] "Length of distance layers (54) must match length of facilities (55)"
-```
+     [1m [33mError [39m in `prep_data()`: [22m
+     [33m! [39m Length of travel layers (55) must match length of facilities (54)
+
+The error compares counts: 55 travel layers against 54 practices. To
+keep only some facilities, select their layers by ID,
+`travel_grid[[ids]]`, as the grid recipe in the next section does with
+`[[gp$practice]]`. A code in the table that matches no layer, such as a
+typing error, passes
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+but stops with an error when
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) runs the
+model.
 
 ## Decide what unknown travel means
 
-Travel is `NA` where a cell is unpopulated, where there is no road
-connection and for journeys over 180 minutes. In Cornwall the gaps come
-from the Isles of Scilly: their practice cannot be reached by road from
-the mainland, mainland practices cannot be reached from the islands, and
-some cells on the smaller islands reach no practice at all.
+For an FCA index, an unknown (`NA`) travel time means no access: the
+pair is left out of the sums. Decide whether that is true for your gaps
+before you compute an index. In the Cornwall travel grid, `NA` marks
+cells with no residents, pairs with no road connection and journeys over
+180 minutes. Here the gaps come from the Isles of Scilly: their practice
+cannot be reached by road from the mainland, mainland practices cannot
+be reached from the islands, and some cells on the smaller islands reach
+no practice at all. The code counts the populated cells with unknown
+travel in each practice’s layer, then the residents of the cells with a
+road route to each side.
 
 ``` r
 
-# Count the cells with unknown travel in each practice's layer
-missing_cells <- global(is.na(travel), "sum")[[1]]
+# Count the populated cells with unknown travel in each practice's layer
+populated <- !is.na(pop)
+missing_cells <- global(is.na(travel_grid) & populated, "sum")[[1]]
 table(scilly_practice = gp$scilly, missing_cells)
 ```
 
 ``` spax-output
                missing_cells
-scilly_practice 28860 35750
-          FALSE    54     0
-          TRUE      0     1
+scilly_practice 73 6963
+          FALSE 54    0
+          TRUE   0    1
 ```
 
 ``` r
 
 # Cells with a road route to the Scilly practice (L82017) or to the
 # mainland (here the first layer, a mainland practice)
-road_scilly <- !is.na(values(travel[["L82017"]], mat = FALSE))
-road_mainland <- !is.na(values(travel[[1]], mat = FALSE))
+road_scilly <- !is.na(values(travel_grid[["L82017"]], mat = FALSE))
+road_mainland <- !is.na(values(travel_grid[[1]], mat = FALSE))
 
 # Residents in each group
 residents <- values(pop, mat = FALSE)
-round(c(
+by_route <- round(c(
   to_mainland = sum(residents[road_mainland]),
   to_scilly_practice = sum(residents[road_scilly]),
   no_road_link = sum(residents[!road_mainland & !road_scilly], na.rm = TRUE)
 ))
+by_route
 ```
 
 ``` spax-output
@@ -163,25 +177,24 @@ round(c(
             541184               1206                277 
 ```
 
-The FCA functions drop unknown weights from their sums
-([`gather_weighted()`](https://songyosr.github.io/spax/reference/gather_weighted.md)
-defaults to `na.rm = TRUE`), so an `NA` travel time acts like “no
-access”. Run on all 55 practices, the islands become a separate system
-with one practice and few residents, so their index is far above the
-mainland’s. The residents with no route drop out of that practice’s
-demand and get no index at all.
+Each mainland layer has 73 populated cells with unknown travel, all on
+the islands, and the Scilly layer has 6,963, every mainland cell among
+them. Of the residents, 541,184 live in cells with a road route to the
+mainland practices, 1,206 in cells that reach the Scilly practice and
+277 in cells that reach neither.
+
+The index above used all 55 practices. The code compares its median in
+the two groups of cells, per 1,000 residents.
 
 ``` r
 
-# Index per 1,000 residents with all 55 practices
-with_scilly <- 1000 * values(fit(gp), mat = FALSE)
-round(
-  c(
-    mainland_median = median(with_scilly[road_mainland]),
-    scilly_median = median(with_scilly[road_scilly])
-  ),
-  2
-)
+# Index per 1,000 residents with all practices
+with_scilly <- 1000 * values(index_in_order$accessibility, mat = FALSE)
+scilly_medians <- round(c(
+  mainland_median = median(with_scilly[road_mainland]),
+  scilly_median = median(with_scilly[road_scilly])
+), 2)
+scilly_medians
 ```
 
 ``` spax-output
@@ -189,90 +202,90 @@ mainland_median   scilly_median
            0.49            7.59 
 ```
 
+The islands become a separate system with one practice and few
+residents, so their median index is 7.59 GP FTE per 1,000 residents
+against 0.49 on the mainland. The cells that reach no practice get no
+index (`NA`), and their residents drop out of every practice’s demand.
+
 The islands do have access, by boat and air, which the road-based travel
-times do not represent. Rather than read these numbers as access, the
-FCA guides model **mainland Cornwall only**: the 54 mainland practices
-and the cells with a travel time to every one of them.
+times do not represent. So the guides model mainland Cornwall only, with
+the grid recipe from [The Cornwall GP example
+data](https://songyosr.github.io/spax/articles/cornwall-data.md). The
+last line looks for populated cells with an unknown travel time.
 
 ``` r
 
-# Mainland practices and their travel layers
-gp <- filter(gp, !scilly)
-travel <- travel[[gp$practice]]
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
+pop <- read_spax_example("cornwall_pop.tif")
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")[[gp$practice]]
+# Keep cells with a travel time to every mainland practice
+pop <- trim(mask(pop, sum(travel_grid)))
+travel_grid <- crop(travel_grid, pop)
+grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 
-# Keep cells with complete travel, then trim the empty margin
-pop_mainland <- trim(mask(pop, sum(travel)))
-travel <- crop(travel, pop_mainland)
-
-# Same grid, same practice order, and no populated cell with unknown travel
-stopifnot(
-  compareGeom(pop_mainland, travel),
-  identical(names(travel), gp$practice),
-  !anyNA(values(travel)[!is.na(values(pop_mainland)), ])
-)
-round(global(pop_mainland, "sum", na.rm = TRUE)[[1]])
+# Any populated cell with an unknown travel time?
+anyNA(values(travel_grid)[!is.na(values(pop)), ])
 ```
 
 ``` spax-output
-[1] 541184
+[1] FALSE
 ```
 
-`sum(travel)` is `NA` wherever any layer is `NA`, so the mask keeps
-exactly the cells with complete travel. The check confirms that no
-populated cell has unknown travel left.
+`FALSE`: every populated cell of the mainland grid has a travel time to
+every mainland practice. [The Cornwall GP example
+data](https://songyosr.github.io/spax/articles/cornwall-data.html#a-grid-for-the-fca-indices)
+explains each line of the recipe. For the allocation model,
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+asks you to choose what unknown travel means, as [Inputs for the
+allocation model](#inputs-for-the-allocation-model) shows below.
 
-## Turn small-area counts into a demand grid
+## Turn area totals into a demand grid
 
-Demand often comes as totals for administrative areas. `cornwall_lsoa`
-holds ONS mid-2024 population estimates for the 337 small areas (LSOAs).
-To use them on the grid, each area’s total must be spread over its
-cells. Spreading it uniformly would ignore where people live inside the
-area, so we use the WorldPop grid as a pattern:
+Demand often comes as totals for administrative areas, while an index on
+a grid needs a count of people per cell. `cornwall_lsoa` holds ONS
+mid-2024 population estimates for 336 mainland small areas (LSOAs).
+Spreading each total evenly over its cells would ignore where people
+live inside the area, so the WorldPop grid serves as a pattern:
 [`transform_pmf()`](https://songyosr.github.io/spax/reference/transform_pmf.md)
 turns it into shares that sum to 1, and
 [`transform_demand()`](https://songyosr.github.io/spax/reference/transform_demand.md)
-rescales those shares so that each area keeps its own total.
+rescales those shares so that each area keeps its own total. The code
+spreads the totals of the small areas.
 
 ``` r
 
 # Mainland small areas as a terra vector in the grid's coordinates
-areas <- cornwall_lsoa |>
+lsoa <- cornwall_lsoa |>
   filter(!scilly) |>
-  st_transform(crs(pop)) |>
   vect()
 
 # The WorldPop grid as shares that sum to 1
 pattern <- transform_pmf(pop)
 
-# Spread each area's total over its cells; show any warning as a message
-lsoa_grid <- withCallingHandlers(
-  transform_demand(
-    x = areas,
-    value_col = "pop",
-    pmf = pattern,
-    density = TRUE
-  ),
-  warning = function(w) {
-    message("Warning: ", conditionMessage(w))
-    invokeRestart("muffleWarning")
-  }
-)
+# Spread each area's total over its cells
+# (density = TRUE returns people per cell; FALSE returns shares)
+lsoa_grid <- transform_demand(x = lsoa, value_col = "pop", pmf = pattern, density = TRUE)
 ```
 
-    Warning: 41 area(s) cover no grid cell or have zero weight; their counts are dropped and the surface is rescaled. Use larger areas or a finer template.
+    Warning: 40 area(s) cover no grid cell or have zero weight; their counts are
+    dropped and the surface is rescaled. Use larger areas or a finer template.
 
-The grid cells are about 1 km across, and many town LSOAs are smaller
-than that: an area whose polygon contains no cell centre cannot receive
-its count, and the function warns rather than silently losing people.
-The fix is to use larger areas or a finer grid. Here we merge LSOAs into
-their middle-layer areas (MSOAs): an LSOA name ends in a letter, and
-dropping it gives the MSOA name.
+The grid cells are about 1 km across, and many town LSOAs are smaller.
+An area whose polygon contains no cell center cannot receive its count.
+The function drops those areas and rescales the grid to the overall
+total, so their residents would land in other areas’ cells. The fix is
+larger areas or a finer grid. Here the code merges the LSOAs into their
+middle-layer areas (MSOAs): an LSOA name ends in a letter, and dropping
+it gives the MSOA name (Cornwall 013A is in Cornwall 013).
 
 ``` r
 
 # Merge LSOAs into MSOAs, adding up their counts
-areas$msoa <- sub("[A-Z]$", "", areas$name)
-msoa <- aggregate(areas, by = "msoa", fun = "sum")
+# (terra names the summed columns sum_pop, sum_pop_65p, ...)
+lsoa$msoa <- sub("[A-Z]$", "", lsoa$name)
+msoa <- aggregate(lsoa, by = "msoa", fun = "sum")
 
 # Spread each MSOA total over its cells with the WorldPop pattern
 ons <- transform_demand(
@@ -298,25 +311,27 @@ c(
 ``` r
 
 # Largest difference between an area's total and its grid total
-signif(max(abs(ons$totals$original - ons$totals$redistributed)), 2)
+largest_gap <- max(abs(ons$totals$original - ons$totals$redistributed))
+signif(largest_gap, 2)
 ```
 
 ``` spax-output
-[1] 0.00053
+[1] 0.00069
 ```
 
-All 73 areas keep their totals: the largest error is a fraction of a
-person. The new grid has the ONS counts with the WorldPop pattern inside
-each area. The two sources differ in date and method, so the ratio
-between them varies by area. The map caps the colour scale at 0.5 and
+All 73 areas keep their totals: the largest difference is a tiny
+fraction of a person. The new grid has the ONS counts with the WorldPop
+pattern inside each area. The two sources differ in date and method, so
+their ratio varies by area. The code summarizes the median ratio per
+area and maps the ratio per cell, with the color scale capped at 0.5 and
 1.5.
 
 ``` r
 
 # ONS count over WorldPop count in each cell, and its median per area
 ratio <- crop(ons$surface / pop, msoa)
-by_area <- extract(ratio, msoa, fun = median, na.rm = TRUE)[, 2]
-round(summary(by_area), 2)
+ratio_by_area <- extract(ratio, msoa, fun = median, na.rm = TRUE)[, 2]
+round(summary(ratio_by_area), 2)
 ```
 
 ``` spax-output
@@ -336,29 +351,39 @@ plot(
 lines(msoa, lwd = 0.3, col = "grey40")
 ```
 
-![](data-prep_files/figure-html/ratio-map-1.png)
+![Raster map of mainland Cornwall showing, for each grid cell, the ONS
+mid-2024 count divided by the WorldPop 2020 count, on a blue-to-red
+scale capped at 0.5 and 1.5, with the 73 MSOA boundaries in gray; each
+area has nearly one color, most areas are close to 1 or light red (ONS
+higher), a few are deep red and a few are blue (WorldPop
+higher).](data-prep_files/figure-html/ratio-map-1.png)
 
-In most areas the ONS estimate is higher, and in one it is more than
-three times the WorldPop count. Decide which source matches your
-question and say which you used; do not mix them within one analysis.
-The other FCA guides use the WorldPop grid directly.
+Within an area both grids follow the WorldPop pattern, so each area has
+nearly one color: the ratio of its two totals. In 55 of the 73 areas the
+ONS estimate is higher (the median ratio is 1.07), and in one it is 3.7
+times the WorldPop count. Choose the source that matches your question,
+say which you used, and keep to it within one analysis. The other guides
+use the WorldPop grid directly.
 
-Two more cautions. If a source raster is a density (people per square
-kilometre), multiply it by
-[`terra::cellSize()`](https://rspatial.github.io/terra/reference/cellSize.html)
-in the same area unit before use: summing densities does not conserve
-counts, and longitude-latitude cells are not all the same size. And
+If your raster is a density, people per square kilometer, multiply it by
+`terra::cellSize(x, unit = "km")` first: longitude-latitude cells are
+not all the same size.
+
+### Spread a rate rather than a count
+
 [`rasterize_demand()`](https://songyosr.github.io/spax/reference/rasterize_demand.md)
-does a different job: it reweights a prior pattern by an area **rate**
-and returns shares, not counts that respect area totals. For example,
-the share of residents aged 65 and over:
+does a different job: it reweights a pattern by an area **rate**, such
+as the share of residents aged 65 and over, and returns shares of one
+total rather than counts that keep each area’s total. The code builds
+the older population on the grid this way and measures how much of each
+area’s known count it keeps.
 
 ``` r
 
 # Share of residents aged 65 and over in each MSOA
 msoa$share_65 <- msoa$sum_pop_65p / msoa$sum_pop
 
-# Reweight the WorldPop pattern by that share; the result is shares
+# Reweight the WorldPop pattern by that share: the result is shares
 older <- rasterize_demand(
   x = msoa,
   value_col = "share_65",
@@ -377,80 +402,202 @@ round(quantile(kept, c(0, 0.5, 1)), 2)
 0.29 1.01 1.46 
 ```
 
-The shape is plausible (population times the local 65+ share), but area
-totals are not kept: some areas end up with well under or over their
-known count. For counts, use
-[`transform_demand()`](https://songyosr.github.io/spax/reference/transform_demand.md).
+The shape is plausible: population times the local share aged 65 and
+over. Area totals are not kept, though: the areas end up with between
+0.29 and 1.46 times their known count. To place the older residents
+themselves, spread their counts:
+`transform_demand(x = msoa, value_col = "sum_pop_65p", pmf = pattern, density = TRUE)`
+keeps every area’s total. Use
+[`rasterize_demand()`](https://songyosr.github.io/spax/reference/rasterize_demand.md)
+when only the shape matters, such as a relative weight per cell.
 
-## The same rules for allocation inputs
+## Inputs for the allocation model
 
-The experimental allocation workflow takes a numeric origin-by-facility
-matrix, `cornwall_travel`, from small-area centroids to practices. Its
-preparation is strict: unknown travel on an active origin is an error
-unless you declare a policy.
-
-``` r
-
-# Named vectors: registered residents per area, GP FTE per practice
-demand <- setNames(cornwall_lsoa$registered, cornwall_lsoa$lsoa)
-supply <- setNames(cornwall_gp$gp_fte_extg, cornwall_gp$practice)
-
-tryCatch(
-  prepare_allocation(
-    demand = demand,
-    supply = supply,
-    distance = cornwall_travel
-  ),
-  error = function(e) conditionMessage(e)
-)
-```
-
-``` spax-output
-[1] "active travel is missing; declare missing_travel = 'legacy_zero' to omit unknown edges"
-```
-
-`missing_travel = "legacy_zero"` would omit unknown pairs, as the FCA
-functions do. Positive infinity declares a known absent link. Neither
-describes the islands’ boat and air links, so we keep the mainland,
-matching IDs by name:
+The allocation model, a conditional logit model (CLM, the standard model
+of a choice among several options), gives each small area’s residents a
+probability of registering at each practice, or with the outside option:
+a practice outside the data. It takes numeric inputs named by ID: demand
+by small area, supply by practice and a matrix of travel minutes between
+them, here `cornwall_travel`. The code prepares every small area and
+practice, the Isles of Scilly included.
 
 ``` r
 
-mainland_area <- !cornwall_lsoa$scilly
+# Every small area and practice, the Isles of Scilly included
+all_areas <- st_drop_geometry(cornwall_lsoa)
+all_gp <- st_drop_geometry(cornwall_gp)
+all_demand <- setNames(all_areas$registered, all_areas$lsoa)
+all_supply <- setNames(all_gp$gp_fte_extg, all_gp$practice)
 
-inputs <- prepare_allocation(
-  demand = demand[mainland_area],
-  supply = supply[gp$practice],
-  distance = cornwall_travel[mainland_area, gp$practice],
-  # Unit labels are recorded with the inputs, not converted
-  metadata = list(
-    demand_units = "registered residents",
-    supply_units = "GP FTE excluding GPs in training",
-    travel_units = "minutes"
-  )
-)
-class(inputs)
+prep_data(all_demand, all_supply, cornwall_travel)
+```
+
+     [1m [33mError [39m in `prep_data()`: [22m
+     [33m! [39m active travel is missing; declare missing_travel = 'omit' to leave out unknown pairs
+
+Here an origin is a small area, where people live, and an active origin
+is one with demand above zero. Unknown travel from an active origin is
+an error unless you say what it means. There are three ways to say it.
+`missing_travel = "omit"` leaves the unknown pairs out of the model, as
+the FCA indices do, and records that it did. A travel time of `Inf`
+declares a pair known to have no link. That is a known value, so
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+accepts it. Or you drop the rows and columns with unknown times. The
+code shows the first two.
+
+``` r
+
+# Leave the unknown pairs out, and record that policy
+prep_data(all_demand, all_supply, cornwall_travel, missing_travel = "omit")
 ```
 
 ``` spax-output
-[1] "ae_prepared_inputs"
+<spax data> 337 origins (337 active) x 55 facilities
+  demand      606,796
+  travel      unknown for 337 active origins
+  policies    missing demand: error; missing travel: omit
+```
+
+``` r
+
+# Declare the unknown pairs known to have no link
+no_link <- replace(cornwall_travel, is.na(cornwall_travel), Inf)
+prep_data(all_demand, all_supply, no_link)
+```
+
+``` spax-output
+<spax data> 337 origins (337 active) x 55 facilities
+  demand      606,796
+  travel      unknown for 0 active origins
+  policies    missing demand: error; missing travel: error
+```
+
+The first print records that every area has an unknown time (each
+mainland area to the Scilly practice, and the Scilly area to the
+mainland practices) and the policy that left them out. The second
+records none. In the allocation model both give the pair no weight, so a
+model gives the same results with either. They differ in what the data
+records: an unknown time for `omit`, a known absence for `Inf`.
+
+The guides drop the islands instead, as for the grid, with the
+small-area recipe from [The Cornwall GP example
+data](https://songyosr.github.io/spax/articles/cornwall-data.html#small-areas-for-the-allocation-model).
+Its last line,
+[`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md),
+comes in the next section:
+
+``` r
+
+areas <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_drop_geometry()
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+demand <- setNames(areas$registered, areas$lsoa)
+supply <- setNames(gp$gp_fte_extg, gp$practice)
+d <- prep_data(demand, supply, travel, metadata = list(
+  demand_units = "registered residents", demand_period = "July 2026",
+  supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
+  travel_units = "minutes"))
+d
+```
+
+``` spax-output
+<spax data> 336 origins (336 active) x 54 facilities
+  demand      604,471 registered residents (July 2026)
+  supply      GP FTE excluding GPs in training (June 2026)
+  travel      minutes; unknown for 0 active origins
+  policies    missing demand: error; missing travel: error
 ```
 
 [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
-is the same preparation with `travel` in place of `distance`, the first
-step of [`spax()`](https://songyosr.github.io/spax/reference/spax.md)
-(see the [allocation
-workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)).
-The unit declarations are recorded, not converted. See the [allocation
-workflow](https://songyosr.github.io/spax/articles/allocation-workflow.md)
-for what the prepared inputs feed into.
+lines up demand, supply and travel by their names, so their order does
+not matter, and a supply name that matches no travel column stops with
+an error. No area is left with an unknown travel time. The labels in
+`metadata` stay with the data and with every result. spax does not
+convert units.
 
-## Continue
+## Observed counts in a long table
 
-- [Comparing FCA
-  methods](https://songyosr.github.io/spax/articles/fca-methods.md):
-  E2SFCA, 2SFCA, M2SFCA, 3SFCA and Huff-2SFCA on these inputs.
-- [The E2SFCA calculation step by
-  step](https://songyosr.github.io/spax/articles/e2sfca-steps.md).
-- [Grid resolution, support and computational
-  cost](https://songyosr.github.io/spax/articles/grid-resolution.md).
+Observed counts usually arrive as a long table, one row per origin and
+facility. `cornwall_flows` has one row per small area and practice with
+at least one registration.
+[`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md)
+says which column holds the origin IDs, which the facility IDs and which
+the counts. A pair missing from the table counts as 0, and duplicate
+pairs are added up.
+
+``` r
+
+head(cornwall_flows)
+```
+
+``` spax-output
+       lsoa practice patients
+1 E01018750   L82012     2185
+2 E01018750   L82016       35
+3 E01018750   L82025        1
+4 E01018750   L82046        4
+5 E01018750   L82066        1
+6 E01018751   L82012     1691
+```
+
+``` r
+
+flows <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")
+flows
+```
+
+``` spax-output
+<spax obs> flows: 3,188 origin-facility counts, total 601,269; loss poisson
+```
+
+`flows` declares all 3,188 rows, the Isles of Scilly included. The print
+names the loss, Poisson by default, which is how a fit compares modeled
+with observed counts.
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) matches
+the rows to the IDs of the data when it fits a model, and says in a
+message what it sets aside. The code fits the conditional logit model to
+the mainland data.
+
+``` r
+
+clm <- spax(d, spec_clm(), observed = flows)
+```
+
+    observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted (outside = "known" uses them as outside counts)
+
+The 2,290 registrations of residents of the Scilly small area are
+dropped, because that area is not in the data. The 5 registrations of
+mainland residents at the Scilly practice are at a practice outside the
+data, so they belong to the outside option. By default the fit does not
+know how many of an area’s residents registered outside the data, so it
+fits only the counts at the 54 practices, and these 5 are left out.
+[Where do residents
+register?](https://songyosr.github.io/spax/articles/allocation-workflow.md)
+reads the fit and shows when the outside counts can be declared known.
+
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) matches
+the IDs of the observed counts to the data as text. If your codes were
+read as numbers and lost their leading zeros, it matches each one by its
+numeric value (1234 to `"01234"`) when exactly one ID of the data has
+that value, and says so in a message.
+[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
+makes no such allowance, so keep IDs as text from the start.
+
+## Next
+
+- [Which FCA
+  index?](https://songyosr.github.io/spax/articles/fca-methods.md): five
+  FCA indices on the prepared grid, side by side.
+- [Where do residents
+  register?](https://songyosr.github.io/spax/articles/allocation-workflow.md):
+  fit and read the allocation model on the small-area inputs.
+- [Reading
+  results](https://songyosr.github.io/spax/articles/reading-results.md):
+  zero, unknown and excluded demand, and `NA` against `Inf` travel.
+- [Grid resolution and computational
+  cost](https://songyosr.github.io/spax/articles/grid-resolution.md):
+  how the cell size changes the index and the run time.

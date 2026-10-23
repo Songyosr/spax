@@ -110,15 +110,16 @@ Prediction, check, compare and bootstrap also accept a result of spax()
 - [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md)
   : Prepare numeric inputs for the allocation model
 - [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md)
-  : Declare corrected static CLM over checked allocation inputs
+  : Declare a static conditional logit allocation model
 - [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md)
-  : Declare the Huff model over checked allocation inputs
+  : Declare the Huff model
 - [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md)
   : Calibrate a declared allocation model, by default from starts found
   in the data
 - [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md)
   : Evaluate a declared allocation model at supplied fixed parameters
 - [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md)
+  [`print(`*`<ae_clm_prediction>`*`)`](https://songyosr.github.io/spax/reference/predict_allocation.md)
   : Predict requested origins against a saved fitted or evaluated CLM
 - [`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md)
   [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md)
@@ -138,6 +139,10 @@ Prediction, check, compare and bootstrap also accept a result of spax()
   [`fitted(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
   [`fitted(`*`<ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
   [`summary(`*`<ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
+  [`summary(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
+  [`print(`*`<ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
+  [`print(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
+  [`print(`*`<summary.ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-fit-methods.md)
   : Inspect saved allocation fits without recomputation
 - [`as.data.frame(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-result-tables.md)
   [`as.data.frame(`*`<ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/allocation-result-tables.md)
@@ -152,6 +157,7 @@ Prediction, check, compare and bootstrap also accept a result of spax()
 - [`print(`*`<summary.ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/print.summary.ae_multistart_fit.md)
   : Print a saved allocation multistart summary
 - [`plot(`*`<ae_multistart_fit>`*`)`](https://songyosr.github.io/spax/reference/plot.ae_multistart_fit.md)
+  [`plot(`*`<ae_problem_nfxp_fit>`*`)`](https://songyosr.github.io/spax/reference/plot.ae_multistart_fit.md)
   : Plot saved diagnostics from the selected allocation fit
 
 ## Distance & Decay Functions

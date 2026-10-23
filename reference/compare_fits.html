@@ -15,7 +15,7 @@ refitted."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,20 +30,23 @@ refitted."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -58,7 +61,7 @@ refitted."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Compare fitted allocations across model and input specifications</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/07-allocation_compare.R" class="external-link"><code>R/07-allocation_compare.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/07-allocation_compare.R" class="external-link"><code>R/07-allocation_compare.R</code></a></small>
       <div class="d-none name"><code>compare_fits.Rd</code></div>
     </div>
 
@@ -211,6 +214,42 @@ its own regional contact as the contact cut unless <code>contact_cut</code> is g
 <code><a href="prepare_allocation.html">prepare_allocation()</a></code></p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># West Cornwall: the small areas and practices west of easting 170 km</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">areas</span><span class="op">[</span><span class="op">!</span><span class="va">areas</span><span class="op">$</span><span class="va">scilly</span> <span class="op">&amp;</span> <span class="va">areas</span><span class="op">$</span><span class="va">cent_x</span> <span class="op">&lt;</span> <span class="fl">170000</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">gp</span><span class="op">[</span><span class="op">!</span><span class="va">gp</span><span class="op">$</span><span class="va">scilly</span> <span class="op">&amp;</span> <span class="va">gp</span><span class="op">$</span><span class="va">easting</span> <span class="op">&lt;</span> <span class="fl">170000</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="prep_data.html">prep_data</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>               <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>               <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Registrations of these residents at these practices</span></span></span>
+<span class="r-in"><span><span class="va">flows</span> <span class="op">&lt;-</span> <span class="va">cornwall_flows</span><span class="op">[</span><span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span> <span class="op">&amp;</span></span></span>
+<span class="r-in"><span>                          <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">gp</span><span class="op">$</span><span class="va">practice</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">totals</span> <span class="op">&lt;-</span> <span class="fu"><a href="obs_flows.html">obs_totals</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">flows</span><span class="op">$</span><span class="va">patients</span>, <span class="va">flows</span><span class="op">$</span><span class="va">practice</span>, <span class="va">sum</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The same counts fitted with two decay kernels</span></span></span>
+<span class="r-in"><span><span class="va">gaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="fu"><a href="decay_gaussian.html">decay_gaussian</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">totals</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">exponential</span> <span class="op">&lt;-</span> <span class="fu"><a href="spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="fu"><a href="decay_gaussian.html">decay_exponential</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">totals</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Loss differences are measured from the first fit</span></span></span>
+<span class="r-in"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu">compare_fits</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>gaussian <span class="op">=</span> <span class="va">gaussian</span>, exponential <span class="op">=</span> <span class="va">exponential</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">comparison</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation comparison&gt; reference: gaussian</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  specification contact capacity_per_contact cv_contact count_correlation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       gaussian  0.9784            0.0006187   0.007782            0.8850</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    exponential  0.9781            0.0006189   0.007585            0.9016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  loss_difference</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              0.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           -124.4</span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"specification"</span>, <span class="st">"parameters"</span>, <span class="st">"loss_difference"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   specification             parameters loss_difference</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      gaussian  sigma=13.22, v0=1.002          0.0000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   exponential sigma=0.081, v0=0.7139       -124.4451</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

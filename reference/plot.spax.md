@@ -18,8 +18,9 @@ plot(x, ...)
 
 - ...:
 
-  Additional arguments passed to \[terra::plot()\]. Common options
-  include:
+  Additional arguments passed to
+  [`terra::plot()`](https://rspatial.github.io/terra/reference/plot.html).
+  Common options include:
 
   - y: which layers to plot (number or name)
 
@@ -37,15 +38,16 @@ The plot is drawn on the current graphics device.
 
 ## Details
 
-This is a simple wrapper around \[terra::plot()\] for SpatRaster
-objects. For full control over plot appearance, including layer
-selection, color schemes, legends, and additional map elements, see the
-documentation of the terra package (?terra::plot).
+This is a simple wrapper around
+[`terra::plot()`](https://rspatial.github.io/terra/reference/plot.html)
+for SpatRaster objects. For full control over plot appearance, including
+layer selection, color schemes, legends, and additional map elements,
+see the documentation of the terra package (?terra::plot).
 
 ## See also
 
-\[terra::plot()\] for the complete set of plotting parameters and
-options
+[`terra::plot()`](https://rspatial.github.io/terra/reference/plot.html)
+for the complete set of plotting parameters and options
 
 ## Examples
 
@@ -53,6 +55,7 @@ options
 # Load example data
 library(terra)
 library(sf)
+#> Linking to GEOS 3.14.1, GDAL 3.12.2, PROJ 9.7.1; sf_use_s2() is TRUE
 
 # Load data: Cornwall population grid and travel time to each GP practice
 pop <- read_spax_example("cornwall_pop.tif")

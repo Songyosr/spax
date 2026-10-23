@@ -12,7 +12,8 @@ cornwall_lsoa
 
 ## Format
 
-An `sf` polygon object (EPSG:27700) with 337 rows and columns:
+An `sf` polygon object in WGS 84 longitude and latitude (EPSG:4326) with
+337 rows and columns:
 
 - lsoa, name:
 
@@ -42,8 +43,13 @@ An `sf` polygon object (EPSG:27700) with 337 rows and columns:
 
 - cent_x, cent_y:
 
-  Population-weighted centroid (EPSG:27700), the origin used for
-  `cornwall_travel`.
+  Population-weighted centroid in British National Grid coordinates
+  (EPSG:27700), in metres.
+
+- cent_lon, cent_lat:
+
+  The same centroid in WGS 84 longitude and latitude, the origin used
+  for `cornwall_travel`.
 
 - scilly:
 
@@ -64,7 +70,11 @@ Open Government Licence v3.0; contains OS data. See
 ## Details
 
 Registered counts exceed the population estimates by about 4%,
-reflecting list inflation and the different reference dates.
+reflecting list inflation and the different reference dates. The
+polygons and `cent_lon`/`cent_lat` were converted from British National
+Grid with the OSGB36 to WGS 84 Helmert transformation (about 2 m); see
+[cornwall_gp](https://songyosr.github.io/spax/reference/cornwall_gp.md)
+for working in metres.
 
 ## See also
 

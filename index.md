@@ -1,107 +1,54 @@
 # spax: spatial accessibility and allocation modeling
 
-`spax` is a modular engine for spatial access and allocation models.
-Floating catchment area (FCA) methods and an allocation model share the
-same inputs (demand, facility supply and travel times), decay kernels
-and numeric engine, so you can:
+spax models spatial access to services such as GP practices, and
+estimates how quickly the pull of a facility falls with travel time from
+where people actually go. Its allocation model is fitted to observed use
+(area-to-facility flows or facility totals), so the decay is estimated
+rather than assumed. The same inputs, decay curves and numeric engine
+compute floating catchment area (FCA) accessibility indices: 2SFCA,
+E2SFCA, M2SFCA, 3SFCA and Huff-2SFCA. Decay curves plug in: write your
+own as an R function and use it in an index or a fitted model.
 
-- compute accessibility surfaces with the FCA family: 2SFCA, E2SFCA,
-  M2SFCA, 3SFCA and Huff-2SFCA;
-- model where people go with a static conditional logit allocation
-  ([`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md))
-  that includes the Huff model
-  ([`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md))
-  and extends it with an outside option for demand that goes elsewhere:
-  evaluate it at chosen parameters, fit it to observed use (facility
-  totals or origin-to-facility flows), predict for new areas and test
-  supply scenarios;
-- compare models, including FCA scores and fitted allocations on the
-  same inputs;
-- work with several demand groups that compete for the same facilities,
-  such as age bands, or people who drive and people who take the bus; a
-  group-specific allocation parameter is fitted only from counts
-  recorded by group;
-- plug in your own decay kernels, fitting losses, weights and spatially
-  varying catchments.
-
-The pieces are built to be combined and extended: a new component uses
-the same engine rather than a separate code path. Large rasters are read
-in blocks, so the FCA functions run in modest memory. The FCA functions
-are stable; the allocation functions are experimental and may change in
-later versions.
+The [`spax()`](https://songyosr.github.io/spax/reference/spax.md)
+interface and the allocation model are experimental and may change in
+later versions, while the one-call FCA functions
+[`spax_2sfca()`](https://songyosr.github.io/spax/reference/spax_2sfca.md),
+[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
+and
+[`spax_m2sfca()`](https://songyosr.github.io/spax/reference/spax_m2sfca.md)
+are stable.
 
 ## Install
 
 Use R 4.4.0 or newer. This is the supported dependency and testing floor
-for spax 0.6.0. Calls from earlier versions keep working (see the NEWS).
+for spax 0.7.0.
 
-Install version 0.6.0 by its release tag rather than from the
-repository’s default branch:
+Install the released version from CRAN, or version 0.7.0 by its release
+tag rather than from the repository’s default branch:
 
 ``` r
 
+install.packages("spax")
+
+# or from GitHub
 # install.packages("pak")
-pak::pak("Songyosr/spax@v0.6.0")
+pak::pak("Songyosr/spax@v0.7.0")
 ```
 
-The allocation interface is experimental and may change in later
-versions. For reproducible work, record the package version and retain
-the input IDs, units, observation declaration and saved results.
 Development continues on the `develop` branch
 (`pak::pak("Songyosr/spax@develop")`).
 
 Each release is archived on Zenodo; <doi:10.5281/zenodo.23438611> refers
-to all versions (version 0.5.0 is <doi:10.5281/zenodo.23527706>). Cite
+to all versions (version 0.6.0 is <doi:10.5281/zenodo.23538560>). Cite
 the version you used with `citation("spax")`.
 
-Package and function help are available from an installed package.
-Installations that include built articles also provide the guides, which
-follow one reader journey: Get started, the example data and data
-preparation, the FCA guides, then the allocation model (model choice,
-the workflow and bootstrap intervals):
+## A first look
 
-``` r
-
-# Package overview, and notes on reusing saved results
-help(package = "spax")
-help("spax-package", package = "spax")
-help("allocation-compatibility", package = "spax")
-
-# The guides
-browseVignettes("spax")
-# When the installation includes built vignettes:
-vignette("spax", package = "spax")  # Get started
-vignette("cornwall-data", package = "spax")
-vignette("model-choice", package = "spax")
-vignette("allocation-workflow", package = "spax")
-vignette("facility-bootstrap", package = "spax")
-```
-
-## Quick start: GP practices in Cornwall
-
-spax ships open example data for the 55 general practices of Cornwall
-and the Isles of Scilly: practice locations and GP full-time equivalents
-(FTE, excluding GPs in training) in `cornwall_gp`, small areas with
-registered residents in `cornwall_lsoa`, small area × practice
-registrations in `cornwall_flows` and travel minutes in
-`cornwall_travel`, plus a WorldPop 2020 population grid and one
-travel-time layer per practice. The Isles of Scilly have no road link to
-the mainland, so this example models mainland Cornwall only: it drops
-the islands’ practice and small area, and crops the islands from the
-grids.
-[`vignette("cornwall-data", package = "spax")`](https://songyosr.github.io/spax/articles/cornwall-data.md)
-describes each object, its sources and its licences.
-
-### An FCA accessibility map
-
-An FCA index takes a demand raster, a facility table and one travel
-layer per facility, with layer names matching facility IDs.
-[`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md)
-holds them together, a specification such as
-[`spec_e2sfca()`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
-declares the index without data, and
-[`spax()`](https://songyosr.github.io/spax/reference/spax.md) computes
-it. This interface is experimental.
+spax ships open data for GP care in Cornwall, in south-west England.
+This example computes the enhanced two-step FCA index (E2SFCA) for
+mainland Cornwall from a population grid, the GP practices with their GP
+full-time equivalents (FTE) and travel minutes from every grid cell to
+every practice.
 
 ``` r
 
@@ -109,32 +56,25 @@ library(spax)
 library(terra)
 library(sf)
 library(dplyr)
-library(ggplot2)
 
-# Mainland practices, as a plain table
-mainland_gp <- cornwall_gp |>
+gp <- cornwall_gp |>
   filter(!scilly) |>
   st_drop_geometry()
-
-# Residents per grid cell, and travel minutes with one layer per practice;
-# crop both to the mainland (west edge at 6 degrees W)
 pop <- read_spax_example("cornwall_pop.tif")
-travel_grid <- read_spax_example("cornwall_gp_travel.tif")
-mainland <- ext(-6, xmax(pop), ymin(pop), ymax(pop))
-pop <- crop(pop, mainland)
-travel_grid <- crop(travel_grid[[mainland_gp$practice]], mainland)
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")[[gp$practice]]
+# Keep cells with a travel time to every mainland practice
+pop <- trim(mask(pop, sum(travel_grid)))
+travel_grid <- crop(travel_grid, pop)
+grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 
-# Demand grid, practice table and travel stack, held together
-grid_data <- prep_data(
-  pop,
-  mainland_gp,
-  travel_grid,
-  id_col = "practice",  # matches supply rows to travel layers
-  supply_cols = "gp_fte_extg"
-)
-
-# The E2SFCA index with a 10-minute Gaussian decay
+# The E2SFCA index with a Gaussian decay of travel scale 10 minutes
 fca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
+
+# Mainland Cornwall's outline, in the grid's longitude and latitude
+outline <- cornwall_lsoa |>
+  filter(!scilly) |>
+  st_union() |>
+  vect()
 
 plot(
   1000 * fca$accessibility,
@@ -142,127 +82,57 @@ plot(
   col = hcl.colors(50, "viridis"),
   main = "E2SFCA index, GP FTE per 1,000 residents"
 )
+lines(outline, lwd = 0.6)
 ```
 
 ![Raster map of the E2SFCA index for mainland Cornwall in GP FTE per
-1,000 residents; values are highest in the west of the county and lowest
-on Bodmin Moor and at the tips of the western
-peninsulas.](reference/figures/README-fca-1.png)
+1,000 residents; values are highest in the west between Redruth, Truro
+and Falmouth and lowest on Bodmin Moor and at the tips of the Land's End
+and Lizard peninsulas.](reference/figures/README-fca-1.png)
 
-This is an enhanced two-step FCA index: supply per distance-weighted
-population, in GP FTE per 1,000 residents. The 10-minute Gaussian scale
-is a choice for this example, not an estimate. The index is a
-supply-per-demand score, not a probability that anyone uses a practice.
-[`spax_e2sfca()`](https://songyosr.github.io/spax/reference/spax_e2sfca.md)
-remains the one-call shortcut and gives the same result from the same
-inputs. See
-[`?spec_e2sfca`](https://songyosr.github.io/spax/reference/spec_e2sfca.md)
-for the other FCA indices, decays and normalization options, and
-`summary(fca)` or `plot(fca)` to inspect the result.
+The index is GP supply per resident, counting nearby practices more than
+distant ones. It is highest in the bright band between Redruth, Truro
+and Falmouth, below and left of center. It is lowest on Bodmin Moor, the
+dark patch above and right of center, and at the tips of the Land’s End
+(far left) and Lizard (bottom) peninsulas.
 
-### A static CLM fitted to registrations
+## A fitted model
 
-The allocation model takes numeric vectors and an origin-by-facility
-travel matrix, and fits where people choose to go. Here demand is the
-residents of each small area registered with any GP practice in England,
-supply is GP FTE, and the target is the observed small area × practice
-registrations. The model includes an outside option, which here stands
-for registration with a practice outside mainland Cornwall (for example
-in Devon or on the Isles of Scilly); it is not unmet need.
+The allocation model describes where the residents of each small area
+register. Each practice attracts residents in proportion to its GP FTE,
+discounted by travel time, and an outside option takes the residents
+registered with a practice outside mainland Cornwall.
+[`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md)
+specifies this model, a conditional logit model (CLM) with an outside
+option. By default it estimates two numbers: the travel scale σ of a
+Gaussian decay, which sets how fast a practice’s pull falls with travel
+time, and the outside weight v0. Here they are fitted to the
+registrations of each small area at each practice.
 
 ``` r
 
-mainland_lsoa <- cornwall_lsoa |>
+areas <- cornwall_lsoa |>
   filter(!scilly) |>
   st_drop_geometry()
+gp <- cornwall_gp |>
+  filter(!scilly) |>
+  st_drop_geometry()
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+demand <- setNames(areas$registered, areas$lsoa)
+supply <- setNames(gp$gp_fte_extg, gp$practice)
+d <- prep_data(demand, supply, travel, metadata = list(
+  demand_units = "registered residents", demand_period = "July 2026",
+  supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
+  travel_units = "minutes"))
+flows <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")
 
-# Travel minutes (small areas x practices), demand and supply, named by ID
-travel <- cornwall_travel[mainland_lsoa$lsoa, mainland_gp$practice]
-demand <- setNames(mainland_lsoa$registered, mainland_lsoa$lsoa)
-supply <- setNames(mainland_gp$gp_fte_extg, mainland_gp$practice)
-
-# Align the inputs once; unit labels are recorded, not converted
-d <- prep_data(
-  demand = demand,
-  supply = supply,
-  travel = travel,
-  metadata = list(
-    demand_units = "registered residents",
-    demand_period = "July 2026",
-    supply_units = "GP FTE excluding GPs in training",
-    supply_period = "June 2026",
-    travel_units = "minutes"
-  )
-)
-d
-```
-
-``` R
-<spax data> 336 origins (336 active) x 54 facilities
-  demand      604,471 registered residents (July 2026)
-  supply      GP FTE excluding GPs in training (June 2026)
-  travel      minutes; unknown for 0 active origins
-  policies    missing demand: error; missing travel: error
-```
-
-``` r
-
-# Observed registrations: one row per small area and practice
-flows <- obs_flows(
-  cornwall_flows,
-  origin = "lsoa",
-  facility = "practice",
-  count = "patients"
-)
-```
-
-``` r
-
-# Gaussian travel decay and a fitted outside weight v0 (the defaults),
-# fitted to the flows
+# Fit the travel scale sigma and the outside weight v0 to the registrations
 clm <- spax(d, spec_clm(), observed = flows)
 ```
 
 ``` R
 observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are not fitted (outside = "known" uses them as outside counts)
 ```
-
-``` r
-
-clm
-```
-
-``` R
-<spax allocation> conditional logit with an outside option
-  decay       gaussian (sigma = travel scale): fit
-  attraction  (kappa * supply)^beta: kappa = 1, beta = 1
-  outside     v0: fit
-  data        336 origins x 54 facilities
-
-  parameter  value    status
-  sigma      4.591    fitted
-  v0         0.02733  fitted
-  beta       1        held
-  kappa      1        held
-
-  selected    scan1 (start 1 of 3); 3 of 3 starts converged
-  boundary    none
-  starts      default search, 45 of 45 grid points, loss poisson
-```
-
-[`spax()`](https://songyosr.github.io/spax/reference/spax.md) lines the
-registrations up with the data. The message says what it dropped: the
-counts of the Isles of Scilly small area, which is not in the data, and
-the few mainland residents registered at the Scilly practice, who count
-towards the outside option. No starts were given, so
-[`spax()`](https://songyosr.github.io/spax/reference/spax.md) found them
-from the data: it scans a grid of travel scales and outside weights and
-fits from the best points, as the last line of the print says. The loss
-is Poisson, the default of
-[`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md).
-Registrations are a stock rather than independent events, so treat the
-loss as a fitting criterion. `summary(clm)` lists every start; give
-`starts`, `lower` and `upper` to choose them yourself.
 
 ``` r
 
@@ -274,315 +144,56 @@ coef(clm)
 4.59099725 0.02733454 
 ```
 
-``` r
+[`spax()`](https://songyosr.github.io/spax/reference/spax.md) reports
+that it drops the 2,290 registrations of the Isles of Scilly area, and
+does not fit the 5 mainland residents registered at the Scilly practice,
+because the example keeps mainland Cornwall only.
 
-# The observed counts as aligned with the data (small areas x practices)
-observed <- clm$observed$target
+The travel scale σ is about 4.6 minutes, so a practice 9 minutes away,
+about twice σ, pulls only about 15% as strongly as one of the same size
+next door. Registration is very local. The outside weight v0 acts like a
+practice of 0.03 GP FTE next door to every area. With it the model
+places 0.54% of registered residents with practices outside mainland
+Cornwall, against 0.91% observed. This fit uses only the counts at
+mainland practices. [Where do residents
+register?](https://songyosr.github.io/spax/articles/allocation-workflow.html#when-outside-counts-are-known)
+shows how to give it each area’s known outside count too.
 
-# Per cent registered outside mainland Cornwall: observed and modelled
-outside <- c(
-  observed = 1 - sum(observed) / sum(demand),
-  modelled = 1 - sum(fitted(clm)) / sum(demand)
-)
-round(100 * outside, 2)
-```
+## Learn more
 
-``` R
-observed modelled 
-    0.91     0.54 
-```
+The guides follow one story on the Cornwall data, and each answers one
+question. Read them on the [package
+website](https://songyosr.github.io/spax/). In R,
+`vignette("<name>", package = "spax")` opens one if your installation
+built the guides. If it finds nothing, use the website.
 
-``` r
+| Question | Guide | [`vignette()`](https://rdrr.io/r/utils/vignette.html) |
+|:---|:---|:---|
+| How accessible is GP care in Cornwall? | [Getting started](https://songyosr.github.io/spax/articles/spax.html) | `"spax"` |
+| What is in the example data? | [The Cornwall GP example data](https://songyosr.github.io/spax/articles/cornwall-data.html) | `"cornwall-data"` |
+| How do I bring my own data? | [Bringing your own data](https://songyosr.github.io/spax/articles/data-prep.html) | `"data-prep"` |
+| Which FCA index should I use? | [Which FCA index?](https://songyosr.github.io/spax/articles/fca-methods.html) | `"fca-methods"` |
+| What does the E2SFCA index compute, step by step? | [Inside the E2SFCA calculation](https://songyosr.github.io/spax/articles/e2sfca-steps.html) | `"e2sfca-steps"` |
+| How fine a grid do I need, and at what cost? | [Grid resolution and computational cost](https://songyosr.github.io/spax/articles/grid-resolution.html) | `"grid-resolution"` |
+| Where do residents register? | [Fitting an allocation model](https://songyosr.github.io/spax/articles/allocation-workflow.html) | `"allocation-workflow"` |
+| What if a practice closed? | [What if a practice closed?](https://songyosr.github.io/spax/articles/scenario.html) | `"scenario"` |
+| Should I use an FCA index or an allocation model? | [An FCA index or an allocation model?](https://songyosr.github.io/spax/articles/model-choice.html) | `"model-choice"` |
+| How do I use my own decay, raster data or grid maps? | [Extending the model](https://songyosr.github.io/spax/articles/extending.html) | `"extending"` |
+| How sure are the estimates? | [Bootstrap intervals](https://songyosr.github.io/spax/articles/facility-bootstrap.html) | `"facility-bootstrap"` |
+| What do the results mean, and not mean? | [Reading results](https://songyosr.github.io/spax/articles/reading-results.html) | `"reading-results"` |
+| Which function does what? | [Function map](https://songyosr.github.io/spax/articles/function-naming.html) | `"function-naming"` |
 
-# Practice totals: modelled against observed
-cor(colSums(fitted(clm)), colSums(observed))
-```
-
-``` R
-[1] 0.9326925
-```
-
-The fitted Gaussian scale is about 4.6 minutes: registration is very
-local. The printed shares are percentages of registered residents.
-Practice totals of the fitted flows correlate at 0.93 with the observed
-ones. One constant outside weight understates registration outside
-mainland Cornwall, which is concentrated in a few areas near the Devon
-border.
-
-[`predict()`](https://rspatial.github.io/terra/reference/predict.html)
-returns choice probabilities for requested areas. For the practice with
-the largest list, St Austell Health Group, the modelled probability can
-be set beside the observed share of each area’s registered residents:
-
-``` r
-
-# Choice probabilities for every small area
-prediction <- predict(
-  clm,
-  travel = travel,
-  demand = demand,
-  outputs = "allocation"
-)
-
-# Observed share and modelled probability for one practice, in one table
-st_austell <- "Y04957"  # St Austell Health Group
-shares <- bind_rows(
-  data.frame(
-    lsoa = rownames(travel),
-    source = "Observed share",
-    value = observed[, st_austell] / demand
-  ),
-  data.frame(
-    lsoa = rownames(travel),
-    source = "Modelled probability",
-    value = prediction$outputs$allocation[, st_austell]
-  )
-) |>
-  mutate(source = factor(source, unique(source)))
-
-# Join to the small-area polygons, and locate the practice
-mapped <- cornwall_lsoa |>
-  select(lsoa) |>
-  inner_join(shares, by = "lsoa")
-site <- filter(cornwall_gp, practice == st_austell)
-xy <- st_coordinates(site)
-
-ggplot(mapped) +
-  geom_sf(aes(fill = value, colour = value), linewidth = 0.1) +
-  geom_sf(data = site, shape = 21, fill = "white", size = 2) +
-  facet_wrap(~source) +
-  scale_fill_viridis_c(
-    name = "Share of\nregistered\nresidents",
-    limits = c(0, 1),
-    aesthetics = c("fill", "colour")
-  ) +
-  # A 50 x 40 km window around the practice
-  coord_sf(xlim = xy[1] + c(-25000, 25000), ylim = xy[2] + c(-20000, 20000)) +
-  labs(title = "Registration with St Austell Health Group (white point)") +
-  theme_void() +
-  theme(plot.title = element_text(margin = margin(b = 8)))
-```
-
-![Two maps of small areas around St Austell: the observed share of
-residents registered with St Austell Health Group and the modelled
-probability; the modelled catchment is centred on the same place but
-spreads more widely.](reference/figures/README-clm-map-1.png)
-
-The model reproduces the catchment’s location but spreads it more widely
-than the observed registrations. Registrations record where residents
-are registered, not how often they visit. The population grid (WorldPop
-2020) and the registrations (NHS England, 2026) are different sources
-and dates. Data sources and licences are listed in
-`system.file("COPYRIGHTS", package = "spax")`.
-
-### Known outside counts
-
-The fit above sees only the counts at the mainland practices, so the
-outside option is fitted without any count of its own. Here the outside
-count of every small area is known. Demand is the residents registered
-with any GP practice in England, and every registered resident is
-registered somewhere, so the residents of a small area who are not
-registered at a mainland practice are exactly its outside count: its
-demand less its counts at the mainland practices, including the few
-mainland residents registered at the Scilly practice.
-`outside = "known"` declares this, and
-[`spax()`](https://songyosr.github.io/spax/reference/spax.md) fits the
-outside count as one more cell of each small area.
-
-``` r
-
-clm_known <- spax(
-  d,
-  spec_clm(),
-  observed = obs_flows(
-    cornwall_flows,
-    origin = "lsoa",
-    facility = "practice",
-    count = "patients",
-    outside = "known"
-  )
-)
-coef(clm_known)
-```
-
-``` R
-     sigma         v0 
-4.61941763 0.04864483 
-```
-
-``` r
-
-# Per cent registered outside mainland Cornwall: observed and modelled
-areas_known <- as.data.frame(clm_known, type = "origins")
-known_shares <- c(
-  observed = sum(areas_known$outside_observed),
-  modelled = sum(areas_known$outside_modelled)
-) / sum(areas_known$demand)
-round(100 * known_shares, 2)
-```
-
-``` R
-observed modelled 
-    0.91     0.91 
-```
-
-The travel scale hardly moves, but the outside weight rises from 0.027
-to 0.049, and the modelled outside share now equals the observed one:
-with every outside count known by subtraction (demand minus the counts),
-the fit is the multinomial likelihood of each small area’s choices, and
-a constant outside weight reproduces the total outside count. Use
-`outside = "known"` only when demand counts the same people as the
-observations, as here: registrations by residence from the same extract
-and date. It is not a population estimate; list sizes and population
-differ by several percent, and the gap would go straight into the
-outside counts. The Huff comparison below uses the flows without outside
-counts, because the Huff model has no outside option.
-
-### The Huff model on the same data
-
-The Huff model is the conditional logit without the outside option.
-[`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md)
-specifies it; by default it uses power decay and a fitted attractiveness
-exponent `beta`, the usual form of the Huff model. Here it takes the
-same Gaussian decay and `beta = 1` as the conditional logit above, so
-the two fits differ only in the outside option. Without one, the model
-sends every registered resident to a mainland practice, and the counts
-at the Scilly practice are dropped.
-
-``` r
-
-huff <- spax(d, spec_huff(decay = decay_gaussian(), beta = 1), observed = flows)
-```
-
-``` R
-observed: 2,290 counts from 1 origin outside the data or left out by it are dropped; 5 counts at 1 facility outside the data are dropped (the Huff model has no outside option)
-```
-
-``` r
-
-coef(huff)
-```
-
-``` R
-   sigma 
-4.590493 
-```
-
-``` r
-
-# Same flows, loss and inputs; loss differences are measured from the Huff fit
-comparison <- compare_allocations(list(huff = huff, clm = clm))
-as.data.frame(comparison)[
-  c("specification", "parameters", "loss_difference", "count_correlation")
-]
-```
-
-``` R
-  specification              parameters loss_difference count_correlation
-1          huff              sigma=4.59         0.00000         0.8838864
-2           clm sigma=4.591, v0=0.02733       -72.51419         0.8846533
-```
-
-The outside option moves the travel scale very little (from 4.590 to
-4.591 minutes) and lowers the Poisson loss by 72.5. It lets the model
-send 0.54% of registered residents outside mainland Cornwall, against
-0.91% observed. The Huff model is nested in the conditional logit, so
-this comparison measures what the outside option adds on these
-registrations; it does not by itself show how residents choose
-practices.
-
-## Continue the allocation workflow
-
-| Function | Purpose |
-|:---|:---|
-| [`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md) | Align demand, supply and travel by ID once, and record units. |
-| [`spec_clm()`](https://songyosr.github.io/spax/reference/spec_clm.md), [`spec_huff()`](https://songyosr.github.io/spax/reference/spec_clm.md) | Specify a model without data; each parameter is a number (held) or `"fit"` (estimated). |
-| [`decay_gaussian()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_exponential()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_power()`](https://songyosr.github.io/spax/reference/decay_gaussian.md), [`decay_custom()`](https://songyosr.github.io/spax/reference/decay_gaussian.md) | Declare the decay kernel of a specification, with its `sigma`. |
-| [`obs_flows()`](https://songyosr.github.io/spax/reference/obs_flows.md), [`obs_totals()`](https://songyosr.github.io/spax/reference/obs_flows.md) | Declare observed flows or facility totals, and the loss that fits them. |
-| [`spax()`](https://songyosr.github.io/spax/reference/spax.md), [`spax_clm()`](https://songyosr.github.io/spax/reference/spax_huff.md), [`spax_huff()`](https://songyosr.github.io/spax/reference/spax_huff.md) | Fit the model, or evaluate it at given values; [`coef()`](https://rdrr.io/r/stats/coef.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`summary()`](https://rspatial.github.io/terra/reference/summary.html), [`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html) and [`predict()`](https://rspatial.github.io/terra/reference/predict.html) read the result. |
-
-For full control, the step functions run the same model one step at a
-time, and they accept a result of
-[`spax()`](https://songyosr.github.io/spax/reference/spax.md):
-
-| Function | Purpose |
-|:---|:---|
-| [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md) | Align IDs, record units and support, and prepare compact numeric inputs ([`prep_data()`](https://songyosr.github.io/spax/reference/prep_data.md) returns the same object). |
-| [`clm_allocation()`](https://songyosr.github.io/spax/reference/clm_allocation.md) | Declare corrected static CLM with Gaussian, exponential or power travel decay, or a kernel declared with [`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md). |
-| [`huff_allocation()`](https://songyosr.github.io/spax/reference/huff_allocation.md) | Declare the Huff model: the same allocation model without an outside option, with power decay and a fitted attractiveness exponent by default. |
-| [`fit_allocation()`](https://songyosr.github.io/spax/reference/fit_allocation.md) | Fit a selected output from given starts, or from starts found in the data, and retain diagnostics. |
-| [`evaluate_allocation()`](https://songyosr.github.io/spax/reference/evaluate_allocation.md) | Evaluate supplied parameters, including a newly prepared supply scenario. |
-| [`predict_allocation()`](https://songyosr.github.io/spax/reference/predict_allocation.md) | Predict requested origins against saved facility loads; maps are explicit. |
-| [`check_fit()`](https://songyosr.github.io/spax/reference/check_fit.md), [`compare_fits()`](https://songyosr.github.io/spax/reference/compare_fits.md) (also [`check_allocation()`](https://songyosr.github.io/spax/reference/check_fit.md), [`compare_allocations()`](https://songyosr.github.io/spax/reference/compare_fits.md)) | Compare a fit with simpler models, or fits with each other, on the same loss. |
-| [`bootstrap_fit()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md) (also [`bootstrap_allocation()`](https://songyosr.github.io/spax/reference/bootstrap_fit.md)) | Run the separately supported conditional facility-case bootstrap. |
-
-[`vignette("model-choice", package = "spax")`](https://songyosr.github.io/spax/articles/model-choice.md)
-compares an FCA index and the static CLM on the same Cornwall inputs and
-explains what each output means.
-
-A supply scenario requires preparing the changed system and evaluating
-it at the selected parameters. Supply can change attraction, allocation
-and loads. This is a model-based comparison, not a causal intervention
-estimate.
-
-The bootstrap has a narrower scope than fitting: static CLM with a
-fitted outside mass `v0` and a decay kernel that is smooth in `sigma`
-(built in, or declared with
-[`decay_kernel()`](https://songyosr.github.io/spax/reference/decay_kernel.md);
-a fitted `beta` is allowed), complete whole facility counts and an
-unweighted Poisson original fit. It requires an explicit event,
-reference period and independent-facility sampling declaration. The
-Cornwall fit above targets small area × practice flows, so it is outside
-this method.
-[`vignette("facility-bootstrap", package = "spax")`](https://songyosr.github.io/spax/articles/facility-bootstrap.md)
-supplies a generated example with all 399 attempts and a paired supply
-comparison;
-[`vignette("allocation-workflow", package = "spax")`](https://songyosr.github.io/spax/articles/allocation-workflow.md)
-covers fitting, prediction, a supply scenario and fresh-session export
-on the Cornwall data.
-
-Conditional percentile intervals require an eligible original, a
-complete run of 399 attempts and at least 380 finite successful values
-for the quantity. Failed attempts and successful inner-boundary fits
-remain visible. Coverage was evaluated for Gaussian decay with fitted
-`sigma` and `v0`, in generated 80-origin/40-facility designs under
-tested fixed-input laws; other kernels and a fitted `beta` use the same
-procedure without a separate coverage study. This is not a universal
-coverage guarantee or evidence for an application’s observation law. No
-spatial simultaneous intervals are provided.
-
-## IDs, support and saved results
-
-Keep facility IDs on supply, travel and observations; named axes align
-independently. Unnamed inputs are positional. Distinguish known zero
-demand, unknown demand and excluded origins. Only included positive
-demand contributes to fitted facility loads. For CLM prediction, unknown
-travel and known absence (`Inf`) have different meanings; inspect
-validity flags rather than replacing all missing values with zero.
-Declare compatible units and reference periods; the interface does not
-convert them.
-
-Use [`coef()`](https://rdrr.io/r/stats/coef.html),
-[`fitted()`](https://rdrr.io/r/stats/fitted.values.html),
-[`summary()`](https://rspatial.github.io/terra/reference/summary.html),
-[`plot()`](https://rspatial.github.io/terra/reference/plot.html) and
-[`as.data.frame()`](https://rspatial.github.io/terra/reference/as.data.frame.html)
-to inspect saved allocation results. CSV drops R attributes, so keep an
-RDS bundle with declarations and support metadata. See
-[`help("allocation-compatibility", package = "spax")`](https://songyosr.github.io/spax/reference/spax-package.md)
-before reusing older private fits: corrected CLM and legacy `huff_decay`
-have different output meanings, and older objects may need regeneration
-for current prediction/reporting.
+[`help(package = "spax")`](https://songyosr.github.io/spax/reference)
+lists every function.
 
 ## Contributing and license
 
 Report reproducible issues or discuss larger changes on the [project
 repository](https://github.com/Songyosr/spax). Package code uses the MIT
-license; see [LICENSE](https://songyosr.github.io/spax/LICENSE.md). The
+license; see
+[LICENSE](https://github.com/Songyosr/spax/blob/main/LICENSE.md). The
 bundled Cornwall GP example data are openly licensed third-party
 material (Open Government Licence v3.0 and Creative Commons
 Attribution), which the MIT license does not cover. The installed notice
 file, `system.file("COPYRIGHTS", package = "spax")` (source
-`inst/COPYRIGHTS`), lists each source and its required attribution; the
-exact Creative Commons version of the travel-friction source is still
-unconfirmed.
+`inst/COPYRIGHTS`), lists each source and its required attribution.

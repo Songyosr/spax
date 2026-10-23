@@ -16,7 +16,7 @@ prep_data(
   facility_ids = NULL,
   included = NULL,
   missing_demand = c("error", "exclude"),
-  missing_travel = c("error", "legacy_zero"),
+  missing_travel = c("error", "omit", "legacy_zero"),
   spatial = NULL,
   metadata = list(),
   id_col = NULL,
@@ -89,13 +89,14 @@ print(x, ...)
 
 - missing_travel:
 
-  Default `"error"` rejects NA/NaN on active fit rows. `"legacy_zero"`
-  explicitly omits unknown edges and records that policy. Finite
-  nonnegative travel is known, positive infinity is an absent edge, and
-  negative travel is invalid. Omitted rows are validated when requested
-  by prediction. Model-specific finite domains, such as positive power
-  distances, are checked when binding parameters; no imputation bypasses
-  them.
+  Default `"error"` rejects NA/NaN on active fit rows. `"omit"` leaves
+  out unknown pairs (a facility with unknown travel is out of reach from
+  that origin) and records that policy; `"legacy_zero"` is its older
+  name and does the same. Finite nonnegative travel is known, positive
+  infinity is an absent edge, and negative travel is invalid. Omitted
+  rows are validated when requested by prediction. Model-specific finite
+  domains, such as positive power distances, are checked when binding
+  parameters; no imputation bypasses them.
 
 - spatial:
 
@@ -129,7 +130,7 @@ print(x, ...)
 
 ## Value
 
-Numeric data: the existing `ae_prepared_inputs`, as returned by
+Numeric data: an `ae_prepared_inputs`, as returned by
 [`prepare_allocation()`](https://songyosr.github.io/spax/reference/prepare_allocation.md).
 Raster data: a `spax_raster_data` (also a `spax_data`), a list with
 `demand` and `travel` (as given), `supply` (the object as given),
@@ -300,8 +301,14 @@ mainland <- terra::ext(-6, terra::xmax(pop), terra::ymin(pop), terra::ymax(pop))
 pop <- terra::crop(pop, mainland)
 registered <- pop * sum(areas$registered) /
   terra::global(pop, "sum", na.rm = TRUE)[[1]]
-d_mainland <- prep_data(registered, gp,
-                        terra::crop(travel_grid[[gp$practice]], mainland),
+travel_mainland <- terra::crop(travel_grid[[gp$practice]], mainland)
+
+# Cells of 2 x 2 grid cells keep the example quick: residents add up and
+# travel minutes average
+registered <- terra::aggregate(registered, fact = 2, fun = "sum", na.rm = TRUE)
+travel_mainland <- terra::aggregate(travel_mainland, fact = 2, fun = "mean",
+                                    na.rm = TRUE)
+d_mainland <- prep_data(registered, gp, travel_mainland,
                         id_col = "practice", supply_cols = "gp_fte_extg")
 
 # Registrations of mainland residents at the mainland practices
@@ -317,11 +324,11 @@ huff
 #>   decay       power (sigma = exponent): fit
 #>   attraction  (kappa * supply)^beta: kappa = 1, beta = fit
 #>   outside     none
-#>   data        6,912 origins x 54 facilities
+#>   data        1,824 origins x 54 facilities
 #> 
 #>   parameter  value   status
-#>   sigma      1.059   fitted
-#>   beta       0.6123  fitted
+#>   sigma      1.077   fitted
+#>   beta       0.6154  fitted
 #>   v0         0       held
 #>   kappa      1       held
 #> 
@@ -333,9 +340,9 @@ huff
 check_fit(huff)
 #> <allocation check>
 #>     comparator     loss loss_difference contact trip_median trip_p90
-#>         fitted -5042045               0       1          11       53
-#>       no_decay -5038257            3788       1          40       85
-#>  capacity_only -5038282            3763      NA          40       85
+#>         fitted -5041836               0       1        11.5       53
+#>       no_decay -5038257            3579       1        39.5       85
+#>  capacity_only -5038282            3554      NA        39.5       85
 #> Trip lengths are one-way, in travel units, weighted by expected flows.
 #> 
 #> The fitted allocation reproduces the counts better than both comparators.

@@ -19,7 +19,7 @@ still show the starts."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spax</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,20 +34,23 @@ still show the starts."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data</h6></li>
     <li><a class="dropdown-item" href="../articles/cornwall-data.html">The Cornwall GP example data</a></li>
-    <li><a class="dropdown-item" href="../articles/data-prep.html">Preparing your own data: counts, facility IDs and travel</a></li>
+    <li><a class="dropdown-item" href="../articles/data-prep.html">Bringing your own data</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>FCA accessibility</h6></li>
-    <li><a class="dropdown-item" href="../articles/fca-methods.html">Comparing FCA methods</a></li>
-    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">The E2SFCA calculation step by step</a></li>
-    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution, support and computational cost</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Accessibility indices</h6></li>
+    <li><a class="dropdown-item" href="../articles/fca-methods.html">Which FCA index?</a></li>
+    <li><a class="dropdown-item" href="../articles/e2sfca-steps.html">Inside the E2SFCA calculation</a></li>
+    <li><a class="dropdown-item" href="../articles/grid-resolution.html">Grid resolution and computational cost</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Allocation model</h6></li>
-    <li><a class="dropdown-item" href="../articles/model-choice.html">Choosing an FCA index or an allocation model</a></li>
-    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Fitting an allocation model to GP registrations in Cornwall</a></li>
-    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">Bootstrap intervals for a fitted allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/model-choice.html">An FCA index or an allocation model?</a></li>
+    <li><a class="dropdown-item" href="../articles/allocation-workflow.html">Where do residents register? Fitting an allocation model</a></li>
+    <li><a class="dropdown-item" href="../articles/scenario.html">What if a practice closed?</a></li>
+    <li><a class="dropdown-item" href="../articles/extending.html">Extending the model: your own decay, raster data and grid maps</a></li>
+    <li><a class="dropdown-item" href="../articles/facility-bootstrap.html">How sure are the estimates? Bootstrap intervals</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Package conventions</h6></li>
-    <li><a class="dropdown-item" href="../articles/function-naming.html">Finding functions and inspecting results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reference guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-results.html">Reading results</a></li>
+    <li><a class="dropdown-item" href="../articles/function-naming.html">Function map</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -62,7 +65,7 @@ still show the starts."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Methods for allocation results</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.6.0/R/08-spax_run.R" class="external-link"><code>R/08-spax_run.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/R/08-spax_run.R" class="external-link"><code>R/08-spax_run.R</code></a></small>
       <div class="d-none name"><code>spax_allocation-methods.Rd</code></div>
     </div>
 
@@ -191,6 +194,128 @@ with <code><a href="predict_allocation.html">predict_allocation()</a></code>. Mo
 <code><a href="spec_clm.html">spec_clm()</a></code></p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># West Cornwall: the small areas and practices west of easting 170 km</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_lsoa</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="va">areas</span><span class="op">[</span><span class="op">!</span><span class="va">areas</span><span class="op">$</span><span class="va">scilly</span> <span class="op">&amp;</span> <span class="va">areas</span><span class="op">$</span><span class="va">cent_x</span> <span class="op">&lt;</span> <span class="fl">170000</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="va">cornwall_gp</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">gp</span> <span class="op">&lt;-</span> <span class="va">gp</span><span class="op">[</span><span class="op">!</span><span class="va">gp</span><span class="op">$</span><span class="va">scilly</span> <span class="op">&amp;</span> <span class="va">gp</span><span class="op">$</span><span class="va">easting</span> <span class="op">&lt;</span> <span class="fl">170000</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">travel</span> <span class="op">&lt;-</span> <span class="va">cornwall_travel</span><span class="op">[</span><span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="prep_data.html">prep_data</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">registered</span>, <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>               <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">gp</span><span class="op">$</span><span class="va">gp_fte_extg</span>, <span class="va">gp</span><span class="op">$</span><span class="va">practice</span><span class="op">)</span>, <span class="va">travel</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The conditional logit model fitted to the registrations of these residents</span></span></span>
+<span class="r-in"><span><span class="co"># at these practices</span></span></span>
+<span class="r-in"><span><span class="va">flows</span> <span class="op">&lt;-</span> <span class="va">cornwall_flows</span><span class="op">[</span><span class="va">cornwall_flows</span><span class="op">$</span><span class="va">lsoa</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">areas</span><span class="op">$</span><span class="va">lsoa</span> <span class="op">&amp;</span></span></span>
+<span class="r-in"><span>                          <span class="va">cornwall_flows</span><span class="op">$</span><span class="va">practice</span> <span class="op"><a href="https://rspatial.github.io/terra/reference/match.html" class="external-link">%in%</a></span> <span class="va">gp</span><span class="op">$</span><span class="va">practice</span>, <span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">totals</span> <span class="op">&lt;-</span> <span class="fu"><a href="obs_flows.html">obs_totals</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">flows</span><span class="op">$</span><span class="va">patients</span>, <span class="va">flows</span><span class="op">$</span><span class="va">practice</span>, <span class="va">sum</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">clm</span> <span class="op">&lt;-</span> <span class="fu"><a href="spax.html">spax</a></span><span class="op">(</span><span class="va">d</span>, <span class="fu"><a href="spec_clm.html">spec_clm</a></span><span class="op">(</span><span class="op">)</span>, observed <span class="op">=</span> <span class="va">totals</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">clm</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;spax allocation&gt; conditional logit with an outside option</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   decay       gaussian (sigma = travel scale): fit</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   attraction  (kappa * supply)^beta: kappa = 1, beta = 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   outside     v0: fit</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   data        85 origins x 15 facilities</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   parameter  value  status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma      13.22  fitted</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   v0         1.002  fitted</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta       1      held</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   kappa      1      held</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   selected    scan1 (start 1 of 3); 3 of 3 starts converged</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   boundary    none</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   starts      default search, 45 of 45 grid points, loss poisson</span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;spax allocation summary&gt; conditional logit with an outside option</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   decay       gaussian (sigma = travel scale): fit</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   attraction  (kappa * supply)^beta: kappa = 1, beta = 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   outside     v0: fit</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   parameter  value  status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma      13.22  fitted</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   v0         1.002  fitted</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta       1      held</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   kappa      1      held</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation fit summary&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> status: selected; selected start: scan1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> loss disagreement: FALSE; parameter disagreement: FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Supplied-start diagnostics (not a global-optimum or identification guarantee):</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  start     loss eligible optim_convergence solver_converged residual seconds</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  scan1 -1201000     TRUE                 0             TRUE        0   0.021</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  scan2 -1201000     TRUE                 0             TRUE        0   0.028</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  scan3 -1201000     TRUE                 0             TRUE        0   0.020</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  boundary   status                                    optim_message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  solver_message log_parameter_gap  loss_gap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       converged         0.000e+00 0.000e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       converged         8.567e-07 0.000e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       converged         6.216e-06 1.164e-09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Selected fit:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;allocation fit result summary&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> model: conditional logit</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> family: gaussian (sigma = travel scale)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> allocation_form: clm</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> theta:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  parameter estimate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      sigma   13.220</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         v0    1.002</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> fit:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      loss convergence seconds spectral_radius gradient</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -1201000           0    0.02               0     TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> predicted:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   min  q25 median mean   q75   max</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2851 4559  10000 9738 12490 22440</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> state:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  min  q25 median  mean   q75   max</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2 3.47  5.893 6.025 7.913 13.27</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> residual:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    min   q25 median  mean  q75  max</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -4876 -1292 -925.6 41.65 2210 5251</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     sigma        v0 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 13.223212  1.001842 </span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">clm</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L82018 L82036 L82038 L82041 L82042 L82044 L82047 L82056 L82059 L82068 L82070 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  17829  15924  13051  22441  11935  10758   6762   2851   3674   7954   5444 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L82620 Y01050 Y01051 Y01922 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3535  10004   3367  10545 </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The practices with their observed and modeled registrations, and the</span></span></span>
+<span class="r-in"><span><span class="co"># small areas with the modeled share of their residents at these practices</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm</span>, type <span class="op">=</span> <span class="st">"facilities"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   facility_id    supply attractiveness utilization observed</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      L82018 12.280000      12.280000    17829.37    12578</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2      L82036  7.946667       7.946667    15923.55    12284</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3      L82038  7.880000       7.880000    13051.36    11932</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4      L82041 13.266667      13.266667    22441.46    25799</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5      L82042  8.013333       8.013333    11934.83     9403</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6      L82044  5.893333       5.893333    10758.49     8687</span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/headtail.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">clm</span>, type <span class="op">=</span> <span class="st">"origins"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   origin_id demand    access outside_share</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 E01018825   1883 0.9714886    0.02851144</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 E01018861   1639 0.9818273    0.01817269</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 E01018862   1519 0.9820142    0.01798584</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 E01018863   1927 0.9828645    0.01713554</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 E01018864   1898 0.9830059    0.01699405</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 E01018865   2368 0.9822427    0.01775733</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Modeled outside shares from travel times, here of three of the small areas</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rspatial.github.io/terra/reference/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">clm</span>, <span class="va">travel</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="op">]</span>, outputs <span class="op">=</span> <span class="st">"outside_share"</span><span class="op">)</span><span class="op">$</span><span class="va">outputs</span><span class="op">$</span><span class="va">outside_share</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  E01018825  E01018861  E01018862 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.02851144 0.01817269 0.01798584 </span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
