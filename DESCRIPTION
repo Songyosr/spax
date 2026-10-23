@@ -5,12 +5,15 @@ Version: 0.7.0.9000
 Authors@R:
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
-Description: A modular engine for spatial access and allocation models. Floating
-    catchment area (FCA) methods and an experimental static conditional logit
-    allocation model with an outside option share the same demand, supply and
-    travel-time inputs, decay kernels and numeric engine, which reads rasters in
-    blocks and works on compact matrices. FCA methods include two-step (2SFCA;
-    Luo and Wang (2003) <doi:10.1068/b29120>), enhanced (E2SFCA; Luo and Qi
+Description: A modular engine for spatial access and allocation models. Methods
+    of the two-step floating catchment area (2SFCA) family and an experimental
+    static conditional logit allocation model with an outside option share the
+    same demand, supply and travel-time inputs, decay kernels and numeric
+    engine, which reads rasters in blocks and works on compact matrices. Inputs
+    are areas or points with a travel-time matrix, or a population raster with
+    one travel-time layer per facility. The 2SFCA-family methods give
+    accessibility scores and include two-step (2SFCA; Luo and Wang (2003)
+    <doi:10.1068/b29120>), enhanced (E2SFCA; Luo and Qi
     (2009) <doi:10.1016/j.healthplace.2009.06.002>), modified (M2SFCA;
     Delamater (2013) <doi:10.1016/j.healthplace.2013.07.012>), three-step
     (3SFCA; Wan, Zou and Sternberg (2012) <doi:10.1080/13658816.2011.624987>)
