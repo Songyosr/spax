@@ -26,22 +26,24 @@ later versions.
 
 The prefix says what a function is for, and the rest names the thing:
 
-- `spax()` runs a model specification on prepared data: an FCA (floating
-  catchment area) index or an allocation model. `spax_<model>()` runs one
-  model in one call from raw inputs: `spax_e2sfca()` and the other FCA
-  indices, `spax_huff()` and `spax_clm()`.
+- `spax()` runs a model specification on prepared data: a method of the
+  two-step floating catchment area (2SFCA) family, which gives accessibility
+  scores, or an allocation model. `spax_<model>()` runs one model in one call
+  from raw inputs: `spax_e2sfca()` and the other 2SFCA-family methods,
+  `spax_huff()` and `spax_clm()`.
 - `prep_` prepares data: `prep_data()`.
 - `spec_` specifies a model without data: `spec_clm()` (the conditional logit
   model, CLM: facilities plus an outside option, the choice of none of them),
-  `spec_huff()` (the Huff model: facilities only) and the FCA indices
-  `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`, `spec_3sfca()` and
-  `spec_huff2sfca()`, compared in [Which FCA index?](fca-methods.html).
+  `spec_huff()` (the Huff model: facilities only) and the 2SFCA-family
+  methods `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`, `spec_3sfca()` and
+  `spec_huff2sfca()`, compared in [Which 2SFCA method?](fca-methods.html).
 - `decay_` declares how weight falls with travel time: `decay_gaussian()`,
   `decay_exponential()`, `decay_power()`, `decay_custom()` and
-  `decay_kernel()`. `decay_step()` and `decay_inverse()` are for FCA indices
-  only.
+  `decay_kernel()`. `decay_step()` and `decay_inverse()` are for 2SFCA-family
+  methods only.
 - `obs_` declares observed counts: `obs_flows()` and `obs_totals()`.
-- `calc_`, `gather_` and `spread_` are the building blocks of an index.
+- `calc_`, `gather_` and `spread_` are the building blocks of an
+  accessibility score.
   `calc_travel_time()` and `calc_demand()` compute inputs.
 - `transform_`, `rasterize_`, `update_` and `sample_` move area totals onto a
   grid, and `read_` and `save_` read and write files.
@@ -67,11 +69,11 @@ Every exported function appears on this page, most of them in this table.
 | Draw random point patterns from a grid | `sample_pmf()` | Counts per cell, one layer per draw |
 | Compute travel times over a friction surface | `calc_travel_time()` | A travel matrix or raster |
 | Compute demand from population groups and rates | `calc_demand()` | A demand raster or vector |
-| Compute an FCA index | `spax()` with `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`, `spec_3sfca()` or `spec_huff2sfca()` | On raster data, a `spax` result with the index raster; on numeric data, the index at each origin |
-| Compute an FCA index in one call | `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`, `spax_huff2sfca()` | A `spax` result with the index raster |
-| Choose the decay of an FCA index | `decay_gaussian()`, `decay_exponential()` or `decay_power()` with a number or a raster `sigma`; `decay_step()`, `decay_inverse()`, `decay_custom()` | A decay for the specification |
-| Build an index from its parts | `calc_decay()`, `calc_normalize()`, `calc_choice()`, `gather_weighted()`, `gather_demand()`, `spread_weighted()`, `spread_access()`, `compute_access()` | Weights, demand per facility and index rasters |
-| Save and read an FCA result with its rasters | `save_spax()`, `read_spax()` | Files on disk, and the result read back |
+| Compute accessibility scores | `spax()` with `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`, `spec_3sfca()` or `spec_huff2sfca()` | On raster data, a `spax` result with the accessibility map; on numeric data, the score at each origin |
+| Compute accessibility scores in one call | `spax_2sfca()`, `spax_e2sfca()`, `spax_m2sfca()`, `spax_3sfca()`, `spax_huff2sfca()` | A `spax` result with the accessibility map |
+| Choose the decay of a 2SFCA-family method | `decay_gaussian()`, `decay_exponential()` or `decay_power()` with a number or a raster `sigma`; `decay_step()`, `decay_inverse()`, `decay_custom()` | A decay for the specification |
+| Build accessibility scores from their parts | `calc_decay()`, `calc_normalize()`, `calc_choice()`, `gather_weighted()`, `gather_demand()`, `spread_weighted()`, `spread_access()`, `compute_access()` | Weights, demand per facility and rasters of scores |
+| Save and read an accessibility map with its rasters | `save_spax()`, `read_spax()` | Files on disk, and the result read back |
 | Specify an allocation model | `spec_clm()`, `spec_huff()` with `decay_gaussian()`, `decay_exponential()`, `decay_power()` or `decay_custom()` | A model specification |
 | Declare a decay curve of your own | `decay_kernel()`, used through `decay_custom()` | A kernel declaration |
 | Declare observed counts | `obs_flows()`, `obs_totals()` | Observed counts with the loss that fits them |
@@ -122,22 +124,22 @@ of a fit to facility totals, is computed when you ask for it.
 
 | Result | Made by | Read it with |
 |:--|:--|:--|
-| FCA index on a grid (`spax`) | `spax()` on raster data, `spax_e2sfca()` and the other one-call functions | `print()`, `summary()`, `plot()`; `$accessibility` is the index raster |
-| FCA index on numeric data (`spax_access_values`) | `spax()` on numeric data | `print()`, `summary()`, `as.data.frame()`; `$access` is a matrix with one row per origin |
+| Accessibility map on a grid (`spax`) | `spax()` on raster data, `spax_e2sfca()` and the other one-call functions | `print()`, `summary()`, `plot()`; `$accessibility` is the raster of scores |
+| Accessibility scores on numeric data (`spax_access_values`) | `spax()` on numeric data | `print()`, `summary()`, `as.data.frame()`; `$access` is a matrix with one row per origin |
 | Allocation result (`spax_allocation`) | `spax()`, `spax_clm()`, `spax_huff()` | `print()`, `summary()`, `coef()`, `fitted()`, `predict()`, `as.data.frame()` with `type` `"parameters"`, `"facilities"`, `"origins"`, `"flows"` or `"starts"` |
-| Prediction | `predict()`, `predict_allocation()` | `$outputs` holds what you asked for; `$validity` gives each origin a status, such as `valid`, `unknown_travel` or `known_absence`, saying whether its values could be computed |
+| Prediction | `predict()`, `predict_allocation()` | `print()`; `$outputs` holds what you asked for; `$validity` gives each origin a status, such as `valid`, `unknown_travel` or `known_absence`, saying whether its values could be computed |
 | Check | `check_fit()` | `print()`, `as.data.frame()` |
 | Comparison | `compare_fits()` | `print()`, `as.data.frame()` with `type` `"fits"` or `"zones"` |
-| Bootstrap | `bootstrap_fit()` | `print()`, `summary()`, `plot()`, `as.data.frame()` with `type` `"estimates"`, `"draws"` or `"starts"` |
-| Fit from the steps (`ae_multistart_fit`) | `fit_allocation()` | `print()`, `summary()`, `coef()`, `fitted()`, `plot()`, `as.data.frame()` |
+| Bootstrap | `bootstrap_fit()` | `print()`, `summary()`, `plot()` with `quantity` and `type` `"interval"` or `"draws"`, `as.data.frame()` with `type` `"estimates"`, `"draws"` or `"starts"` |
+| Fit from the steps (`ae_multistart_fit`), also `$fit` of an allocation result | `fit_allocation()` | `print()`, `summary()`, `coef()`, `fitted()`, `as.data.frame()`, `plot()` with `type` `"fit"`, `"convergence"` or `"state"`, and `main`, `xlab` and `ylab` for your own labels |
 
-An index raster is read with terra, for example `terra::values()` or
+A raster of scores is read with terra, for example `terra::values()` or
 `terra::as.data.frame()`. [Reading results](reading-results.html) says how to
 save each kind of result.
 
 ## Next
 
-- [Getting started](spax.html): compute and map a first FCA index.
+- [Getting started](spax.html): compute and map first accessibility scores.
 - [Where do residents register?](allocation-workflow.html): the allocation
   functions in one analysis.
 - [Inside the E2SFCA calculation](e2sfca-steps.html): the building blocks at

@@ -21,8 +21,8 @@ knitr::opts_chunk$set(
 How strongly does travel time shape where people register with a GP? This
 guide answers that question for mainland Cornwall by fitting an allocation
 model to the observed registrations. You will estimate how fast the pull of a
-practice fades with travel time, compare each practice's modeled list with its
-observed list, check what the registrations can tell the model, see how much
+practice fades with travel time, compare each practice's modeled list (the
+residents registered with it) with its observed list, check what the registrations can tell the model, see how much
 the outside option adds, and save the results. The data are the bundled small
 areas, practices, registrations and travel times described in [The Cornwall GP
 example data](cornwall-data.html). The `spax()` interface and the allocation
@@ -178,7 +178,7 @@ practices <- flow_table |>
 cor(practices$observed, practices$modeled)
 
 ggplot(practices, aes(observed / 1000, modeled / 1000)) +
-  geom_abline(linetype = 2, color = "grey50") +
+  geom_abline(linetype = 2, color = "gray50") +
   geom_point() +
   coord_equal() +
   labs(
@@ -212,6 +212,8 @@ line. The model gives it
 
 ## What the data identify
 
+Data identify a parameter when different values of it give clearly different
+modeled counts, so that the observations can tell the values apart.
 `check_fit()` asks whether the registrations carry information about distance
 decay. It refits the model with distance decay switched off: every practice
 with a travel time, here all `r nrow(gp)`, gets the same weight, so each area
@@ -234,81 +236,13 @@ Without distance decay the Poisson loss rises by
 median trip grows from `r fitted_row$trip_median` to
 `r no_decay_row$trip_median` minutes. `trip_p90` is the time within which 90%
 of modeled trips fall. The flows record where each practice's patients live,
-so they pin the decay down firmly. The `contact` column is the share of demand
-that the model sends to a mainland practice.
+so they carry strong information about the decay. The `contact` column is the
+share of demand that the model sends to a mainland practice.
 
 The `capacity_only` comparator ignores where residents live: it sets each
 practice's total in proportion to its GP FTE, with one fitted scale. It
 applies only to fits to practice totals, so its row is `NA` here. [Reading
 results](reading-results.html) explains how to read the check for those fits.
-
-## The outside option
-
-`predict()` gives the outside share for any set of small areas with travel
-times to the practices, here the fitted areas. For those, the `"origins"`
-table holds the same values, and `predict()` also works for areas that were
-not fitted. The observed share is the part of each area's residents not
-registered at a mainland practice.
-
-```{r outside-map, fig.alt = "Two maps of mainland Cornwall's small areas. Observed: the share of residents registered outside mainland Cornwall is low almost everywhere and highest in a few areas in the north-east and east, along the Devon border. Modeled: a small share everywhere, highest in a few rural areas far from practices, such as in the north-east and at the western tip."}
-prediction <- predict(clm, travel, demand, outputs = "outside_share")
-
-# Observed and modeled outside shares by small area, in one long table
-registered_here <- flow_table |>
-  group_by(lsoa = origin_id) |>
-  summarise(at_mainland_practices = sum(observed))
-outside <- bind_rows(
-  data.frame(
-    lsoa = registered_here$lsoa,
-    share = 1 - registered_here$at_mainland_practices /
-      demand[registered_here$lsoa],
-    source = "Observed"
-  ),
-  data.frame(
-    lsoa = names(prediction$outputs$outside_share),
-    share = prediction$outputs$outside_share,
-    source = "Modeled"
-  )
-) |>
-  mutate(source = factor(source, c("Observed", "Modeled")))
-
-# Join to the small-area polygons for mapping
-outside_map <- cornwall_lsoa |>
-  select(lsoa) |>
-  inner_join(outside, by = "lsoa")
-
-ggplot(outside_map) +
-  geom_sf(aes(fill = 100 * share), color = NA) +
-  geom_sf(data = st_union(outside_map), fill = NA, color = "grey20", linewidth = 0.3) +
-  facet_wrap(~source) +
-  scale_fill_viridis_c(
-    option = "mako",
-    direction = -1,
-    trans = "sqrt",
-    name = "Registered\noutside (%)"
-  ) +
-  labs(title = "Share of residents registered outside mainland Cornwall") +
-  theme_void()
-```
-
-```{r outside-values, include = FALSE}
-observed_share <- outside |>
-  filter(source == "Observed") |>
-  mutate(count = share * demand[lsoa]) |>
-  arrange(desc(share))
-top10_percent <- round(
-  100 * sum(observed_share$count[1:10]) / sum(observed_share$count)
-)
-```
-
-Observed registration outside mainland Cornwall is concentrated in a few areas
-in the east, along the Devon border: the ten areas with the highest shares hold
-`r top10_percent`% of all residents registered outside. Many residents there
-are probably registered with practices just across the border in Devon, which
-the model does not include. The model has one outside weight for every area,
-so it spreads a small outside share everywhere and puts its largest values
-where few GP FTE lie within a short drive. Read the modeled outside share of a
-single area as approximate.
 
 ## When outside counts are known
 
@@ -353,9 +287,8 @@ from `r signif(coef(clm)[["v0"]], 2)` to
 `r signif(coef(clm_known)[["v0"]], 2)`. Without outside counts the fit
 understates registration outside mainland Cornwall. With every outside count
 known, the modeled total matches the observed one. When the outside counts are
-known, as in Cornwall, the fit that uses them is the one to report, and [What
-if a practice closed?](scenario.html) builds on it. The next section keeps
-`clm` only because it compares fits to the same counts.
+known, as in Cornwall, the fit that uses them is the one to report: the next
+section maps it, and [What if a practice closed?](scenario.html) builds on it.
 
 Declare outside counts as known only when demand counts the same people as the
 observations, as here: registrations by residence from one extract and date.
@@ -363,6 +296,84 @@ With a population estimate as demand, the gap between population and list
 sizes would go straight into the outside counts: in mainland Cornwall the lists
 exceed the mid-2024 population estimates by
 `r round(100 * (sum(areas$registered) / sum(areas$pop) - 1), 1)`%.
+
+## The outside option
+
+The `"origins"` table of a result has one row per small area: its `demand`,
+its modeled `outside_share` and `access`, the share of its residents modeled
+at a mainland practice (1 minus the outside share; `check_fit()` reports the
+demand-weighted mean of `access` as `contact`). A fit with outside counts
+known adds `outside_observed`, each area's observed count outside mainland
+Cornwall. The maps set the observed and modeled outside shares of `clm_known`
+side by side.
+
+```{r outside-map, fig.height = 3.5, fig.alt = "Two maps of mainland Cornwall's small areas. Observed: the share of residents registered outside mainland Cornwall is low almost everywhere and highest in a few areas in the north-east and east, along the Devon border. Modeled: a small share everywhere, highest in a few rural areas far from practices, such as in the north-east and at the western tip."}
+# Observed and modeled outside shares by small area, in one long table
+outside <- bind_rows(
+  data.frame(
+    lsoa = known_areas$origin_id,
+    share = known_areas$outside_observed / known_areas$demand,
+    source = "Observed"
+  ),
+  data.frame(
+    lsoa = known_areas$origin_id,
+    share = known_areas$outside_share,
+    source = "Modeled"
+  )
+) |>
+  mutate(source = factor(source, c("Observed", "Modeled")))
+
+# Join to the small-area polygons for mapping
+outside_map <- cornwall_lsoa |>
+  select(lsoa) |>
+  inner_join(outside, by = "lsoa")
+
+ggplot(outside_map) +
+  geom_sf(aes(fill = 100 * share), color = NA) +
+  geom_sf(data = st_union(outside_map), fill = NA, color = "gray20", linewidth = 0.3) +
+  facet_wrap(~source) +
+  scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    trans = "sqrt",
+    name = "Registered\noutside (%)"
+  ) +
+  labs(title = "Share of residents registered outside mainland Cornwall") +
+  theme_void()
+```
+
+```{r outside-values, include = FALSE}
+observed_outside <- sort(known_areas$outside_observed, decreasing = TRUE)
+top10_percent <- round(100 * sum(observed_outside[1:10]) / sum(observed_outside))
+```
+
+Observed registration outside mainland Cornwall is concentrated in a few areas
+in the east, along the Devon border: the ten areas with the most residents
+registered outside hold `r top10_percent`% of them. Many residents there are
+probably registered with practices just across the border in Devon, which the
+model does not include. The model has one outside weight for every area, so it
+spreads a small outside share everywhere and puts its largest values where few
+GP FTE lie within a short drive. Read the modeled outside share of a single
+area as approximate.
+
+`predict()` gives the same outputs for areas that were not fitted, from their
+travel times to the practices and their demand. Run on the fitted areas, it
+returns the outside shares of the `"origins"` table.
+
+```{r predict}
+prediction <- predict(clm_known, travel, demand, outputs = "outside_share")
+prediction
+all.equal(
+  prediction$outputs$outside_share,
+  setNames(known_areas$outside_share, known_areas$origin_id)
+)
+```
+
+The print counts the origins whose values could be computed, here all
+`r length(prediction$outputs$outside_share)`, and gives the range of each
+output. `$outputs` holds the values, named by origin, and `$validity` the
+status of each origin, for example `unknown_travel` for an area with an
+unknown travel time.
 
 ## Without an outside option: the Huff model
 

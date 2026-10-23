@@ -164,15 +164,16 @@ service slots and changes nothing else.
 the model to their totals and records the new estimates. A facility drawn twice
 counts twice in the fit, and one not drawn does not count. Every facility and
 its supply stay in the network: only the weight of each total in the fit
-changes. Each attempt uses its own seed, the given seed plus the attempt number,
-so a run repeats exactly. The function takes the fitted result, the observation,
-the scenario and a seed. `attempts` sets another number of attempts, at least
-199: more make the interval endpoints depend less on the random draws and take
-proportionally longer, while fewer give noisier intervals that tend to be
-narrower. Choose the number and the seed before the run. Runs with the same seed
-share their first attempts, so a larger run is the smaller one with more
-attempts added; changing the number after seeing a result is not part of the
-method.
+changes. Each attempt uses its own seed, the given seed plus the attempt
+number, so a run repeats exactly. The function takes the fitted result, the
+observation, the scenario and a seed.
+
+`attempts` sets another number of attempts, at least 199. More attempts make
+the interval endpoints depend less on the random draws and take proportionally
+longer; fewer give noisier intervals that tend to be narrower. Choose the
+number and the seed before the run. Runs with the same seed share their first
+attempts, so a larger run is the smaller one with more attempts added;
+changing the number after seeing a result is not part of the method.
 
 ```{r paired-bootstrap, eval = rebuild_boot}
 boot <- bootstrap_fit(
@@ -184,8 +185,9 @@ boot <- bootstrap_fit(
 ```
 
 Before the first attempt, `bootstrap_fit()` checks that the original fit is
-usable: converged, with a score close enough to zero, each parameter pinned down
-by the totals and away from the bounds of its search. A model declared with the
+usable: converged, with a score (the slope of the loss at the estimate) close
+enough to zero, each parameter pinned down by the totals and away from the
+bounds of its search. A model declared with the
 step functions works too: give the model and its fit, as in
 `bootstrap_fit(model, fit, observation = observation, seed = 20260930)`.
 
@@ -213,13 +215,8 @@ if (rebuild_boot) {
 # The stored result of the call above, installed with spax
 boot <- readRDS(system.file("extdata", "allocation-bootstrap.rds", package = "spax"))
 
-c(
-  status = boot$status,
-  attempted = boot$attempted,
-  successful = boot$successful,
-  built_with_spax = attr(boot, "spax_version"),
-  running_spax = as.character(packageVersion("spax"))
-)
+boot$status
+c(attempted = boot$attempted, successful = boot$successful)
 ```
 
 ```{r paired-bootstrap-guard, include = FALSE}
@@ -237,9 +234,6 @@ stopifnot(
 ```
 
 All `r boot$attempted` attempts were made and `r boot$successful` succeeded.
-The result was built with spax `r attr(boot, "spax_version")` and is read
-under `r packageVersion("spax")`. Rerunning the call under the running version
-gives the same estimates and intervals.
 
 ## Read the intervals
 
@@ -301,8 +295,10 @@ The intervals follow fixed rules:
   them, rounded up: 380 of 399. It also needs a usable original fit: away from
   the bounds of its search, converged precisely, and with each parameter pinned
   down by the totals.
-- Coverage was studied with 399 attempts. A result with another number says so
-  in a note.
+- Coverage was studied with 399 attempts on generated designs like this one,
+  with Gaussian decay and fitted σ and v0. Other settings, such as another
+  kernel, a fitted supply exponent β or another number of attempts, use the
+  same procedure without a separate study, and their result says so in a note.
 - Each refit starts from the same starting values and search bounds as the
   original fit: the ones you gave, or the ones found from the data when you
   gave none. Facility totals can fit almost as well at quite different travel
@@ -315,17 +311,21 @@ withholds the intervals.
 
 The generated data have a known truth, so the intervals can be set beside it.
 
-```{r bootstrap-truth, fig.width = 7, fig.height = 3.5, fig.alt = "Two interval plots, for sigma and for v0, each showing the point estimate and its bootstrap percentile interval, with the true value as an orange dashed line inside the interval."}
+```{r bootstrap-truth, fig.width = 7, fig.height = 3.5, fig.alt = "Two interval plots, for sigma in minutes and for v0, each showing the point estimate and its bootstrap percentile interval, with the true value as an orange dashed line inside the interval."}
 # Two panels side by side; each adds the true value as a dashed line
 oldpar <- par(mfrow = c(1, 2))
 for (parameter in c("sigma", "v0")) {
-  plot(boot, quantity = parameter, main = paste(parameter, "(dashed line: truth)"))
+  plot(boot,
+    quantity = parameter,
+    main = paste(parameter, "(dashed line: truth)"),
+    xlab = c(sigma = "sigma (minutes)", v0 = "v0")[[parameter]]
+  )
   abline(v = truth[[parameter]], col = "orange", lwd = 2, lty = 2)
 }
 par(oldpar)
 ```
 
-The dot is the estimate and the line its 95% interval, with σ in minutes.
+The dot is the estimate and the line its 95% interval.
 Both intervals contain the true values, shown as dashed lines. The caption
 above each panel says that the run is complete, that the quantity has an
 interval and how many attempts gave a finite value. These are two separate
@@ -341,23 +341,20 @@ methods. `as.data.frame()` gives the estimates, every draw (`type = "draws"`) or
 every start of every attempt
 (`type = "starts"`), failures included. `summary()` and `plot()` read the
 saved values and resample nothing. Save the whole result with `saveRDS()`: it
-keeps the declared observation, units and seed, which a CSV table drops. The
-code below saves the result, reads it back and confirms that the draws are
-unchanged.
+keeps the declared observation, units and seed, which a CSV table drops.
 
 ```{r bootstrap-save}
-# Save the result and read it back
+# A temporary file here; use your own, e.g. "allocation-bootstrap.rds"
 saved <- tempfile(fileext = ".rds")
 saveRDS(boot, saved)
-restored <- readRDS(saved)
+```
 
-# The restored result gives the same draws, with nothing recomputed
-identical(
-  as.data.frame(restored, type = "draws"),
-  as.data.frame(boot, type = "draws")
-)
+```{r bootstrap-save-cleanup, include = FALSE}
 unlink(saved)
 ```
+
+`readRDS(saved)` reads the result back, and its methods work as before, with
+nothing recomputed.
 
 ## Next
 
