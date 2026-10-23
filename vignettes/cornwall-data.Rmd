@@ -417,8 +417,6 @@ The guides start from one of two short recipes, so that all of them model the
 same mainland. Both prepare the data with `prep_data()`, which lines the
 inputs up by ID for `spax()`, the function that runs a model on them.
 
-[]{#a-grid-for-the-fca-indices}
-
 ### A grid, for the accessibility scores
 
 A 2SFCA-family method gives each place an accessibility score: supply per

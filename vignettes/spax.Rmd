@@ -328,5 +328,5 @@ save_spax(e2sfca, "e2sfca")
 - [Where do residents register?](allocation-workflow.html): model which
   practice the residents of each area register with, and estimate the travel
   scale from those registrations instead of choosing it.
-- [An accessibility score or an allocation model?](model-choice.html): choose
+- [A 2SFCA accessibility score or an allocation model?](model-choice.html): choose
   between the two for your question.

@@ -173,7 +173,7 @@ built the guides. If it finds nothing, use the website.
 | How fine a grid do I need, and at what cost? | [Grid resolution and computational cost](https://songyosr.github.io/spax/articles/grid-resolution.html) | `"grid-resolution"` |
 | Where do residents register? | [Fitting an allocation model](https://songyosr.github.io/spax/articles/allocation-workflow.html) | `"allocation-workflow"` |
 | What if a practice closed? | [What if a practice closed?](https://songyosr.github.io/spax/articles/scenario.html) | `"scenario"` |
-| Should I use an accessibility score or an allocation model? | [An accessibility score or an allocation model?](https://songyosr.github.io/spax/articles/model-choice.html) | `"model-choice"` |
+| Should I use an accessibility score or an allocation model? | [A 2SFCA accessibility score or an allocation model?](https://songyosr.github.io/spax/articles/model-choice.html) | `"model-choice"` |
 | How do I use my own decay, raster data or grid maps? | [Extending the model](https://songyosr.github.io/spax/articles/extending.html) | `"extending"` |
 | How sure are the estimates? | [Bootstrap intervals](https://songyosr.github.io/spax/articles/facility-bootstrap.html) | `"facility-bootstrap"` |
 | What do the results mean, and not mean? | [Reading results](https://songyosr.github.io/spax/articles/reading-results.html) | `"reading-results"` |
