@@ -310,17 +310,17 @@ fit
 #> starts: default search, 45 of 45 grid points, loss poisson
 #> loss disagreement: FALSE; parameter disagreement: FALSE
 #>  start     loss eligible optim_convergence solver_converged residual seconds
-#>  scan1 -1200843     TRUE                 0             TRUE        0   0.017
-#>  scan2 -1200843     TRUE                 0             TRUE        0   0.029
-#>  scan3 -1200843     TRUE                 0             TRUE        0   0.025
+#>  scan1 -1200843     TRUE                 0             TRUE        0   0.036
+#>  scan2 -1200843     TRUE                 0             TRUE        0   0.060
+#>  scan3 -1200843     TRUE                 0             TRUE        0   0.043
 #>  boundary   status                                    optim_message
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
 #>     FALSE eligible CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
 #>  solver_message log_parameter_gap     loss_gap
 #>       converged      0.000000e+00 0.000000e+00
-#>       converged      8.566946e-07 0.000000e+00
-#>       converged      6.215664e-06 1.164153e-09
+#>       converged      8.513597e-07 0.000000e+00
+#>       converged      6.201278e-06 1.164153e-09
 coef(fit)
 #>     sigma        v0 
 #> 13.223212  1.001842 

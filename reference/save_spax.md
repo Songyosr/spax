@@ -65,8 +65,8 @@ result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
 path <- tempfile("cornwall_e2sfca")
 save_spax(result, path)
 basename(list.files(dirname(path), pattern = basename(path)))
-#> [1] "cornwall_e2sfca1ce98845704_accessibility.tif"
-#> [2] "cornwall_e2sfca1ce98845704_spax.rds"         
+#> [1] "cornwall_e2sfca1d915d79961_accessibility.tif"
+#> [2] "cornwall_e2sfca1d915d79961_spax.rds"         
 
 # Read it back, then remove the files
 read_spax(path)

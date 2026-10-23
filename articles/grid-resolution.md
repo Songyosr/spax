@@ -203,10 +203,10 @@ comparison
 
 ``` spax-output
   factor cell_km2 cells seconds mean_per_1000 median_change_pct mean_change_pct
-1    0.5     0.14 27648   0.423         0.575               0.0             0.0
-2    1.0     0.55  6912   0.043         0.575               0.0             0.0
-3    2.0     2.20  1829   0.009         0.575               1.8             1.4
-4    4.0     8.79   506   0.006         0.575               3.3             2.5
+1    0.5     0.14 27648   0.528         0.575               0.0             0.0
+2    1.0     0.55  6912   0.069         0.575               0.0             0.0
+3    2.0     2.20  1829   0.015         0.575               1.8             1.4
+4    4.0     8.79   506   0.011         0.575               3.3             2.5
 ```
 
 `cells` counts the populated cells, and `cell_km2` is their mean area in
@@ -224,9 +224,9 @@ weights. That identity says nothing about local accuracy.
 What changes:
 
 - **Finer cells (factor 0.5)** give 4 times as many populated cells and
-  take 9.8 times as long, yet reproduce the native surface exactly (a
+  take 7.7 times as long, yet reproduce the native surface exactly (a
   change of 0%): no information was added.
-- **Coarser cells** are cheaper: the 4 x 4 grid runs 7.2 times as fast
+- **Coarser cells** are cheaper: the 4 x 4 grid runs 6.3 times as fast
   as the native one, though on a grid this small every run takes a
   fraction of a second. The local pattern changes by 1.4% to 2.5% for
   the average resident. A 10-minute decay is wide compared with cells of

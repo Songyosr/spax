@@ -79,7 +79,7 @@
       <h1>Grid resolution and computational cost</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/main/vignettes/grid-resolution.Rmd" class="external-link"><code>vignettes/grid-resolution.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Songyosr/spax/blob/v0.7.0/vignettes/grid-resolution.Rmd" class="external-link"><code>vignettes/grid-resolution.Rmd</code></a></small>
       <div class="d-none name"><code>grid-resolution.Rmd</code></div>
     </div>
 
@@ -257,10 +257,10 @@ compare cell by cell, weighting by native residents.</p>
 <span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">factors</span><span class="op">)</span>, <span class="va">summary_row</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">comparison</span></span></code></pre></div>
 <pre class="spax-output"><code>  factor cell_km2 cells seconds mean_per_1000 median_change_pct mean_change_pct
-1    0.5     0.14 27648   0.423         0.575               0.0             0.0
-2    1.0     0.55  6912   0.043         0.575               0.0             0.0
-3    2.0     2.20  1829   0.009         0.575               1.8             1.4
-4    4.0     8.79   506   0.006         0.575               3.3             2.5</code></pre>
+1    0.5     0.14 27648   0.528         0.575               0.0             0.0
+2    1.0     0.55  6912   0.069         0.575               0.0             0.0
+3    2.0     2.20  1829   0.015         0.575               1.8             1.4
+4    4.0     8.79   506   0.011         0.575               3.3             2.5</code></pre>
 <p><code>cells</code> counts the populated cells, and
 <code>cell_km2</code> is their mean area in square kilometers. The
 native cells are 30 arc-seconds, often called 1 km: about 0.93 km north
@@ -277,10 +277,10 @@ about local accuracy.</p>
 <ul>
 <li>
 <strong>Finer cells (factor 0.5)</strong> give 4 times as many
-populated cells and take 9.8 times as long, yet reproduce the native
+populated cells and take 7.7 times as long, yet reproduce the native
 surface exactly (a change of 0%): no information was added.</li>
 <li>
-<strong>Coarser cells</strong> are cheaper: the 4 x 4 grid runs 7.2
+<strong>Coarser cells</strong> are cheaper: the 4 x 4 grid runs 6.3
 times as fast as the native one, though on a grid this small every run
 takes a fraction of a second. The local pattern changes by 1.4% to 2.5%
 for the average resident. A 10-minute decay is wide compared with cells
