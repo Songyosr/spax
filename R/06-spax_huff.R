@@ -13,7 +13,7 @@
 #' global scale on `a` cancels when `v0 = 0`. With a positive outside option,
 #' scaling attractiveness changes the inside/outside balance unless `v0` is
 #' scaled by the same factor.
-#' @keywords internal
+#' @noRd
 .huff_attractiveness <- function(supply, kappa = 1, beta = 1) {
   .chck_numeric_vector(supply, "supply")
   .chck_positive_scalar(kappa, "kappa")
@@ -35,7 +35,7 @@
 #' A zero denominator (no opportunity and no outside option) yields zero
 #' inside and outside shares. The returned `target` is the exogenous
 #' attractiveness, so the map `T(x) = a` is state-independent.
-#' @keywords internal
+#' @noRd
 # Keep the arithmetic in step with .huff_state_lean(), which must stay bit-identical.
 .huff_state <- function(a, plan, v0 = 0,
                         allocation = c("clm", "huff_decay")) {
@@ -44,7 +44,7 @@
   .chck_nonnegative_scalar(v0, "v0")
   a <- .coerce_numeric_vector(a)
   if (length(a) != ncol(plan$Kd_active)) {
-    stop("`a` must have one element per facility")
+    .stop("`a` must have one element per facility")
   }
   v0 <- as.numeric(v0)
 
@@ -78,13 +78,13 @@
 #' the call. `keep` names the count outputs to keep (`"flow"`, `"flow_outside"`),
 #' computed with the expressions of the bind's `outputs_requested`.
 #' @param demand Active demand, for the count outputs.
-#' @keywords internal
+#' @noRd
 .huff_state_lean <- function(a, plan, v0 = 0, keep = character(), demand = NULL) {
   .chck_numeric_vector(a, "a")
   .chck_nonnegative_scalar(v0, "v0")
   a <- .coerce_numeric_vector(a)
   if (length(a) != ncol(plan$Kd_active)) {
-    stop("`a` must have one element per facility")
+    .stop("`a` must have one element per facility")
   }
   v0 <- as.numeric(v0)
 
@@ -137,20 +137,20 @@
 #' @param D_groups Demand by origin (rows) and group (columns), nonnegative with
 #'   a positive total on every row.
 #' @param v0 Outside-option weight of each group.
-#' @keywords internal
+#' @noRd
 # Keep the arithmetic in step with .clm_group_state_lean(), which must stay bit-identical.
 .clm_group_state <- function(a, kernels, D_groups, v0) {
   groups <- colnames(D_groups)
   G <- ncol(D_groups)
   if (length(kernels) != G || length(v0) != G) {
-    stop("`kernels` and `v0` must have one element per group")
+    .stop("`kernels` and `v0` must have one element per group")
   }
   K1 <- kernels[[1L]]
   if (length(a) != ncol(K1) || nrow(D_groups) != nrow(K1)) {
-    stop("`a` and `D_groups` must match the weights by facility and origin")
+    .stop("`a` and `D_groups` must match the weights by facility and origin")
   }
   v0 <- as.numeric(v0)
-  if (anyNA(v0) || any(v0 < 0)) stop("`v0` must be nonnegative")
+  if (anyNA(v0) || any(v0 < 0)) .stop("`v0` must be nonnegative")
   D <- rowSums(D_groups)
   weight <- D_groups * ifelse(D > 0, 1 / D, 0)
   pooled <- matrix(0, nrow(K1), ncol(K1), dimnames = dimnames(K1))
@@ -187,20 +187,20 @@
 #' The same arithmetic in the same order, returning the vectors, the by-group
 #' outputs (origin or facility by group) and the requested count matrices, but
 #' no pooled allocation matrix. See `.huff_state_lean()`.
-#' @keywords internal
+#' @noRd
 .clm_group_state_lean <- function(a, kernels, D_groups, v0, keep = character(),
                                   demand = NULL) {
   groups <- colnames(D_groups)
   G <- ncol(D_groups)
   if (length(kernels) != G || length(v0) != G) {
-    stop("`kernels` and `v0` must have one element per group")
+    .stop("`kernels` and `v0` must have one element per group")
   }
   K1 <- kernels[[1L]]
   if (length(a) != ncol(K1) || nrow(D_groups) != nrow(K1)) {
-    stop("`a` and `D_groups` must match the weights by facility and origin")
+    .stop("`a` and `D_groups` must match the weights by facility and origin")
   }
   v0 <- as.numeric(v0)
-  if (anyNA(v0) || any(v0 < 0)) stop("`v0` must be nonnegative")
+  if (anyNA(v0) || any(v0 < 0)) .stop("`v0` must be nonnegative")
   D <- rowSums(D_groups)
   weight <- D_groups * ifelse(D > 0, 1 / D, 0)
   pooled <- matrix(0, nrow(K1), ncol(K1), dimnames = dimnames(K1))

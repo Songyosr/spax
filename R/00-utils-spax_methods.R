@@ -39,6 +39,14 @@
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
+#' @examples
+#' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice", supply_cols = "gp_fte_extg")
+#' print(result)
 #' @export
 print.spax <- function(x, ...) {
   # Header: the type, the layers and the grid
@@ -101,7 +109,7 @@ print.spax <- function(x, ...) {
 #' Provides detailed statistical summaries of accessibility analysis results,
 #' including accessibility scores, facility statistics, and model-specific metrics.
 #'
-#' @param x A spax object created by an FCA function, such as
+#' @param object A spax object created by an FCA function, such as
 #'   \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
 #'   \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}
 #' @param quantiles Numeric vector of probabilities for quantile computation
@@ -111,11 +119,27 @@ print.spax <- function(x, ...) {
 #'   counts the cells with a value (\code{cells_total}; cells outside the study area,
 #'   such as sea, are missing and excluded) and the cells whose accessibility is
 #'   above zero (\code{cells_covered}), with their \code{proportion}.
+#' @examples
+#' # E2SFCA on the Cornwall population grid for two supply measures: GPs
+#' # excluding GPs in training, and all GPs
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice",
+#'                       supply_cols = c("gp_fte_extg", "gp_fte"))
+#' summary(result)
+#'
+#' # Deciles instead of quartiles, and the coverage of the first measure: the
+#' # cells with a value, and those with access above zero
+#' s <- summary(result, quantiles = seq(0, 1, by = 0.1))
+#' s$accessibility$gp_fte_extg$quantiles
+#' s$accessibility$gp_fte_extg$coverage
 #' @exportS3Method base::summary
-summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
+summary.spax <- function(object, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
   # Calculate accessibility statistics
-  acc_stats <- lapply(1:nlyr(x$accessibility), function(i) {
-    layer <- x$accessibility[[i]]
+  acc_stats <- lapply(1:nlyr(object$accessibility), function(i) {
+    layer <- object$accessibility[[i]]
     values <- terra::values(layer)
 
     # Basic statistics
@@ -133,7 +157,7 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
 
     # Combine into named list
     list(
-      name = names(x$accessibility)[i],
+      name = names(object$accessibility)[i],
       min = stats$min,
       max = stats$max,
       mean = stats$mean,
@@ -147,20 +171,20 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
       )
     )
   })
-  names(acc_stats) <- names(x$accessibility)
+  names(acc_stats) <- names(object$accessibility)
 
   # Calculate facility statistics
   fac_stats <- NULL
-  if (!is.null(x$facilities)) {
+  if (!is.null(object$facilities)) {
     fac_stats <- list(
-      count = nrow(x$facilities)
+      count = nrow(object$facilities)
     )
 
     # Supply statistics if present
-    supply_cols <- setdiff(names(x$facilities), "id")
+    supply_cols <- setdiff(names(object$facilities), "id")
     if (length(supply_cols) > 0) {
       fac_stats$supply <- lapply(supply_cols, function(col) {
-        values <- x$facilities[[col]]
+        values <- object$facilities[[col]]
         list(
           name = col,
           min = min(values, na.rm = TRUE),
@@ -179,8 +203,8 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
     accessibility = acc_stats,
     facilities = fac_stats,
     model_specific = NULL,
-    type = x$type,
-    parameters = x$parameters
+    type = object$type,
+    parameters = object$parameters
   )
 }
 
@@ -197,6 +221,16 @@ summary.spax <- function(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...) {
 #' @param ... Currently ignored, for extensibility
 #'
 #' @return Invisibly returns the input object
+#' @examples
+#' # E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+#'                       decay_params = list(method = "gaussian", sigma = 10),
+#'                       id_col = "practice", supply_cols = "gp_fte_extg")
+#'
+#' # The summary, to three significant digits
+#' print(summary(result), digits = 3)
 #' @export
 print.summary.spax <- function(x, digits = 4, ...) {
   # Format numbers with consistent precision
@@ -332,6 +366,7 @@ print.summary.spax <- function(x, digits = 4, ...) {
 #' # Plot single layer by name
 #' plot(result, y = "gp_fte_extg", main = "Access to GPs")
 #' @exportS3Method graphics::plot
+#' @md
 plot.spax <- function(x, ...) {
   plot(x$accessibility, ...)
 }

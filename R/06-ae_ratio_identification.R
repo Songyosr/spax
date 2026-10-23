@@ -31,7 +31,7 @@
 #' @return A data frame with one row per model: parameters, number of fitted
 #'   parameters `k`, Poisson `loss`, `converged`, `gain` over the static fit and
 #'   `share_of_free_gain`, with the interpretation as attribute `note`.
-#' @keywords internal
+#' @noRd
 #' @md
 .ratio_identification <- function(inputs, observed, starts, lower, upper,
                                   gamma_upper = 5, b_upper = 3,
@@ -41,17 +41,17 @@
   ids <- list(inputs$origin_ids, inputs$facility_ids)
   if (!is.matrix(observed) || !identical(dimnames(observed), ids) ||
       anyNA(observed) || any(observed < 0)) {
-    stop("observed must be a complete nonnegative flow matrix with the prepared IDs")
+    .stop("observed must be a complete nonnegative flow matrix with the prepared IDs")
   }
   if (!identical(sort(names(lower)), c("sigma", "v0")) ||
       !identical(sort(names(upper)), c("sigma", "v0"))) {
-    stop("lower and upper must be named sigma and v0")
+    .stop("lower and upper must be named sigma and v0")
   }
   if (!is.matrix(starts) || !identical(colnames(starts), c("sigma", "v0"))) {
-    stop("starts must be a matrix with columns sigma and v0")
+    .stop("starts must be a matrix with columns sigma and v0")
   }
   if (!identical(inputs$active_travel_status, rep("known", length(ids[[1]])))) {
-    stop("ratio identification requires known travel for every active origin")
+    .stop("ratio identification requires known travel for every active origin")
   }
 
   rbar <- sum(inputs$S) / sum(inputs$D_active)
@@ -77,7 +77,7 @@
       bounds_lo[pars], bounds_hi[pars], output = "flow", loss = .poisson_loss,
       loss_grad = .poisson_gradient, loss_args = list(eps = 1e-250), gradient = TRUE,
       control = list(maxit = 500)), solve_control))
-    if (is.null(fit$best)) stop(sprintf("no eligible fit for the %s model", name))
+    if (is.null(fit$best)) .stop(sprintf("no eligible fit for the %s model", name))
     th <- fit$best$theta
     data.frame(model = name, k = length(pars), loss = fit$best$loss,
       sigma = th[["sigma"]], v0 = th[["v0"]],

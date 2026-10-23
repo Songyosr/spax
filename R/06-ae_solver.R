@@ -4,19 +4,19 @@
 #'
 #' Solves `x = map(x, ...)` by iterating
 #' `x_next = (1 - lambda) * x + lambda * map(x, ...)`.
-#' @keywords internal
+#' @noRd
 solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
                               max_iter = 1000, norm = c("max", "l2"),
                               keep_history = TRUE, warn = TRUE,
                               check = TRUE, keep_state_history = FALSE, ...) {
   if (!is.function(map)) {
-    stop("`map` must be a function")
+    .stop("`map` must be a function")
   }
   .chck_numeric_vector(x0, "x0")
   x <- .coerce_numeric_vector(x0)
   .chck_positive_scalar(lambda, "lambda")
   if (lambda > 1) {
-    stop("`lambda` must be <= 1")
+    .stop("`lambda` must be <= 1")
   }
   .chck_positive_scalar(tol, "tol")
   .chck_positive_integer(max_iter, "max_iter")
@@ -96,11 +96,11 @@ solve_equilibrium <- function(map, x0, lambda = 1, tol = 1e-8,
 }
 
 #' Spectral radius of a square Jacobian
-#' @keywords internal
+#' @noRd
 spectral_radius <- function(jac) {
   jac <- as.matrix(jac)
   if (nrow(jac) != ncol(jac)) {
-    stop("`jac` must be square")
+    .stop("`jac` must be square")
   }
   max(Mod(eigen(jac, only.values = TRUE)$values))
 }
@@ -126,14 +126,14 @@ spectral_radius <- function(jac) {
 #' @param lazy_f0 If `TRUE`, `fn(x)` is evaluated (and checked as usual) only
 #'   when a coordinate needs a one-sided or room step; the result is identical.
 #'   An invalid `fn(x)` is then detected only when it is used.
-#' @keywords internal
+#' @noRd
 #' @md
 fd_jacobian <- function(fn, x, ..., eps = 1e-6,
                         method = c("central", "forward"),
                         check = TRUE, lower = -Inf, upper = Inf,
                         lazy_f0 = FALSE) {
   if (!is.function(fn)) {
-    stop("`fn` must be a function")
+    .stop("`fn` must be a function")
   }
   .chck_numeric_vector(x, "x")
   .chck_positive_scalar(eps, "eps")
@@ -144,7 +144,7 @@ fd_jacobian <- function(fn, x, ..., eps = 1e-6,
   lower <- .fd_bound(lower, "lower", n_in)
   upper <- .fd_bound(upper, "upper", n_in)
   if (any(lower > upper)) {
-    stop("`lower` must not exceed `upper`")
+    .stop("`lower` must not exceed `upper`")
   }
 
   f0 <- NULL
@@ -211,14 +211,14 @@ fd_jacobian <- function(fn, x, ..., eps = 1e-6,
 .fd_bound <- function(bound, name, n) {
   if (!is.numeric(bound) || anyNA(bound) || !length(bound) ||
       !length(bound) %in% unique(c(1L, n))) {
-    stop("`", name, "` must be numeric without missing values, ",
+    .stop("`", name, "` must be numeric without missing values, ",
          "of length one or the length of `x`")
   }
   rep_len(as.numeric(bound), n)
 }
 
 #' Finite-difference state Jacobian dT/dx
-#' @keywords internal
+#' @noRd
 fd_jacobian_state <- function(map, x, ..., eps = 1e-6,
                               method = c("central", "forward"),
                               check = TRUE) {
@@ -238,7 +238,7 @@ fd_jacobian_state <- function(map, x, ..., eps = 1e-6,
   .chck_numeric_vector(value, "map result")
   value <- .coerce_numeric_vector(value)
   if (length(value) != length(x)) {
-    stop("`map` must return a numeric vector with the same length as `x0`")
+    .stop("`map` must return a numeric vector with the same length as `x0`")
   }
   value
 }

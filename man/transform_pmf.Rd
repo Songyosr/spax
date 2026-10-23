@@ -13,27 +13,27 @@ transform_pmf(
 )
 }
 \arguments{
-\item{x}{A `SpatRaster` containing values to normalise, or a `SpatVector`
+\item{x}{A \code{SpatRaster} containing values to normalise, or a \code{SpatVector}
 whose attribute values will be rasterised.}
 
-\item{value_col}{Character name of the attribute column to use when `x` is a
-`SpatVector`. Ignored for raster inputs.}
+\item{value_col}{Character name of the attribute column to use when \code{x} is a
+\code{SpatVector}. Ignored for raster inputs.}
 
-\item{template}{`SpatRaster` providing geometry for rasterising vector
-inputs. Required when `x` is a `SpatVector`.}
+\item{template}{\code{SpatRaster} providing geometry for rasterising vector
+inputs. Required when \code{x} is a \code{SpatVector}.}
 
-\item{return_total}{Logical; when `TRUE`, return both the PMF raster and the
-total sum of the input values. Default is `FALSE`.}
+\item{return_total}{Logical; when \code{TRUE}, return both the PMF raster and the
+total sum of the input values. Default is \code{FALSE}.}
 
-\item{snap}{Logical; skip validation checks when `TRUE`. Default is `FALSE`.}
+\item{snap}{Logical; skip validation checks when \code{TRUE}. Default is \code{FALSE}.}
 }
 \value{
-If `return_total = FALSE`, returns a `SpatRaster` whose cells sum to
-  1 in each layer. If `return_total = TRUE`, returns a list with components:
-  \describe{
-    \item{pmf}{`SpatRaster` of probabilities}
-    \item{total}{Numeric total of the original values, one per layer}
-  }
+If \code{return_total = FALSE}, returns a \code{SpatRaster} whose cells sum to
+1 in each layer. If \code{return_total = TRUE}, returns a list with components:
+\describe{
+\item{pmf}{\code{SpatRaster} of probabilities}
+\item{total}{Numeric total of the original values, one per layer}
+}
 }
 \description{
 Converts raster or vector inputs into a probability mass function where all

@@ -1,7 +1,7 @@
 # SPAX-061 T3: lean model evaluations inside the optimizer and the scan.
 
 .lean_case <- function(n = 40L, m = 6L, groups = FALSE) {
-  set.seed(61)
+  local_test_seed(61)
   ids <- paste0("o", seq_len(n))
   travel <- matrix(runif(n * m, 1, 20), n, m,
                    dimnames = list(ids, paste0("f", seq_len(m))))
@@ -49,6 +49,8 @@ test_that("a lean bind gives identical vectors and counts to the full bind", {
 })
 
 test_that("a lean step keeps no matrix-sized object in its frame", {
+  # Memory accounting can shift with R internals; skipped in CRAN checks
+  skip_on_cran()
   case <- .lean_case(n = 3000L, m = 60L)
   model <- clm_allocation(case$inputs, fit_v0 = TRUE)
   theta <- c(sigma = 3, v0 = 10)

@@ -81,3 +81,29 @@ Bootstrap tables contain saved point/interval estimates, every attempted draw,
 or every attempted start. Failed draws, inner boundaries and refusal statuses
 are retained. Extraction neither creates intervals nor changes eligibility.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# A fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+model <- clm_allocation(inputs, fit_v0 = TRUE)
+fit <- fit_allocation(model, totals, loss = "poisson")
+as.data.frame(fit)
+
+# Coverage at the estimates: for the region, by small area, and by the
+# rural-urban class of the small areas
+coverage <- evaluate_allocation(model, coef(fit))$coverage
+as.data.frame(coverage)
+head(as.data.frame(coverage, type = "cells"))
+zones <- data.frame(origin_id = areas$lsoa, zone = areas$ruc21)
+as.data.frame(coverage, type = "zones", zones = zones)
+}

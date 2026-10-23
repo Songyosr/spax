@@ -16,7 +16,7 @@ check_allocation(model, fit, trip_breaks = c(30, 60, 120))
 \method{as.data.frame}{ae_allocation_check}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{model}{The corrected CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
+\item{model}{The CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
 result of \code{\link[=spax]{spax()}} that fitted a model; the result supplies its bound model
 and its fit, so leave \code{fit} out. A result that was evaluated at given values
 has no fit and is refused, and so is an FCA index (a result of \code{\link[=spax]{spax()}} with an
@@ -94,6 +94,33 @@ prepared travel times. Flows on absent edges (possible only for
 longer than each break are among flows on reachable edges, and the absent
 share is reported separately. To see how the fit depends on a catchment limit, prepare the inputs
 again with travel beyond the limit set to \code{Inf}, refit, and check each fit.
+}
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice),
+               cornwall_travel[areas$lsoa, gp$practice],
+               metadata = list(travel_units = "minutes"))
+
+# Fit to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+clm <- spax(d, spec_clm(), observed = totals)
+
+# The fit against no decay and against capacity shares alone, with the
+# shares of trips longer than 10 and 20 minutes
+check <- check_fit(clm, trip_breaks = c(10, 20))
+check
+as.data.frame(check)[, c("comparator", "parameters", "trips_over_10",
+                         "trips_over_20")]
+
+# The same check from a model and its fit
+check_allocation(clm$model, clm$fit)
 }
 \seealso{
 Other allocation steps: 

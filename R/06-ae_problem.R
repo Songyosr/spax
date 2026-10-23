@@ -8,7 +8,7 @@
 #'
 #' Single source of truth for the sigma validity bounds. Both the bind closure
 #' and the problem object read this, so the contract cannot drift between them.
-#' @keywords internal
+#' @noRd
 #' @md
 .decay_theta_contract <- function() {
   list(names = "sigma", lower = 0, upper = Inf)
@@ -19,15 +19,15 @@
 #' Every bound step's `outputs(x)` must expose `target` and `utilization` so
 #' runners and loss functions can bind to known quantities without defensive
 #' NULL checks.
-#' @keywords internal
+#' @noRd
 #' @md
 .validate_ae_outputs <- function(outputs) {
   if (!is.list(outputs)) {
-    stop("AE outputs must be a list")
+    .stop("AE outputs must be a list")
   }
   missing <- setdiff(c("target", "utilization"), names(outputs))
   if (length(missing) > 0) {
-    stop("AE outputs must include: ", paste(missing, collapse = ", "))
+    .stop("AE outputs must include: ", paste(missing, collapse = ", "))
   }
   outputs
 }
@@ -36,7 +36,7 @@
 #'
 #' A boundary optimum usually means the search box, not the model, picked the
 #' answer. `par` is the optimized value on the log scale (matching the optimizer).
-#' @keywords internal
+#' @noRd
 #' @md
 .warn_search_boundary <- function(par, lower, upper, name = "parameter") {
   par <- as.numeric(par)
@@ -68,7 +68,7 @@
 #' not change the fitting support policy or evaluate omitted prediction cells.
 #' The shared finalizer records this raster route's legacy missing-edge policy
 #' and stores plain template geometry plus cell mapping for safe serialization.
-#' @keywords internal
+#' @noRd
 #' @md
 .interaction_substrate <- function(demand, supply, distance,
                                    id_col = NULL, supply_cols = NULL) {
@@ -80,7 +80,7 @@
                                     weight_ids = ids)
   D <- terra::values(demand, mat = TRUE)
   if (ncol(D) != 1L) {
-    stop("AE problems currently support one demand layer")
+    .stop("AE problems currently support one demand layer")
   }
   keep <- which(is.finite(D[, 1]) & D[, 1] > 0)
   Dist0 <- if (!length(keep)) {
@@ -99,7 +99,7 @@
 }
 
 #' Construct an SAE model spec
-#' @keywords internal
+#' @noRd
 #' @md
 .sae_spec <- function(family = c("gaussian", "exponential", "power"),
                       kappa = 1, beta = 20, eps = 1e-8) {
@@ -123,7 +123,7 @@
 }
 
 #' Construct an HAAE model spec
-#' @keywords internal
+#' @noRd
 #' @md
 .haae_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, eps = 1e-8, a_min = 1e-6,
@@ -161,7 +161,7 @@
 #' @param fit_v0,fit_beta Whether `v0` and `beta` are fitted parameters.
 #' @param sigma_lower,sigma_upper Inclusive bounds of `sigma`; the declaration's
 #'   `lower` and `upper` for a declared decay kernel.
-#' @keywords internal
+#' @noRd
 #' @md
 .huff_theta_contract <- function(fit_v0 = FALSE, fit_beta = FALSE,
                                  sigma_lower = 0, sigma_upper = Inf) {
@@ -197,7 +197,7 @@
 #'   declaration (see [decay_kernel()]). The declaration then names the family,
 #'   its bounds become the bounds of `sigma`, and the spec carries it as
 #'   `spec$kernel`; built-in specs have no `kernel` element.
-#' @keywords internal
+#' @noRd
 #' @md
 .huff_spec <- function(family = c("gaussian", "exponential", "power"),
                        kappa = 1, beta = 1, v0 = 0,
@@ -220,7 +220,7 @@
   }
   if (!is.logical(fit_v0) || length(fit_v0) != 1L || is.na(fit_v0) ||
       !is.logical(fit_beta) || length(fit_beta) != 1L || is.na(fit_beta)) {
-    stop("`fit_v0` and `fit_beta` must be TRUE or FALSE")
+    .stop("`fit_v0` and `fit_beta` must be TRUE or FALSE")
   }
   spec <- list(
     model = "huff",
@@ -307,7 +307,7 @@
 #' extra `group` field gives the group of each parameter (`NA` when shared).
 #' @param spec A grouped spec with `groups`, `by_group`, `families`, `fixed`,
 #'   `fit_v0` and `fit_beta`.
-#' @keywords internal
+#' @noRd
 #' @md
 .huff_group_theta_contract <- function(spec) {
   groups <- spec$groups
@@ -454,11 +454,11 @@
 }
 
 #' Create an AE inner problem object
-#' @keywords internal
+#' @noRd
 #' @md
 .new_problem <- function(model, substrate, state, theta, bind, metadata = list()) {
   if (!is.function(bind)) {
-    stop("`bind` must be a function")
+    .stop("`bind` must be a function")
   }
   structure(
     list(
@@ -474,17 +474,17 @@
 }
 
 #' Compile a model spec and substrate into problem closures
-#' @keywords internal
+#' @noRd
 #' @md
 .compile_ae_map <- function(spec, substrate) {
   if (!is.list(spec) || is.null(spec$model)) {
-    stop("`spec` must be a model spec")
+    .stop("`spec` must be a model spec")
   }
   switch(spec$model,
     "sae" = .compile_sae_map(spec, substrate),
     "haae" = .compile_haae_map(spec, substrate),
     "huff" = .compile_huff_map(spec, substrate),
-    stop("unsupported AE model spec")
+    .stop("unsupported AE model spec")
   )
 }
 
@@ -492,7 +492,7 @@
 #'
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
-#' @keywords internal
+#' @noRd
 #' @md
 .sae_problem <- function(demand, supply = NULL, distance = NULL,
                          family = c("gaussian", "exponential", "power"),
@@ -502,7 +502,7 @@
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
-    stop("SAE currently supports one supply measure")
+    .stop("SAE currently supports one supply measure")
   }
   .refuse_grouped_substrate("SAE", substrate)
   spec <- .sae_spec(family = family, kappa = kappa, beta = beta, eps = eps)
@@ -527,7 +527,7 @@
 #'
 #' `demand` can be checked `.prepare_allocation()` output; in that case omit raw
 #' `supply`, `distance` and supply selectors. Raster arguments remain compatible.
-#' @keywords internal
+#' @noRd
 #' @md
 .haae_problem <- function(demand, supply = NULL, distance = NULL,
                           family = c("gaussian", "exponential", "power"),
@@ -538,7 +538,7 @@
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
-    stop("HAAE currently supports one supply measure")
+    .stop("HAAE currently supports one supply measure")
   }
   .refuse_grouped_substrate("HAAE", substrate)
   spec <- .haae_spec(family = family, kappa = kappa, eps = eps,
@@ -572,7 +572,7 @@
 #'   declaration passed on to `.huff_spec()`.
 #' @param grouped `NULL`, or the grouped arguments of `.clm_group_args()` for
 #'   prepared inputs with demand groups.
-#' @keywords internal
+#' @noRd
 #' @md
 .huff_problem <- function(demand, supply = NULL, distance = NULL,
                           family = c("gaussian", "exponential", "power"),
@@ -585,13 +585,13 @@
     demand, supply, distance, id_col = id_col, supply_cols = supply_cols
   )
   if (ncol(substrate$S) != 1L) {
-    stop("static Huff currently supports one supply measure")
+    .stop("static Huff currently supports one supply measure")
   }
   if (identical(match.arg(allocation), "huff_decay")) {
     .refuse_grouped_substrate("the huff_decay allocation", substrate)
   }
   if (is.null(grouped) && !is.null(substrate$group_ids)) {
-    stop("prepared inputs with demand groups need clm_allocation()")
+    .stop("prepared inputs with demand groups need clm_allocation()")
   }
   spec <- .huff_spec(family = family, kappa = kappa, beta = beta, v0 = v0,
                      fit_v0 = fit_v0, fit_beta = fit_beta,
@@ -716,7 +716,7 @@
   D_groups <- substrate$D_groups
   if (is.null(D_groups) || !identical(colnames(D_groups), groups) ||
       !identical(names(substrate$distance_groups), groups)) {
-    stop("a grouped model needs prepared inputs with the same demand groups")
+    .stop("a grouped model needs prepared inputs with the same demand groups")
   }
   info <- lapply(groups, function(g) {
     f <- spec$families[[g]]
@@ -983,7 +983,7 @@
 #' partial derivative with respect to state is zero for every valid state and
 #' theta. Only these outputs bypass implicit state differentiation; the promise
 #' is the provider's responsibility and is never inferred from a model name.
-#' @keywords internal
+#' @noRd
 #' @md
 .bind_theta <- function(problem, theta, keep = NULL) {
   .chck_class(problem, "ae_problem", "problem")
@@ -995,10 +995,10 @@
     problem$bind(theta)
   }
   if (!is.function(bound$map)) {
-    stop("bound AE step must provide a `map` function")
+    .stop("bound AE step must provide a `map` function")
   }
   if (!is.function(bound[["outputs", exact = TRUE]])) {
-    stop("bound AE step must provide an `outputs` function")
+    .stop("bound AE step must provide an `outputs` function")
   }
   .validate_output_capabilities(bound, problem$metadata$spec$output_axes)
   structure(bound, class = c("ae_bound_step", paste0(problem$model, "_bound_step")))
@@ -1007,7 +1007,7 @@
 #' Evaluate rich outputs for a problem at arbitrary theta and state
 #' @param requested_outputs Optional output names to materialize. `NULL` keeps
 #'   the provider's existing default outputs.
-#' @keywords internal
+#' @noRd
 #' @md
 .problem_outputs_at <- function(problem, theta, state, requested_outputs = NULL) {
   .chck_class(problem, "ae_problem", "problem")
@@ -1018,24 +1018,24 @@
 }
 
 #' List model outputs that can be rewrapped onto the demand-cell surface
-#' @keywords internal
+#' @noRd
 #' @md
 .problem_available_surfaces <- function(problem, outputs) {
   .chck_class(problem, "ae_problem", "problem")
   if (!is.list(outputs)) {
-    stop("`outputs` must be a list")
+    .stop("`outputs` must be a list")
   }
   active_n <- length(problem$substrate$demand_kept_index)
   .surface_output_names(outputs, active_n, problem$metadata$spec$output_axes)
 }
 
 #' Rewrap one origin-side problem output onto the demand raster template
-#' @keywords internal
+#' @noRd
 #' @md
 .problem_output_surface <- function(problem, theta, state, output) {
   .chck_class(problem, "ae_problem", "problem")
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
-    stop("`output` must be a length-one character value")
+    .stop("`output` must be a length-one character value")
   }
   outputs <- .problem_outputs_at(problem, theta = theta, state = state,
                                  requested_outputs = output)
@@ -1065,7 +1065,7 @@
 #'   for it, never the final fresh solve.
 #' @param keep Lean evaluation (see `.bind_theta()`); only the optimizer and
 #'   the default scan pass it, never the final fresh solve.
-#' @keywords internal
+#' @noRd
 #' @md
 .solve_problem <- function(problem, theta, x0 = NULL, lambda = 1,
                            tol = 1e-8, max_iter = 1000,
@@ -1157,7 +1157,7 @@
 #' Inputs, provider behavior and controls must remain fixed during fitting;
 #' use `reuse = FALSE` for stateful/mutating providers or callbacks that alter
 #' model behavior. This is not a persistent cache across targets or scenarios.
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_problem_nfxp <- function(problem, observed, init, lower, upper,
                               output = "utilization",
@@ -1172,16 +1172,16 @@
                               reuse = TRUE) {
   .chck_class(problem, "ae_problem", "problem")
   if (!is.function(loss)) {
-    stop("`loss` must be a function")
+    .stop("`loss` must be a function")
   }
   if (isTRUE(gradient) && !is.function(loss_grad)) {
-    stop("`loss_grad` must be a function when `gradient = TRUE`")
+    .stop("`loss_grad` must be a function when `gradient = TRUE`")
   }
   if (!is.list(loss_args)) {
-    stop("`loss_args` must be a list")
+    .stop("`loss_args` must be a list")
   }
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
-    stop("`output` must be a length-one character value")
+    .stop("`output` must be a length-one character value")
   }
   target <- .bind_problem_target(problem, observed, output)
   .chck_positive_scalar(penalty, "penalty")
@@ -1189,7 +1189,7 @@
   norm <- match.arg(norm)
   gradient <- isTRUE(gradient)
   if (!is.logical(reuse) || length(reuse) != 1L || is.na(reuse)) {
-    stop("`reuse` must be TRUE or FALSE")
+    .stop("`reuse` must be TRUE or FALSE")
   }
   reuse <- reuse && gradient && isTRUE(problem$metadata$spec$deterministic)
 
@@ -1201,13 +1201,13 @@
   .coerce_problem_theta(lower, problem$theta)
   .coerce_problem_theta(upper, problem$theta)
   if (any(init <= 0 | lower <= 0 | upper <= 0)) {
-    stop("`init`, `lower`, and `upper` must be positive for log-scale optimization")
+    .stop("`init`, `lower`, and `upper` must be positive for log-scale optimization")
   }
   if (any(lower >= upper)) {
-    stop("`lower` must be less than `upper`")
+    .stop("`lower` must be less than `upper`")
   }
   if (any(init < lower | init > upper)) {
-    stop("`init` must be inside [`lower`, `upper`]")
+    .stop("`init` must be inside [`lower`, `upper`]")
   }
 
   observed_values <- target$values
@@ -1384,12 +1384,13 @@
     c(list(predicted = predicted, observed = observed_values), loss_args)
   )
   if (!is.numeric(loss_value) || length(loss_value) != 1L || !is.finite(loss_value)) {
-    stop("final loss must be a finite numeric scalar")
+    .stop("final loss must be a finite numeric scalar")
   }
   predicted_store <- .name_bound_target(predicted_full, target)
   observed_store <- .name_bound_target(target$observed, target)
   state_name <- problem$state$name
   state <- .name_problem_vector(final$x_star, problem$substrate$facility_ids)
+  final <- .name_output_vectors(problem, final)
 
   fit <- structure(
     list(
@@ -1450,17 +1451,17 @@
 #' Canonical observation identities must also agree. This helper does not
 #' reorder independently prepared fits. Legacy fits without identity metadata
 #' can still be compared to each other, but not to fits with declared identity.
-#' @keywords internal
+#' @noRd
 #' @md
 .compare_problem_fits <- function(fits) {
   if (!is.list(fits) || length(fits) < 2L) {
-    stop("`fits` must be a list of at least two AE problem fits")
+    .stop("`fits` must be a list of at least two AE problem fits")
   }
   if (is.null(names(fits)) || any(!nzchar(names(fits)))) {
     names(fits) <- vapply(fits, function(f) as.character(f$model), character(1))
   }
   if (anyDuplicated(names(fits)) > 0L) {
-    stop("`fits` must have unique labels (name the list entries explicitly)")
+    .stop("`fits` must have unique labels (name the list entries explicitly)")
   }
   for (f in fits) {
     .chck_class(f, "ae_problem_nfxp_fit", "each element of `fits`")
@@ -1473,34 +1474,34 @@
     f <- fits[[i]]
     label <- names(fits)[[i]]
     if (!identical(f$output, ref$output)) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` target different outputs (`", ref$output, "` vs `", f$output, "`)")
     }
     if (!identical(.fit_observation_identity(f), .fit_observation_identity(ref))) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` have different or unavailable canonical observation identities")
     }
     obs <- as.numeric(f$observed)
     if (!identical(dim(f$observed), dim(ref$observed)) ||
         length(obs) != length(ref_obs)) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` were calibrated against different target shapes")
     }
     if (!identical(is.na(obs), is.na(ref_obs))) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` use different observation masks")
     }
     if (!isTRUE(all.equal(obs[!is.na(obs)], ref_obs[!is.na(ref_obs)]))) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` were calibrated against different observed values")
     }
     if (!identical(f$loss_args, ref$loss_args)) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` use different `loss_args`")
     }
     if (is.function(f$loss_fn) && is.function(ref$loss_fn) &&
         !.same_function(f$loss_fn, ref$loss_fn)) {
-      stop("fits `", ref_label, "` and `", label,
+      .stop("fits `", ref_label, "` and `", label,
            "` use different loss functions")
     }
   }
@@ -1546,7 +1547,7 @@
 #' result reports, it does not decide. `init`/`lower`/`upper` are shared
 #' across problems, or a named list keyed by problem label for per-problem
 #' theta contracts. Solver/runner options in `...` are shared by all legs.
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_problem_ladder <- function(problems, observed, init, lower, upper,
                                 output = "utilization",
@@ -1554,7 +1555,7 @@
                                 loss_grad = .weighted_sse_gradient,
                                 loss_args = list(eta = 1), ...) {
   if (!is.list(problems) || length(problems) < 2L) {
-    stop("`problems` must be a list of at least two AE problems")
+    .stop("`problems` must be a list of at least two AE problems")
   }
   if (is.null(names(problems)) || any(!nzchar(names(problems)))) {
     names(problems) <- vapply(
@@ -1564,7 +1565,7 @@
     )
   }
   if (anyDuplicated(names(problems)) > 0L) {
-    stop("`problems` must have unique labels (name the list entries explicitly)")
+    .stop("`problems` must have unique labels (name the list entries explicitly)")
   }
   for (p in problems) {
     .chck_class(p, "ae_problem", "each element of `problems`")
@@ -1572,7 +1573,7 @@
   pick <- function(arg, label, what) {
     if (is.list(arg)) {
       if (is.null(names(arg)) || !label %in% names(arg)) {
-        stop("per-problem `", what, "` must be a named list covering problem `",
+        .stop("per-problem `", what, "` must be a named list covering problem `",
              label, "`")
       }
       return(arg[[label]])
@@ -1603,12 +1604,12 @@
 #' Declared axes prevent facility vectors being interpreted as surfaces when
 #' their lengths happen to equal the origin count. Older/custom fits without
 #' axis metadata retain legacy shape-based discovery; see `.fit_available_surfaces`.
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_output_surface <- function(fit, output) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
   if (!is.character(output) || length(output) != 1L || is.na(output) || output == "") {
-    stop("`output` must be a length-one character value")
+    .stop("`output` must be a length-one character value")
   }
   .rewrap_problem_surface(
     outputs = fit$outputs,
@@ -1623,7 +1624,7 @@
 #'
 #' Always reports predicted facility utilization. Observations/residuals are
 #' included only for utilization-vector targets, not origin or matrix targets.
-#' @keywords internal
+#' @noRd
 #' @md
 .ae_fit_facility_table <- function(fit) {
   .chck_class(fit, "ae_problem_nfxp_fit", "fit")
@@ -1764,7 +1765,7 @@
     jac <- step$jac_output_param(x, output = output)
     if (!is.null(jac)) {
       .chck_numeric_matrix(jac, "jac_output_param")
-      if (ncol(jac) != length(theta)) stop("output parameter Jacobian has wrong columns")
+      if (ncol(jac) != length(theta)) .stop("output parameter Jacobian has wrong columns")
       return(.coerce_numeric_matrix(jac))
     }
   }
@@ -1820,7 +1821,7 @@
     kept <- step[["kept", exact = TRUE]]
     if (!is.null(kept)) .lean_missing(output, kept)
     if (required) {
-      stop("problem outputs do not include requested output `", output, "`")
+      .stop("problem outputs do not include requested output `", output, "`")
     }
     return(NULL)
   }
@@ -1845,10 +1846,10 @@
   .chck_numeric_vector(x, "x0")
   x <- .coerce_numeric_vector(x)
   if (length(x) != length(problem$state$init)) {
-    stop("`x0` must match the problem state length")
+    .stop("`x0` must match the problem state length")
   }
   if (any(x < problem$state$lower | x > problem$state$upper)) {
-    stop("`x0` is outside the problem state bounds")
+    .stop("`x0` is outside the problem state bounds")
   }
   invisible(TRUE)
 }
@@ -1868,28 +1869,28 @@
   x <- .coerce_numeric_vector(x)
   if (is.null(names(x)) || any(names(x) == "")) {
     if (length(x) != length(expected)) {
-      stop("unnamed `", name, "` must match the theta contract length")
+      .stop("unnamed `", name, "` must match the theta contract length")
     }
     names(x) <- expected
   }
   missing <- setdiff(expected, names(x))
   if (length(missing) > 0) {
-    stop("`", name, "` is missing required parameter(s): ",
+    .stop("`", name, "` is missing required parameter(s): ",
          paste(missing, collapse = ", "))
   }
   x[expected]
 }
 
 #' Validate a calibration value as a finite numeric vector or matrix
-#' @keywords internal
+#' @noRd
 #' @md
 .chck_target_numeric <- function(x, name = "Input") {
   .chck_is_numeric(x, name = name)
   if (!is.null(dim(x)) && length(dim(x)) != 2L) {
-    stop(sprintf("%s must be a numeric vector or matrix", name))
+    .stop(sprintf("%s must be a numeric vector or matrix", name))
   }
   if (.any_nonfinite(x)) {
-    stop(sprintf("%s must contain only finite values", name))
+    .stop(sprintf("%s must contain only finite values", name))
   }
   invisible(TRUE)
 }
@@ -1899,23 +1900,23 @@
 #' `NA` cells mark unobserved targets (e.g. HSAF flow suppression below 11
 #' cases) and are excluded from the loss; predicted/observed comparison is
 #' over flattened (column-major) values at the observed cells only.
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_target_meta <- function(observed, name = "observed") {
   .chck_is_numeric(observed, name = name)
   if (!is.null(dim(observed)) && length(dim(observed)) != 2L) {
-    stop(sprintf("%s must be a numeric vector or matrix", name))
+    .stop(sprintf("%s must be a numeric vector or matrix", name))
   }
   if (length(observed) == 0L) {
-    stop(sprintf("%s must not be empty", name))
+    .stop(sprintf("%s must not be empty", name))
   }
   flat <- as.numeric(observed)
   mask <- !is.na(flat)
   if (!any(mask)) {
-    stop(sprintf("%s must contain at least one non-missing value", name))
+    .stop(sprintf("%s must contain at least one non-missing value", name))
   }
   if (any(!is.finite(flat[mask]))) {
-    stop(sprintf("%s non-missing values must be finite", name))
+    .stop(sprintf("%s non-missing values must be finite", name))
   }
   list(
     dim = dim(observed),
@@ -1927,7 +1928,7 @@
 }
 
 #' Does a predicted output have the same shape as the calibration target?
-#' @keywords internal
+#' @noRd
 #' @md
 .fit_target_shape_ok <- function(predicted, target) {
   if (!is.numeric(predicted)) {
@@ -1941,7 +1942,7 @@
 }
 
 #' Require shape agreement between a predicted output and the target
-#' @keywords internal
+#' @noRd
 #' @md
 .check_fit_target_shape <- function(predicted, target, output) {
   if (.fit_target_shape_ok(predicted, target)) {
@@ -1950,7 +1951,7 @@
   describe <- function(d, n) {
     if (is.null(d)) paste0("length ", n) else paste0("dim ", paste(d, collapse = " x "))
   }
-  stop("output `", output, "` (", describe(dim(predicted), length(predicted)),
+  .stop("output `", output, "` (", describe(dim(predicted), length(predicted)),
        ") does not match `observed` (", describe(target$dim, target$length), ")")
 }
 
@@ -1959,7 +1960,7 @@
     kept <- fit[["kept", exact = TRUE]]
     if (!is.null(kept)) .lean_missing(output, kept)
     if (required) {
-      stop("problem outputs do not include requested output `", output, "`")
+      .stop("problem outputs do not include requested output `", output, "`")
     }
     return(NULL)
   }
@@ -2003,10 +2004,10 @@
 .rewrap_problem_surface <- function(outputs, output, template, kept_cell_index,
                                      output_axes = NULL) {
   if (is.null(template) || is.null(kept_cell_index)) {
-    stop("surface metadata is not available for this AE object")
+    .stop("surface metadata is not available for this AE object")
   }
   if (!is.list(outputs) || !output %in% names(outputs)) {
-    stop("problem outputs do not include requested output `", output, "`")
+    .stop("problem outputs do not include requested output `", output, "`")
   }
 
   active_n <- length(kept_cell_index)
@@ -2018,11 +2019,11 @@
       msg <- paste0(msg, "; available surfaces: ",
                     paste(surface_names, collapse = ", "))
     }
-    stop(msg)
+    .stop(msg)
   }
   .chck_numeric_vector(value, output, finite = FALSE)
   if (any(!is.finite(value) & !is.na(value))) {
-    stop(output, " must contain only finite or missing values")
+    .stop(output, " must contain only finite or missing values")
   }
   out <- .rewrap_cells(.coerce_numeric_vector(value), .allocation_template(template), kept_cell_index)
   names(out) <- output
@@ -2049,18 +2050,18 @@
   expected <- contract$names
   if (is.null(names(theta)) || any(names(theta) == "")) {
     if (length(theta) != length(expected)) {
-      stop("unnamed `theta` must match the theta contract length")
+      .stop("unnamed `theta` must match the theta contract length")
     }
     names(theta) <- expected
   }
   missing <- setdiff(expected, names(theta))
   if (length(missing) > 0) {
-    stop("`theta` is missing required parameter(s): ",
+    .stop("`theta` is missing required parameter(s): ",
          paste(missing, collapse = ", "))
   }
   theta <- theta[expected]
   if (any(theta < contract$lower | theta > contract$upper)) {
-    stop("`theta` is outside the theta bounds")
+    .stop("`theta` is outside the theta bounds")
   }
   theta
 }

@@ -116,6 +116,39 @@ test_that("loss choices pass through and count targets reject negatives", {
   expect_equal(calls, 5L)
 })
 
+test_that("fit_allocation() reads a one-dimensional array or table as the named vector", {
+  f <- alloc_small_case()
+  fit_with <- function(observed) {
+    fit_allocation(f$model, observed, f$starts, f$lower, f$upper, loss = "poisson",
+                   control = list(maxit = 100))
+  }
+  ref <- fit_with(f$observed)
+  # tapply() returns the facilities sorted by ID (f1, f2, f3; the model has f2, f1, f3)
+  from_tapply <- tapply(unname(f$observed), names(f$observed), sum)
+  from_table <- as.table(array(unname(f$observed), 3L, list(names(f$observed))))
+  expect_identical(dim(from_tapply), 3L)
+  for (observed in list(from_tapply, from_table)) {
+    fit <- fit_with(observed)
+    expect_identical(coef(fit), coef(ref))
+    expect_identical(fit$best$loss, ref$best$loss)
+    expect_identical(fit$best$observed, ref$best$observed)
+    expect_null(dim(fit$best$observed))
+  }
+  # A table() of records holds whole counts as integers: the fit is the fit to the same
+  # counts as a named vector.
+  counted <- table(rep(names(f$observed), round(f$observed)))
+  expect_type(counted, "integer")
+  as_vector <- stats::setNames(as.vector(counted), names(counted))
+  from_counted <- fit_with(counted)
+  expect_identical(coef(from_counted), coef(fit_with(as_vector)))
+  expect_identical(from_counted$best$observed, fit_with(as_vector)$best$observed)
+  expect_type(from_counted$best$observed, "integer")
+  # The default search reads it the same way.
+  expect_identical(coef(fit_allocation(f$model, from_tapply, loss = "poisson")),
+                   coef(fit_allocation(f$model, f$observed, loss = "poisson")))
+  expect_error(fit_with(array(1, c(3, 1, 1))), "observed must be a numeric vector or matrix")
+})
+
 test_that("custom workflow callbacks retain canonical masked order and auxiliary arguments", {
   f <- alloc_small_case()
   y <- f$flow; y[1, 2] <- NA_real_
@@ -175,6 +208,36 @@ test_that("fixed evaluation solves once and coverage reads the evaluated allocat
                "coverage controls")
   testthat::local_mocked_bindings(.solve_problem = function(...) list(converged = FALSE))
   expect_error(evaluate_allocation(f$model, f$truth), "did not converge")
+})
+
+test_that("evaluations and fits name their vector outputs by facility and origin ID", {
+  f <- alloc_small_case()
+  facilities <- c("f2", "f1", "f3")
+  origins <- c("o1", "o3", "o5")
+  expect_named_outputs <- function(outputs) {
+    for (nm in c("target", "utilization", "attractiveness")) expect_named(outputs[[nm]], facilities)
+    for (nm in c("access", "outside_share")) expect_named(outputs[[nm]], origins)
+  }
+  e <- evaluate_allocation(f$model, f$truth, requested_outputs = "utilization_outside")
+  expect_named_outputs(e$outputs)
+  expect_named(e$outputs$utilization_outside, c(facilities, "(outside)"))
+  expect_identical(e$utilization, e$outputs$utilization)
+  # Only the names are added: the solver's own outputs are the same values, unnamed.
+  raw <- .solve_problem(f$model, f$truth, requested_outputs = "utilization_outside")$outputs
+  expect_null(names(raw$utilization))
+  for (nm in c("target", "utilization", "attractiveness", "utilization_outside")) {
+    expect_identical(unname(e$outputs[[nm]]), raw[[nm]])
+  }
+  expect_identical(e$outputs[c("access", "outside_share", "allocation")],
+                   raw[c("access", "outside_share", "allocation")])
+  # A fit keeps the same names on its final evaluation.
+  fit <- alloc_small_fit()
+  expect_named_outputs(fit$best$outputs)
+  expect_identical(fit$best$equilibrium$outputs, fit$best$outputs)
+  expect_identical(fitted(fit), fit$best$outputs$utilization)
+  # A Huff model's outside share (no outside option) is named too.
+  huff <- huff_allocation(f$inputs, family = "gaussian", fit_beta = FALSE)
+  expect_named_outputs(evaluate_allocation(huff, c(sigma = 3))$outputs)
 })
 
 test_that("workflow predictions delegate once and read fitted and evaluated sources", {

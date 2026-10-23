@@ -40,7 +40,7 @@
   v2 <- fielded && identical(x$schema, "spax_clm_prediction_v2") &&
     identical(x$kind, "declared_kernel_static_clm")
   if (!v1 && !v2) {
-    stop("unsupported prediction snapshot; regenerate the evaluated CLM source")
+    .stop("unsupported prediction snapshot; regenerate the evaluated CLM source")
   }
   spec <- x$spec
   expected <- c("family", "allocation", "kappa", "beta", "v0", "fit_beta", "fit_v0")
@@ -49,48 +49,48 @@
     is.character(value) && length(value) == 1L && !is.na(value) && value %in% choices
   }
   if (!is.list(spec) || !identical(names(spec), expected) ||
-      !identical(spec$allocation, "clm")) stop("invalid CLM snapshot specification")
+      !identical(spec$allocation, "clm")) .stop("invalid CLM snapshot specification")
   if (v1 && !scalar_choice(spec$family, c("gaussian", "exponential", "power"))) {
-    stop("invalid CLM snapshot specification")
+    .stop("invalid CLM snapshot specification")
   }
   if (v2) {
     reason <- tryCatch({ .validate_decay_kernel(spec$kernel); NULL },
                        error = function(e) conditionMessage(e))
-    if (!is.null(reason)) stop("invalid CLM snapshot specification: ", reason)
+    if (!is.null(reason)) .stop("invalid CLM snapshot specification: ", reason)
     if (!isFALSE(spec$kernel$builtin) || !identical(spec$family, spec$kernel$name)) {
-      stop("invalid CLM snapshot specification")
+      .stop("invalid CLM snapshot specification")
     }
   }
   for (key in c("kappa", "beta", "v0")) {
     z <- spec[[key]]
     if (!is.numeric(z) || length(z) != 1L || !is.finite(z) ||
-        z < 0 || (key != "v0" && z == 0)) stop("invalid CLM snapshot ", key)
+        z < 0 || (key != "v0" && z == 0)) .stop("invalid CLM snapshot ", key)
   }
   for (key in c("fit_beta", "fit_v0")) {
     if (!is.logical(spec[[key]]) || length(spec[[key]]) != 1L || is.na(spec[[key]])) {
-      stop("invalid CLM snapshot parameter flags")
+      .stop("invalid CLM snapshot parameter flags")
     }
   }
   parameters <- .huff_theta_contract(spec$fit_v0, spec$fit_beta)$names
   if (!is.numeric(x$theta) || !is.null(dim(x$theta)) ||
       !identical(names(x$theta), parameters) ||
-      any(!is.finite(x$theta) | x$theta < 0)) stop("invalid CLM snapshot theta")
-  if (spec$fit_beta && x$theta[["beta"]] <= 0) stop("snapshot beta must be positive")
+      any(!is.finite(x$theta) | x$theta < 0)) .stop("invalid CLM snapshot theta")
+  if (spec$fit_beta && x$theta[["beta"]] <= 0) .stop("snapshot beta must be positive")
   if (v2 && (x$theta[["sigma"]] < spec$kernel$lower || x$theta[["sigma"]] > spec$kernel$upper)) {
-    stop("invalid CLM snapshot theta: sigma is outside the bounds of its decay kernel")
+    .stop("invalid CLM snapshot theta: sigma is outside the bounds of its decay kernel")
   }
   if (v2 && x$theta[["sigma"]] <= 0) {
-    stop("invalid CLM snapshot theta: ", spec$kernel$name, " decay requires positive sigma")
+    .stop("invalid CLM snapshot theta: ", spec$kernel$name, " decay requires positive sigma")
   }
   ids <- .allocation_ids(x$facility_ids, "snapshot facility IDs")
-  if (!identical(ids, x$facility_ids)) stop("snapshot facility IDs must be strings")
+  if (!identical(ids, x$facility_ids)) .stop("snapshot facility IDs must be strings")
   for (key in c("supply", "utilization")) {
     value <- x[[key]]
     if (!is.numeric(value) || !is.null(dim(value)) || length(value) != length(ids) ||
-        any(!is.finite(value) | value < 0)) stop("invalid snapshot ", key)
+        any(!is.finite(value) | value < 0)) .stop("invalid snapshot ", key)
   }
   if (!identical(x$input_metadata, .allocation_metadata(x$input_metadata))) {
-    stop("invalid snapshot input metadata")
+    .stop("invalid snapshot input metadata")
   }
   p <- x$input_policy
   if (!is.list(p) || !identical(names(p),
@@ -99,30 +99,30 @@
       !scalar_choice(p$missing_demand, c("error", "exclude", "legacy_positive_fit")) ||
       !scalar_choice(p$missing_travel, c("error", "legacy_zero")) ||
       !scalar_choice(p$kernel_domain, c("strict", "legacy_zero"))) {
-    stop("invalid snapshot input policy")
+    .stop("invalid snapshot input policy")
   }
   if (spec$family == "power" && x$theta[["sigma"]] == 0 && p$kernel_domain == "legacy_zero") {
-    stop("legacy power sigma=0 treats +Inf differently; regenerate with checked numeric preparation or positive sigma")
+    .stop("legacy power sigma=0 treats +Inf differently; regenerate with checked numeric preparation or positive sigma")
   }
   if (!identical(x$provenance, list(converged = TRUE,
       zero_denominator = "zero_mass_undefined", zero_load_ratio = "unsupported_capacity"))) {
-    stop("snapshot requires a successful fixed-state evaluation and known guard policy")
+    .stop("snapshot requires a successful fixed-state evaluation and known guard policy")
   }
   x
 }
 
 .clm_prediction_source <- function(source) {
   if (!inherits(source, "ae_equilibrium") && !inherits(source, "ae_problem_nfxp_fit")) {
-    stop("source must be a solved or fitted corrected static CLM")
+    .stop("source must be a solved or fitted corrected static CLM")
   }
   snapshot <- source[["prediction_snapshot", exact = TRUE]]
-  if (is.null(snapshot)) stop("source has no prediction snapshot; regenerate the solved or fitted CLM")
+  if (is.null(snapshot)) .stop("source has no prediction snapshot; regenerate the solved or fitted CLM")
   s <- .validate_clm_prediction_snapshot(snapshot)
   equal <- function(value, expected, label, numeric = FALSE) {
     if (is.null(value)) return(invisible(NULL))
     ok <- if (numeric) is.numeric(value) &&
       identical(as.numeric(value), as.numeric(expected)) else identical(value, expected)
-    if (!ok) stop("source conflicts with its prediction snapshot: ", label)
+    if (!ok) .stop("source conflicts with its prediction snapshot: ", label)
   }
   equal(source$theta, s$theta, "theta")
   equal(source$theta_hat, s$theta, "theta_hat")
@@ -138,15 +138,15 @@
   evaluated <- if (inherits(source, "ae_equilibrium")) source else source$equilibrium
   identity <- evaluated[["evaluated_clm", exact = TRUE]]
   if (!is.list(identity) || !identical(names(identity), c("spec", "theta", "facility_ids", "supply"))) {
-    stop("source has no evaluated CLM identity; regenerate the solved or fitted CLM")
+    .stop("source has no evaluated CLM identity; regenerate the solved or fitted CLM")
   }
   for (key in names(identity)) {
     equal(identity[[key]], s[[key]], paste("evaluated", key))
   }
   if (inherits(source, "ae_equilibrium")) {
-    if (!isTRUE(source$converged)) stop("prediction requires a successful fixed-state evaluation")
+    if (!isTRUE(source$converged)) .stop("prediction requires a successful fixed-state evaluation")
   } else {
-    if (!isTRUE(source$equilibrium$converged)) stop("prediction requires a successful final evaluation")
+    if (!isTRUE(source$equilibrium$converged)) .stop("prediction requires a successful final evaluation")
     equal(source$equilibrium$prediction_snapshot, s, "final evaluation snapshot")
     equal(source$equilibrium$utilization, s$utilization, "final evaluation utilization", TRUE)
     equal(source$equilibrium$outputs$utilization, s$utilization, "final output utilization", TRUE)
@@ -181,7 +181,7 @@
 #' Requested rows do not change saved facility loads or rerun fitting/solving.
 #' Named travel axes and demand are aligned independently to complete IDs.
 #' Positive infinity is a known absent edge. Unknown travel makes the whole
-#' normalized row unknown unless explicit `legacy_zero` imputation is requested.
+#' normalized row unknown unless explicit `omit` imputation is requested.
 #' Legacy finite-kernel guards are used only with that explicit request and a
 #' compatible legacy source; their use is flagged. Negative travel always fails.
 #'
@@ -223,35 +223,37 @@
 #' validity, declared units/policies and compact facility values. Optional spatial
 #' metadata follows `.prepare_allocation()` and is saved as plain geometry.
 #' Raster reconstruction is deferred to `.prediction_surface()`.
-#' @keywords internal
+#' @noRd
 #' @md
 .predict_clm <- function(source, distance, origin_ids = rownames(distance),
                          demand = NULL, outputs = c("rho", "A", "abar"),
-                         missing_travel = c("unknown", "legacy_zero"), spatial = NULL) {
+                         missing_travel = c("unknown", "omit", "legacy_zero"), spatial = NULL) {
   missing_travel <- match.arg(missing_travel)
+  # "legacy_zero" is the older name of "omit"; the stored policy keeps it
+  if (missing_travel == "omit") missing_travel <- "legacy_zero"
   s <- .clm_prediction_source(source)
   origins <- .allocation_ids(origin_ids, "origin_ids")
   facilities <- s$facility_ids
   .check_output_names(outputs, "outputs")
   supported_outputs <- c("rho", "outside_share", "A", "abar", "A_supported",
                          "abar_supported", "unsupported_contact", "allocation", "flow")
-  if (is.null(outputs) || any(!outputs %in% supported_outputs)) stop("unsupported prediction outputs")
+  if (is.null(outputs) || any(!outputs %in% supported_outputs)) .stop("unsupported prediction outputs")
   if (!is.matrix(distance) || !is.numeric(distance) ||
       !identical(dim(distance), c(length(origins), length(facilities)))) {
-    stop("distance must be a requested-origin-by-facility numeric matrix")
+    .stop("distance must be a requested-origin-by-facility numeric matrix")
   }
-  if (is.null(colnames(distance))) stop("distance must have complete facility column IDs")
+  if (is.null(colnames(distance))) .stop("distance must have complete facility column IDs")
   rows <- .allocation_order(rownames(distance), origins, "distance origin")
   cols <- .allocation_order(colnames(distance), facilities, "distance facility")
   distance <- distance[rows, cols, drop = FALSE]
   dimnames(distance) <- list(origins, facilities)
   minimum_distance <- min(distance, Inf, na.rm = TRUE)
-  if (minimum_distance < 0) stop("travel must be nonnegative or positive infinity")
+  if (minimum_distance < 0) .stop("travel must be nonnegative or positive infinity")
   n <- length(origins)
   if (is.null(demand)) demand <- rep(NA_real_, n)
   if (!is.numeric(demand) || !is.null(dim(demand)) || length(demand) != n ||
       any(!is.na(demand) & (!is.finite(demand) | demand < 0))) {
-    stop("demand must be nonnegative finite or missing, matching requested origins")
+    .stop("demand must be nonnegative finite or missing, matching requested origins")
   }
   demand <- unname(demand[.allocation_order(names(demand), origins, "demand")])
   demand_known <- !is.na(demand)
@@ -273,10 +275,10 @@
   v0 <- if (spec$fit_v0) theta[["v0"]] else spec$v0
   legacy <- missing_travel == "legacy_zero" && s$input_policy$kernel_domain == "legacy_zero"
   if (!legacy && spec$family == "power" && minimum_distance == 0) {
-    stop("power decay requires strictly positive finite travel distances")
+    .stop("power decay requires strictly positive finite travel distances")
   }
   if (!legacy && spec$family == "gaussian" && sigma <= 0) {
-    stop("gaussian decay requires positive sigma")
+    .stop("gaussian decay requires positive sigma")
   }
   # A declared kernel (the v2 snapshot) also needs sigma inside its bounds and,
   # when declared undefined at distance zero, no finite zero travel; its code is
@@ -284,14 +286,14 @@
   declared <- spec[["kernel", exact = TRUE]]
   if (!is.null(declared)) {
     if (sigma < declared$lower || sigma > declared$upper) {
-      stop(declared$name, " decay requires sigma from ", format(declared$lower), " to ",
+      .stop(declared$name, " decay requires sigma from ", format(declared$lower), " to ",
            format(declared$upper))
     }
     if (sigma <= 0) {
-      stop(declared$name, " decay requires positive sigma")
+      .stop(declared$name, " decay requires positive sigma")
     }
     if (!legacy && !declared$zero_distance && minimum_distance == 0) {
-      stop(declared$name, " decay requires strictly positive finite travel distances")
+      .stop(declared$name, " decay requires strictly positive finite travel distances")
     }
   }
   kernel <- .decay_weights(spec$family, declared, distance, sigma)
@@ -301,14 +303,14 @@
   legacy_kernel <- rep(FALSE, n)
   if (anyNA(kernel) || !is.finite(kernel_max) || kernel_min < 0) {
     invalid <- which(!is.finite(kernel) | kernel < 0)
-    if (!legacy) stop("decay kernel is invalid on finite requested travel")
+    if (!legacy) .stop("decay kernel is invalid on finite requested travel")
     legacy_kernel[(invalid - 1L) %% n + 1L] <- TRUE
     kernel[invalid] <- 0
   }
   if (length(nonfinite)) kernel[nonfinite] <- 0
   attractiveness <- (spec$kappa * s$supply)^beta
   bad_attractiveness <- !is.finite(attractiveness)
-  if (!legacy && any(bad_attractiveness)) stop("requested CLM attractiveness is nonfinite")
+  if (!legacy && any(bad_attractiveness)) .stop("requested CLM attractiveness is nonfinite")
   attractiveness[bad_attractiveness] <- 0
   # Bounds precede zeroing known absent/unknown edges. Finite kernel zeros or
   # any extreme positive score disable the certificate; they are never skipped
@@ -321,7 +323,7 @@
   denominator <- inside + v0
   # Scores are nonnegative; a nonfinite entry also makes its row sum nonfinite.
   if (any(!is.finite(denominator))) {
-    stop("requested CLM opportunity or denominator overflowed")
+    .stop("requested CLM opportunity or denominator overflowed")
   }
   normalizer <- ifelse(denominator > 0, denominator, 1)
   undefined <- denominator == 0 & !row_unknown
@@ -441,12 +443,12 @@
 #' Uses only validated requested-cell geometry and stored vector values. Other
 #' cells remain NA. Matrix outputs require explicit numeric access and cannot be
 #' silently flattened into a surface. This never evaluates the CLM again.
-#' @keywords internal
+#' @noRd
 #' @md
 .prediction_surface <- function(x, output = "A") {
   .chck_class(x, "ae_clm_prediction", "x")
   if (!is.character(output) || length(output) != 1L || is.na(output) || !nzchar(output)) {
-    stop("output must be one nonmissing name")
+    .stop("output must be one nonmissing name")
   }
   .rewrap_problem_surface(x$outputs, output, x$spatial$template, x$spatial$cell_index)
 }

@@ -15,8 +15,9 @@
 # saved with their hashes in the provenance record but cannot be pinned.
 #
 # Outputs
-#   data/cornwall_gp.rda             practices (sf points, EPSG:27700)
-#   data/cornwall_lsoa.rda           small areas (sf polygons, EPSG:27700)
+#   data/cornwall_gp.rda             practices (sf points, EPSG:4326, with
+#                                    British National Grid easting/northing)
+#   data/cornwall_lsoa.rda           small areas (sf polygons, EPSG:4326)
 #   data/cornwall_flows.rda          registrations, small area x practice
 #   data/cornwall_travel.rda         small area x practice travel minutes
 #   inst/extdata/cornwall_pop.tif    population grid (WorldPop 2020)
@@ -29,6 +30,15 @@ suppressPackageStartupMessages({
   library(sf)
   library(terra)
 })
+# Every shipped layer is on the WGS 84 datum, as the rasters are, so the
+# package's examples and guides never change datum. British National Grid
+# (OSGB36) coordinates are converted with the OSGB36 to WGS 84 Helmert
+# transformation (about 2 m), as the shipped data were. PROJ network access
+# stays off, so no datum grid is downloaded, and the script stops if a grid
+# transformation is installed locally, which PROJ would prefer.
+invisible(sf_proj_network(FALSE))
+ops <- sf_proj_pipelines("EPSG:27700", "EPSG:4326")
+stopifnot(!any(ops$instantiable & ops$grid_count > 0))
 setDTthreads(1) # multithreaded fread can stall in non-interactive Rscript
 stopifnot(file.exists("DESCRIPTION"),
           read.dcf("DESCRIPTION")[, "Package"] == "spax")
@@ -248,11 +258,14 @@ cornwall_gp <- st_as_sf(data.frame(
   nurse_fte = pr$nurse_fte, list_size = as.integer(pr$list_size),
   list_in_area = as.integer(pr$list_in_area), fte_source = pr$fte_source,
   scilly = pr$practice %in% scilly_practices,
-  x = pr$x, y = pr$y, stringsAsFactors = FALSE),
-  coords = c("x", "y"), crs = 27700)
+  easting = pr$x, northing = pr$y, stringsAsFactors = FALSE),
+  coords = c("easting", "northing"), crs = 27700, remove = FALSE)
+cornwall_gp <- st_transform(cornwall_gp, 4326)
 
 idx <- match(bsc$LSOA21CD, lsoa[["lsoa"]])
 lsoa <- lsoa[idx]
+cen_lonlat <- st_coordinates(st_transform(
+  st_as_sf(lsoa, coords = c("cent_x", "cent_y"), crs = 27700), 4326))
 cornwall_lsoa <- st_sf(data.frame(
   lsoa = lsoa$lsoa, name = bsc$LSOA21NM, ruc21 = bsc$RUC21NM,
   pop = as.integer(lsoa$pop), pop_0_15 = as.integer(lsoa$pop_0_15),
@@ -261,8 +274,9 @@ cornwall_lsoa <- st_sf(data.frame(
   registered_in = as.integer(lsoa$registered_in),
   registered_out = as.integer(lsoa$registered_out),
   cent_x = lsoa$cent_x, cent_y = lsoa$cent_y,
+  cent_lon = cen_lonlat[, "X"], cent_lat = cen_lonlat[, "Y"],
   scilly = lsoa$lsoa %in% scilly_lsoas, stringsAsFactors = FALSE),
-  geometry = st_geometry(bsc))
+  geometry = st_geometry(st_transform(bsc, 4326)))
 
 cornwall_flows <- data.frame(lsoa = flows$lsoa, practice = flows$practice,
                              patients = as.integer(flows$patients),
@@ -273,6 +287,7 @@ cornwall_travel <- tt
 
 stopifnot(
   nrow(cornwall_gp) == 55L, nrow(cornwall_lsoa) == 337L,
+  st_crs(cornwall_gp)$epsg == 4326L, st_crs(cornwall_lsoa)$epsg == 4326L,
   all(cornwall_flows$lsoa %in% cornwall_lsoa$lsoa),
   all(cornwall_flows$practice %in% cornwall_gp$practice),
   sum(cornwall_flows$patients) == sum(cornwall_lsoa$registered_in),

@@ -18,14 +18,14 @@ spax_2sfca(
 \item{demand}{SpatRaster representing spatial distribution of demand, or a
 named list of single-layer SpatRasters, one per demand group (see
 "Demand groups"). A multi-layer SpatRaster is refused. Demand
-must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+must be finite and nonnegative (use NA for unknown) unless \code{snap = TRUE},
 which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
 
 \item{distance}{SpatRaster stack of travel times/distances to facilities.
 With demand groups, one stack shared by every group or a list of
-stacks named by the groups (see [spax_e2sfca()]).}
+stacks named by the groups (see \code{\link[=spax_e2sfca]{spax_e2sfca()}}).}
 
 \item{threshold}{Numeric value defining the catchment area cutoff (same units
 as distance). With demand groups, one number shared by every group or
@@ -40,15 +40,15 @@ group.}
 }
 \value{
 A spax object containing:
-       \itemize{
-         \item accessibility: SpatRaster of accessibility scores (with demand
-           groups, named as in [spax_e2sfca()])
-         \item type: Character string "2SFCA"
-         \item parameters: List containing threshold and binary decay
-           parameters (and `groups` and `layers` with demand groups)
-         \item facilities: data.frame of facility-level information
-         \item call: The original function call
-       }
+\itemize{
+\item accessibility: SpatRaster of accessibility scores (with demand
+groups, named as in \code{\link[=spax_e2sfca]{spax_e2sfca()}})
+\item type: Character string "2SFCA"
+\item parameters: List containing threshold and binary decay
+parameters (and \code{groups} and \code{layers} with demand groups)
+\item facilities: data.frame of facility-level information
+\item call: The original function call
+}
 }
 \description{
 Implements the original Two-Step Floating Catchment Area (2SFCA) method using
@@ -60,53 +60,61 @@ accessibility as a ratio of supply to demand within these catchments.
 The original Two-Step Floating Catchment Area (2SFCA) method operates in two steps:
 
 Step 1: For each facility j:
-* Define a catchment area within threshold distance/time
-* Sum the population of all demand locations i within the catchment
-* Calculate supply-to-demand ratio Rj = Sj/sum(Pi)
+\itemize{
+\item Define a catchment area within threshold distance/time
+\item Sum the population of all demand locations i within the catchment
+\item Calculate supply-to-demand ratio Rj = Sj/sum(Pi)
+}
 
 Step 2: For each demand location i:
-* Define a catchment area within threshold distance/time
-* Sum all facility ratios Rj within the catchment
-* Final accessibility score Ai = sum(Rj)
+\itemize{
+\item Define a catchment area within threshold distance/time
+\item Sum all facility ratios Rj within the catchment
+\item Final accessibility score Ai = sum(Rj)
+}
 
 Key characteristics:
-1. Binary catchment areas (within threshold = 1, beyond = 0)
-2. Equal weights for all locations within catchment
-3. No normalization of demand weights
-4. Single threshold value for both steps
+\enumerate{
+\item Binary catchment areas (within threshold = 1, beyond = 0)
+\item Equal weights for all locations within catchment
+\item No normalization of demand weights
+\item Single threshold value for both steps
+}
 
 Limitations addressed by later methods:
-* No distance decay within catchments
-* Artificial barriers at catchment boundaries
-* Potential demand overestimation in overlapping areas
+\itemize{
+\item No distance decay within catchments
+\item Artificial barriers at catchment boundaries
+\item Potential demand overestimation in overlapping areas
+}
 }
 \section{Demand groups}{
 
-Give `demand` as a named list of single-layer rasters (for example age
+Give \code{demand} as a named list of single-layer rasters (for example age
 bands) to let several groups compete for the same facilities. The names are
-the group IDs: unique, non-empty, not `"all"` and without a `.`; all rasters
+the group IDs: unique, non-empty, not \code{"all"} and without a \code{.}; all rasters
 need the same geometry. A multi-layer raster is not taken as groups.
 
 Step 1 sums, over all groups, the demand that reaches each facility, with
 the demand weights of each group; step 2 gives each group its own
 accessibility from the shared ratios, with its own weights. The result has
-one layer per group, and an overall layer `<measure>.all`: the average of
+one layer per group, and an overall layer \verb{<measure>.all}: the average of
 the group scores weighted by the demand of the cell. A group with demand in
 a cell that its travel cannot reach counts with accessibility 0 in the
 overall layer; the overall layer is NA where any group's demand is missing
 or the total demand is 0. With one group the group layer equals the
 ungrouped result.
 
-`decay_params` and `distance` (and `selection_params` of
-[spax_3sfca()] and [spax_huff2sfca()], `threshold` of [spax_2sfca()]) are
+\code{decay_params} and \code{distance} (and \code{selection_params} of
+\code{\link[=spax_3sfca]{spax_3sfca()}} and \code{\link[=spax_huff2sfca]{spax_huff2sfca()}}, \code{threshold} of \code{\link[=spax_2sfca]{spax_2sfca()}}) are
 each either shared by every group or given per group. An argument is per
-group when it is a list (for `threshold`, a named numeric vector) whose
+group when it is a list (for \code{threshold}, a named numeric vector) whose
 names are the group IDs, in any order; names that match only some of the
 groups are refused. Any other value is shared and checked as for one
-group. Pass a shared `distance` as one object, so that it is read once. A
+group. Pass a shared \code{distance} as one object, so that it is read once. A
 plain-function decay builds a whole in-memory weight raster for each group.
-`demand_normalize`, `indicator_names`, `id_col`, `supply_cols` and the
-attractiveness of [spax_huff2sfca()] are shared.
+\code{demand_normalize}, \code{indicator_names}, \code{id_col}, \code{supply_cols} and the
+attractiveness of \code{\link[=spax_huff2sfca]{spax_huff2sfca()}} are shared.
 }
 
 \examples{
@@ -153,10 +161,12 @@ plot(result_multi$accessibility,
 \references{
 Luo, W., & Wang, F. (2003). Measures of Spatial Accessibility to Health Care in
 a GIS Environment: Synthesis and a Case Study in the Chicago Region.
-*Environment and Planning B: Planning and Design*, *30*(6), 865-884.
+\emph{Environment and Planning B: Planning and Design}, \emph{30}(6), 865-884.
 https://doi.org/10.1068/b29120
 }
 \seealso{
-* [spax_e2sfca()] for the enhanced version with distance decay
-* [compute_access()] for more flexible accessibility calculations
+\itemize{
+\item \code{\link[=spax_e2sfca]{spax_e2sfca()}} for the enhanced version with distance decay
+\item \code{\link[=compute_access]{compute_access()}} for more flexible accessibility calculations
+}
 }

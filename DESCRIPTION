@@ -1,7 +1,7 @@
 Package: spax
 Type: Package
 Title: Spatial Accessibility and Allocation Modeling
-Version: 0.6.0
+Version: 0.7.0
 Authors@R:
     person("Songyos", "Rajborirug", , "songyos.r@psu.ac.th", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-5000-7409"))
@@ -32,27 +32,22 @@ LazyData: TRUE
 LazyDataCompression: xz
 Imports:
     terra,
-    raster,
     sf,
-    ggplot2,
     stats,
     tools,
-    dplyr,
-    tibble,
-    withr,
+    withr
 Suggests:
-    sp,
+    dplyr,
+    ggplot2,
     knitr,
+    Matrix,
+    pkgload,
     rmarkdown,
     testthat (>= 3.2.0),
-    pkgload,
-    data.table,
-    tidyverse,
-    osrm,
-    Matrix
+    tibble
 Config/testthat/edition: 3
 RoxygenNote: 7.3.3
-URL: https://github.com/songyosr/spax, https://songyosr.github.io/spax/
+URL: https://github.com/Songyosr/spax, https://songyosr.github.io/spax/
 BugReports: https://github.com/Songyosr/spax/issues
 VignetteBuilder: knitr
 Depends:

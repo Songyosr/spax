@@ -14,19 +14,46 @@
 #' catchment areas to calculate accessibility scores.
 #'
 #' @param ratios Numeric vector, matrix, or data.frame of supply-to-demand ratios:
-#'        - Vector: Must match number of weight layers
-#'        - Matrix: Rows match weight layers, columns are different measures
-#'        - Data.frame: Same as matrix but requires ratio_cols parameter
+#'   * vector: must match the number of weight layers
+#'   * matrix: rows match weight layers, columns are different measures
+#'   * data.frame: as a matrix, with the columns named in `ratio_cols`
 #' @param weights Multi-layer SpatRaster where each layer represents one site's
-#'        probability-based catchment area
+#'   probability-based catchment area
 #' @param ratio_cols Character vector of column names if ratios is a data.frame
 #' @param full_output Logical; whether to return intermediate calculations (default FALSE)
 #' @param plot_prefix Character string to prepend to output names (default NULL)
-#' @return If full_output = TRUE, returns list containing:
-#'         - access_scores: SpatRaster stack of accessibility scores per measure
-#'         - site_specific: List of site-specific accessibility SpatRasters
-#'         If full_output = FALSE, returns only access_scores SpatRaster
+#' @return If `full_output = TRUE`, a list with
+#'   * `access_scores`: SpatRaster stack of accessibility scores per measure
+#'   * `site_specific`: list of site-specific accessibility SpatRasters
+#'
+#'   If `full_output = FALSE`, the `access_scores` SpatRaster only.
+#' @examples
+#' library(terra)
+#'
+#' # Cornwall population grid, and Gaussian weights of the travel time to each
+#' # GP practice
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' weights <- calc_decay(travel, method = "gaussian", sigma = 10)
+#'
+#' # Step 1 of E2SFCA: the population each practice reaches, and its GP FTE per
+#' # person reached, for GPs excluding GPs in training and for all GPs
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[match(names(weights), gp$practice), ]
+#' reached <- gather_weighted(pop, weights, simplify = TRUE)
+#' ratios <- data.frame(extg = gp$gp_fte_extg / reached, all = gp$gp_fte / reached)
+#'
+#' # Step 2: spread the ratios back over the grid with the same weights
+#' access <- spread_access(ratios, weights, ratio_cols = c("extg", "all"),
+#'                         plot_prefix = "gp_fte_")
+#' access
+#' plot(access)
+#'
+#' # With full_output, the score that each practice adds to each cell as well
+#' detail <- spread_access(ratios$extg, weights, full_output = TRUE)
+#' names(detail)
 #' @export
+#' @md
 spread_access <- function(ratios, weights, ratio_cols = NULL,
                           full_output = FALSE, plot_prefix = NULL) {
   result <- spread_weighted(

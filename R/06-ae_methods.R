@@ -2,7 +2,7 @@
 
 #' Print an AE fixed-point solution
 #' @method print ae_equilibrium
-#' @keywords internal
+#' @noRd
 #' @export
 print.ae_equilibrium <- function(x, digits = 4, ...) {
   cat(if (.is_public_equilibrium(x)) "<allocation evaluation>" else "<ae_equilibrium>", "\n",
@@ -121,10 +121,11 @@ print.ae_equilibrium <- function(x, digits = 4, ...) {
       vapply(fixed, .ae_format_number, character(1), digits = digits))))
 }
 
-#' Print an AE problem calibration fit
+#' @rdname allocation-fit-methods
+#' @order 8
 #' @method print ae_problem_nfxp_fit
-#' @keywords internal
 #' @export
+#' @md
 print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   if (.is_public_allocation(x)) {
     cat("<allocation fit result>\n")
@@ -161,10 +162,11 @@ print.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-#' Summarize an AE problem calibration fit
+#' @rdname allocation-fit-methods
+#' @order 6
 #' @method summary ae_problem_nfxp_fit
-#' @keywords internal
 #' @exportS3Method base::summary
+#' @md
 summary.ae_problem_nfxp_fit <- function(object, ...) {
   .chck_class(object, "ae_problem_nfxp_fit", "object")
   theta <- object$theta
@@ -219,10 +221,11 @@ summary.ae_problem_nfxp_fit <- function(object, ...) {
   out
 }
 
-#' Print an AE problem calibration summary
+#' @rdname allocation-fit-methods
+#' @order 9
 #' @method print summary.ae_problem_nfxp_fit
-#' @keywords internal
 #' @export
+#' @md
 print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   public <- .is_public_allocation(x)
   cat(if (public) "<allocation fit result summary>\n" else "<summary.ae_problem_nfxp_fit>\n")
@@ -261,51 +264,51 @@ print.summary.ae_problem_nfxp_fit <- function(x, digits = 4, ...) {
   invisible(x)
 }
 
-#' Plot AE problem calibration diagnostics
-#' @method plot ae_problem_nfxp_fit
-#' @keywords internal
+#' @rdname plot.ae_multistart_fit
+#' @order 2
 #' @exportS3Method graphics::plot
+#' @md
 plot.ae_problem_nfxp_fit <- function(x,
                                      type = c("fit", "convergence", "state"),
                                      ...) {
   type <- match.arg(type)
+  # Each draw_*() takes the default labels as arguments after `...`, so `main`, `xlab`
+  # and `ylab` given by the caller replace them (matched exactly, never partially).
   if (type == "fit") {
     if (is.null(x$observed) || length(x$observed) != length(x$predicted)) {
-      stop("fit plot requires stored observed values")
+      .stop("fit plot requires stored observed values")
     }
-    graphics::plot(
-      as.numeric(x$observed),
-      as.numeric(x$predicted),
-      xlab = "Observed",
-      ylab = "Predicted",
-      main = "AE fit",
-      ...
-    )
+    draw_fit <- function(..., xlab = "Observed", ylab = "Fitted",
+                         main = "Observed and fitted values") {
+      graphics::plot(as.numeric(x$observed), as.numeric(x$predicted),
+                     xlab = xlab, ylab = ylab, main = main, ...)
+    }
+    draw_fit(...)
     lim <- range(c(x$observed, x$predicted), finite = TRUE)
     graphics::abline(a = 0, b = 1, col = "gray50", lty = 2)
     invisible(lim)
   } else if (type == "convergence") {
     history <- x$equilibrium$history
     if (is.null(history) || nrow(history) == 0L) {
-      stop("convergence plot requires stored solver history")
+      .stop("convergence plot requires stored solver history")
     }
-    graphics::plot(
-      history$iter,
-      history$error,
-      type = "l",
-      xlab = "Iteration",
-      ylab = "Error",
-      main = "AE inner convergence",
-      ...
-    )
+    # Points as well as lines: a static model converges in a single iteration.
+    draw_convergence <- function(..., xlab = "Iteration", ylab = "Error",
+                                 main = "Solver convergence at the fitted values") {
+      graphics::plot(history$iter, history$error, type = "b",
+                     xlab = xlab, ylab = ylab, main = main, ...)
+    }
+    draw_convergence(...)
     invisible(history)
   } else {
-    graphics::hist(
-      as.numeric(x$state),
-      xlab = x$state_name,
-      main = "AE final state",
-      ...
-    )
+    # The state of the public allocation models is the facilities' attractiveness.
+    public <- .is_public_allocation(x)
+    draw_state <- function(..., xlab = if (public) "Attractiveness" else x$state_name,
+                           main = if (public) "Attractiveness at the fitted values" else
+                             "State at the fitted values") {
+      graphics::hist(as.numeric(x$state), xlab = xlab, main = main, ...)
+    }
+    draw_state(...)
     invisible(x$state)
   }
 }
@@ -356,7 +359,7 @@ plot.ae_problem_nfxp_fit <- function(x,
 #' @param x A model, an `ae_problem` of the Huff or conditional logit family.
 #' @param ... Unused.
 #' @method format huff_problem
-#' @keywords internal
+#' @noRd
 #' @export
 #' @md
 format.huff_problem <- function(x, ...) {
@@ -386,9 +389,8 @@ format.huff_problem <- function(x, ...) {
                         .format_total(length(s$facility_ids)), " facilities")))
 }
 
-#' @rdname format.huff_problem
+#' @noRd
 #' @method print huff_problem
-#' @keywords internal
 #' @export
 #' @md
 print.huff_problem <- function(x, ...) {

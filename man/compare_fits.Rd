@@ -112,6 +112,30 @@ aggregation, and the zones whose reporting class differs from the reference
 are listed. Classes require an adequacy cut in \code{coverage_args}; each fit uses
 its own regional contact as the contact cut unless \code{contact_cut} is given.
 }
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+               stats::setNames(gp$gp_fte_extg, gp$practice),
+               cornwall_travel[areas$lsoa, gp$practice])
+
+# Registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+
+# The same counts fitted with two decay kernels
+gaussian <- spax(d, spec_clm(decay_gaussian()), observed = totals)
+exponential <- spax(d, spec_clm(decay_exponential()), observed = totals)
+
+# Loss differences are measured from the first fit
+comparison <- compare_fits(list(gaussian = gaussian, exponential = exponential))
+comparison
+as.data.frame(comparison)[, c("specification", "parameters", "loss_difference")]
+}
 \seealso{
 Other allocation steps: 
 \code{\link{bootstrap_fit}()},

@@ -325,6 +325,8 @@ test_that("compare_allocations() keeps its own checks on the list of fits", {
 # bootstrap_allocation() ----------------------------------------------------------------
 
 test_that("bootstrap_allocation() on a result equals bootstrapping its model and fit", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   x <- .step_result("gauss")
   observation <- alloc_bootstrap_observation()
   # the real engine, with mocked facility-case refits
@@ -425,7 +427,8 @@ test_that("the general step names have the formals of the allocation names", {
   expect_identical(names(formals(compare_fits)),
                    c("fits", "models", "reference", "zones", "coverage_args"))
   expect_identical(names(formals(bootstrap_fit)),
-                   c("model", "fit", "observation", "scenario", "seed", "checkpoint"))
+                   c("model", "fit", "observation", "scenario", "seed", "checkpoint",
+                     "attempts"))
 })
 
 test_that("check_fit() gives the result of check_allocation()", {
@@ -461,6 +464,8 @@ test_that("compare_fits() gives the result of compare_allocations()", {
 })
 
 test_that("bootstrap_fit() gives the result of bootstrap_allocation()", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   x <- .step_result("gauss")
   observation <- alloc_bootstrap_observation()
   testthat::local_mocked_bindings(.allocation_case_fit = function(...) .step_refit())

@@ -59,6 +59,29 @@
 #' @return An `ae_allocation_comparison` with a `table` (one row per fit), a
 #'   long `zones` table when zones are supplied, and the reference name. Use
 #'   `print()` or `as.data.frame(type = "fits")` / `as.data.frame(type = "zones")`.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' d <- prep_data(stats::setNames(areas$registered, areas$lsoa),
+#'                stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # Registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- obs_totals(tapply(flows$patients, flows$practice, sum))
+#'
+#' # The same counts fitted with two decay kernels
+#' gaussian <- spax(d, spec_clm(decay_gaussian()), observed = totals)
+#' exponential <- spax(d, spec_clm(decay_exponential()), observed = totals)
+#'
+#' # Loss differences are measured from the first fit
+#' comparison <- compare_fits(list(gaussian = gaussian, exponential = exponential))
+#' comparison
+#' as.data.frame(comparison)[, c("specification", "parameters", "loss_difference")]
 #' @family allocation steps
 #' @export
 #' @md
@@ -236,6 +259,6 @@ as.data.frame.ae_allocation_comparison <- function(x, row.names = NULL, optional
                                                    type = c("fits", "zones"), ...) {
   type <- match.arg(type)
   out <- if (type == "fits") x$table else x$zones
-  if (is.null(out)) stop("no zone summaries; supply zones to compare_allocations()")
+  if (is.null(out)) .stop("no zone summaries; supply zones to compare_allocations()")
   out
 }

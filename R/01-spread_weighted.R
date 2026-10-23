@@ -2,14 +2,14 @@
 #' @param values Numeric vector, matrix or data.frame of values
 #' @param weights Multi-layer SpatRaster of weights
 #' @param value_cols Column names if values is data.frame
-#' @keywords internal
+#' @noRd
 .chck_spread_weighted <- function(values, weights, value_cols = NULL) {
   # Check weights
   .chck_class(weights, "SpatRaster", "weights")
 
   # Handle sf objects first
   if (inherits(values, "sf")) {
-    stop("'values' is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
+    .stop("'values' is an sf object. Please use st_drop_geometry() first to convert to a regular data frame")
   }
 
   # Check values is one of allowed types
@@ -22,7 +22,7 @@
     .chck_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
   } else if (is.data.frame(values)) {
     if (is.null(value_cols)) {
-      stop("value_cols must be specified when values is a data.frame")
+      .stop("value_cols must be specified when values is a data.frame")
     }
     .chck_cols_exist(values, value_cols, "values")
     .chck_lengths_match(nrow(values), nlyr(weights), "rows in values", "weight layers")
@@ -36,10 +36,10 @@
 #' @param weights Multi-layer SpatRaster of weights
 #' @param full_output Whether to return intermediate calculations
 #' @return SpatRaster or list depending on full_output
-#' @keywords internal
+#' @noRd
 .spread_core <- function(values, weights, full_output = FALSE) {
   if (length(values) != nlyr(weights)) {
-    stop("Number of values must match number of weight layers")
+    .stop("Number of values must match number of weight layers")
   }
 
   unit_distribution <- weights * values
@@ -62,19 +62,20 @@
 #' rasters. Each input value is spread according to its corresponding weight layer.
 #'
 #' @param values Numeric vector, matrix, or data.frame of values to distribute:
-#'        - Vector: Must match number of weight layers
-#'        - Matrix: Rows match weight layers, columns are different measures
-#'        - Data.frame: Same as matrix but requires value_cols parameter
+#'   - Vector: Must match number of weight layers
+#'   - Matrix: Rows match weight layers, columns are different measures
+#'   - Data.frame: Same as matrix but requires `value_cols`
 #' @param weights Multi-layer SpatRaster where each layer represents one unit's
-#'        weighted distribution surface
+#'   weighted distribution surface
 #' @param value_cols Character vector of column names if values is a data.frame
 #' @param full_output Logical; whether to return intermediate calculations (default FALSE)
 #' @param name_prefix Character string to prepend to output names (default NULL)
 #' @param snap Logical; if TRUE, avoid input validation for performance (default FALSE)
-#' @return If full_output = TRUE, returns list containing:
-#'         - total_distribution: SpatRaster stack of total distribution per measure
-#'         - unit_distribution: List of unit-specific distribution SpatRasters
-#'         If full_output = FALSE, returns only total_distribution SpatRaster
+#' @return If `full_output = FALSE`, the total distribution only: a SpatRaster
+#'   with one layer per measure. If `full_output = TRUE`, a list containing:
+#'   - `total_distribution`: SpatRaster stack of total distribution per measure
+#'   - `unit_distribution`: the distribution of each unit, a SpatRaster with one
+#'     layer per unit (for several measures, a list of them, one per measure)
 #' @examples
 #' # Example 1: Basic vector input using package data
 #' # Spread GP full-time equivalents across space using distance-decay weights
@@ -95,6 +96,7 @@
 #' terra::plot(result$total_distribution, main = "Total Distribution")
 #' terra::plot(result$unit_distribution[[1]], main = "First Unit Distribution")
 #' @export
+#' @md
 spread_weighted <- function(values, weights, value_cols = NULL,
                             full_output = FALSE, name_prefix = NULL,
                             snap = FALSE) {

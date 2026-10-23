@@ -20,7 +20,7 @@ spax_3sfca(
 \item{demand}{SpatRaster representing spatial distribution of demand, or a
 named list of single-layer SpatRasters, one per demand group (see
 "Demand groups"). A multi-layer SpatRaster is refused. Demand
-must be finite and nonnegative (use NA for unknown) unless `snap = TRUE`,
+must be finite and nonnegative (use NA for unknown) unless \code{snap = TRUE},
 which ignores other cells.}
 
 \item{supply}{vector, matrix, or data.frame containing supply capacity values}
@@ -29,7 +29,7 @@ which ignores other cells.}
 With demand groups, either one stack shared by every group or a list
 of stacks named by the groups (for example one per travel mode); the
 stacks of all groups must name the same facilities in the same order
-and have the same geometry (reorder with `x[[names(first)]]`).}
+and have the same geometry (reorder with \code{x[[names(first)]]}).}
 
 \item{decay_params}{List of parameters for the decay weights used in both
 steps (with demand groups, one list shared by every group, or a list
@@ -113,31 +113,31 @@ accessibility layers.
 }
 \section{Demand groups}{
 
-Give `demand` as a named list of single-layer rasters (for example age
+Give \code{demand} as a named list of single-layer rasters (for example age
 bands) to let several groups compete for the same facilities. The names are
-the group IDs: unique, non-empty, not `"all"` and without a `.`; all rasters
+the group IDs: unique, non-empty, not \code{"all"} and without a \code{.}; all rasters
 need the same geometry. A multi-layer raster is not taken as groups.
 
 Step 1 sums, over all groups, the demand that reaches each facility, with
 the demand weights of each group; step 2 gives each group its own
 accessibility from the shared ratios, with its own weights. The result has
-one layer per group, and an overall layer `<measure>.all`: the average of
+one layer per group, and an overall layer \verb{<measure>.all}: the average of
 the group scores weighted by the demand of the cell. A group with demand in
 a cell that its travel cannot reach counts with accessibility 0 in the
 overall layer; the overall layer is NA where any group's demand is missing
 or the total demand is 0. With one group the group layer equals the
 ungrouped result.
 
-`decay_params` and `distance` (and `selection_params` of
-[spax_3sfca()] and [spax_huff2sfca()], `threshold` of [spax_2sfca()]) are
+\code{decay_params} and \code{distance} (and \code{selection_params} of
+\code{\link[=spax_3sfca]{spax_3sfca()}} and \code{\link[=spax_huff2sfca]{spax_huff2sfca()}}, \code{threshold} of \code{\link[=spax_2sfca]{spax_2sfca()}}) are
 each either shared by every group or given per group. An argument is per
-group when it is a list (for `threshold`, a named numeric vector) whose
+group when it is a list (for \code{threshold}, a named numeric vector) whose
 names are the group IDs, in any order; names that match only some of the
 groups are refused. Any other value is shared and checked as for one
-group. Pass a shared `distance` as one object, so that it is read once. A
+group. Pass a shared \code{distance} as one object, so that it is read once. A
 plain-function decay builds a whole in-memory weight raster for each group.
-`demand_normalize`, `indicator_names`, `id_col`, `supply_cols` and the
-attractiveness of [spax_huff2sfca()] are shared.
+\code{demand_normalize}, \code{indicator_names}, \code{id_col}, \code{supply_cols} and the
+attractiveness of \code{\link[=spax_huff2sfca]{spax_huff2sfca()}} are shared.
 }
 
 \examples{

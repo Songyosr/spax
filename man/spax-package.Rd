@@ -19,12 +19,13 @@ remain model-specific.
 \section{Choose a workflow}{
 
 \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}} and
-\code{\link{spax_m2sfca}} remain supported public FCA entry points;
-\code{\link{compute_access}} is also retained. The experimental
-\code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add selection
-weights that divide each origin's demand among the facilities. These take
-raster demand and facility travel layers. Multiple supply columns produce
-independent accessibility indicators, not interacting resource constraints.
+\code{\link{spax_m2sfca}} compute FCA indices, and
+\code{\link{compute_access}} computes them from given decay weights. The
+experimental \code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add
+selection weights that divide each origin's demand among the facilities.
+These take raster demand and facility travel layers. Multiple supply columns
+produce independent accessibility indicators, not interacting resource
+constraints.
 
 The experimental allocation interface runs a model in one call:
 \code{\link{spax}} binds a model specification (\code{\link{spec_clm}} or
@@ -104,63 +105,63 @@ observation multiplicities are resampled. Every physical facility remains
 in the allocation network.
 
 Conditional percentile intervals require an eligible original fit, a complete
-run of 399 attempts and at least 380 finite successful values per quantity.
+run (399 attempts by default) and finite successful values from at least 95
+percent of the attempts per quantity (380 of 399).
 Refused and incomplete results remain inspectable. Failed attempts are not
 replaced; successful inner-boundary estimates remain in the distribution.
 Coverage was evaluated for Gaussian decay with fitted \code{sigma} and
-\code{v0}, in generated 80-origin/40-facility designs under tested fixed-input
-laws; other kernels and a fitted \code{beta} use the same procedure without a
-separate coverage study. This is not a universal coverage guarantee or
+\code{v0} and 399 attempts, in generated 80-origin/40-facility designs under
+tested fixed-input laws; other kernels, a fitted \code{beta} and other numbers
+of attempts use the same procedure without a separate coverage study. This is not a universal coverage guarantee or
 validation of an application's observation law. Regional attributed capacity
 per demand is a fixed-input identity and has no bootstrap interval. No
 simultaneous spatial intervals are provided. See
 \code{\link{bootstrap_allocation}} for the full restrictions.
 }
 
-\section{Compatibility and migration}{
+\section{FCA indices, saved results}{
 
-Existing public FCA calls remain supported. Their independent supply columns
-and accessibility scores do not become CLM probabilities by changing function
-names. Normalization choices remain part of the FCA model specification.
-Internal feedback models are private, and a shared execution engine does not
-establish universal mathematical nesting among the models.
+FCA indices and the allocation model answer different questions: the
+independent supply columns and accessibility scores of an FCA index are not
+choice probabilities. Normalization choices are part of the FCA model
+specification. One numeric engine computing several models does not make
+them nested.
 
-Corrected static CLM and the older private \code{huff_decay} route have
-different equations and output meanings. Do not reinterpret saved legacy
-outputs as corrected contact or count outputs. Older private fits may lack
-the compact source snapshot or metadata needed for prediction and reporting;
-regenerate them from verified inputs rather than renaming their classes.
-Named observation axes align to canonical input IDs. Custom loss arguments
-indexed by observations must already use that canonical order.
+Named observation axes align to the input IDs. Custom loss arguments indexed
+by observations must already use that order.
 
 Save input declarations and support metadata with fitted results, preferably
-in an RDS bundle. CSV exports discard R attributes. Inspect saved results with
+in an RDS file. CSV exports discard R attributes. Inspect saved results with
 \code{coef}, \code{fitted}, \code{summary}, \code{plot} and
-\code{as.data.frame}; these methods do not silently fit or bootstrap again.
-Record the package version, and the source commit when using a development
-version from the \code{develop} branch.
+\code{as.data.frame}; these methods do not fit or bootstrap again. Results
+saved by earlier versions may lack what prediction and reporting need; fit
+them again from the inputs. Record the package version with saved results.
 }
 
 \section{Installed guides and status}{
 
-Version 0.3.0 is the first release that includes the experimental allocation
-interface, which may change in later versions. Package and function help are installed with the
-package. Use \code{help(package = "spax")} to browse them. Installations
+The \code{spax()} interface and the allocation model are experimental and
+may change in later versions. Package and function help are installed with
+the package; use \code{help(package = "spax")} to browse them. Installations
 with built articles also expose \code{browseVignettes("spax")}. Start with
-\code{vignette("spax", package = "spax")}, which computes one FCA surface;
-\code{vignette("cornwall-data", package = "spax")} describes the bundled
-Cornwall GP example data. The allocation workflow,
-\code{vignette("allocation-workflow", package = "spax")}, fits the model to
-the Cornwall GP registrations and covers prediction, a supply scenario,
-maps, export and fresh-session save/reload. The conditional bootstrap,
-\code{vignette("facility-bootstrap", package = "spax")}, uses a generated
-network.
+\code{vignette("spax", package = "spax")}, which computes one FCA index for
+Cornwall; \code{vignette("cornwall-data", package = "spax")} describes the
+bundled example data. \code{vignette("model-choice", package = "spax")}
+compares an FCA index with the allocation model,
+\code{vignette("allocation-workflow", package = "spax")} fits the model to
+the Cornwall GP registrations, \code{vignette("scenario", package = "spax")}
+compares a practice closure at the fitted values, and
+\code{vignette("extending", package = "spax")} covers your own decay curve,
+raster data and grid maps. \code{vignette("facility-bootstrap", package =
+"spax")} gives bootstrap intervals on a generated network, and
+\code{vignette("reading-results", package = "spax")} says what each result
+measures.
 }
 
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/songyosr/spax}
+  \item \url{https://github.com/Songyosr/spax}
   \item \url{https://songyosr.github.io/spax/}
   \item Report bugs at \url{https://github.com/Songyosr/spax/issues}
 }

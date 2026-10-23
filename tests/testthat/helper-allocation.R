@@ -277,7 +277,8 @@ run_in_fresh_r <- function(payload, code) {
   paths <- file.path(dir, c("input.rds", "output.rds", "script.R"))
   saveRDS(payload, paths[1])
   package_path <- getNamespaceInfo(asNamespace("spax"), "path")
-  mode <- if (pkgload::is_dev_package("spax")) "source" else "installed"
+  mode <- if (requireNamespace("pkgload", quietly = TRUE) &&
+               pkgload::is_dev_package("spax")) "source" else "installed"
   writeLines(c("a <- commandArgs(TRUE)",
     "if (a[4] == 'source') pkgload::load_all(a[1], quiet = TRUE) else",
     "  library('spax', lib.loc = dirname(a[1]))",

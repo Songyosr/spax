@@ -4,7 +4,7 @@
 \alias{save_spax}
 \title{Save a spax accessibility analysis}
 \usage{
-save_spax(x, file, dir = FALSE, overwrite = FALSE, ...)
+save_spax(x, file, dir = FALSE, overwrite = FALSE, ..., datatype = "FLT8S")
 }
 \arguments{
 \item{x}{A spax object}
@@ -15,13 +15,37 @@ save_spax(x, file, dir = FALSE, overwrite = FALSE, ...)
 
 \item{overwrite}{Logical; whether to overwrite existing files/directory (default FALSE)}
 
-\item{...}{Additional arguments passed to terra::writeRaster()}
+\item{...}{Additional arguments passed to \code{\link[terra:writeRaster]{terra::writeRaster()}}}
+
+\item{datatype}{Character; the data type of the raster file, passed to
+\code{\link[terra:writeRaster]{terra::writeRaster()}} (give it by name). The default \code{"FLT8S"} (double
+precision) keeps the values: \code{\link[=read_spax]{read_spax()}} returns them as they were.
+\code{"FLT4S"} (single precision, terra's own default) writes files about half
+the size, with values rounded to about seven significant digits (a relative
+change of up to 6e-8).}
 }
 \value{
 Invisibly returns the input object
 }
 \description{
-Saves the result of a floating catchment analysis (an object of class `spax`)
-with its rasters. A result of [spax()] (a `spax_allocation`) is saved with
-[saveRDS()].
+Saves the result of a floating catchment analysis (an object of class \code{spax})
+with its rasters. A result of \code{\link[=spax]{spax()}} (a \code{spax_allocation}) is saved with
+\code{\link[=saveRDS]{saveRDS()}}.
+}
+\examples{
+# E2SFCA on the Cornwall population grid, with a Gaussian decay of 10 minutes
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+                      decay_params = list(method = "gaussian", sigma = 10),
+                      id_col = "practice", supply_cols = "gp_fte_extg")
+
+# Save it to temporary files: the object, and its accessibility raster
+path <- tempfile("cornwall_e2sfca")
+save_spax(result, path)
+basename(list.files(dirname(path), pattern = basename(path)))
+
+# Read it back, then remove the files
+read_spax(path)
+unlink(paste0(path, c("_spax.rds", "_accessibility.tif")))
 }

@@ -86,8 +86,10 @@ test_that("fits store inspection fields and support the QoL methods", {
   expect_s4_class(surface, "SpatRaster")
   expect_equal(
     terra::values(surface)[problem$substrate$demand_kept_index, 1],
-    fit$outputs$access
+    unname(fit$outputs$access)
   )
+  # origin vectors are named by the declared origin IDs, here raster cell numbers
+  expect_named(fit$outputs$access, .problem_output_identity(problem, "access")$ids$origin)
 
   expect_output(print(fit), "sigma")
   expect_output(print(fit$equilibrium))

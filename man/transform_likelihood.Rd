@@ -24,11 +24,13 @@ copied to every cell it covers.}
 \item{template}{SpatRaster; template for rasterization if x is SpatVector}
 
 \item{method}{Character; method to compute reference value:
-- "mean": Compare to mean value (default)
-- "sum": Compare to sum
-- "custom": Compare to provided ref_value}
+\itemize{
+\item \code{"mean"}: Compare to mean value (default)
+\item \code{"sum"}: Compare to sum
+\item \code{"custom"}: Compare to provided \code{ref_value}
+}}
 
-\item{ref_value}{Numeric; custom reference value if method = "custom"}
+\item{ref_value}{Numeric; custom reference value if \code{method = "custom"}}
 
 \item{standardize}{Logical; if TRUE return z-scores instead of ratios}
 
@@ -43,9 +45,11 @@ compared to what would be expected under a reference distribution. This is
 useful for Bayesian updating of spatial probability distributions.
 
 The likelihood surface shows where values are higher or lower than expected:
-- Values > 1 indicate higher than expected
-- Values = 1 indicate as expected
-- Values < 1 indicate lower than expected
+\itemize{
+\item Values > 1 indicate higher than expected
+\item Values = 1 indicate as expected
+\item Values < 1 indicate lower than expected
+}
 }
 \examples{
 # From raster input
@@ -54,7 +58,7 @@ lik1 <- transform_likelihood(pop)
 
 # From vector input: density of residents aged 65+ by small area. Rasterizing
 # copies a polygon's value to every cell it covers, so use a density, not a count.
-areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+areas <- terra::vect(cornwall_lsoa)
 areas$dens_65 <- areas$pop_65p / terra::expanse(areas, unit = "km")
 lik2 <- transform_likelihood(
   areas,

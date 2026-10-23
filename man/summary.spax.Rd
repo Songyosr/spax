@@ -4,10 +4,10 @@
 \alias{summary.spax}
 \title{Summary method for spax objects}
 \usage{
-\method{summary}{spax}(x, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
+\method{summary}{spax}(object, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
 }
 \arguments{
-\item{x}{A spax object created by an FCA function, such as
+\item{object}{A spax object created by an FCA function, such as
 \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
 \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}}
 
@@ -24,4 +24,21 @@ A summary.spax object. For each accessibility layer, \code{coverage}
 \description{
 Provides detailed statistical summaries of accessibility analysis results,
 including accessibility scores, facility statistics, and model-specific metrics.
+}
+\examples{
+# E2SFCA on the Cornwall population grid for two supply measures: GPs
+# excluding GPs in training, and all GPs
+pop <- read_spax_example("cornwall_pop.tif")
+travel <- read_spax_example("cornwall_gp_travel.tif")
+result <- spax_e2sfca(pop, sf::st_drop_geometry(cornwall_gp), travel,
+                      decay_params = list(method = "gaussian", sigma = 10),
+                      id_col = "practice",
+                      supply_cols = c("gp_fte_extg", "gp_fte"))
+summary(result)
+
+# Deciles instead of quartiles, and the coverage of the first measure: the
+# cells with a value, and those with access above zero
+s <- summary(result, quantiles = seq(0, 1, by = 0.1))
+s$accessibility$gp_fte_extg$quantiles
+s$accessibility$gp_fte_extg$coverage
 }

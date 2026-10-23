@@ -155,3 +155,48 @@ test_that("inspection methods run on a real fit and a real bootstrap run", {
   expect_equal(summary(run)$counts$attempted, 3)
   expect_identical(as.data.frame(run, type = "draws"), run$draws)
 })
+
+# The title and axis labels a plot draws, read where graphics::title() is called
+# (plot.default() and the histogram method draw their labels with it), on a null device.
+.drawn_labels <- function(code) {
+  drawn <- list()
+  record <- function() {
+    frame <- parent.frame()
+    drawn[[length(drawn) + 1L]] <<- list(main = frame$main, xlab = frame$xlab,
+                                         ylab = frame$ylab)
+  }
+  # A call holding the function itself: trace() evaluates it in the frame of title().
+  suppressMessages(trace("title", tracer = as.call(list(record)), print = FALSE,
+                         where = asNamespace("graphics")))
+  on.exit(suppressMessages(untrace("title", where = asNamespace("graphics"))), add = TRUE)
+  withr::local_pdf(NULL)
+  force(code)
+  drawn
+}
+
+test_that("fit plots have plain titles that arguments of the call replace", {
+  skip_on_cran()
+  fit <- alloc_small_fit()
+  expect_identical(.drawn_labels(plot(fit)), list(list(
+    main = "Observed and fitted values", xlab = "Observed", ylab = "Fitted")))
+  expect_identical(.drawn_labels(plot(fit, type = "convergence")), list(list(
+    main = "Solver convergence at the fitted values", xlab = "Iteration", ylab = "Error")))
+  expect_identical(.drawn_labels(plot(fit, type = "state"))[[1]][c("main", "xlab")],
+                   list(main = "Attractiveness at the fitted values", xlab = "Attractiveness"))
+  # main, xlab and ylab of the call replace the defaults (they were matched twice
+  # before), on the fit and on its selected fit, and other arguments pass through
+  own <- list(list(main = "Practices", xlab = "Registered", ylab = "Modelled"))
+  for (x in list(fit, fit$best)) {
+    for (type in c("fit", "convergence")) {
+      expect_identical(.drawn_labels(plot(x, type = type, main = "Practices",
+        xlab = "Registered", ylab = "Modelled", pch = 19, col = "grey40")), own)
+    }
+    expect_identical(.drawn_labels(plot(x, type = "state", main = "Practices",
+      xlab = "Registered", ylab = "Modelled", breaks = 3)), own)
+  }
+  # what each plot returns
+  withr::local_pdf(NULL)
+  expect_identical(plot(fit), range(c(fit$best$observed, fit$best$predicted)))
+  expect_identical(plot(fit, type = "convergence"), fit$best$equilibrium$history)
+  expect_identical(plot(fit, type = "state"), fit$best$state)
+})

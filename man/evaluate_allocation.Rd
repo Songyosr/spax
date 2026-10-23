@@ -7,7 +7,7 @@
 evaluate_allocation(model, theta, coverage_args = list(), ...)
 }
 \arguments{
-\item{model}{A corrected CLM declared over checked prepared inputs.}
+\item{model}{A static CLM from \code{\link[=clm_allocation]{clm_allocation()}} or \code{\link[=huff_allocation]{huff_allocation()}}.}
 
 \item{theta}{A complete model parameter vector. Named parameters align to the
 model contract; unnamed values follow its declared order. This operation
@@ -18,7 +18,7 @@ model with demand groups, a parameter held fixed by \code{clm_allocation(fixed =
 optional \code{norm}, \code{units}, reporting floors and classification cuts. A norm
 must have the same declared supply-per-demand scale as capacity attribution.}
 
-\item{...}{Named controls passed to the existing fixed-parameter solver,
+\item{...}{Named controls passed to the fixed-parameter solver,
 including \code{requested_outputs}. For a model with demand groups, request the
 per-group outputs here, for example
 \code{requested_outputs = c("utilization_by_group", "access_by_group", "outside_share_by_group")}; the other outputs are pooled over the groups
@@ -35,17 +35,54 @@ The outside counts are zero for a model without an outside option; they
 are the outputs that \code{\link[=fit_allocation]{fit_allocation()}} fits to observed outside counts.}
 }
 \value{
-The existing \code{ae_equilibrium} with its portable prediction snapshot
+An \code{ae_equilibrium} with its portable prediction snapshot
 (none for a model with demand groups, which cannot be predicted yet)
 and compact \code{coverage}. Coverage uses raw supply units without kappa;
 proportional attributed capacity is not a delivered-service measure or a
-hard constraint on expected utilization.
+hard constraint on expected utilization. In \code{outputs} the vectors are named
+by facility ID (\code{target}, \code{utilization}, \code{attractiveness}, and
+\code{utilization_outside}, whose last element is \code{"(outside)"}) or by origin ID
+(\code{access}, \code{outside_share}), and the matrices by their two axes: origins by
+facilities (\code{allocation}, \code{flow}) and, with demand groups, facilities or
+origins by groups.
 }
 \description{
 Solves once and constructs compact coverage from the saved evaluated outputs.
-The existing equilibrium result carries its prediction snapshot;
+The equilibrium result carries its prediction snapshot;
 adding coverage does not retain the original model or create a scenario type.
 The caller changes system supply/demand by preparing a new model explicitly.
+}
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+demand <- stats::setNames(areas$registered, areas$lsoa)
+supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+travel <- cornwall_travel[areas$lsoa, gp$practice]
+model <- clm_allocation(prepare_allocation(demand, supply, travel), fit_v0 = TRUE)
+
+# The model at a travel scale of 10 minutes and an outside weight of 1
+ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
+ev$coverage
+
+# Expected registrations at each practice
+round(ev$outputs$utilization)
+
+# Expected registrations by small area and practice, with the expected
+# outside count as one more column
+flow <- evaluate_allocation(model, c(sigma = 10, v0 = 1),
+                            requested_outputs = "flow_outside")$outputs$flow_outside
+round(flow[1:3, c("L82047", "(outside)")])
+
+# A scenario: Marazion Surgery (L82047) closes. Prepare the changed inputs
+# and evaluate them at the same values
+closed <- clm_allocation(prepare_allocation(demand, replace(supply, "L82047", 0),
+                                            travel), fit_v0 = TRUE)
+change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
+  ev$outputs$utilization
+round(change)
 }
 \seealso{
 Other allocation steps: 

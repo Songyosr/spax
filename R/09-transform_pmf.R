@@ -1,5 +1,5 @@
 #' Validate inputs for PMF transformation
-#' @keywords internal
+#' @noRd
 .chck_transform_pmf_raster <- function(x, snap = FALSE) {
   if (snap) {
     return(invisible(TRUE))
@@ -10,16 +10,16 @@
   vals <- terra::values(x)
 
   if (all(is.na(vals))) {
-    stop("Input raster 'x' contains only NA values")
+    .stop("Input raster 'x' contains only NA values")
   }
 
   if (any(vals < 0, na.rm = TRUE)) {
-    stop("values in x must be >= 0")
+    .stop("values in x must be >= 0")
   }
 
   totals <- colSums(as.matrix(vals), na.rm = TRUE)
   if (any(totals <= 0)) {
-    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+    .stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
          "cannot create PMF")
   }
 
@@ -63,6 +63,7 @@
 #' result$total
 #'
 #' @export
+#' @md
 transform_pmf <- function(x, value_col = NULL, template = NULL,
                           return_total = FALSE, snap = FALSE) {
   if (!snap) {
@@ -84,7 +85,7 @@ transform_pmf <- function(x, value_col = NULL, template = NULL,
 
   total <- terra::global(x, "sum", na.rm = TRUE)$sum # one per layer
   if (!isTRUE(all(total > 0))) {
-    stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
+    .stop("Sum of all values in 'x' (or in one of its layers) is zero - ",
          "cannot create PMF")
   }
 

@@ -9,30 +9,30 @@
 #'   - A PMF where values sum to 1
 #'   - Raw density values that will be converted to PMF (except in snap mode)
 #' @param n Integer or NULL. Fixed number of samples for deterministic sampling.
-#'        If specified, overrides probabilistic sampling parameters.
+#'   If specified, overrides probabilistic sampling parameters.
 #' @param size Integer or NULL. Population size parameter for probability distributions.
-#'        If NULL and input is density (not PMF), the rounded total of the data
-#'        is used.
+#'   If NULL and input is density (not PMF), the rounded total of the data
+#'   is used.
 #' @param prob Numeric between 0 and 1. Probability parameter for sampling methods
-#'        (e.g., disease prevalence, detection probability).
+#'   (e.g., disease prevalence, detection probability).
 #' @param method Character string or function specifying sampling method:
-#'   - "poisson": Random size with mean = size * prob
-#'   - "binomial": Random size from binomial(size, prob)
-#'   - "nbinom": Random size from negative binomial(size, prob)
-#'   - custom function: Must return vector of length 'iterations'
+#'   - `"poisson"`: Random size with mean `size * prob`
+#'   - `"binomial"`: Random size from binomial(`size`, `prob`)
+#'   - `"nbinom"`: Random size from negative binomial(`size`, `prob`)
+#'   - custom function: Must return vector of length `iterations`
 #' @param iterations Integer. Number of realizations to generate (default = 1)
 #' @param evolve_prop Numeric between 0 and 1. Controls sample evolution between iterations:
 #'   - 1 (default): Independent sampling, all new samples each iteration
 #'   - 0: No new samples, returns only first iteration
-#'   - (0,1): Proportion of samples that evolve each iteration
+#'   - Between 0 and 1: Proportion of samples that evolve each iteration
 #' @param seed Integer or NULL. Random seed for reproducibility
 #' @param replace_0 Logical. If TRUE, replaces zero values with NA (default = TRUE)
 #' @param snap Logical. If TRUE, enters fast mode with minimal validation (default = FALSE)
 #' @param ... Additional arguments passed to custom sampling function
 #'
-#' @return SpatRaster with one layer per realization (or single layer if evolve_prop = 0),
-#'         containing counts of samples per cell. If replace_0 = TRUE, cells with zero
-#'         counts contain NA.
+#' @return SpatRaster with one layer per realization (or single layer if `evolve_prop = 0`),
+#'   containing counts of samples per cell. If `replace_0 = TRUE`, cells with zero
+#'   counts contain NA.
 #'
 #' @examples
 #' # Population density on a small grid
@@ -56,6 +56,7 @@
 #' )
 #'
 #' @export
+#' @md
 sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
                        method = "poisson", iterations = 1,
                        evolve_prop = 1, seed = NULL, replace_0 = TRUE,
@@ -76,7 +77,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
       }
     }
     if (is.null(n) && is.character(method) && is.null(size)) {
-      stop("size must be given when x is already a PMF; it is taken from the ",
+      .stop("size must be given when x is already a PMF; it is taken from the ",
            "total only for raw density input")
     }
   } else {
@@ -87,14 +88,8 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
     }
   }
 
-  # Initialize RNG if needed
   if (is.null(seed)) {
-    # Check if RNG is already initialized
-    if (!exists(".Random.seed", envir = .GlobalEnv)) {
-      # Initialize with random seed if none exists
-      set.seed(sample.int(.Machine$integer.max, 1))
-    }
-    # Use current RNG state
+    # Use the current random stream (R seeds it on first use)
     result <- .sample_pmf_internal(
       x, n, size, prob, method, iterations,
       evolve_prop, replace_0, snap, ...
@@ -113,7 +108,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   return(result)
 }
 #' Internal sampling function (moved from main body)
-#' @keywords internal
+#' @noRd
 .sample_pmf_internal <- function(x, n, size, prob, method, iterations,
                                  evolve_prop, replace_0, snap, ...) {
   # Compute sample sizes (a fixed n takes precedence and is validated there)
@@ -164,37 +159,37 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param iterations Number of iterations
 #' @param evolve_prop Evolution proportion
 #' @param snap Logical for snap mode
-#' @keywords internal
+#' @noRd
 .chck_sample_pmf <- function(x, n, size, prob, method, iterations, evolve_prop, snap) {
   # Essential validation (always run)
   if (!inherits(x, "SpatRaster")) {
-    stop("Input 'x' must be a SpatRaster object")
+    .stop("Input 'x' must be a SpatRaster object")
   }
   if (terra::nlyr(x) != 1) {
-    stop("Input 'x' must have a single layer")
+    .stop("Input 'x' must have a single layer")
   }
 
   # Extended validation (skip if snap=TRUE)
   if (!snap) {
     if (iterations < 1 || !is.numeric(iterations) || iterations != as.integer(iterations)) {
-      stop("iterations must be a positive integer")
+      .stop("iterations must be a positive integer")
     }
 
     if (is.null(n) && is.character(method) && is.null(prob)) {
-      stop("Either n or prob (with size, unless x holds raw density) must be ",
+      .stop("Either n or prob (with size, unless x holds raw density) must be ",
            "specified for built-in methods")
     }
 
     if (!is.null(prob) && (prob < 0 || prob > 1)) {
-      stop("prob must be between 0 and 1")
+      .stop("prob must be between 0 and 1")
     }
 
     if (!is.numeric(evolve_prop) || evolve_prop < 0 || evolve_prop > 1) {
-      stop("evolve_prop must be between 0 and 1")
+      .stop("evolve_prop must be between 0 and 1")
     }
 
     if (is.character(method) && !method %in% c("poisson", "binomial", "nbinom")) {
-      stop("Unknown method string. Use 'poisson', 'binomial', 'nbinom', or provide a function")
+      .stop("Unknown method string. Use 'poisson', 'binomial', 'nbinom', or provide a function")
     }
   }
 }
@@ -203,7 +198,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #'
 #' @param x SpatRaster input
 #' @return List with PMF raster and total population
-#' @keywords internal
+#' @noRd
 .chck_n_convert_pmf <- function(x) {
   # Check if input is PMF
   sum_check <- terra::global(x, "sum", na.rm = TRUE)$sum
@@ -231,14 +226,14 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param iterations Number of iterations
 #' @param ... Additional arguments for custom methods
 #' @return Vector of sample sizes
-#' @keywords internal
+#' @noRd
 .help_gen_sample_size <- function(n = NULL, size = NULL, prob = NULL,
                                   method = "poisson", iterations = 1, ...) {
   # Fixed sample size takes precedence
   if (!is.null(n)) {
     if (!is.numeric(n) || length(n) != 1 || !is.finite(n) || n < 0 ||
         n != round(n)) {
-      stop("n must be a non-negative integer")
+      .stop("n must be a non-negative integer")
     }
     return(rep(n, iterations))
   }
@@ -247,24 +242,24 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
   if (is.function(method)) {
     result <- do.call(method, list(...))
     if (!is.numeric(result)) {
-      stop("Custom method must return numeric values")
+      .stop("Custom method must return numeric values")
     }
     if (length(result) != iterations) {
-      stop(sprintf("Custom method must return %d values (one per iteration)", iterations))
+      .stop(sprintf("Custom method must return %d values (one per iteration)", iterations))
     }
     if (any(result < 0) || any(result != as.integer(result))) {
-      stop("Custom method must return non-negative integer values")
+      .stop("Custom method must return non-negative integer values")
     }
     return(result)
   }
 
   # For built-in methods, we need size and prob
   if (is.null(size) || !is.numeric(size) || is.na(size) || size <= 0) {
-    stop("Valid size parameter required for probabilistic sampling")
+    .stop("Valid size parameter required for probabilistic sampling")
   }
 
   if (is.null(prob) || !is.numeric(prob) || is.na(prob) || prob < 0 || prob > 1) {
-    stop("Valid probability parameter (between 0 and 1) required for probabilistic sampling")
+    .stop("Valid probability parameter (between 0 and 1) required for probabilistic sampling")
   }
 
   # Built-in methods
@@ -283,7 +278,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 #' @param replace_0 Logical for NA replacement
 #' @param snap Logical for snap mode
 #' @return Multi-layer SpatRaster of samples
-#' @keywords internal
+#' @noRd
 .sample_pmf_core_indp <- function(x, n_samples, iterations, replace_0 = TRUE, snap = FALSE) {
   # Create empty multi-layer template for results
   result <- rast(x, nlyrs = iterations)
@@ -330,7 +325,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 }
 
 #' Estimate new sample
-#' @keywords internal
+#' @noRd
 .help_est_new_sample <- function(input_vector, evolve_prop) {
   # Round retained samples from previous iteration
   retained <- round(c(0, head(input_vector, -1)) * (1 - evolve_prop))
@@ -345,7 +340,7 @@ sample_pmf <- function(x, n = NULL, size = NULL, prob = NULL,
 }
 
 #' Generate evolving spatial samples across iterations
-#' @keywords internal
+#' @noRd
 .sample_pmf_core_evlv <- function(x, n_samples, iterations,
                                   evolve_prop = 0.1,
                                   replace_0 = TRUE, snap = FALSE) {

@@ -1,5 +1,5 @@
 #' Core computation for likelihood transformation
-#' @keywords internal
+#' @noRd
 .help_transform_likelihood_core <- function(x, method = "mean", ref_value = NULL) {
   if (method == "custom" && !is.null(ref_value)) {
     return(x / ref_value)
@@ -9,7 +9,7 @@
   ref <- switch(method,
                 "mean" = terra::global(x, "mean", na.rm = TRUE)[[1]],
                 "sum" = terra::global(x, "sum", na.rm = TRUE)[[1]],
-                stop("Invalid method specified")
+                .stop("Invalid method specified")
   )
 
   return(x / ref)
@@ -33,10 +33,10 @@
 #' @param value_col Character; name of column if x is SpatVector
 #' @param template SpatRaster; template for rasterization if x is SpatVector
 #' @param method Character; method to compute reference value:
-#'        - "mean": Compare to mean value (default)
-#'        - "sum": Compare to sum
-#'        - "custom": Compare to provided ref_value
-#' @param ref_value Numeric; custom reference value if method = "custom"
+#'   - `"mean"`: Compare to mean value (default)
+#'   - `"sum"`: Compare to sum
+#'   - `"custom"`: Compare to provided `ref_value`
+#' @param ref_value Numeric; custom reference value if `method = "custom"`
 #' @param standardize Logical; if TRUE return z-scores instead of ratios
 #' @param snap Logical; if TRUE skip validation
 #' @return SpatRaster of likelihood values
@@ -48,7 +48,7 @@
 #'
 #' # From vector input: density of residents aged 65+ by small area. Rasterizing
 #' # copies a polygon's value to every cell it covers, so use a density, not a count.
-#' areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas <- terra::vect(cornwall_lsoa)
 #' areas$dens_65 <- areas$pop_65p / terra::expanse(areas, unit = "km")
 #' lik2 <- transform_likelihood(
 #'   areas,
@@ -63,6 +63,7 @@
 #'   ref_value = 100
 #' )
 #' @export
+#' @md
 transform_likelihood <- function(x, value_col = NULL, template = NULL,
                                  method = "mean", ref_value = NULL,
                                  standardize = FALSE, snap = FALSE) {
@@ -73,15 +74,15 @@ transform_likelihood <- function(x, value_col = NULL, template = NULL,
     } else if (inherits(x, "SpatVector")) {
       .chck_vector_input(x, value_col, template)
     } else {
-      stop("Input must be either SpatRaster or SpatVector")
+      .stop("Input must be either SpatRaster or SpatVector")
     }
 
     # Method validation
     if (!method %in% c("mean", "sum", "custom")) {
-      stop("Invalid method specified")
+      .stop("Invalid method specified")
     }
     if (method == "custom" && is.null(ref_value)) {
-      stop("ref_value must be provided when method = 'custom'")
+      .stop("ref_value must be provided when method = 'custom'")
     }
   }
 

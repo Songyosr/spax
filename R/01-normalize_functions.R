@@ -6,17 +6,11 @@
 #' @param x Numeric vector, matrix, or SpatRaster of weights. The built-in
 #'   methods require non-negative weights; a custom method receives `x` as is.
 #' @param method Character string specifying normalization method:
-#'
-#'        - "standard": Divide by sum + a0 (default)
-#'
-#'        - "semi": Normalize only if sum + a0 > 1
-#'
-#'        - "reference": Normalize by reference value
-#'
-#'        - "identity": Return unchanged
-#'
-#'        - Or a custom function(x, ...)
-#'
+#'   * `"standard"`: divide by sum + a0 (default)
+#'   * `"semi"`: normalize only if sum + a0 > 1
+#'   * `"reference"`: normalize by reference value
+#'   * `"identity"`: return unchanged
+#'   * or a custom `function(x, ...)`
 #' @param ref_value Optional reference value for "reference" method. When
 #'   `NULL`, the maximum of `x` is used; for a SpatRaster that is each cell's
 #'   maximum across layers.
@@ -67,6 +61,7 @@
 #' weights_with_na <- c(2, NA, 5, 3)
 #' calc_normalize(weights_with_na) # NA values are handled appropriately
 #' @export
+#' @md
 calc_normalize <- function(x, method = "standard", ref_value = NULL,
                            a0 = 0, snap = FALSE, ...) {
   # Fast path for internal use
@@ -84,11 +79,11 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   .normalize_core(x, method, ref_value, a0, ...)
 }
 
-#' @keywords internal
+#' @noRd
 .chck_normalize <- function(x, method, ref_value = NULL, a0 = 0) {
   # Input existence check
   if (length(x) == 0) {
-    stop("Input weights cannot be empty")
+    .stop("Input weights cannot be empty")
   }
 
   # Built-in methods need non-negative weights; a custom method gets x as is
@@ -100,14 +95,14 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   if (!is.function(method)) {
     valid_methods <- c("identity", "standard", "semi", "reference")
     if (!method %in% valid_methods) {
-      stop("Invalid normalization method specified")
+      .stop("Invalid normalization method specified")
     }
     # ref_value validation
     if ((method == "reference") && !is.null(ref_value)) {
       .chck_is_numeric(ref_value, "ref_value")
       .chck_length(length(ref_value), 1, "ref_value")
       if (is.na(ref_value)) {
-        stop("ref_value must not be missing")
+        .stop("ref_value must not be missing")
       }
     }
   }
@@ -123,7 +118,7 @@ calc_normalize <- function(x, method = "standard", ref_value = NULL,
   invisible(TRUE)
 }
 
-#' @keywords internal
+#' @noRd
 .normalize_core <- function(x, method, ref_value = NULL, a0 = 0, ...) {
   # Handle custom function first
   if (is.function(method)) {

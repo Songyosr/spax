@@ -5,7 +5,8 @@
 \alias{cornwall_lsoa}
 \title{Small areas of Cornwall and the Isles of Scilly}
 \format{
-An \code{sf} polygon object (EPSG:27700) with 337 rows and columns:
+An \code{sf} polygon object in WGS 84 longitude and latitude
+(EPSG:4326) with 337 rows and columns:
 \describe{
 \item{lsoa, name}{LSOA 2021 code and name; \code{lsoa} matches
 \code{cornwall_flows} and the rows of \code{cornwall_travel}.}
@@ -16,8 +17,10 @@ estimates, all ages and by age band.}
 \item{registered_in}{Residents registered at a Cornwall and Isles of Scilly
 practice (row totals of \code{cornwall_flows}).}
 \item{registered_out}{Residents registered at a practice elsewhere.}
-\item{cent_x, cent_y}{Population-weighted centroid (EPSG:27700), the
-origin used for \code{cornwall_travel}.}
+\item{cent_x, cent_y}{Population-weighted centroid in British National
+Grid coordinates (EPSG:27700), in metres.}
+\item{cent_lon, cent_lat}{The same centroid in WGS 84 longitude and
+latitude, the origin used for \code{cornwall_travel}.}
 \item{scilly}{\code{TRUE} for the Isles of Scilly area.}
 \item{geometry}{Super-generalised (200 m) clipped boundary.}
 }
@@ -39,7 +42,10 @@ centroids.
 }
 \details{
 Registered counts exceed the population estimates by about 4\%,
-reflecting list inflation and the different reference dates.
+reflecting list inflation and the different reference dates. The
+polygons and \code{cent_lon}/\code{cent_lat} were converted from British National
+Grid with the OSGB36 to WGS 84 Helmert transformation (about 2 m); see
+\link{cornwall_gp} for working in metres.
 }
 \examples{
 areas <- sf::st_drop_geometry(cornwall_lsoa)

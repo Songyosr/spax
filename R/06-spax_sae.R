@@ -1,7 +1,7 @@
 # SPAX-009: private SAE fixed-point map --------------------------------------
 
 #' Compile inputs for the compact SAE map
-#' @keywords internal
+#' @noRd
 .sae_compact_plan <- function(demand, supply, kernel, kappa = 1,
                               id_col = NULL, supply_cols = NULL) {
   .chck_positive_scalar(kappa, "kappa")
@@ -15,10 +15,10 @@
     supply_cols = supply_cols
   )
   if (!is.null(dim(plan$D_active))) {
-    stop("SAE currently supports one demand layer")
+    .stop("SAE currently supports one demand layer")
   }
   if (ncol(plan$S) != 1L) {
-    stop("SAE currently supports one supply measure")
+    .stop("SAE currently supports one supply measure")
   }
   plan$S <- as.vector(plan$S[, 1])
   plan$kappa_supply <- as.numeric(kappa) * plan$S
@@ -27,7 +27,7 @@
 }
 
 #' Smooth cap at one with value zero at zero
-#' @keywords internal
+#' @noRd
 .sae_soft_cap <- function(x, beta = 20) {
   .chck_numeric_vector(x, "x")
   .chck_positive_scalar(beta, "beta")
@@ -40,7 +40,7 @@
 }
 
 #' Derivative of the SAE smooth cap
-#' @keywords internal
+#' @noRd
 .sae_soft_cap_gradient <- function(x, beta = 20) {
   .chck_numeric_vector(x, "x")
   .chck_positive_scalar(beta, "beta")
@@ -49,14 +49,14 @@
 }
 
 #' Evaluate the SAE map and derived state at one serviceability vector
-#' @keywords internal
+#' @noRd
 .sae_state <- function(c, plan, beta = 20, eps = 1e-8) {
   .chck_numeric_vector(c, "c")
   .chck_positive_scalar(beta, "beta")
   .chck_positive_scalar(eps, "eps")
   c <- pmin(pmax(.coerce_numeric_vector(c), 0), 1)
   if (length(c) != ncol(plan$Kd_active)) {
-    stop("`c` must have one element per facility")
+    .stop("`c` must have one element per facility")
   }
 
   opportunity <- .scale(plan$Kd_active, c, margin = "cols")
@@ -80,13 +80,13 @@
 }
 
 #' SAE fixed-point map T(c)
-#' @keywords internal
+#' @noRd
 .sae_map <- function(c, plan, beta = 20, eps = 1e-8) {
   .sae_state(c, plan = plan, beta = beta, eps = eps)$target
 }
 
 #' Analytic state Jacobian dT/dc for the compact SAE map
-#' @keywords internal
+#' @noRd
 .sae_jacobian_state <- function(c, plan, beta = 20, eps = 1e-8) {
   state <- .sae_state(c, plan = plan, beta = beta, eps = eps)
   c <- state$serviceability

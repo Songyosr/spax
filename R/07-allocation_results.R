@@ -31,6 +31,31 @@
 #' @param ... Additional generic arguments.
 #' @return A data frame of saved values. Coverage tables additionally carry
 #'   `support`, `input_metadata` and `reporting_settings` attributes.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' model <- clm_allocation(inputs, fit_v0 = TRUE)
+#' fit <- fit_allocation(model, totals, loss = "poisson")
+#' as.data.frame(fit)
+#'
+#' # Coverage at the estimates: for the region, by small area, and by the
+#' # rural-urban class of the small areas
+#' coverage <- evaluate_allocation(model, coef(fit))$coverage
+#' as.data.frame(coverage)
+#' head(as.data.frame(coverage, type = "cells"))
+#' zones <- data.frame(origin_id = areas$lsoa, zone = areas$ruc21)
+#' as.data.frame(coverage, type = "zones", zones = zones)
 #' @name allocation-result-tables
 #' @exportS3Method base::as.data.frame
 #' @md
@@ -65,10 +90,10 @@ as.data.frame.ae_coverage <- function(x, row.names = NULL, optional = FALSE,
   .chck_class(x, "ae_coverage", "x")
   type <- match.arg(type)
   if (type == "zones") {
-    if (is.null(zones)) stop("type = 'zones' requires a zones data frame")
+    if (is.null(zones)) .stop("type = 'zones' requires a zones data frame")
     out <- .allocation_saved_table(.coverage_aggregate(x, zones), row.names, optional, ...)
   } else {
-    if (!is.null(zones)) stop("zones applies only to type = 'zones'")
+    if (!is.null(zones)) .stop("zones applies only to type = 'zones'")
     out <- .allocation_saved_table(x[[type]], row.names, optional, ...)
   }
   attr(out, "support") <- x$support
@@ -88,7 +113,7 @@ as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional 
 }
 
 .allocation_saved_table <- function(x, row.names, optional, ...) {
-  if (!is.data.frame(x)) stop("saved result table is unavailable")
+  if (!is.data.frame(x)) .stop("saved result table is unavailable")
   base::as.data.frame.data.frame(x, row.names = row.names, optional = optional, ...)
 }
 
@@ -100,6 +125,25 @@ as.data.frame.ae_allocation_bootstrap <- function(x, row.names = NULL, optional 
 #' @param digits Display precision; saved values are unchanged.
 #' @param ... Additional print arguments.
 #' @return The summary, invisibly.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # The starts, the selected fit and its residuals, to three significant digits
+#' print(summary(fit), digits = 3)
 #' @export
 #' @md
 print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
@@ -122,10 +166,53 @@ print.summary.ae_multistart_fit <- function(x, digits = 4, ...) {
 }
 
 #' Plot saved diagnostics from the selected allocation fit
-#' @param x An allocation multistart fit.
-#' @param type Existing selected-fit diagnostic to display.
-#' @param ... Arguments forwarded to the selected-fit plot method.
-#' @return The selected diagnostic method's result, invisibly.
+#'
+#' `plot()` of a fit draws a diagnostic of its selected fit, `fit$best`, which has
+#' the same method. The plots read what the fit saved; nothing is recomputed.
+#' @param x An allocation fit from [fit_allocation()] (an `ae_multistart_fit`), or
+#'   its selected fit `fit$best`.
+#' @param type The diagnostic to draw:
+#'   * `"fit"` (the default): the observed against the fitted values of the
+#'     fitted output (the facility totals, or every cell of a flow matrix), with
+#'     the line where they are equal.
+#'   * `"convergence"`: the error of the equilibrium solver at each iteration of
+#'     the evaluation at the fitted values (a single iteration for the models of
+#'     [clm_allocation()] and [huff_allocation()], whose state does not depend on
+#'     the allocation).
+#'   * `"state"`: a histogram of the model state at the fitted values, the
+#'     attractiveness of the facilities.
+#' @param ... Graphics arguments passed to [graphics::plot()] (`"fit"`,
+#'   `"convergence"`) or [graphics::hist()] (`"state"`), such as `col`, `pch` or
+#'   `breaks`. `main`, `xlab` and `ylab` replace the default title and axis labels.
+#' @return Invisibly: for `"fit"` the range of the plotted values, for
+#'   `"convergence"` the solver history (a data frame with one row per
+#'   iteration), for `"state"` the state at the fitted values.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # Observed against modeled registrations at each practice, with a title of
+#' # your own
+#' plot(fit)
+#' plot(fit, main = "West Cornwall practices", pch = 19)
+#'
+#' # The state of this model is the attractiveness of the practices: their GP
+#' # FTE, since kappa and beta are 1
+#' plot(fit, type = "state", breaks = 10)
+#' @order 1
 #' @exportS3Method graphics::plot
 #' @md
 plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), ...) {
@@ -158,6 +245,22 @@ plot.ae_multistart_fit <- function(x, type = c("fit", "convergence", "state"), .
 #'   diagnostics, capacity support and declarations (and the coverage note, when
 #'   the result has one) in a `summary.ae_allocation_bootstrap` object.
 #'   Print and plot methods return their input invisibly.
+#' @examples
+#' # A stored result: the 399-attempt bootstrap of the guide
+#' # vignette("facility-bootstrap", package = "spax"), on a generated network,
+#' # with a scenario of more supply at one facility
+#' boot <- readRDS(system.file("extdata", "allocation-bootstrap.rds", package = "spax"))
+#'
+#' # The run, its attempts and the intervals
+#' boot
+#' summary(boot)$counts
+#'
+#' # The interval of sigma, and the draws of v0
+#' plot(boot)
+#' plot(boot, quantity = "v0", type = "draws")
+#'
+#' # Every attempt, as a table
+#' head(as.data.frame(boot, type = "draws"))
 #' @name allocation-bootstrap-methods
 #' @export
 #' @md
@@ -212,7 +315,12 @@ print.summary.ae_allocation_bootstrap <- function(x, digits = 4, ...) {
   }
   if (is.character(x$settings$fixed_inputs)) cat("fixed inputs: ", x$settings$fixed_inputs, "\n", sep = "")
   for (label in c("capacity_identity", "evidence_scope")) {
-    if (is.character(x$settings[[label]])) cat(paste(strwrap(paste(x$settings[[label]], collapse = " ")), collapse = "\n"), "\n")
+    text <- x$settings[[label]]
+    if (!is.character(text)) next
+    # The stored scope names the coverage study by its internal ticket; the
+    # settings stay as stored, part of the checkpoint contract.
+    text <- sub("the SPAX-048 fixed", "the package's coverage study, a fixed", text, fixed = TRUE)
+    cat(paste(strwrap(paste(text, collapse = " ")), collapse = "\n"), "\n")
   }
   if (is.character(x$coverage_note)) cat(paste(strwrap(paste(x$coverage_note, collapse = " ")), collapse = "\n"), "\n")
   if (!identical(x$status, "complete")) cat("Regular interval reporting is unavailable for this run status.\n")
@@ -245,7 +353,7 @@ plot.ae_allocation_bootstrap <- function(x, quantity = NULL,
   estimates <- x$intervals
   if (is.null(quantity)) quantity <- estimates$quantity[1L]
   if (!is.character(quantity) || length(quantity) != 1L || is.na(quantity) ||
-      !quantity %in% estimates$quantity) stop("quantity must name one saved estimate")
+      !quantity %in% estimates$quantity) .stop("quantity must name one saved estimate")
   row <- estimates[match(quantity, estimates$quantity), , drop = FALSE]
   caption <- c(strwrap(paste0("run: ", .allocation_bootstrap_status_label(x$status),
     "; quantity: ", .allocation_bootstrap_status_label(row$status)), width = 62),
@@ -258,7 +366,7 @@ plot.ae_allocation_bootstrap <- function(x, quantity = NULL,
   }
   if (type == "draws") {
     values <- x$draws[[quantity]]
-    if (is.null(values) && nrow(x$draws)) stop("quantity has no saved draw column")
+    if (is.null(values) && nrow(x$draws)) .stop("quantity has no saved draw column")
     values <- values[x$draws$success %in% TRUE & is.finite(values)]
     if (!length(values)) empty("No finite successful draws") else {
       defaults <- list(x = values, xlab = quantity, main = paste("Saved bootstrap draws:", quantity))

@@ -15,9 +15,11 @@ spread_weighted(
 }
 \arguments{
 \item{values}{Numeric vector, matrix, or data.frame of values to distribute:
-- Vector: Must match number of weight layers
-- Matrix: Rows match weight layers, columns are different measures
-- Data.frame: Same as matrix but requires value_cols parameter}
+\itemize{
+\item Vector: Must match number of weight layers
+\item Matrix: Rows match weight layers, columns are different measures
+\item Data.frame: Same as matrix but requires \code{value_cols}
+}}
 
 \item{weights}{Multi-layer SpatRaster where each layer represents one unit's
 weighted distribution surface}
@@ -31,10 +33,13 @@ weighted distribution surface}
 \item{snap}{Logical; if TRUE, avoid input validation for performance (default FALSE)}
 }
 \value{
-If full_output = TRUE, returns list containing:
-        - total_distribution: SpatRaster stack of total distribution per measure
-        - unit_distribution: List of unit-specific distribution SpatRasters
-        If full_output = FALSE, returns only total_distribution SpatRaster
+If \code{full_output = FALSE}, the total distribution only: a SpatRaster
+with one layer per measure. If \code{full_output = TRUE}, a list containing:
+\itemize{
+\item \code{total_distribution}: SpatRaster stack of total distribution per measure
+\item \code{unit_distribution}: the distribution of each unit, a SpatRaster with one
+layer per unit (for several measures, a list of them, one per measure)
+}
 }
 \description{
 General-purpose function to distribute values across space using a stack of weight

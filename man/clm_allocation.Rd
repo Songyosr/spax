@@ -2,7 +2,7 @@
 % Please edit documentation in R/06-ae_workflow.R
 \name{clm_allocation}
 \alias{clm_allocation}
-\title{Declare corrected static CLM over checked allocation inputs}
+\title{Declare a static conditional logit allocation model}
 \usage{
 clm_allocation(
   inputs,
@@ -36,7 +36,7 @@ raw supply or capacity attribution.}
 \item{beta}{Positive supply elasticity in \code{(kappa * supply)^beta}.}
 
 \item{v0}{Nonnegative outside-option weight, not an outside probability.
-With zero outside weight and zero inside opportunity, the existing guard
+With zero outside weight and zero inside opportunity, the model
 returns zero mass; that row is not a normalized choice distribution.}
 
 \item{fit_v0, fit_beta}{\code{TRUE} or \code{FALSE}: whether to promote these constants
@@ -53,13 +53,14 @@ model (for example \code{sigma.a} or \code{v0.b = 0}). They are not fitted and n
 part of \code{theta}.}
 }
 \value{
-The existing private \code{ae_problem} for corrected static CLM.
+The model: an \code{ae_problem} for the static CLM.
 Parameter order is sigma, then v0 and beta when their flags are true. With
 demand groups sigma and v0 are \verb{sigma.<group>} and \verb{v0.<group>} for the
 parameters in \code{by_group}.
 }
 \description{
-Declare corrected static CLM over checked allocation inputs.
+Declare a static conditional logit allocation model (CLM) with an outside
+option on prepared allocation inputs.
 }
 \details{
 With demand groups (see \code{\link[=prepare_allocation]{prepare_allocation()}}), group \code{g} chooses
@@ -74,6 +75,32 @@ the groups, the model equals the ungrouped model on the total demand.
 \code{family} may be given by group, a named list of kernel names or
 declarations with one element per group (sigma is then group specific);
 \code{v0} may be a named numeric vector by group when \code{fit_v0 = FALSE}.
+}
+\examples{
+# West Cornwall: the small areas and practices west of easting 170 km
+areas <- sf::st_drop_geometry(cornwall_lsoa)
+areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+gp <- sf::st_drop_geometry(cornwall_gp)
+gp <- gp[!gp$scilly & gp$easting < 170000, ]
+inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+                             stats::setNames(gp$gp_fte_extg, gp$practice),
+                             cornwall_travel[areas$lsoa, gp$practice])
+
+# Gaussian decay and a fitted outside weight: the parameters are sigma and v0
+model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+model
+
+# Evaluate it at a travel scale of 10 minutes and an outside weight of 1
+evaluate_allocation(model, c(sigma = 10, v0 = 1))$coverage
+
+# Or fit it to the registrations of these residents at these practices
+flows <- cornwall_flows[cornwall_flows$lsoa \%in\% areas$lsoa &
+                          cornwall_flows$practice \%in\% gp$practice, ]
+totals <- sapply(split(flows$patients, flows$practice), sum)
+coef(fit_allocation(model, totals, loss = "poisson"))
+
+# Power decay, a fitted supply elasticity beta and an outside weight held at 0.5
+clm_allocation(inputs, family = "power", v0 = 0.5, fit_beta = TRUE)
 }
 \seealso{
 Other allocation steps: 

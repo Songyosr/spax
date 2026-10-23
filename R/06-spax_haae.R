@@ -1,7 +1,7 @@
 # SPAX-024: private HAAE fixed-point map -------------------------------------
 
 #' Compile inputs for the compact HAAE map
-#' @keywords internal
+#' @noRd
 .haae_compact_plan <- function(demand, supply, kernel, kappa = 1,
                                id_col = NULL, supply_cols = NULL) {
   .chck_positive_scalar(kappa, "kappa")
@@ -15,10 +15,10 @@
     supply_cols = supply_cols
   )
   if (!is.null(dim(plan$D_active))) {
-    stop("HAAE currently supports one demand layer")
+    .stop("HAAE currently supports one demand layer")
   }
   if (ncol(plan$S) != 1L) {
-    stop("HAAE currently supports one supply measure")
+    .stop("HAAE currently supports one supply measure")
   }
   plan$S <- as.vector(plan$S[, 1])
   plan$kappa_supply <- as.numeric(kappa) * plan$S
@@ -27,7 +27,7 @@
 }
 
 #' Evaluate the HAAE map and derived state at one attractiveness vector
-#' @keywords internal
+#' @noRd
 .haae_state <- function(a, plan, eps = 1e-8, a_min = 1e-6,
                         a_max = Inf) {
   .chck_numeric_vector(a, "a")
@@ -35,7 +35,7 @@
   .chck_positive_scalar(a_min, "a_min")
   a <- pmin(pmax(.coerce_numeric_vector(a), as.numeric(a_min)), a_max)
   if (length(a) != ncol(plan$Kd_active)) {
-    stop("`a` must have one element per facility")
+    .stop("`a` must have one element per facility")
   }
 
   opportunity <- .scale(plan$Kd_active, a, margin = "cols")
@@ -60,7 +60,7 @@
 }
 
 #' HAAE fixed-point map T(a)
-#' @keywords internal
+#' @noRd
 .haae_map <- function(a, plan, eps = 1e-8, a_min = 1e-6,
                       a_max = Inf) {
   .haae_state(
@@ -69,7 +69,7 @@
 }
 
 #' Analytic state Jacobian dT/da for the compact HAAE map
-#' @keywords internal
+#' @noRd
 .haae_jacobian_state <- function(a, plan, eps = 1e-8, a_min = 1e-6,
                                  a_max = Inf) {
   state <- .haae_state(

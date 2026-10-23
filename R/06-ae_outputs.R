@@ -3,7 +3,7 @@
 .check_output_names <- function(x, name) {
   if (!is.null(x) && (!is.character(x) || !length(x) || anyNA(x) ||
                      any(!nzchar(trimws(x))) || anyDuplicated(x))) {
-    stop("`", name, "` must be NULL or unique nonempty output names")
+    .stop("`", name, "` must be NULL or unique nonempty output names")
   }
   invisible(TRUE)
 }
@@ -12,12 +12,12 @@
   requested <- step[["outputs_requested", exact = TRUE]]
   independent <- step[["state_independent_outputs", exact = TRUE]]
   if (!is.null(requested) && !is.function(requested)) {
-    stop("`outputs_requested` must be a function when supplied")
+    .stop("`outputs_requested` must be a function when supplied")
   }
   .check_output_names(independent, "state_independent_outputs")
   if (!is.null(output_axes) &&
       any(!independent %in% names(output_axes))) {
-    stop("`state_independent_outputs` must name declared output axes")
+    .stop("`state_independent_outputs` must name declared output axes")
   }
   invisible(TRUE)
 }
@@ -36,7 +36,7 @@
   }
   missing <- setdiff(requested_outputs, names(outputs))
   if (required && length(missing)) {
-    stop("problem outputs do not include requested output `",
+    .stop("problem outputs do not include requested output `",
          paste(missing, collapse = "`, `"), "`")
   }
   outputs
@@ -83,7 +83,7 @@
 # the denominator and count unit; this helper does not infer an event or period.
 .clm_flow <- function(allocation, demand) {
   if (!is.matrix(allocation) || nrow(allocation) != length(demand)) {
-    stop("CLM allocation rows must match active demand")
+    .stop("CLM allocation rows must match active demand")
   }
   allocation * as.numeric(demand)
 }
@@ -103,7 +103,7 @@
 # as one more column.
 .clm_flow_outside <- function(flow, outside) {
   if (!is.matrix(flow) || nrow(flow) != length(outside)) {
-    stop("CLM flow rows must match the outside counts")
+    .stop("CLM flow rows must match the outside counts")
   }
   out <- cbind(flow, as.numeric(outside))
   columns <- colnames(flow)
@@ -170,4 +170,34 @@
     stop("output '", output, "' is not declared by this model", why, call. = FALSE)
   }
   invisible(TRUE)
+}
+
+# Names of the vector outputs ----------------------------------------------------
+# The vector outputs of a complete evaluation carry the IDs of their declared axis:
+# the facility vectors (`target`, `utilization`, `attractiveness`), `utilization`
+# with the outside entry (`utilization_outside`) and the origin vectors (`access`,
+# `outside_share`) that the arithmetic leaves unnamed. Values, matrices and vectors
+# that have names are unchanged; the solver's top-level copy of `utilization` takes
+# the same names. Applied to what evaluate_allocation() returns and to the final
+# evaluation a fit keeps, never inside the optimizer or the default scan.
+.name_output_vectors <- function(problem, solved) {
+  axes <- problem$metadata$spec$output_axes
+  s <- problem$substrate
+  ids <- list(
+    facility = s$facility_ids,
+    facility_outside = if (!is.null(s$facility_ids)) c(s$facility_ids, .outside_label),
+    origin = if (!is.null(s$origin_ids)) s$origin_ids else s$demand_kept_index
+  )
+  outputs <- solved$outputs
+  for (name in intersect(names(outputs), names(axes))) {
+    value <- outputs[[name]]
+    axis_ids <- ids[[axes[[name]]]]
+    if (is.numeric(value) && is.null(dim(value)) && is.null(names(value)) &&
+        !is.null(axis_ids) && length(axis_ids) == length(value)) {
+      names(outputs[[name]]) <- as.character(axis_ids)
+    }
+  }
+  solved$outputs <- outputs
+  if (!is.null(solved[["utilization", exact = TRUE]])) solved$utilization <- outputs$utilization
+  solved
 }

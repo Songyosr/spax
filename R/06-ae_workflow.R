@@ -4,8 +4,8 @@
 #'
 #' Named axes align independently; unnamed axes are positional. Positive
 #' included demand enters facility-load support. Zero, unknown and explicitly
-#' excluded origins retain separate support statuses. This experimental entry
-#' point delegates to the existing compact preparation boundary.
+#' excluded origins retain separate support statuses. This experimental step
+#' prepares the compact arrays that the allocation model computes on.
 #'
 #' Demand groups (age bands, insurance types) are given as a named list of
 #' demand vectors, one per group, with the same origin IDs. An origin is active
@@ -39,7 +39,9 @@
 #'   from known zero or explicit exclusion. Positive included demand remains
 #'   active even when every inside edge is absent.
 #' @param missing_travel Default `"error"` rejects NA/NaN on active fit rows.
-#'   `"legacy_zero"` explicitly omits unknown edges and records that policy.
+#'   `"omit"` leaves out unknown pairs (a facility with unknown travel is out of
+#'   reach from that origin) and records that policy; `"legacy_zero"` is its
+#'   older name and does the same.
 #'   Finite nonnegative travel is known, positive infinity is an absent edge,
 #'   and negative travel is invalid. Omitted rows are validated when requested
 #'   by prediction. Model-specific finite domains, such as positive power
@@ -52,7 +54,7 @@
 #'   `demand_units`, `demand_period`, `supply_units`, `supply_period`, and
 #'   `travel_units`. Omitted fields remain NA. These are caller declarations;
 #'   no unit conversion or dimensional compatibility check is performed.
-#' @return The existing `ae_prepared_inputs`, with a full origin registry and
+#' @return An `ae_prepared_inputs`, with a full origin registry and
 #'   distinct support statuses plus compact active load arrays. No duplicate
 #'   full travel matrix is retained. Pass it to [clm_allocation()] rather than
 #'   editing its internal fields. Expected counts use demand units/period;
@@ -60,6 +62,34 @@
 #'   demand groups the total demand is `D_active`, and `group_ids`, `D_groups`
 #'   and `distance_groups` are added (`distance_active` is `NULL` when travel is
 #'   given per group).
+#' @examples
+#' # Mainland Cornwall: registered residents by small area, GP FTE by practice
+#' # and the travel minutes between them, matched by their names
+#' areas <- sf::st_drop_geometry(cornwall_lsoa[!cornwall_lsoa$scilly, ])
+#' gp <- sf::st_drop_geometry(cornwall_gp[!cornwall_gp$scilly, ])
+#' demand <- stats::setNames(areas$registered, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' prepare_allocation(demand, supply, travel,
+#'                    metadata = list(demand_units = "registered residents",
+#'                                    supply_units = "GP FTE",
+#'                                    travel_units = "minutes"))
+#'
+#' # Demand groups: residents by age band, sharing one travel matrix
+#' by_age <- list(children = stats::setNames(areas$pop_0_15, areas$lsoa),
+#'                adults = stats::setNames(areas$pop_16_64, areas$lsoa),
+#'                older = stats::setNames(areas$pop_65p, areas$lsoa))
+#' prepare_allocation(by_age, supply, travel)
+#'
+#' # All small areas and practices, the Isles of Scilly area excluded. Travel
+#' # is NA between the islands and the mainland, which have no road link;
+#' # missing_travel = "omit" leaves those pairs out of the model
+#' all_areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' all_gp <- sf::st_drop_geometry(cornwall_gp)
+#' prepare_allocation(stats::setNames(all_areas$registered, all_areas$lsoa),
+#'                    stats::setNames(all_gp$gp_fte_extg, all_gp$practice),
+#'                    cornwall_travel, included = !all_areas$scilly,
+#'                    missing_travel = "omit")
 #' @family allocation steps
 #' @export
 #' @md
@@ -68,7 +98,7 @@ prepare_allocation <- function(demand, supply, distance,
                                facility_ids = NULL,
                                included = NULL,
                                missing_demand = c("error", "exclude"),
-                               missing_travel = c("error", "legacy_zero"),
+                               missing_travel = c("error", "omit", "legacy_zero"),
                                spatial = NULL, metadata = list()) {
   .prepare_allocation(demand, supply, distance, origin_ids = origin_ids,
     facility_ids = facility_ids, included = included, missing_demand = missing_demand,
@@ -164,7 +194,7 @@ prepare_allocation <- function(demand, supply, distance,
 #'   refused for numeric data.
 #' @param x Prepared inputs, an `ae_prepared_inputs` or `spax_raster_data`.
 #' @param ... Unused.
-#' @return Numeric data: the existing `ae_prepared_inputs`, as returned by
+#' @return Numeric data: an `ae_prepared_inputs`, as returned by
 #'   [prepare_allocation()]. Raster data: a `spax_raster_data` (also a
 #'   `spax_data`), a list with `demand` and `travel` (as given), `supply` (the
 #'   object as given), `id_col`, `supply_cols`, `facility_ids` (the layer names of
@@ -203,8 +233,14 @@ prepare_allocation <- function(demand, supply, distance,
 #' pop <- terra::crop(pop, mainland)
 #' registered <- pop * sum(areas$registered) /
 #'   terra::global(pop, "sum", na.rm = TRUE)[[1]]
-#' d_mainland <- prep_data(registered, gp,
-#'                         terra::crop(travel_grid[[gp$practice]], mainland),
+#' travel_mainland <- terra::crop(travel_grid[[gp$practice]], mainland)
+#'
+#' # Cells of 2 x 2 grid cells keep the example quick: residents add up and
+#' # travel minutes average
+#' registered <- terra::aggregate(registered, fact = 2, fun = "sum", na.rm = TRUE)
+#' travel_mainland <- terra::aggregate(travel_mainland, fact = 2, fun = "mean",
+#'                                     na.rm = TRUE)
+#' d_mainland <- prep_data(registered, gp, travel_mainland,
 #'                         id_col = "practice", supply_cols = "gp_fte_extg")
 #'
 #' # Registrations of mainland residents at the mainland practices
@@ -227,7 +263,7 @@ prep_data <- function(demand, supply, travel,
                       facility_ids = NULL,
                       included = NULL,
                       missing_demand = c("error", "exclude"),
-                      missing_travel = c("error", "legacy_zero"),
+                      missing_travel = c("error", "omit", "legacy_zero"),
                       spatial = NULL, metadata = list(),
                       id_col = NULL, supply_cols = NULL) {
   mode <- .prep_data_mode(demand)
@@ -277,7 +313,10 @@ format.ae_prepared_inputs <- function(x, ...) {
   }
   unknown <- sum(x$active_unknown_travel)
   policy <- x$input_policy
-  policy_text <- function(value) if (is.character(value) && length(value) == 1L) value else "unknown"
+  policy_text <- function(value) {
+    if (!is.character(value) || length(value) != 1L) return("unknown")
+    if (identical(value, "legacy_zero")) "omit" else value
+  }
   supply <- labelled(meta$supply_units, meta$supply_period)
   c(paste0("<spax data> ", origins, " x ", .format_total(length(x$facility_ids)), " facilities"),
     if (!is.null(x$group_ids)) line("groups", paste(x$group_ids, collapse = ", ")),
@@ -300,9 +339,10 @@ print.ae_prepared_inputs <- function(x, ...) {
   invisible(x)
 }
 
-#' Declare corrected static CLM over checked allocation inputs
+#' Declare a static conditional logit allocation model
 #'
-#' Declare corrected static CLM over checked allocation inputs.
+#' Declare a static conditional logit allocation model (CLM) with an outside
+#' option on prepared allocation inputs.
 #'
 #' @param inputs An `ae_prepared_inputs` object from checked preparation.
 #' @param family Travel kernel: `"gaussian"`, `"exponential"`, `"power"`, or a
@@ -319,7 +359,7 @@ print.ae_prepared_inputs <- function(x, ...) {
 #'   raw supply or capacity attribution.
 #' @param beta Positive supply elasticity in `(kappa * supply)^beta`.
 #' @param v0 Nonnegative outside-option weight, not an outside probability.
-#'   With zero outside weight and zero inside opportunity, the existing guard
+#'   With zero outside weight and zero inside opportunity, the model
 #'   returns zero mass; that row is not a normalized choice distribution.
 #' @param fit_v0,fit_beta `TRUE` or `FALSE`: whether to promote these constants
 #'   to fitted parameters.
@@ -343,10 +383,35 @@ print.ae_prepared_inputs <- function(x, ...) {
 #'   `family` may be given by group, a named list of kernel names or
 #'   declarations with one element per group (sigma is then group specific);
 #'   `v0` may be a named numeric vector by group when `fit_v0 = FALSE`.
-#' @return The existing private `ae_problem` for corrected static CLM.
+#' @return The model: an `ae_problem` for the static CLM.
 #'   Parameter order is sigma, then v0 and beta when their flags are true. With
 #'   demand groups sigma and v0 are `sigma.<group>` and `v0.<group>` for the
 #'   parameters in `by_group`.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # Gaussian decay and a fitted outside weight: the parameters are sigma and v0
+#' model <- clm_allocation(inputs, family = "gaussian", fit_v0 = TRUE)
+#' model
+#'
+#' # Evaluate it at a travel scale of 10 minutes and an outside weight of 1
+#' evaluate_allocation(model, c(sigma = 10, v0 = 1))$coverage
+#'
+#' # Or fit it to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' coef(fit_allocation(model, totals, loss = "poisson"))
+#'
+#' # Power decay, a fitted supply elasticity beta and an outside weight held at 0.5
+#' clm_allocation(inputs, family = "power", v0 = 0.5, fit_beta = TRUE)
 #' @family allocation steps
 #' @export
 #' @md
@@ -357,7 +422,7 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
   .chck_class(inputs, "ae_prepared_inputs", "inputs")
   if (is.null(inputs$group_ids)) {
     if (length(by_group) || !is.null(fixed)) {
-      stop("`by_group` and `fixed` need prepared inputs with demand groups ",
+      .stop("`by_group` and `fixed` need prepared inputs with demand groups ",
            "(demand given as a named list by group)")
     }
     decay <- .resolve_decay_family(family)
@@ -372,10 +437,10 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
                  allocation = "clm", kernel = args$kernel, grouped = args$grouped)
 }
 
-#' Declare the Huff model over checked allocation inputs
+#' Declare the Huff model
 #'
 #' Declare the Huff model, a conditional logit allocation without an outside
-#' option, over checked allocation inputs.
+#' option, on prepared allocation inputs.
 #'
 #' The Huff model (Huff, 1963) gives each facility a share of each origin's
 #' demand in proportion to its attractiveness times a decay in travel time:
@@ -415,8 +480,8 @@ clm_allocation <- function(inputs, family = c("gaussian", "exponential", "power"
 #' @param fixed For inputs with demand groups: a named numeric vector of
 #'   parameters held fixed, as in [clm_allocation()]. Names of outside weights
 #'   (`v0`) are refused.
-#' @return The existing private `ae_problem` for corrected static CLM with no
-#'   outside option. Parameter order is sigma, then beta when it is fitted. With
+#' @return The model: an `ae_problem` for the static CLM with no outside
+#'   option. Parameter order is sigma, then beta when it is fitted. With
 #'   demand groups sigma is `sigma.<group>` for the groups in `by_group`.
 #' @references
 #' Huff DL (1963). A probabilistic analysis of shopping center trade areas.
@@ -478,7 +543,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
   .chck_class(model, "ae_problem", "model")
   if (!identical(model$model, "huff") ||
       !identical(model$metadata$spec$allocation, "clm")) {
-    stop("the allocation workflow requires a corrected static CLM")
+    .stop("the allocation workflow requires a corrected static CLM")
   }
   invisible(model)
 }
@@ -508,8 +573,8 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 
 #' Calibrate a declared allocation model, by default from starts found in the data
 #'
-#' Count targets and loss choice are separate. Weighted SSE retains the existing
-#' default when `starts` are given; Poisson is explicit. Custom loss/gradient
+#' Count targets and loss choice are separate. When `starts` are given, the
+#' loss defaults to weighted SSE; name Poisson explicitly. Custom loss/gradient
 #' functions pass through. Observation-indexed loss arguments must be in
 #' canonical order. Starts, boundaries, failed runs and disagreement retain the
 #' existing multistart result; a selected fit is not a claim of identification or
@@ -611,14 +676,19 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #' a second on the 336 by 54 Cornwall example, about 24 seconds for 20,000 origins
 #' and 400 facilities, which is roughly the cost of one strict start. Give your own
 #' starts to skip it.
-#' @param model A corrected CLM declared over checked prepared inputs. A kernel
+#' @param model A static CLM from [clm_allocation()] or [huff_allocation()]. A kernel
 #'   declared `smooth = FALSE` cannot be fitted.
-#' @param observed Numeric vector or origin-by-facility matrix. Named axes match
+#' @param observed Numeric vector or origin-by-facility matrix. A
+#'   one-dimensional array or table, such as the result of [tapply()] or
+#'   [table()], is read as the vector named by its names. For a factor level
+#'   without records [tapply()] gives `NA`, which the fit reads as unobserved:
+#'   give it `default = 0` (or use [table()]) when no record means a count of
+#'   zero. Named axes match
 #'   declared IDs independently; unnamed axes are positional. Keep all IDs and
 #'   use NA for unobserved entries. The count-valued `utilization`, `flow`,
 #'   `utilization_by_group` and outside-count targets reject negative nonmissing
 #'   observations; fractional counts are allowed. Other output domains pass
-#'   through to the existing fitter. For `utilization_by_group` (a model with
+#'   to the fitter as given. For `utilization_by_group` (a model with
 #'   demand groups) a facility-by-group matrix of observed counts with both axes
 #'   named (group columns by group ID, facility rows by facility ID, any order).
 #'   For the outside-count outputs the same shapes with the outside count added
@@ -670,9 +740,9 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   arguments pass unchanged. Any observation-indexed values must already
 #'   follow canonical observed order.
 #' @param loss_grad Optional matching parameter-gradient callback. Built-in
-#'   choices supply their existing analytic loss-gradient adapters. A custom
+#'   choices supply their analytic loss gradients. A custom
 #'   loss requires its own loss_grad when gradient=TRUE; none is invented.
-#' @param gradient Logical; use the existing implicit sensitivity route when
+#' @param gradient Logical; use the implicit sensitivity route when
 #'   TRUE. FALSE retains the underlying fitter's default behavior. When `starts`
 #'   is `NULL` and `gradient` is not given, it is `TRUE` if the loss has a gradient
 #'   (the built-in losses, or a custom loss with `loss_grad`).
@@ -680,13 +750,50 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   optimizer `control`, `keep_fits` and descriptive disagreement tolerances.
 #'   When `starts` is `NULL` and `control` is not given it is
 #'   `list(maxit = 300, factr = 1e3, pgtol = 1e-2)`.
-#' @return The existing `ae_multistart_fit`, retaining selected fit, all per-start
+#' @return An `ae_multistart_fit`, retaining selected fit, all per-start
 #'   diagnostics, boundaries, warnings/errors and descriptive disagreement. A fit
 #'   whose starts came from the default search also has a `default_search`
 #'   element: the rule, the sigma range, the number of grid points and of finite
 #'   ones, the grid of sigma, v0 and loss, the starts, the bounds, the controls and
 #'   the loss.
 #' @seealso [allocation-fit-methods] for methods on saved fits.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              travel)
+#' model <- clm_allocation(inputs, fit_v0 = TRUE)
+#'
+#' # Registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#'
+#' # Fit to the practice totals. Without starts, the search finds starts and
+#' # bounds from the data, and the loss must be named
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(model, totals, loss = "poisson")
+#' fit
+#' coef(fit)
+#'
+#' # Fit to the flows: a matrix of small areas by practices, 0 where none. Demand
+#' # counts every registered resident, so the residents registered elsewhere are
+#' # known: they are one more column, "(outside)", fitted by the outside option
+#' flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+#' flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+#' flow_matrix <- cbind(flow_matrix, "(outside)" = areas$registered - rowSums(flow_matrix))
+#' coef(fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poisson"))
+#'
+#' # Starts and bounds of your own: one start per row
+#' starts <- rbind(near = c(sigma = 5, v0 = 0.5), far = c(sigma = 30, v0 = 5))
+#' fit_own <- fit_allocation(model, totals, starts = starts,
+#'                           lower = c(sigma = 1, v0 = 0.001),
+#'                           upper = c(sigma = 100, v0 = 100), loss = "poisson")
+#' coef(fit_own)
 #' @family allocation steps
 #' @export
 #' @md
@@ -699,14 +806,14 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
   .check_allocation_model(model)
   for (kernel in .allocation_kernels(model$metadata$spec)) {
     if (isFALSE(kernel$smooth)) {
-      stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
+      .stop("a kernel declared smooth = FALSE cannot be fitted; evaluate it at fixed ",
            "parameters, for example over a grid of sigma and v0")
     }
   }
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
       output %in% .default_count_outputs && is.numeric(observed) &&
       any(observed < 0, na.rm = TRUE)) {
-    stop("observed expected counts must be nonnegative for output '", output, "'")
+    .stop("observed expected counts must be nonnegative for output '", output, "'")
   }
   # Starts and bounds that are not given come from the default search (SPAX-058).
   expected <- model$theta$names
@@ -719,17 +826,17 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     if (!counts) {
       # An outside-count output the model cannot carry is refused with its own message.
       .check_outside_target(model, output)
-      stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
+      .stop("give starts, lower and upper for output '", paste(output, collapse = ", "),
            "'")
     }
-    if (is.null(starts) && loss_missing) stop(.default_search_message$loss)
+    if (is.null(starts) && loss_missing) .stop(.default_search_message$loss)
   }
   loss_name <- if (is.character(loss)) match.arg(loss, c("weighted_sse", "poisson")) else "custom"
   # Outside counts are fitted with the built-in Poisson loss only: the weighted SSE
   # (also the default when starts are given) and custom losses are refused.
   if (is.character(output) && length(output) == 1L && !is.na(output) &&
       output %in% names(.outside_outputs) && !identical(loss_name, "poisson")) {
-    stop("outside counts are fitted with loss = \"poisson\"")
+    .stop("outside counts are fitted with loss = \"poisson\"")
   }
   if (is.character(loss)) {
     loss <- match.arg(loss, c("weighted_sse", "poisson"))
@@ -740,7 +847,7 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     loss <- if (loss == "poisson") .poisson_loss else .weighted_sse_loss
     if (is.null(loss_grad)) loss_grad <- default_gradient
   } else if (!is.function(loss)) {
-    stop("loss must be 'weighted_sse', 'poisson' or a function")
+    .stop("loss must be 'weighted_sse', 'poisson' or a function")
   }
   if (!searching) {
     result <- .fit_problem_multistart(model, observed, starts, lower, upper,
@@ -763,9 +870,10 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
     if (starts_searched) starts <- search$starts
     search_lower <- search$lower
     search_upper <- search$upper
-    # The call is built from symbols and evaluated here, so that an error from the
-    # fit shows `.fit_problem_multistart(model, observed, ...)` and not the function
-    # and the values written out (as do.call() with the function itself would).
+    # The call is built from symbols and evaluated here, so that an error R itself
+    # raises in the fitter shows `.fit_problem_multistart(model, observed, ...)` and
+    # not the function and the values written out (as do.call() with the function
+    # itself would). Errors from spax's own checks name the user's call (.stop()).
     dots <- lapply(dots, function(v) if (is.language(v)) call("quote", v) else v)
     fit_call <- as.call(c(list(quote(.fit_problem_multistart), quote(model), quote(observed),
       quote(starts), quote(search_lower), quote(search_upper), output = quote(output),
@@ -793,7 +901,7 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 .selected_allocation_fit <- function(object) {
   if (inherits(object, "ae_multistart_fit")) {
     if (is.null(object$best)) {
-      stop("no eligible allocation fit; inspect per-start diagnostics and messages")
+      .stop("no eligible allocation fit; inspect per-start diagnostics and messages")
     }
     object <- object$best
   }
@@ -802,18 +910,60 @@ fit_allocation <- function(model, observed, starts = NULL, lower = NULL, upper =
 
 #' Inspect saved allocation fits without recomputation
 #'
+#' A fit from [fit_allocation()] keeps every start and the selected fit,
+#' `fit$best`; both have these methods, which read what the fit saved.
 #' Coefficients and fitted targets are read from the selected fit. Multistart
 #' summaries retain failed starts, boundaries, warnings/errors and descriptive
 #' disagreement. A search with no eligible fit remains inspectable by summary,
-#' while coefficient and fitted extraction fail clearly.
-#' @param object An existing NFXP fit or multistart result from allocation fitting.
+#' while coefficient and fitted extraction fail clearly. `print()` of a fit
+#' shows its starts and the one selected; `print()` of the selected fit shows
+#' its estimates, loss and convergence, and its `summary()` adds the ranges of
+#' the fitted values, of the model state and of the residuals.
+#' @param object,x A fit from [fit_allocation()] (an `ae_multistart_fit`) or its
+#'   selected fit `fit$best` (an `ae_problem_nfxp_fit`); for the print method of
+#'   a summary, the summary of the selected fit.
+#' @param digits Significant digits of the printed numbers.
 #' @param ... Additional generic arguments; currently unused.
 #' @return `coef()` returns the saved named parameter vector. `fitted()` returns
-#'   saved canonical fitted targets. `summary()` returns a list containing the
-#'   selected fit summary, per-start table, boundaries, disagreement and messages.
+#'   saved canonical fitted targets. `summary()` of a fit returns a list
+#'   containing the selected fit summary, per-start table, boundaries,
+#'   disagreement and messages; `summary()` of the selected fit returns its
+#'   model and family, its parameters, its loss and convergence, and the ranges
+#'   of the fitted values, of the state and (when the fit kept its observed
+#'   values) of the residuals. `print()` returns its input invisibly.
 #'   These diagnostics establish neither identification nor global optimality.
 #' @name allocation-fit-methods
 #' @seealso [fit_allocation()]
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' inputs <- prepare_allocation(stats::setNames(areas$registered, areas$lsoa),
+#'                              stats::setNames(gp$gp_fte_extg, gp$practice),
+#'                              cornwall_travel[areas$lsoa, gp$practice])
+#'
+#' # A fit to the registrations of these residents at these practices
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' totals <- sapply(split(flows$patients, flows$practice), sum)
+#' fit <- fit_allocation(clm_allocation(inputs, fit_v0 = TRUE), totals,
+#'                       loss = "poisson")
+#'
+#' # The selected estimates and the modeled registrations at each practice
+#' coef(fit)
+#' round(fitted(fit))
+#'
+#' # Every start, the selected fit and its residuals
+#' summary(fit)
+#'
+#' # The selected fit itself has the same methods: its estimates, loss and
+#' # convergence, and a summary with the ranges of its values and residuals
+#' coef(fit$best)
+#' fit$best
+#' summary(fit$best)
+#' @order 1
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_problem_nfxp_fit <- function(object, ...) {
@@ -822,6 +972,7 @@ coef.ae_problem_nfxp_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 2
 #' @exportS3Method stats::coef
 #' @md
 coef.ae_multistart_fit <- function(object, ...) {
@@ -830,6 +981,7 @@ coef.ae_multistart_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 3
 #' @exportS3Method stats::fitted
 #' @md
 fitted.ae_problem_nfxp_fit <- function(object, ...) {
@@ -838,6 +990,7 @@ fitted.ae_problem_nfxp_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 4
 #' @exportS3Method stats::fitted
 #' @md
 fitted.ae_multistart_fit <- function(object, ...) {
@@ -846,6 +999,7 @@ fitted.ae_multistart_fit <- function(object, ...) {
 }
 
 #' @rdname allocation-fit-methods
+#' @order 5
 #' @exportS3Method base::summary
 #' @md
 summary.ae_multistart_fit <- function(object, ...) {
@@ -865,10 +1019,10 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' Evaluate a declared allocation model at supplied fixed parameters
 #'
 #' Solves once and constructs compact coverage from the saved evaluated outputs.
-#' The existing equilibrium result carries its prediction snapshot;
+#' The equilibrium result carries its prediction snapshot;
 #' adding coverage does not retain the original model or create a scenario type.
 #' The caller changes system supply/demand by preparing a new model explicitly.
-#' @param model A corrected CLM declared over checked prepared inputs.
+#' @param model A static CLM from [clm_allocation()] or [huff_allocation()].
 #' @param theta A complete model parameter vector. Named parameters align to the
 #'   model contract; unnamed values follow its declared order. This operation
 #'   estimates no parameters and is not a causal intervention estimator. For a
@@ -877,7 +1031,7 @@ summary.ae_multistart_fit <- function(object, ...) {
 #' @param coverage_args Named reporting controls for compact coverage, including
 #'   optional `norm`, `units`, reporting floors and classification cuts. A norm
 #'   must have the same declared supply-per-demand scale as capacity attribution.
-#' @param ... Named controls passed to the existing fixed-parameter solver,
+#' @param ... Named controls passed to the fixed-parameter solver,
 #'   including `requested_outputs`. For a model with demand groups, request the
 #'   per-group outputs here, for example
 #'   `requested_outputs = c("utilization_by_group", "access_by_group",
@@ -894,11 +1048,47 @@ summary.ae_multistart_fit <- function(object, ...) {
 #'   (with one more row, `"(outside)"`, the expected outside count of each group).
 #'   The outside counts are zero for a model without an outside option; they
 #'   are the outputs that [fit_allocation()] fits to observed outside counts.
-#' @return The existing `ae_equilibrium` with its portable prediction snapshot
+#' @return An `ae_equilibrium` with its portable prediction snapshot
 #'   (none for a model with demand groups, which cannot be predicted yet)
 #'   and compact `coverage`. Coverage uses raw supply units without kappa;
 #'   proportional attributed capacity is not a delivered-service measure or a
-#'   hard constraint on expected utilization.
+#'   hard constraint on expected utilization. In `outputs` the vectors are named
+#'   by facility ID (`target`, `utilization`, `attractiveness`, and
+#'   `utilization_outside`, whose last element is `"(outside)"`) or by origin ID
+#'   (`access`, `outside_share`), and the matrices by their two axes: origins by
+#'   facilities (`allocation`, `flow`) and, with demand groups, facilities or
+#'   origins by groups.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' demand <- stats::setNames(areas$registered, areas$lsoa)
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#' travel <- cornwall_travel[areas$lsoa, gp$practice]
+#' model <- clm_allocation(prepare_allocation(demand, supply, travel), fit_v0 = TRUE)
+#'
+#' # The model at a travel scale of 10 minutes and an outside weight of 1
+#' ev <- evaluate_allocation(model, c(sigma = 10, v0 = 1))
+#' ev$coverage
+#'
+#' # Expected registrations at each practice
+#' round(ev$outputs$utilization)
+#'
+#' # Expected registrations by small area and practice, with the expected
+#' # outside count as one more column
+#' flow <- evaluate_allocation(model, c(sigma = 10, v0 = 1),
+#'                             requested_outputs = "flow_outside")$outputs$flow_outside
+#' round(flow[1:3, c("L82047", "(outside)")])
+#'
+#' # A scenario: Marazion Surgery (L82047) closes. Prepare the changed inputs
+#' # and evaluate them at the same values
+#' closed <- clm_allocation(prepare_allocation(demand, replace(supply, "L82047", 0),
+#'                                             travel), fit_v0 = TRUE)
+#' change <- evaluate_allocation(closed, c(sigma = 10, v0 = 1))$outputs$utilization -
+#'   ev$outputs$utilization
+#' round(change)
 #' @family allocation steps
 #' @export
 #' @md
@@ -908,22 +1098,22 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
       (is.null(names(coverage_args)) || anyNA(names(coverage_args)) ||
        any(!nzchar(names(coverage_args))) || anyDuplicated(names(coverage_args)) ||
        any(!names(coverage_args) %in% setdiff(names(formals(.ae_coverage)), "fit"))))) {
-    stop("coverage_args must contain unique named coverage controls")
+    .stop("coverage_args must contain unique named coverage controls")
   }
   if (!is.null(model$metadata$spec[["groups", exact = TRUE]])) {
     theta <- .group_evaluation_theta(model, theta)
   }
   theta <- .coerce_problem_theta(theta, model$theta)
   result <- .solve_problem(model, theta, ...)
-  if (!isTRUE(result$converged)) stop("allocation evaluation did not converge")
+  if (!isTRUE(result$converged)) .stop("allocation evaluation did not converge")
   result$coverage <- do.call(.coverage_from_outputs,
     c(list(problem = model, theta = theta, outputs = result$outputs), coverage_args))
-  result
+  .name_output_vectors(model, result)
 }
 
 #' Predict requested origins against a saved fitted or evaluated CLM
 #'
-#' Numeric output preserves the existing prediction result and its separate probability,
+#' Numeric output keeps the prediction result and its separate probability,
 #' demand and capacity validity. Raster conversion is explicit and permits one
 #' vector only; inspect numeric validity before interpreting a map. Supply/theta
 #' overrides are deliberately absent. A changed system requires reevaluation.
@@ -950,8 +1140,8 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #'   allocation and flow are optional matrices. rho/outside are probabilities;
 #'   flow has demand count units/period. A and abar have supply-per-demand units.
 #' @param missing_travel Default `"unknown"` makes a normalized row unknown when
-#'   any alternative's travel is unknown. Explicit `"legacy_zero"` preserves its
-#'   imputation flags; positive infinity remains known absence, while negative
+#'   any alternative's travel is unknown. Explicit `"omit"` (older name
+#'   `"legacy_zero"`) leaves unknown pairs out and flags them as imputed; positive infinity remains known absence, while negative
 #'   travel and invalid finite kernel domains are rejected.
 #' @param spatial Optional one-layer raster template plus separately named
 #'   `cell_index` mapping for requested IDs, as in preparation. Saved metadata
@@ -962,26 +1152,121 @@ evaluate_allocation <- function(model, theta, coverage_args = list(), ...) {
 #' @return An `ae_clm_prediction`, or an explicitly requested one-layer raster.
 #'   Contact to positive-supply/zero-load facilities preserves valid probabilities
 #'   but makes unqualified A/abar unknown; explicitly named supported-only outputs
-#'   retain the existing zero-contribution convention. Zero-denominator rows
+#'   retain the zero-contribution convention. Zero-denominator rows
 #'   retain guarded zero mass and a false probability-valid flag.
+#' @examples
+#' # West Cornwall: the small areas and practices west of easting 170 km
+#' areas <- sf::st_drop_geometry(cornwall_lsoa)
+#' areas <- areas[!areas$scilly & areas$cent_x < 170000, ]
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' gp <- gp[!gp$scilly & gp$easting < 170000, ]
+#' supply <- stats::setNames(gp$gp_fte_extg, gp$practice)
+#'
+#' # Fit on every other small area; predict the others, which lie among them,
+#' # so these practices are their real choice set
+#' fit_areas <- areas[seq(1, nrow(areas), by = 2), ]
+#' held_out <- areas[seq(2, nrow(areas), by = 2), ]
+#'
+#' # A fit to the registrations of the fitted areas' residents, with those
+#' # registered elsewhere as the outside column (see fit_allocation())
+#' travel <- cornwall_travel[fit_areas$lsoa, gp$practice]
+#' flows <- cornwall_flows[cornwall_flows$lsoa %in% fit_areas$lsoa &
+#'                           cornwall_flows$practice %in% gp$practice, ]
+#' flow_matrix <- matrix(0, nrow(travel), ncol(travel), dimnames = dimnames(travel))
+#' flow_matrix[cbind(flows$lsoa, flows$practice)] <- flows$patients
+#' flow_matrix <- cbind(flow_matrix,
+#'                      "(outside)" = fit_areas$registered - rowSums(flow_matrix))
+#' model <- clm_allocation(prepare_allocation(
+#'   stats::setNames(fit_areas$registered, fit_areas$lsoa), supply, travel), fit_v0 = TRUE)
+#' fit <- fit_allocation(model, flow_matrix, output = "flow_outside", loss = "poisson")
+#'
+#' # The held-out areas: no refit, the fitted values and practice loads are used
+#' pred <- predict_allocation(fit, cornwall_travel[held_out$lsoa, gp$practice],
+#'                            demand = stats::setNames(held_out$registered, held_out$lsoa),
+#'                            outputs = c("rho", "A", "flow"))
+#' pred
+#'
+#' # The modeled share of each area's residents at these practices, the share
+#' # registered there, and the GP FTE per 1,000 residents attributed to the area
+#' held <- cornwall_flows[cornwall_flows$lsoa %in% held_out$lsoa &
+#'                          cornwall_flows$practice %in% gp$practice, ]
+#' registered_here <- tapply(held$patients, factor(held$lsoa, levels = held_out$lsoa), sum)
+#' head(cbind(contact = pred$outputs$rho,
+#'            observed = registered_here / held_out$registered,
+#'            fte_per_1000 = 1000 * pred$outputs$A))
+#' table(pred$validity$status)
 #' @family allocation steps
 #' @export
 #' @md
 predict_allocation <- function(source, distance, origin_ids = rownames(distance),
                                 demand = NULL, outputs = c("rho", "A", "abar"),
-                                missing_travel = c("unknown", "legacy_zero"),
+                                missing_travel = c("unknown", "omit", "legacy_zero"),
                                 spatial = NULL, type = c("numeric", "raster")) {
   if (.is_allocation_result(source)) source <- .allocation_unbundle(source, "source")
   type <- match.arg(type)
   .refuse_grouped("predict_allocation()", source)
   if (type == "raster" && (length(outputs) != 1L ||
       !is.character(outputs) || is.na(outputs) || outputs %in% c("allocation", "flow"))) {
-    stop("raster prediction requires exactly one requested vector output")
+    .stop("raster prediction requires exactly one requested vector output")
   }
   source <- .selected_allocation_fit(source)
   result <- .predict_clm(source, distance, origin_ids = origin_ids, demand = demand,
     outputs = outputs, missing_travel = match.arg(missing_travel), spatial = spatial)
   if (type == "raster") .prediction_surface(result, outputs) else result
+}
+
+#' @rdname predict_allocation
+#' @param x For `print()`, a prediction: the `ae_clm_prediction` of
+#'   `predict_allocation()`. Its print shows the number of origins with each
+#'   status, what is known of their demand, how unknown travel was treated, and
+#'   the range of each requested vector over the origins with a value.
+#' @param digits Significant digits of the printed values.
+#' @param ... Unused.
+#' @export
+#' @md
+print.ae_clm_prediction <- function(x, digits = 4, ...) {
+  line <- function(label, text) cat(sprintf("  %-10s  %s\n", label, text))
+  counts <- function(values, order) {
+    levels <- c(intersect(order, values), sort(setdiff(unique(values), order)))
+    n <- table(factor(values, levels = levels))
+    paste(.format_total(as.vector(n)), names(n), collapse = ", ")
+  }
+  count_of <- function(n, one, many) paste(.format_total(n), if (n == 1L) one else many)
+  dimensions <- function(rows, cols) {
+    paste(count_of(rows, "origin", "origins"), "x", count_of(cols, "facility", "facilities"))
+  }
+  cat("<allocation prediction> ", dimensions(length(x$origin_ids), length(x$facility_ids)),
+      "\n", sep = "")
+  line("origins", counts(x$validity$status, "valid"))
+  demand <- x$validity[["demand_status"]]
+  if (!is.null(demand)) {
+    line("demand", if (all(demand == "unknown")) "unknown for every origin" else
+      counts(demand, c("positive", "zero", "unknown")))
+  }
+  # "omit" is stored under its older name, "legacy_zero".
+  line("travel", if (isTRUE(x$policy$missing_travel %in% c("legacy_zero", "omit"))) {
+    "pairs with an unknown travel time left out (\"omit\")"
+  } else {
+    "an unknown travel time makes the origin unknown"
+  })
+  cat("  outputs\n")
+  width <- max(nchar(names(x$outputs)), 0L)
+  for (name in names(x$outputs)) {
+    value <- x$outputs[[name]]
+    text <- if (!is.null(dim(value))) {
+      paste0(dimensions(nrow(value), ncol(value)), if (all(is.na(value))) ", no values")
+    } else if (all(is.na(value))) {
+      "no values"
+    } else {
+      known <- value[!is.na(value)]
+      paste0(format(min(known), digits = digits), " to ", format(max(known), digits = digits),
+             " (", .format_total(length(known)), " of ",
+             count_of(length(value), "origin", "origins"), ")")
+    }
+    cat(sprintf("    %-*s  %s\n", width, name, text))
+  }
+  cat("  values in $outputs; the status of each origin in $validity\n")
+  invisible(x)
 }
 
 # The theta of evaluate_allocation() for a grouped model: the free parameters,
@@ -993,7 +1278,7 @@ predict_allocation <- function(source, distance, origin_ids = rownames(distance)
   nms <- names(theta)
   if (is.null(nms) || all(nms == "")) return(theta)
   if (anyNA(nms) || any(nms == "") || anyDuplicated(nms)) {
-    stop("`theta` names must be unique and nonempty")
+    .stop("`theta` names must be unique and nonempty")
   }
   fixed <- spec$fixed
   unknown <- setdiff(nms, c(model$theta$names, names(fixed)))

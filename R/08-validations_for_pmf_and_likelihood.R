@@ -3,45 +3,45 @@
 #' @param template Optional SpatRaster to check compatibility
 #' @param allow_null Logical; if TRUE, x can be NULL if template provided
 #' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
+#' @noRd
 .chck_raster_input <- function(x, template = NULL, allow_null = FALSE) {
   # Handle NULL case
   if (is.null(x)) {
     if (!allow_null || is.null(template)) {
-      stop("Input cannot be NULL")
+      .stop("Input cannot be NULL")
     }
     return(invisible(TRUE))
   }
 
   # Check input type
   if (!inherits(x, "SpatRaster")) {
-    stop("Input must be a SpatRaster object")
+    .stop("Input must be a SpatRaster object")
   }
 
   # Basic raster validation
   if (terra::nlyr(x) < 1) {
-    stop("Input raster has no layers")
+    .stop("Input raster has no layers")
   }
 
   # Template compatibility if provided
   if (!is.null(template)) {
     if (!inherits(template, "SpatRaster")) {
-      stop("Template must be a SpatRaster object")
+      .stop("Template must be a SpatRaster object")
     }
 
     # Check resolution match
     if (!all(terra::res(x) == terra::res(template))) {
-      stop("Input and template must have same resolution")
+      .stop("Input and template must have same resolution")
     }
 
     # Check extent match
     if (!all(terra::ext(x) == terra::ext(template))) {
-      stop("Input and template must have same extent")
+      .stop("Input and template must have same extent")
     }
 
     # Check CRS match
     if (!terra::same.crs(x, template)) {
-      stop("Input and template must have same CRS")
+      .stop("Input and template must have same CRS")
     }
   }
 
@@ -54,37 +54,37 @@
 #' @param template SpatRaster template for rasterization
 #' @param allow_null Logical; if TRUE, value_col can be NULL
 #' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
+#' @noRd
 .chck_vector_input <- function(x, value_col = NULL, template = NULL, allow_null = FALSE) {
   # Check input type
   if (!inherits(x, "SpatVector")) {
-    stop("Input must be a SpatVector object")
+    .stop("Input must be a SpatVector object")
   }
 
   # Validate value column if provided
   if (!is.null(value_col)) {
     if (!value_col %in% names(x)) {
-      stop(sprintf("Column '%s' not found in input vector", value_col))
+      .stop(sprintf("Column '%s' not found in input vector", value_col))
     }
 
     # Check column data; `[[` on a SpatVector returns a one-column data frame
     values <- x[[value_col]][[1]]
     if (!is.numeric(values)) {
-      stop(sprintf("Column '%s' must contain numeric values", value_col))
+      .stop(sprintf("Column '%s' must contain numeric values", value_col))
     }
   } else if (!allow_null) {
-    stop("value_col must be provided")
+    .stop("value_col must be provided")
   }
 
   # Template validation
   if (!is.null(template)) {
     if (!inherits(template, "SpatRaster")) {
-      stop("Template must be a SpatRaster object")
+      .stop("Template must be a SpatRaster object")
     }
 
     # Check CRS compatibility
     if (!terra::same.crs(x, template)) {
-      stop("Input and template must have same CRS")
+      .stop("Input and template must have same CRS")
     }
 
     # Bounding-box overlap; terra::intersect() returns NULL for any zero-area
@@ -93,7 +93,7 @@
     b <- as.vector(terra::ext(template))
     if (!(a[["xmin"]] <= b[["xmax"]] && a[["xmax"]] >= b[["xmin"]] &&
           a[["ymin"]] <= b[["ymax"]] && a[["ymax"]] >= b[["ymin"]])) {
-      stop("Input vector must intersect template extent")
+      .stop("Input vector must intersect template extent")
     }
   }
 
@@ -104,19 +104,19 @@
 #' @param x SpatRaster to check PMF properties
 #' @param tolerance Numeric tolerance for sum to 1 check
 #' @return Invisible TRUE if valid, error otherwise
-#' @keywords internal
+#' @noRd
 .chck_pmf_validity <- function(x, tolerance = 1e-10) {
   # Check for negative values (in any layer)
   min_val <- terra::global(x, "min", na.rm = TRUE)$min
   if (any(min_val < 0, na.rm = TRUE)) {
-    stop("PMF cannot contain negative values")
+    .stop("PMF cannot contain negative values")
   }
 
   # Check that every layer sums to 1
   sum_val <- terra::global(x, "sum", na.rm = TRUE)$sum
   bad <- which(!is.finite(sum_val) | abs(sum_val - 1) > tolerance)
   if (length(bad)) {
-    stop(sprintf("PMF must sum to 1 (current sum: %f)", sum_val[bad[1]]))
+    .stop(sprintf("PMF must sum to 1 (current sum: %f)", sum_val[bad[1]]))
   }
 
   invisible(TRUE)
@@ -127,7 +127,7 @@
 #' Points that fall in the same cell add up (missing values are ignored, and
 #' each part of a multipoint carries the feature's full value); a polygon's
 #' value is copied to every cell it covers.
-#' @keywords internal
+#' @noRd
 .rasterize_values <- function(x, template, value_col) {
   if (all(terra::geomtype(x) == "points")) {
     return(terra::rasterize(x, template, field = value_col, fun = "sum",

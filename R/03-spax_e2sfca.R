@@ -1,25 +1,25 @@
 #' Core facility supply validation used by multiple functions
-#' @keywords internal
+#' @noRd
 .validate_facility_supply <- function(supply, id_col = NULL, supply_cols = NULL) {
   # Stop early if supply is an sf object
   if (inherits(supply, "sf")) {
-    stop("Supply data is an sf object. Please use st_drop_geometry() first")
+    .stop("Supply data is an sf object. Please use st_drop_geometry() first")
   }
 
   # Validate data.frame inputs
   if (is.data.frame(supply)) {
     if (is.null(id_col)) {
-      stop("id_col must be specified when supply is a data.frame")
+      .stop("id_col must be specified when supply is a data.frame")
     }
     if (is.null(supply_cols)) {
-      stop("supply_cols must be specified when supply is a data.frame")
+      .stop("supply_cols must be specified when supply is a data.frame")
     }
 
     .chck_cols_exist(supply, c(id_col, supply_cols), "supply")
 
     # Check if id_col values are unique (specific to e2sfca)
     if (!is.null(id_col) && any(duplicated(supply[[id_col]]))) {
-      stop("Values in id_col must be unique")
+      .stop("Values in id_col must be unique")
     }
   }
 
@@ -182,7 +182,7 @@
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
 #' @param indicator_names Character vector; custom names for output accessibility layers
-#' @keywords internal
+#' @noRd
 .chck_compute_access <- function(demand, supply, demand_weights, access_weights,
                                  id_col = NULL, supply_cols = NULL,
                                  indicator_names = NULL) {
@@ -241,7 +241,7 @@
 #' @param demand_normalize Character specifying normalization method
 #' @param id_col Character; column name for facility IDs if supply is a data.frame
 #' @param supply_cols Character vector; names of supply columns if supply is a data.frame
-#' @keywords internal
+#' @noRd
 .chck_e2sfca <- function(demand, supply, distance, decay_params,
                          demand_normalize, id_col = NULL, supply_cols = NULL) {
   .chck_e2sfca_data(demand, supply, distance, id_col, supply_cols)
@@ -299,14 +299,14 @@
   for (dp in decay) {
     .chck_class(dp, "list", "decay_params")
     if (is.null(dp$method)) {
-      stop("decay_params must include 'method'")
+      .stop("decay_params must include 'method'")
     }
   }
 
   # Validate demand_normalize
   valid_normalize <- c("identity", "standard", "semi")
   if (!demand_normalize %in% valid_normalize) {
-    stop(sprintf(
+    .stop(sprintf(
       "demand_normalize must be one of: %s",
       paste(valid_normalize, collapse = ", ")
     ))
@@ -325,7 +325,7 @@
 #'   \item{values}{Matrix or vector of supply values}
 #'   \item{ids}{Vector of facility IDs}
 #'   \item{cols}{Names of supply measures}
-#' @keywords internal
+#' @noRd
 .help_process_supply <- function(supply, id_col = NULL, supply_cols = NULL,
                                  weight_ids = NULL) {
   # Handle data.frame input
@@ -338,7 +338,7 @@
       # Match and reorder to weight layers
       matched_idx <- match(weight_ids, supply[[id_col]])
       if (any(is.na(matched_idx))) {
-        stop("Some weight layer IDs not found in supply data")
+        .stop("Some weight layer IDs not found in supply data")
       }
       values <- as.matrix(supply[matched_idx, supply_cols, drop = FALSE])
       ids <- weight_ids
@@ -364,7 +364,7 @@
       # Named vector: match by name so supply order need not match the layers
       matched_idx <- match(weight_ids, names(supply))
       if (any(is.na(matched_idx))) {
-        stop("Some weight layer IDs not found in supply data")
+        .stop("Some weight layer IDs not found in supply data")
       }
       supply <- supply[matched_idx]
       ids <- weight_ids
@@ -376,7 +376,7 @@
     values <- as.matrix(unname(supply))
     cols <- "supply"
   } else {
-    stop("Unsupported supply data type")
+    .stop("Unsupported supply data type")
   }
 
   # Return processed results
@@ -442,11 +442,11 @@
     ids <- .fca_ids(distance)
     weight_ids <- .fca_ids(weights, "decay weights")
     if (terra::nlyr(weights) != length(ids)) {
-      stop("a decay function must return one layer per distance layer")
+      .stop("a decay function must return one layer per distance layer")
     }
     positional <- identical(weight_ids, paste0("facility_", seq_along(weight_ids)))
     if (!positional && !setequal(weight_ids, ids)) {
-      stop("the layer names returned by the decay function must be the distance layer names")
+      .stop("the layer names returned by the decay function must be the distance layer names")
     }
     order <- if (positional) seq_along(ids) else match(ids, weight_ids)
     # The distance is read as well, for the finite-travel mask of decision D1.
@@ -472,14 +472,14 @@
     }
   }
   if (!builtin && inherits(params$sigma, "SpatRaster")) {
-    stop("a variable catchment needs a built-in method or a plain function")
+    .stop("a variable catchment needs a built-in method or a plain function")
   }
   if (builtin && !snap) {
     .chck_decay(distance, method, params$sigma, snap)
   }
   if (builtin && !is.null(params$sigma) && !inherits(params$sigma, "SpatRaster") &&
       length(params$sigma) > 1L) {
-    stop("sigma must be a single number or a SpatRaster")
+    .stop("sigma must be a single number or a SpatRaster")
   }
 
   others <- params[setdiff(names(params), "method")]
@@ -504,7 +504,7 @@
         x <- b[[keys[[arg]]]]
         if (!all_rows) x <- x[rows, , drop = FALSE]
         if (ncol(x) > 1L && ncol(x) != ncol(b[[dist_key]])) {
-          stop("`", arg, "` raster must have 1 layer or one layer per `distance` layer")
+          .stop("`", arg, "` raster must have 1 layer or one layer per `distance` layer")
         }
         args[arg] <- list(if (ncol(x) == 1L) x[, 1L] else x)
       }
@@ -711,7 +711,7 @@
   demand_ids <- .fca_ids(demand_weights, "demand_weights")
   access_ids <- .fca_ids(access_weights, "access_weights")
   if (!setequal(demand_ids, access_ids)) {
-    stop("demand and access kernels must span the same facility ids")
+    .stop("demand and access kernels must span the same facility ids")
   }
   pos <- match(demand_ids, access_ids)
   dkey <- paste0("demand_weights", suffix)
@@ -776,7 +776,7 @@
   for (p in params) {
     .chck_class(p, "list", "selection_params")
     if (is.null(p$method)) {
-      stop("selection_params must include 'method'")
+      .stop("selection_params must include 'method'")
     }
   }
   invisible(TRUE)
@@ -802,7 +802,7 @@
       supply, id_col, supply_cols, weight_ids = ids
     )$values
     if (ncol(values) != 1L) {
-      stop("give attractiveness when supply has several measures")
+      .stop("give attractiveness when supply has several measures")
     }
     values <- values[, 1]
     label <- "the supply measure used as attractiveness"
@@ -815,7 +815,7 @@
     values <- attractiveness
     if (!is.null(names(values))) {
       if (anyDuplicated(names(values)) || !setequal(names(values), ids)) {
-        stop("names of attractiveness must be the distance layer names, ",
+        .stop("names of attractiveness must be the distance layer names, ",
              "one for each facility")
       }
       values <- values[match(ids, names(values))]
@@ -823,7 +823,7 @@
     label <- "attractiveness"
   }
   if (!snap && (!all(is.finite(values)) || any(values < 0))) {
-    stop(label, " must contain only finite, nonnegative values")
+    .stop(label, " must contain only finite, nonnegative values")
   }
   setNames(as.numeric(values), ids)
 }
@@ -870,7 +870,27 @@
 #' a `.`. `demand_weights` and `access_weights` are shared by the groups, or a
 #' list with one element per group, named by the groups. Shared weights should
 #' be passed as one object, so that they are read once.
+#' @examples
+#' library(terra)
+#'
+#' # Cornwall population grid, and Gaussian weights of the travel time to each
+#' # GP practice
+#' pop <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' gp <- sf::st_drop_geometry(cornwall_gp)
+#' w <- calc_decay(travel, method = "gaussian", sigma = 10)
+#'
+#' # The same weights in both steps give E2SFCA (spax_e2sfca()); the squared
+#' # weights in the second step give M2SFCA (spax_m2sfca())
+#' e2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w,
+#'                          id_col = "practice", supply_cols = "gp_fte_extg",
+#'                          indicator_names = "e2sfca")
+#' m2sfca <- compute_access(pop, gp, demand_weights = w, access_weights = w^2,
+#'                          id_col = "practice", supply_cols = "gp_fte_extg",
+#'                          indicator_names = "m2sfca")
+#' plot(c(e2sfca, m2sfca))
 #' @export
+#' @md
 compute_access <- function(demand, supply, demand_weights, access_weights,
                            id_col = NULL, supply_cols = NULL,
                            indicator_names = NULL,
@@ -1076,6 +1096,7 @@ compute_access <- function(demand, supply, demand_weights, access_weights,
 #' * [calc_decay()] for available decay functions
 #'
 #' @export
+#' @md
 spax_e2sfca <- function(demand, supply, distance,
                         decay_params = list(method = "gaussian", sigma = 30),
                         demand_normalize = "identity",
@@ -1129,7 +1150,46 @@ spax_e2sfca <- function(demand, supply, distance,
 #' https://doi.org/10.1016/j.healthplace.2013.07.012
 #'
 #' @seealso [spax_e2sfca()], [spax_2sfca()], [compute_access()], [calc_decay()]
+#' @examples
+#' library(terra)
+#' library(sf)
+#'
+#' # Cornwall population grid and travel time to each GP practice
+#' pop_rast <- read_spax_example("cornwall_pop.tif")
+#' travel <- read_spax_example("cornwall_gp_travel.tif")
+#' gp <- cornwall_gp |> st_drop_geometry()
+#'
+#' # M2SFCA with Gaussian decay
+#' result <- spax_m2sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' result
+#'
+#' # E2SFCA with the same decay, for comparison
+#' result_e2 <- spax_e2sfca(
+#'   demand = pop_rast,
+#'   supply = gp,
+#'   distance = travel,
+#'   decay_params = list(method = "gaussian", sigma = 10),
+#'   id_col = "practice",
+#'   supply_cols = "gp_fte_extg"
+#' )
+#' plot(c(result_e2$accessibility, result$accessibility),
+#'   main = c("E2SFCA", "M2SFCA")
+#' )
+#'
+#' # The share of the E2SFCA score that M2SFCA keeps: the average decay weight
+#' # of the practices in reach, low where they are far away
+#' plot(result$accessibility / result_e2$accessibility,
+#'   main = "M2SFCA / E2SFCA"
+#' )
 #' @export
+#' @md
 spax_m2sfca <- function(demand, supply, distance,
                         decay_params = list(method = "gaussian", sigma = 30),
                         demand_normalize = "identity",
@@ -1264,6 +1324,7 @@ spax_m2sfca <- function(demand, supply, distance,
 #' * [compute_access()] for more flexible accessibility calculations
 #'
 #' @export
+#' @md
 spax_2sfca <- function(demand, supply, distance, threshold,
                        id_col = NULL, supply_cols = NULL,
                        snap = FALSE) {
@@ -1276,7 +1337,7 @@ spax_2sfca <- function(demand, supply, distance, threshold,
   if (!snap) {
     for (th in if (is.null(thresholds)) list(threshold) else thresholds) {
       if (!is.numeric(th) || length(th) != 1 || !is.finite(th) || th <= 0) {
-        stop("threshold must be a single positive number")
+        .stop("threshold must be a single positive number")
       }
     }
   }

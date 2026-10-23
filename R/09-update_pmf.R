@@ -20,15 +20,15 @@
 #' @param density Logical; if TRUE return density surface instead of PMF
 #' @param snap Logical; if TRUE skip validation
 #' @return SpatRaster containing either:
-#'         - Posterior PMF if density = FALSE
-#'         - Posterior density if density = TRUE
+#'   - Posterior PMF if `density = FALSE`
+#'   - Posterior density if `density = TRUE`
 #'
 #' @examples
 #' pop <- read_spax_example("cornwall_pop.tif")
 #'
 #' # Group small areas into larger units (LSOA names end in a letter; dropping it
 #' # gives the containing MSOA) so every unit covers several grid cells
-#' areas <- terra::vect(sf::st_transform(cornwall_lsoa, 4326))
+#' areas <- terra::vect(cornwall_lsoa)
 #' areas$msoa <- sub("[A-Z]$", "", areas$name)
 #' msoa <- terra::aggregate(areas, by = "msoa", fun = "sum")
 #'
@@ -42,6 +42,7 @@
 #' prior <- transform_pmf(pop)
 #' posterior <- update_pmf(prior, likelihood)
 #' @export
+#' @md
 update_pmf <- function(prior, likelihood, normalize = TRUE,
                        density = FALSE, snap = FALSE) {
   # Input validation
@@ -52,7 +53,7 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
     n_prior <- terra::nlyr(prior)
     n_likelihood <- terra::nlyr(likelihood)
     if (n_prior != n_likelihood && n_prior != 1 && n_likelihood != 1) {
-      stop("prior and likelihood must have the same number of layers, ",
+      .stop("prior and likelihood must have the same number of layers, ",
            "or one of them a single layer")
     }
   }
@@ -99,7 +100,7 @@ update_pmf <- function(prior, likelihood, normalize = TRUE,
 #'
 #' # Registered patients by Cornwall small area, on the population grid
 #' pop <- read_spax_example("cornwall_pop.tif")
-#' areas <- project(vect(cornwall_lsoa), pop)
+#' areas <- vect(cornwall_lsoa)
 #'
 #' # Uniform prior over the populated grid
 #' result1 <- rasterize_demand(areas, value_col = "registered", template = pop)
@@ -118,10 +119,10 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
   # Input validation
   .chck_vector_input(x, value_col)
   if (is.null(prior) && is.null(template)) {
-    stop("Either prior or template must be provided")
+    .stop("Either prior or template must be provided")
   }
   if (!isFALSE(standardize)) {
-    stop("standardize = TRUE gives negative likelihood values, which cannot ",
+    .stop("standardize = TRUE gives negative likelihood values, which cannot ",
          "form a posterior PMF")
   }
 
@@ -132,7 +133,7 @@ rasterize_demand <- function(x, value_col, prior = NULL, template = NULL,
     prior <- terra::init(template[[1]], 1)
     if (terra::hasValues(template)) prior <- terra::mask(prior, template[[1]])
     if (!isTRUE(terra::global(prior, "sum", na.rm = TRUE)[[1]] > 0)) {
-      stop("template has no non-missing cells")
+      .stop("template has no non-missing cells")
     }
     prior <- transform_pmf(prior, snap = TRUE)
   } else {

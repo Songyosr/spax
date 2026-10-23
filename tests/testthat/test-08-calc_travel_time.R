@@ -1,14 +1,16 @@
 # calc_travel_time(): least-cost travel over a friction surface, checked
 # against straight-line times on uniform friction.
 
+# Toy grids in WGS 84 / UTM zone 30N: terra projects inputs to the grid, and a
+# system on the WGS 84 datum needs no PROJ datum grid, which could be downloaded.
 tt_grid <- function(n = 21, res = 100) {
   g <- terra::rast(nrows = n, ncols = n, xmin = 0, xmax = n * res, ymin = 0,
-                   ymax = n * res, crs = "EPSG:27700")
+                   ymax = n * res, crs = "EPSG:32630")
   terra::values(g) <- 1
   g
 }
 tt_points <- function(xy, ids) {
-  v <- terra::vect(xy, crs = "EPSG:27700")
+  v <- terra::vect(xy, crs = "EPSG:32630")
   v$id <- ids
   v
 }
@@ -35,8 +37,8 @@ test_that("barriers force detours, max_time removes edges, rasters match", {
   fac <- tt_points(cbind(c(550, 1550), c(1050, 1050)), c("west", "east"))
   # A wall at x = 1000-1100 with one gap at the top.
   wall <- terra::vect("POLYGON ((1000 0, 1100 0, 1100 1900, 1000 1900, 1000 0))",
-                      crs = "EPSG:27700")
-  keep <- terra::erase(terra::as.polygons(terra::ext(g), crs = "EPSG:27700"), wall)
+                      crs = "EPSG:32630")
+  keep <- terra::erase(terra::as.polygons(terra::ext(g), crs = "EPSG:32630"), wall)
   open <- calc_travel_time(terra::init(g, 0.01), fac, g, ids = "id", buffer = 0)
   walled <- calc_travel_time(terra::init(g, 0.01), fac, g, ids = "id", mask = keep, buffer = 0)
   across <- terra::cellFromXY(g, cbind(1550, 1050))
@@ -82,7 +84,7 @@ test_that("invalid inputs fail clearly", {
   zero[1] <- 0
   expect_error(calc_travel_time(zero, fac, g, ids = "id", buffer = 0), "positive")
   oblong <- terra::rast(nrows = 10, ncols = 10, xmin = 0, xmax = 2000, ymin = 0, ymax = 1000,
-                        crs = "EPSG:27700")
+                        crs = "EPSG:32630")
   terra::values(oblong) <- 1
   expect_error(calc_travel_time(terra::init(oblong, 0.01), fac, oblong, ids = "id"), "square")
 })

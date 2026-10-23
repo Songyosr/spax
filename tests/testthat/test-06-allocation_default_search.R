@@ -144,6 +144,8 @@ test_that("the Cornwall cases of the design evidence table reach the optimum", {
 # (b) Unit invariance ------------------------------------------------------------
 
 test_that("rescaling the travel times rescales sigma and keeps the loss", {
+  # Slow; skipped in CRAN checks, run locally and in CI
+  skip_on_cran()
   case <- alloc_generated_case()
   for (family in c("gaussian", "exponential")) {
     for (output in c("utilization", "flow")) {
@@ -239,15 +241,15 @@ test_that("an error from the fit of the default search shows a short call", {
                 error = function(e) e)
   expect_identical(conditionMessage(e),
     "`...` must contain unique named fitting controls, excluding init and bounds")
-  # a call to the function by name, with the arguments as symbols and the controls given
-  # to the search; not the function or the data written out
-  expect_identical(as.character(conditionCall(e)[[1L]]), ".fit_problem_multistart")
+  # the call the user made, with the arguments as written; not the internal fitter,
+  # the function or the data written out
+  expect_identical(conditionCall(e)[[1L]], quote(fit_allocation))
   expect_lt(nchar(paste(deparse(conditionCall(e)), collapse = "")), 400L)
-  expect_identical(as.character(conditionCall(e)[[2L]]), "model")
+  expect_identical(conditionCall(e)[[2L]], quote(case$model))
   # the same error without a search
   e2 <- tryCatch(fit_allocation(case$model, case$y, case$starts, case$lower, case$upper,
                                 loss = "poisson", bogus = 1), error = function(e) e)
-  expect_identical(as.character(conditionCall(e2)[[1L]]), ".fit_problem_multistart")
+  expect_identical(conditionCall(e2)[[1L]], quote(fit_allocation))
 })
 
 test_that("complete calls never run the search", {

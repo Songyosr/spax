@@ -50,3 +50,20 @@ finite values from successful attempted fits, retaining inner boundaries and
 displaying the number plotted. Neither view implies empirical observation-law
 validation, simultaneous coverage or causal interpretation of a scenario.
 }
+\examples{
+# A stored result: the 399-attempt bootstrap of the guide
+# vignette("facility-bootstrap", package = "spax"), on a generated network,
+# with a scenario of more supply at one facility
+boot <- readRDS(system.file("extdata", "allocation-bootstrap.rds", package = "spax"))
+
+# The run, its attempts and the intervals
+boot
+summary(boot)$counts
+
+# The interval of sigma, and the draws of v0
+plot(boot)
+plot(boot, quantity = "v0", type = "draws")
+
+# Every attempt, as a table
+head(as.data.frame(boot, type = "draws"))
+}
