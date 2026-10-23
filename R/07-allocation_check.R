@@ -47,9 +47,9 @@
 #' @param model The CLM from [clm_allocation()] that was fitted, or a
 #'   result of [spax()] that fitted a model; the result supplies its bound model
 #'   and its fit, so leave `fit` out. A result that was evaluated at given values
-#'   has no fit and is refused, and so is an FCA index (a result of [spax()] with an
-#'   FCA specification, or of [spax_e2sfca()] and the other one-shots): an index is
-#'   computed, not fitted.
+#'   has no fit and is refused, and so are accessibility scores (a result of [spax()]
+#'   with a 2SFCA-family specification, or of [spax_e2sfca()] and the other
+#'   one-shots): they are computed, not fitted.
 #' @param fit The `ae_multistart_fit` returned by [fit_allocation()] for
 #'   `model`. A search with no selected fit cannot be checked. Not given when
 #'   `model` is a result of [spax()].
@@ -61,7 +61,7 @@
 #'   re-optimized parameters other than `sigma`, an empty vector when the model
 #'   fits only `sigma`), the selected fit's parameter `boundary` flags,
 #'   `search_at_edge`, logical `flags`, and `poisson_floor` (for a Poisson fit:
-#'   its floor `eps` and the number of cells with positive observed counts modelled below
+#'   its floor `eps` and the number of cells with positive observed counts modeled below
 #'   it, which cap the loss; `NULL` otherwise). Use `print()` or `as.data.frame()`.
 #' @examples
 #' # West Cornwall: the small areas and practices west of easting 170 km

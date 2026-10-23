@@ -13,7 +13,7 @@ transform_pmf(
 )
 }
 \arguments{
-\item{x}{A \code{SpatRaster} containing values to normalise, or a \code{SpatVector}
+\item{x}{A \code{SpatRaster} containing values to normalize, or a \code{SpatVector}
 whose attribute values will be rasterised.}
 
 \item{value_col}{Character name of the attribute column to use when \code{x} is a
@@ -37,7 +37,7 @@ If \code{return_total = FALSE}, returns a \code{SpatRaster} whose cells sum to
 }
 \description{
 Converts raster or vector inputs into a probability mass function where all
-values sum to 1. Raster inputs are normalised directly, each layer of a
+values sum to 1. Raster inputs are normalized directly, each layer of a
 multi-layer raster separately, while vector inputs are first rasterised
 using a supplied template: points in the same cell add up (missing values
 are ignored, and each part of a multipoint carries the feature's full

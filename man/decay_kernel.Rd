@@ -43,7 +43,7 @@ its grid, and a model from \code{\link[=clm_allocation]{clm_allocation()}} refus
 contain a finite zero travel time when it is evaluated or fitted.}
 
 \item{smooth}{\code{FALSE} declares a kernel that is not smooth in \code{sigma} (steps
-or thresholds). It can be evaluated, predicted and used in FCA: a model built
+or thresholds). It can be evaluated, predicted and used in a 2SFCA-family method: a model built
 with \code{\link[=clm_allocation]{clm_allocation()}} can be evaluated at fixed parameters with
 \code{\link[=evaluate_allocation]{evaluate_allocation()}} and used for requested-location prediction with
 \code{\link[=predict_allocation]{predict_allocation()}}, but \code{\link[=fit_allocation]{fit_allocation()}} refuses it, because model
@@ -67,7 +67,7 @@ not kept; \code{NA} for a built-in kernel).
 }
 \description{
 Declares the decay weights \eqn{w(d; \sigma)}{w(d; sigma)} that
-\code{\link[=calc_decay]{calc_decay()}} and the FCA functions apply to a travel time or distance
+\code{\link[=calc_decay]{calc_decay()}} and the 2SFCA-family functions apply to a travel time or distance
 \eqn{d}. A declaration is plain data: it names a built-in kernel, or it
 records your own function as the exact text of its code (comments and layout
 are not kept), together with what its parameter \code{sigma} means, the bounds

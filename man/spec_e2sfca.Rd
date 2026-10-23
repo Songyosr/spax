@@ -7,7 +7,7 @@
 \alias{spec_3sfca}
 \alias{spec_huff2sfca}
 \alias{format.spax_fca_spec}
-\title{Specify a floating catchment area index without data}
+\title{Specify a 2SFCA-family method without data}
 \usage{
 spec_2sfca(threshold)
 
@@ -54,7 +54,7 @@ facility with finite values of 0 or more.}
 \item{alpha}{A single finite number of 0 or more: the exponent of the
 attractiveness in the selection probability.}
 
-\item{x}{An FCA specification.}
+\item{x}{A 2SFCA-family specification.}
 
 \item{...}{Unused.}
 }
@@ -66,12 +66,12 @@ method does not have is \code{NULL}.
 }
 \description{
 Experimental. \code{spec_2sfca()}, \code{spec_e2sfca()}, \code{spec_m2sfca()},
-\code{spec_3sfca()} and \code{spec_huff2sfca()} declare a floating catchment area (FCA)
-index with its decay and its options, as the data-free counterparts of
-\code{\link[=spax_2sfca]{spax_2sfca()}}, \code{\link[=spax_e2sfca]{spax_e2sfca()}}, \code{\link[=spax_m2sfca]{spax_m2sfca()}}, \code{\link[=spax_3sfca]{spax_3sfca()}} and
-\code{\link[=spax_huff2sfca]{spax_huff2sfca()}}. A specification holds no data and no fitted value: an FCA
-index is computed, not fitted, so every decay needs its \code{sigma} (or its
-threshold) here.
+\code{spec_3sfca()} and \code{spec_huff2sfca()} declare a method of the two-step floating
+catchment area (2SFCA) family with its decay and its options, as the data-free
+counterparts of \code{\link[=spax_2sfca]{spax_2sfca()}}, \code{\link[=spax_e2sfca]{spax_e2sfca()}}, \code{\link[=spax_m2sfca]{spax_m2sfca()}}, \code{\link[=spax_3sfca]{spax_3sfca()}}
+and \code{\link[=spax_huff2sfca]{spax_huff2sfca()}}. A specification holds no data and no fitted value:
+accessibility scores are computed, not fitted, so every decay needs its \code{sigma}
+(or its threshold) here.
 }
 \details{
 \strong{Decays.} A decay is \code{\link[=decay_gaussian]{decay_gaussian()}}, \code{\link[=decay_exponential]{decay_exponential()}} or

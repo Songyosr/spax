@@ -75,7 +75,7 @@ Step 1 (unchanged from E2SFCA): \eqn{R_j = S_j / \sum_i P_i W(d_{ij})}.
 
 Step 2 (modified): \eqn{A_i = \sum_j R_j \, W(d_{ij})^2}.
 
-M2SFCA is not a separate engine here: it is the shared FCA recipe with the
+M2SFCA is not a separate engine here: it is the shared 2SFCA recipe with the
 access-side kernel squared. It is exactly equivalent to
 \code{compute_access(demand, supply, W, W^2)}.
 }

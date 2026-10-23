@@ -1,7 +1,7 @@
 #' Save a spax accessibility analysis
 #'
-#' Saves the result of a floating catchment analysis (an object of class `spax`)
-#' with its rasters. A result of [spax()] (a `spax_allocation`) is saved with
+#' Saves the accessibility scores of a 2SFCA-family method (an object of class
+#' `spax`) with its rasters. A result of [spax()] (a `spax_allocation`) is saved with
 #' [saveRDS()].
 #'
 #' @param x A spax object

@@ -40,7 +40,7 @@ and other elements is an error.}
 \item{supply}{Numeric data: a finite nonnegative facility vector (see
 \code{\link[=prepare_allocation]{prepare_allocation()}}). Raster data: a data frame with \code{id_col} and
 \code{supply_cols}, a matrix or a vector (see \code{\link[=spax_e2sfca]{spax_e2sfca()}}); several supply
-measures give independent layers in an FCA result.}
+measures give independent layers of accessibility scores.}
 
 \item{travel}{Numeric origin-by-facility travel matrix. It is the
 \code{distance} argument of \code{\link[=prepare_allocation]{prepare_allocation()}}: the same alignment by IDs
@@ -122,14 +122,14 @@ unit labels when they were given, the active origins whose travel is unknown
 and the policies for missing demand and travel.
 
 \strong{Raster data} (\code{demand} is a \code{SpatRaster}, or a named list of single-layer
-\code{SpatRaster}s for demand groups) are the inputs of the floating catchment area
-indices (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and its relatives): \code{demand} is the demand grid,
+\code{SpatRaster}s for demand groups) are the inputs of the methods of the two-step
+floating catchment area (2SFCA) family (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and its relatives): \code{demand} is the demand grid,
 \code{travel} the travel stack, one layer per facility named by the facility ID, and
 \code{supply} a data frame with \code{id_col} and \code{supply_cols}, a matrix or a vector, as
 in \code{\link[=spax_e2sfca]{spax_e2sfca()}}. With demand groups, \code{travel} can be one stack or a named
 list of stacks, one per group. \code{prep_data()} checks the structure (the demand
 groups, one geometry, one layer per facility, the supply table) and reads no
-value of a raster; the demand rule of the indices (finite and nonnegative,
+value of a raster; the demand rule of these methods (finite and nonnegative,
 \code{NA} for unknown) is applied when a model runs. The arguments \code{origin_ids},
 \code{facility_ids}, \code{included}, \code{missing_demand}, \code{missing_travel} and \code{spatial}
 are for numeric data and are refused. \code{id_col} and \code{supply_cols} are for
@@ -143,7 +143,7 @@ behind the scenes, and keeps nothing: the origins are the cells with finite,
 positive demand (with demand groups, the cells where every group's demand is
 known and the total is positive), their IDs are the cell numbers of the grid
 as text (\code{"843"}), and the origin registry holds these cells only. The demand
-rule of the indices applies: negative or infinite demand is an error and \code{NA}
+rule of the 2SFCA-family methods applies: negative or infinite demand is an error and \code{NA}
 is unknown. \code{\link[=obs_totals]{obs_totals()}} works directly. \code{\link[=obs_flows]{obs_flows()}} is keyed by cell
 number, and counts at cells that are not origins (no demand, or unknown) are
 dropped with a message. A missing or infinite travel time is an absent pair, and a
@@ -164,8 +164,8 @@ R memory (2.6 GB of process memory), about 8 times the matrix, and takes about 2
 minutes. That is the memory of the fit, the same as for numeric inputs of that size,
 so a much larger grid is better cropped or coarsened first.
 
-\strong{FCA indices on numeric data.} An FCA specification (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and its
-relatives) also runs on numeric data with \code{\link[=spax]{spax()}}. It gives the index at the active
+\strong{Accessibility scores on numeric data.} A 2SFCA-family specification (\code{\link[=spec_e2sfca]{spec_e2sfca()}}
+and its relatives) also runs on numeric data with \code{\link[=spax]{spax()}}. It gives the scores at the active
 origins only: an origin with zero or unknown demand, or left out, has no row in the
 result. The result is a \code{spax_access_values} (see \link{spax_access_values-methods}), not
 rasters, and numeric data has one supply measure, \code{"supply"}. A raster \code{sigma} (a
@@ -182,7 +182,7 @@ prep_data(demand, supply, travel,
           metadata = list(demand_units = "registered residents",
                           supply_units = "GP FTE", travel_units = "minutes"))
 
-# Raster data for a floating catchment area index
+# Raster data for a 2SFCA-family method
 pop <- read_spax_example("cornwall_pop.tif")
 travel_grid <- read_spax_example("cornwall_gp_travel.tif")
 grid_data <- prep_data(pop, sf::st_drop_geometry(cornwall_gp), travel_grid,

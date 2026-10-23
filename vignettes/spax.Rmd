@@ -20,11 +20,23 @@ knitr::opts_chunk$set(
 
 This guide measures how accessible general practice (GP) care is across
 mainland Cornwall and maps the answer. By the end you will understand the idea
-behind a floating catchment area (FCA) index, compute one from a population
-grid, a table of practices and travel times, and read its map. The
-data are the open Cornwall GP data that ship with spax, described in [The
-Cornwall GP example data](cornwall-data.html). The `spax()` interface and the
-allocation model are experimental and may change in later versions.
+behind the accessibility scores of the two-step floating catchment area
+(2SFCA) family, compute them from a population grid, a table of practices and
+travel times, and read the accessibility map. The data are the open Cornwall
+GP data that ship with spax, described in [The Cornwall GP example
+data](cornwall-data.html). The `spax()` interface and the allocation model are
+experimental and may change in later versions.
+
+spax takes data in two shapes: give demand as areas or a grid, and travel as a
+matrix or one surface per facility. The same models run on both. This guide
+uses the grid form.
+
+| Ingredient | Table form (areas or points) | Grid form |
+|:--|:--|:--|
+| Demand | a number per origin | a population raster |
+| Supply | a number per facility | the same |
+| Travel | an origin x facility matrix of minutes | one travel-time layer per facility |
+| Observed use | flows or facility totals | the same, with cells as origins |
 
 The guide uses spax with terra for grids, sf and dplyr for tables and ggplot2
 for the practices map.
@@ -40,17 +52,17 @@ library(ggplot2)
 ## The question
 
 Some residents live next to a practice with many GPs. Others live far from any
-practice, or near one that many people share. An accessibility index puts both
+practice, or near one that many people share. An accessibility score puts both
 into one number per place: the **supply** of a service (here GP full-time
 equivalents, FTE) relative to the **demand** that competes for it (here
 residents), with distant practices counting for less. Where in Cornwall is that
-number high, and where is it low?
+score high, and where is it low?
 
 ## The idea in two steps
 
-An FCA index answers the question in two steps. A
-tiny example with three areas and two practices shows both. The weights say how
-much each practice counts for each area: 1 next door, less further away.
+The 2SFCA family answers the question in two steps. A tiny example with three
+areas and two practices shows both. The weights say how much each practice
+counts for each area: 1 next door, less further away.
 
 ```{r toy-inputs}
 # Residents of three areas, and GP FTE at two practices
@@ -104,26 +116,28 @@ again.
 
 ```{r toy-step-2}
 # For each area: practice ratios times weight, summed over the practices
-index <- drop(weights %*% ratio)
-round(1000 * index, 2)
+score <- drop(weights %*% ratio)
+round(1000 * score, 2)
 
-# Residents times the index, summed over the areas
-sum(index * demand)
+# Residents times the score, summed over the areas
+sum(score * demand)
 ```
 
-The village leans on the better-supplied north practice and scores highest, at
-`r per_1000(index[["village"]])` GP FTE per 1,000 residents. The coast leans on
-the south practice and scores lowest, at `r per_1000(index[["coast"]])`.
-Residents times the index add up to the `r sum(supply)` GP FTE of the two
-practices: the index shares the supply out among residents and creates none.
+The result is each area's accessibility score. The village leans on the
+better-supplied north practice and scores highest, at
+`r per_1000(score[["village"]])` GP FTE per 1,000 residents. The coast leans on
+the south practice and scores lowest, at `r per_1000(score[["coast"]])`. In
+that unit the residents are those gathered in Step 1, weighted by travel, not
+the area's own residents. Residents times the score add up to the
+`r sum(supply)` GP FTE of the two practices: the scores share the supply out
+among residents and create none.
 
 The weighted residents around a practice are its catchment, which floats with
 the practice instead of following area borders. With weights of only 1 within
-a travel-time limit and 0 beyond it, these two steps are the original two-step
-FCA (2SFCA). Graded weights, as here, give the enhanced two-step FCA, or
-**E2SFCA**. In a real study the weights come from travel times through a decay
-curve, and spax computes them for every place and every practice. With the
-curve used below, a weight of 0.5 means about `r minutes_at(0.5)` minutes away
+a travel-time limit and 0 beyond it, these two steps are the original 2SFCA.
+Graded weights, as here, give the enhanced 2SFCA, or **E2SFCA**. In a real
+study the weights come from travel times through a decay curve, and spax
+computes them for every place and every practice. With the curve used below, a weight of 0.5 means about `r minutes_at(0.5)` minutes away
 and 0.1 about `r minutes_at(0.1)` minutes.
 
 ## The Cornwall data
@@ -131,7 +145,7 @@ and 0.1 about `r minutes_at(0.1)` minutes.
 spax ships open data for GP care in Cornwall and the Isles of Scilly: the
 `r nrow(cornwall_gp)` practices with their GP FTE, `r nrow(cornwall_lsoa)` small
 areas with their registered residents, who is registered at which practice,
-and travel times. A population grid of about 1 km cells and one layer of
+and travel times. A population grid of 30 arc-second cells and one layer of
 travel minutes per practice cover the same area. The Isles of Scilly have no
 road link to the mainland, so the guides use mainland Cornwall only, with its
 `r sum(!cornwall_gp$scilly)` practices. [The Cornwall GP example
@@ -139,7 +153,7 @@ data](cornwall-data.html) describes each object, its sources and its limits.
 The map shows the mainland practices, sized by their GP FTE, with a few towns
 named for reference.
 
-```{r practices-map, fig.alt = paste0("Map of mainland Cornwall's small areas in light grey, with the ", sum(!cornwall_gp$scilly), " mainland GP practices as orange circles sized by GP full-time equivalents, and eight towns named: Penzance, Helston, Redruth, Truro, Falmouth, Bodmin, Bude and Launceston.")}
+```{r practices-map, fig.alt = paste0("Map of mainland Cornwall's small areas in light gray, with the ", sum(!cornwall_gp$scilly), " mainland GP practices as orange circles sized by GP full-time equivalents, and eight towns named: Penzance, Helston, Redruth, Truro, Falmouth, Bodmin, Bude and Launceston.")}
 # Mainland practices and small areas, with their geometry
 practices <- filter(cornwall_gp, !scilly)
 small_areas <- filter(cornwall_lsoa, !scilly)
@@ -184,13 +198,13 @@ Practices are densest in the west, around Redruth, Truro and Falmouth. The
 largest has `r round(max(practices$gp_fte_extg), 1)` GP FTE.
 Bodmin Moor, the upland north-east of Bodmin, has none.
 
-## Compute the index
+## Compute the accessibility scores
 
-An FCA index needs three inputs that line up: a population grid of residents
-per cell (demand), a table of practices with their GP FTE (supply), and a stack
-of travel-time grids with one layer of minutes per practice, named by practice
-code. These lines read them and keep the mainland cells that have a travel
-time to every practice. Every FCA guide starts from them.
+In grid form, a 2SFCA-family method needs three inputs that line up: a
+population grid of residents per cell (demand), a table of practices with
+their GP FTE (supply), and a stack of travel-time grids with one layer of
+minutes per practice, named by practice code. These lines read them and keep the mainland cells that have a travel
+time to every practice. Every guide on the 2SFCA family starts from them.
 
 ```{r inputs}
 gp <- cornwall_gp |>
@@ -214,15 +228,15 @@ supply.
 weight_at <- function(minutes) round(100 * calc_decay(minutes, method = "gaussian", sigma = 10))
 ```
 
-`spec_e2sfca()` says which index to compute and how. `spax()` then computes it
-on `grid_data`. The decay turns travel minutes into weights. Here it is a
+`spec_e2sfca()` says which method to use and how. `spax()` then computes the
+scores on `grid_data`. The decay turns travel minutes into weights. Here it is a
 Gaussian curve whose travel scale σ, in minutes, sets how fast the weights
 fall. With σ = 10, a practice 10 minutes away counts about `r weight_at(10)`%
 as much as one next door, and one 20 minutes away about `r weight_at(20)`%.
 The scale is a choice for this guide. [Where do residents
 register?](allocation-workflow.html) estimates a travel scale from observed
-registrations. This line computes the index on the Cornwall data and prints a
-summary.
+registrations. This line computes the accessibility scores on the Cornwall
+data and prints a summary.
 
 ```{r e2sfca}
 e2sfca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
@@ -234,20 +248,20 @@ grid_arcsec <- round(3600 * res(e2sfca$accessibility)[1])
 ```
 
 The print gives the grid: `r nrow(e2sfca$accessibility)` rows by
-`r ncol(e2sfca$accessibility)` columns of cells about 1 km across (the
-resolution is in degrees, `r grid_arcsec` arc-seconds). It also gives the
+`r ncol(e2sfca$accessibility)` columns of `r grid_arcsec` arc-second cells (the
+print gives the resolution in degrees). It also gives the
 supply column it used (`gp_fte_extg`), the `r nrow(gp)` practices and the settings: the
 Gaussian decay with σ = 10, and the default normalization `identity`, which
 uses the weights unchanged when practices gather residents. The
-`accessibility` member is the index on the grid, a raster in GP FTE per
-resident. We map it per 1,000 residents, with the practices as red crosses and
-the same towns named.
+`accessibility` member is the accessibility map: a raster of scores in GP FTE
+per resident. We map it in GP FTE per 1,000 residents, with the practices as
+red crosses and the same towns named.
 
-```{r e2sfca-map, fig.alt = "Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses and eight towns named; values are highest in the west between Redruth, Truro and Falmouth, lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas, and lower in the far north-east."}
+```{r e2sfca-map, fig.alt = "Raster map of the E2SFCA accessibility scores for mainland Cornwall in GP FTE per 1,000 residents, with practices as red crosses and eight towns named; values are highest in the west between Redruth, Truro and Falmouth, lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas, and lower in the far north-east."}
 # Practice and town locations in the grid's coordinates (longitude and latitude)
 practice_points <- vect(practices)
 town_points <- vect(towns)
-outline_lonlat <- vect(outline)
+outline_vect <- vect(outline)
 
 plot(
   1000 * e2sfca$accessibility,
@@ -255,56 +269,64 @@ plot(
   col = hcl.colors(50, "viridis"),
   main = "E2SFCA: GP FTE per 1,000 residents (Gaussian, sigma = 10 min)"
 )
-lines(outline_lonlat, lwd = 0.6)
+lines(outline_vect, lwd = 0.6)
 points(practice_points, pch = 3, cex = 0.5, col = "red")
 text(town_points, labels = town_points$town, pos = 3, cex = 0.7, halo = TRUE)
 ```
 
 ```{r map-values, include = FALSE}
-# Index and residents of each grid cell
+# Score and residents of each grid cell
 both <- na.omit(cbind(
-  index = values(1000 * e2sfca$accessibility, mat = FALSE),
+  score = values(1000 * e2sfca$accessibility, mat = FALSE),
   residents = values(pop, mat = FALSE)
 ))
-index_range <- format(round(range(both[, "index"]), 2), nsmall = 2)
-index_resident <- weighted.mean(both[, "index"], both[, "residents"])
+score_range <- format(round(range(both[, "score"]), 2), nsmall = 2)
+score_resident <- weighted.mean(both[, "score"], both[, "residents"])
 # Total GP FTE per 1,000 residents of the grid
 fte_per_1000 <- 1000 * sum(gp$gp_fte_extg) / sum(both[, "residents"])
-stopifnot(isTRUE(all.equal(index_resident, fte_per_1000)))
-index_resident <- format(round(index_resident, 2), nsmall = 2)
+stopifnot(isTRUE(all.equal(score_resident, fte_per_1000)))
+# The same average as residents per GP FTE
+residents_per_fte <- format(round(1000 / score_resident, -2), big.mark = ",")
+score_resident <- format(round(score_resident, 2), nsmall = 2)
 grid_residents <- format(round(sum(both[, "residents"]), -3), big.mark = ",")
 total_fte <- format(round(sum(gp$gp_fte_extg)))
 ```
 
 ## Read the map
 
-The index runs from `r index_range[1]` to `r index_range[2]` GP FTE per 1,000
-residents. Averaged over residents it is `r index_resident`, the same as the
-mainland's `r total_fte` GP FTE for its `r grid_residents` residents on the
-grid. As in the small example, the index shares out the supply and creates
-none.
+The scores run from `r score_range[1]` to `r score_range[2]` GP FTE per 1,000
+residents. Averaged over residents, the score is `r score_resident`, the same
+as the mainland's `r total_fte` GP FTE for its `r grid_residents` residents on
+the grid: about `r residents_per_fte` residents per GP FTE. As in the small
+example, the scores share out the supply and create none.
 
-It is highest in the bright band between Redruth, Truro and Falmouth, where
+The score is highest in the bright band between Redruth, Truro and Falmouth, where
 several practices with many GP FTE lie within a short drive. It is lowest on
 Bodmin Moor, the dark patch north-east of Bodmin, and at the tips of the
 Land's End peninsula, west of Penzance, and the Lizard, south of Helston. There
 the nearest practices are further away. Read the values along the border with
 Devon, at the right edge of the map, with care: the data cover Cornwall only,
-so the index leaves out the Devon practices that some residents there use, and
+so the scores leave out the Devon practices that some residents there use, and
 the Devon residents who compete for Cornish practices.
 
-The index compares GP supply with nearby demand and says nothing about who
-uses a practice, waiting times or the care received ([Reading
-results](reading-results.html) explains).
+An accessibility score compares GP supply with nearby demand and says nothing
+about who uses a practice, waiting times or the care received ([Reading
+results](reading-results.html) explains). To keep the result, `save_spax()`
+writes it to files, the map as a GeoTIFF:
+
+```{r save-map, eval = FALSE}
+# Writes e2sfca_spax.rds and e2sfca_accessibility.tif
+save_spax(e2sfca, "e2sfca")
+```
 
 ## Next
 
-- [Which FCA index?](fca-methods.html): set E2SFCA beside 2SFCA, M2SFCA, 3SFCA
-  and Huff-2SFCA on the same grid, and see what changes.
+- [Which 2SFCA method?](fca-methods.html): set E2SFCA beside 2SFCA, M2SFCA,
+  3SFCA and Huff-2SFCA on the same grid, and see what changes.
 - [Bringing your own data](data-prep.html): line up your own counts, facility
   IDs and travel times.
 - [Where do residents register?](allocation-workflow.html): model which
   practice the residents of each area register with, and estimate the travel
   scale from those registrations instead of choosing it.
-- [An FCA index or an allocation model?](model-choice.html): choose between
-  the two for your question.
+- [An accessibility score or an allocation model?](model-choice.html): choose
+  between the two for your question.

@@ -19,9 +19,9 @@ check_allocation(model, fit, trip_breaks = c(30, 60, 120))
 \item{model}{The CLM from \code{\link[=clm_allocation]{clm_allocation()}} that was fitted, or a
 result of \code{\link[=spax]{spax()}} that fitted a model; the result supplies its bound model
 and its fit, so leave \code{fit} out. A result that was evaluated at given values
-has no fit and is refused, and so is an FCA index (a result of \code{\link[=spax]{spax()}} with an
-FCA specification, or of \code{\link[=spax_e2sfca]{spax_e2sfca()}} and the other one-shots): an index is
-computed, not fitted.}
+has no fit and is refused, and so are accessibility scores (a result of \code{\link[=spax]{spax()}}
+with a 2SFCA-family specification, or of \code{\link[=spax_e2sfca]{spax_e2sfca()}} and the other
+one-shots): they are computed, not fitted.}
 
 \item{fit}{The \code{ae_multistart_fit} returned by \code{\link[=fit_allocation]{fit_allocation()}} for
 \code{model}. A search with no selected fit cannot be checked. Not given when
@@ -45,7 +45,7 @@ trips), the exact comparator \code{parameters} (those of \code{no_decay} are the
 re-optimized parameters other than \code{sigma}, an empty vector when the model
 fits only \code{sigma}), the selected fit's parameter \code{boundary} flags,
 \code{search_at_edge}, logical \code{flags}, and \code{poisson_floor} (for a Poisson fit:
-its floor \code{eps} and the number of cells with positive observed counts modelled below
+its floor \code{eps} and the number of cells with positive observed counts modeled below
 it, which cap the loss; \code{NULL} otherwise). Use \code{print()} or \code{as.data.frame()}.
 }
 \description{

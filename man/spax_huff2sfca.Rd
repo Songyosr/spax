@@ -83,7 +83,7 @@ A spax object (see \code{\link{spax_e2sfca}}) whose \code{type} is
         distance layers, named by facility ID) and \code{alpha}.
 }
 \description{
-This experimental function implements a floating catchment area method in
+This experimental function implements a 2SFCA-family method in
 which the selection weights of \code{\link{spax_3sfca}} are replaced by a
 Huff selection probability, following Luo (2014). The probability that an
 origin selects a facility uses the attractiveness of the facilities and a
@@ -216,6 +216,6 @@ area method for analyzing spatial access to health services.
 attractiveness, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
 \code{\link{compute_access}}, \code{\link{calc_decay}},
 \code{\link{calc_choice}} and \code{\link{decay_kernel}}.
-\code{vignette("fca-methods", package = "spax")} compares the FCA methods on
-the Cornwall data.
+\code{vignette("fca-methods", package = "spax")} compares the 2SFCA-family methods
+on the Cornwall data.
 }

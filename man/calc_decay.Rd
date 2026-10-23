@@ -15,7 +15,7 @@ or a kernel declared with \code{\link{decay_kernel}}}
 
 \item{sigma}{Parameter controlling the rate of decay. A single number, or a
 SpatRaster aligned to \code{distance} (1 layer, or one per layer) for a
-spatially varying catchment (variable-catchment FCA / V2SFCA). A
+spatially varying catchment (variable-catchment 2SFCA, V2SFCA). A
 declared custom kernel needs a single positive number within its
 bounds.}
 
@@ -42,7 +42,7 @@ none is given:
   \item \code{"exponential"}: \eqn{\exp(-\sigma d)}{exp(-sigma d)}; default
     \eqn{\sigma = 0.1}{sigma = 0.1}.
   \item \code{"power"}: \eqn{d^{-\sigma}}{d^(-sigma)}; default
-    \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0, which the FCA functions refuse.
+    \eqn{\sigma = 2}{sigma = 2}. The weight is \code{Inf} at distance 0, which the 2SFCA-family functions refuse.
   \item \code{"inverse"}: \eqn{1 / (d + c)}{1 / (d + c)}, with \code{c = 1}
     unless \code{c} is passed in \code{...}; \code{sigma} does not enter
     the weights (a given value is still validated).

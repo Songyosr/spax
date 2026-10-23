@@ -29,7 +29,7 @@
 #'   \item{fte_source}{Whether the workforce record includes estimates.}
 #'   \item{scilly}{`TRUE` for the practice on the Isles of Scilly.}
 #'   \item{easting, northing}{British National Grid coordinates (EPSG:27700)
-#'     of the main-site postcode, in metres.}
+#'     of the main-site postcode, in meters.}
 #'   \item{geometry}{Main-site location from the postcode, the origin of
 #'     `cornwall_gp_travel.tif`.}
 #' }
@@ -37,7 +37,7 @@
 #' @details Registrations are a July 2026 snapshot and workforce a June 2026
 #'   snapshot. Only the main site of each practice is represented; branch
 #'   surgeries are not. All the bundled data use the WGS 84 datum, so they
-#'   combine without a change of datum; for map units in metres project them
+#'   combine without a change of datum; for map units in meters project them
 #'   to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
 #'   British National Grid uses another datum (OSGB36): the geometry was
 #'   converted from it with the OSGB36 to WGS 84 Helmert transformation (about
@@ -76,7 +76,7 @@
 #'     practice (row totals of `cornwall_flows`).}
 #'   \item{registered_out}{Residents registered at a practice elsewhere.}
 #'   \item{cent_x, cent_y}{Population-weighted centroid in British National
-#'     Grid coordinates (EPSG:27700), in metres.}
+#'     Grid coordinates (EPSG:27700), in meters.}
 #'   \item{cent_lon, cent_lat}{The same centroid in WGS 84 longitude and
 #'     latitude, the origin used for `cornwall_travel`.}
 #'   \item{scilly}{`TRUE` for the Isles of Scilly area.}
@@ -87,7 +87,7 @@
 #'   reflecting list inflation and the different reference dates. The
 #'   polygons and `cent_lon`/`cent_lat` were converted from British National
 #'   Grid with the OSGB36 to WGS 84 Helmert transformation (about 2 m); see
-#'   [cornwall_gp] for working in metres.
+#'   [cornwall_gp] for working in meters.
 #'
 #' @source Office for National Statistics: LSOA 2021 boundaries with rural-urban
 #'   classification, population-weighted centroids and mid-2024 small-area
@@ -115,7 +115,7 @@
 #' }
 #'
 #' @details Registration records where people are attached, not how often they
-#'   use services. Residents registered outside the ICB are summarised in
+#'   use services. Residents registered outside the ICB are summarized in
 #'   `cornwall_lsoa$registered_out`.
 #'
 #' @source NHS England, Patients Registered at a GP Practice, July 2026 (LSOA
@@ -143,16 +143,16 @@
 #'   reachable only from each other.
 #'
 #' @details Times are least-cost paths through the Malaria Atlas Project 2019
-#'   motorised friction surface (about 1 km cells), computed with
+#'   motorized friction surface (30 arc-second cells), computed with
 #'   [terra::costDist()] over land in Cornwall and the Isles of Scilly; the sea
 #'   and the Devon border act as barriers. Times are measured to the edge of
 #'   the practice's cell, so they run slightly (under a minute) shorter than
-#'   cell-centre to cell-centre. The road network dates from about
-#'   2019, traffic is not modelled, and 1 km cells are coarse in towns, where
+#'   cell center to cell center. The road network dates from about
+#'   2019, traffic is not modeled, and 30 arc-second cells are coarse in towns, where
 #'   several practices can share a cell. Values are taken from
 #'   `cornwall_gp_travel.tif` at each centroid's cell.
 #'
-#' @source Derived from the Malaria Atlas Project motorised friction surface
+#' @source Derived from the Malaria Atlas Project motorized friction surface
 #'   (Weiss et al. 2020), licensed under Creative Commons Attribution, and the
 #'   locations in [cornwall_gp] and [cornwall_lsoa]. See
 #'   `system.file("COPYRIGHTS", package = "spax")`.
@@ -174,7 +174,8 @@
 #' lazy-loaded object; load it with `read_spax_example("cornwall_pop.tif")`.
 #'
 #' @format A one-layer GeoTIFF (`pop`): 132 rows x 271 columns of 30
-#'   arc-second cells (about 1 km; about 0.55 square km at this latitude),
+#'   arc-second cells (about 0.93 km north-south by 0.59 km east-west, or 0.55
+#'   square km, at this latitude),
 #'   EPSG:4326. Values are estimated residents per cell. Cells crossing the
 #'   boundary are weighted by the share of their area inside it; `NA` marks
 #'   cells outside. The total (about 543,000) is about 7% below the ONS mid-2024
@@ -210,7 +211,7 @@ NULL
 #' @details Computed as for [cornwall_travel]; see its details for method and
 #'   limitations.
 #'
-#' @source Derived from the Malaria Atlas Project motorised friction surface
+#' @source Derived from the Malaria Atlas Project motorized friction surface
 #'   (Weiss et al. 2020, Creative Commons Attribution) and [cornwall_gp]. See
 #'   `system.file("COPYRIGHTS", package = "spax")`.
 #' @references Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., et al. (2020).

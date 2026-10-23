@@ -13,7 +13,7 @@ with no road connection: the Isles of Scilly area and practice are
 reachable only from each other.
 }
 \source{
-Derived from the Malaria Atlas Project motorised friction surface
+Derived from the Malaria Atlas Project motorized friction surface
 (Weiss et al. 2020), licensed under Creative Commons Attribution, and the
 locations in \link{cornwall_gp} and \link{cornwall_lsoa}. See
 \code{system.file("COPYRIGHTS", package = "spax")}.
@@ -27,12 +27,12 @@ population-weighted centroid to each practice's main site.
 }
 \details{
 Times are least-cost paths through the Malaria Atlas Project 2019
-motorised friction surface (about 1 km cells), computed with
+motorized friction surface (30 arc-second cells), computed with
 \code{\link[terra:costDist]{terra::costDist()}} over land in Cornwall and the Isles of Scilly; the sea
 and the Devon border act as barriers. Times are measured to the edge of
 the practice's cell, so they run slightly (under a minute) shorter than
-cell-centre to cell-centre. The road network dates from about
-2019, traffic is not modelled, and 1 km cells are coarse in towns, where
+cell center to cell center. The road network dates from about
+2019, traffic is not modeled, and 30 arc-second cells are coarse in towns, where
 several practices can share a cell. Values are taken from
 \code{cornwall_gp_travel.tif} at each centroid's cell.
 }

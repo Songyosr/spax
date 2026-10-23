@@ -24,7 +24,7 @@ of Scilly.}
 \item{fte_source}{Whether the workforce record includes estimates.}
 \item{scilly}{\code{TRUE} for the practice on the Isles of Scilly.}
 \item{easting, northing}{British National Grid coordinates (EPSG:27700)
-of the main-site postcode, in metres.}
+of the main-site postcode, in meters.}
 \item{geometry}{Main-site location from the postcode, the origin of
 \code{cornwall_gp_travel.tif}.}
 }
@@ -48,7 +48,7 @@ recording changed in June 2018 and who cluster in training practices.
 Registrations are a July 2026 snapshot and workforce a June 2026
 snapshot. Only the main site of each practice is represented; branch
 surgeries are not. All the bundled data use the WGS 84 datum, so they
-combine without a change of datum; for map units in metres project them
+combine without a change of datum; for map units in meters project them
 to a system on that datum, such as WGS 84 / UTM zone 30N (EPSG:32630).
 British National Grid uses another datum (OSGB36): the geometry was
 converted from it with the OSGB36 to WGS 84 Helmert transformation (about

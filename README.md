@@ -13,12 +13,15 @@ estimates how quickly the pull of a facility falls with travel time from
 where people actually go. Its allocation model is fitted to observed use
 (area-to-facility flows or facility totals), so the decay is estimated
 rather than assumed. The same inputs, decay curves and numeric engine
-compute floating catchment area (FCA) accessibility indices: 2SFCA,
-E2SFCA, M2SFCA, 3SFCA and Huff-2SFCA. Decay curves plug in: write your
-own as an R function and use it in an index or a fitted model.
+compute the accessibility scores of the two-step floating catchment area
+(2SFCA) family: 2SFCA, E2SFCA, M2SFCA, 3SFCA and Huff-2SFCA. Data come
+as areas or points with a matrix of travel times, or as a population
+grid with one travel-time layer per facility, and the same models run on
+both. Decay curves plug in: write your own as an R function and use it
+in an accessibility score or a fitted model.
 
 The `spax()` interface and the allocation model are experimental and may
-change in later versions, while the one-call FCA functions
+change in later versions, while the one-call 2SFCA-family functions
 `spax_2sfca()`, `spax_e2sfca()` and `spax_m2sfca()` are stable.
 
 ## Install
@@ -46,11 +49,14 @@ the version you used with `citation("spax")`.
 
 ## A first look
 
-spax ships open data for GP care in Cornwall, in south-west England.
-This example computes the enhanced two-step FCA index (E2SFCA) for
-mainland Cornwall from a population grid, the GP practices with their GP
-full-time equivalents (FTE) and travel minutes from every grid cell to
-every practice.
+spax ships open data for GP care in Cornwall, in south-west England. It
+takes data in two shapes: areas or points, with an origin x facility
+matrix of travel minutes, or a population grid, with one layer of travel
+minutes per facility. This example uses the grid. It computes E2SFCA
+accessibility scores (the enhanced 2SFCA) for mainland Cornwall from a
+population grid, the GP practices with their GP full-time equivalents
+(FTE) and travel minutes from every grid cell to every practice. The
+fitted model below uses small areas.
 
 ``` r
 library(spax)
@@ -68,7 +74,7 @@ pop <- trim(mask(pop, sum(travel_grid)))
 travel_grid <- crop(travel_grid, pop)
 grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 
-# The E2SFCA index with a Gaussian decay of travel scale 10 minutes
+# E2SFCA accessibility scores with a Gaussian decay of travel scale 10 minutes
 fca <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 
 # Mainland Cornwall's outline, in the grid's longitude and latitude
@@ -86,13 +92,13 @@ plot(
 lines(outline, lwd = 0.6)
 ```
 
-<img src="man/figures/README-fca-1.png" alt="Raster map of the E2SFCA index for mainland Cornwall in GP FTE per 1,000 residents; values are highest in the west between Redruth, Truro and Falmouth and lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas."  />
+<img src="man/figures/README-fca-1.png" alt="Raster map of the E2SFCA accessibility scores for mainland Cornwall in GP FTE per 1,000 residents; values are highest in the west between Redruth, Truro and Falmouth and lowest on Bodmin Moor and at the tips of the Land's End and Lizard peninsulas."  />
 
-The index is GP supply per resident, counting nearby practices more than
-distant ones. It is highest in the bright band between Redruth, Truro
-and Falmouth, below and left of center. It is lowest on Bodmin Moor, the
-dark patch above and right of center, and at the tips of the Land’s End
-(far left) and Lizard (bottom) peninsulas.
+The accessibility score is GP supply per resident, counting nearby
+practices more than distant ones. It is highest in the bright band
+between Redruth, Truro and Falmouth, below and left of center. It is
+lowest on Bodmin Moor, the dark patch above and right of center, and at
+the tips of the Land’s End (far left) and Lizard (bottom) peninsulas.
 
 ## A fitted model
 
@@ -162,12 +168,12 @@ built the guides. If it finds nothing, use the website.
 | How accessible is GP care in Cornwall? | [Getting started](https://songyosr.github.io/spax/articles/spax.html) | `"spax"` |
 | What is in the example data? | [The Cornwall GP example data](https://songyosr.github.io/spax/articles/cornwall-data.html) | `"cornwall-data"` |
 | How do I bring my own data? | [Bringing your own data](https://songyosr.github.io/spax/articles/data-prep.html) | `"data-prep"` |
-| Which FCA index should I use? | [Which FCA index?](https://songyosr.github.io/spax/articles/fca-methods.html) | `"fca-methods"` |
-| What does the E2SFCA index compute, step by step? | [Inside the E2SFCA calculation](https://songyosr.github.io/spax/articles/e2sfca-steps.html) | `"e2sfca-steps"` |
+| Which 2SFCA method should I use? | [Which 2SFCA method?](https://songyosr.github.io/spax/articles/fca-methods.html) | `"fca-methods"` |
+| What does E2SFCA compute, step by step? | [Inside the E2SFCA calculation](https://songyosr.github.io/spax/articles/e2sfca-steps.html) | `"e2sfca-steps"` |
 | How fine a grid do I need, and at what cost? | [Grid resolution and computational cost](https://songyosr.github.io/spax/articles/grid-resolution.html) | `"grid-resolution"` |
 | Where do residents register? | [Fitting an allocation model](https://songyosr.github.io/spax/articles/allocation-workflow.html) | `"allocation-workflow"` |
 | What if a practice closed? | [What if a practice closed?](https://songyosr.github.io/spax/articles/scenario.html) | `"scenario"` |
-| Should I use an FCA index or an allocation model? | [An FCA index or an allocation model?](https://songyosr.github.io/spax/articles/model-choice.html) | `"model-choice"` |
+| Should I use an accessibility score or an allocation model? | [An accessibility score or an allocation model?](https://songyosr.github.io/spax/articles/model-choice.html) | `"model-choice"` |
 | How do I use my own decay, raster data or grid maps? | [Extending the model](https://songyosr.github.io/spax/articles/extending.html) | `"extending"` |
 | How sure are the estimates? | [Bootstrap intervals](https://songyosr.github.io/spax/articles/facility-bootstrap.html) | `"facility-bootstrap"` |
 | What do the results mean, and not mean? | [Reading results](https://songyosr.github.io/spax/articles/reading-results.html) | `"reading-results"` |

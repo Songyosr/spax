@@ -2,6 +2,14 @@
 
 * Version 0.7.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23585582.
   doi:10.5281/zenodo.23438611 refers to all versions.
+* Guides, README and help pages call the number that a method of the two-step
+  floating catchment area (2SFCA) family gives a place an accessibility score,
+  and the grid of them an accessibility map; function and class names are
+  unchanged. The Cornwall data guide (`vignette("cornwall-data")`) now opens
+  with the four ingredients of every model (demand, supply, travel and observed
+  use) in the two shapes spax takes, areas with a travel-time matrix or a
+  population grid with one travel-time layer per facility, drawn in one
+  four-panel map, and states the size of the grid's 30 arc-second cells.
 
 # spax 0.7.0
 

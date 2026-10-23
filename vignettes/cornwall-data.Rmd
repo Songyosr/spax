@@ -20,9 +20,10 @@ knitr::opts_chunk$set(
 
 spax ships open data on general practice (GP) care in NHS Cornwall and the
 Isles of Scilly, in south-west England, and the guides run on it. This page answers one
-question: what is in the example data? It introduces each object once: what
-it holds, how the objects fit together and what they cannot tell you. By the
-end you can load each one and build the inputs that the guides start from.
+question: what is in the example data? It first shows the four ingredients
+of every model in the two shapes spax takes, then introduces each object once:
+what it holds, how the objects fit together and what they cannot tell you. By
+the end you can load each one and build the inputs that the guides start from.
 Nothing needs downloading. The `spax()` interface and the allocation model are
 experimental and may change in later versions.
 
@@ -45,21 +46,178 @@ Four objects load with spax, and two grids are read from files:
 | `cornwall_lsoa` | `r nrow(cornwall_lsoa)` small areas: boundaries, population and registered residents | Loaded with spax |
 | `cornwall_flows` | Registered residents by small area and practice | Loaded with spax |
 | `cornwall_travel` | Travel minutes from each small area to each practice | Loaded with spax |
-| `cornwall_pop.tif` | Population grid, about 1 km cells | `read_spax_example()` |
+| `cornwall_pop.tif` | Population grid of 30 arc-second cells | `read_spax_example()` |
 | `cornwall_gp_travel.tif` | Travel minutes from each grid cell to each practice | `read_spax_example()` |
 
 Each object has a help page with every column, for example `?cornwall_gp`.
+
+## The four ingredients
+
+Every model in spax uses four ingredients: **demand**, the people who need the
+service; **supply**, what each facility offers; **travel**, the time from each
+place to each facility; and, to fit the allocation model, **observed use**,
+who uses which facility. spax takes them in two shapes:
+
+| Ingredient | Table form (areas or points) | Grid form |
+|:--|:--|:--|
+| Demand | a number per origin | a population raster |
+| Supply | a number per facility | the same |
+| Travel | an origin x facility matrix of minutes (`Inf` = no connection) | one travel-time layer per facility |
+| Observed use | flows (origin, facility, count) or facility totals | the same, with cells as origins |
+
+The same models run on both shapes, and the example data hold both. In table
+form, the origins are the small areas of `cornwall_lsoa` and the facilities the
+practices of `cornwall_gp`; travel is `cornwall_travel` and observed use is
+`cornwall_flows`. In grid form, demand is `cornwall_pop.tif` and travel is
+`cornwall_gp_travel.tif`, for the same practices. In table form, each
+ingredient is a vector or matrix named by ID. The code shows the first
+elements of each.
+
+```{r ingredients}
+areas <- st_drop_geometry(cornwall_lsoa)
+gp <- st_drop_geometry(cornwall_gp)
+
+# Demand: residents of each small area, named by its LSOA code
+# (the allocation guides use its registered residents instead)
+demand <- setNames(areas$pop, areas$lsoa)
+head(demand, 4)
+
+# Supply: GP FTE of each practice, named by its practice code
+supply <- setNames(gp$gp_fte_extg, gp$practice)
+head(supply, 4)
+
+# Travel: minutes from each small area (rows) to each practice (columns)
+cornwall_travel[1:3, 1:4]
+
+# Observed use: residents of each small area registered at each practice
+head(cornwall_flows, 4)
+```
+
+In grid form, demand is one raster of residents per cell and travel a stack of
+rasters with one layer per practice, named by practice code.
+`read_spax_example()` reads both.
+
+```{r ingredients-grids}
+pop <- read_spax_example("cornwall_pop.tif")
+travel_grid <- read_spax_example("cornwall_gp_travel.tif")
+```
+
+The figure below draws the four ingredients on mainland Cornwall. To show
+travel and observed use, it picks one practice of middle size.
+
+```{r ingredients-practice}
+# The practice drawn in panels (c) and (d)
+chosen <- "L82004"
+gp$name[gp$practice == chosen]
+```
+
+```{r ingredients-values, include = FALSE}
+chosen_gp <- gp[gp$practice == chosen, ]
+# Travel minutes from each mainland small area to that practice, from the
+# matrix and from the grid cell under the area's centroid
+mainland_areas <- areas[!areas$scilly, ]
+matrix_minutes <- cornwall_travel[mainland_areas$lsoa, chosen]
+grid_minutes <- extract(
+  travel_grid[[chosen]],
+  vect(mainland_areas, geom = c("cent_lon", "cent_lat"), crs = "EPSG:4326"),
+  ID = FALSE
+)[[1]]
+# Share of each mainland area's registered residents registered there
+at_chosen <- cornwall_flows[cornwall_flows$practice == chosen, ]
+chosen_patients <- at_chosen$patients[match(mainland_areas$lsoa, at_chosen$lsoa)]
+chosen_share <- ifelse(is.na(chosen_patients), 0, chosen_patients) / mainland_areas$registered
+half_there <- chosen_share >= 0.5
+# The text says the two forms agree for every area
+stopifnot(all(matrix_minutes == grid_minutes))
+```
+
+It has `r round(chosen_gp$gp_fte_extg, 1)` GP FTE, against a median of
+`r round(median(gp$gp_fte_extg), 1)` over all practices.
+
+```{r ingredients-map, fig.width = 7, fig.height = 6, fig.alt = sprintf("Four maps of mainland Cornwall. (a) Demand: the population grid in residents per cell, in six classes, with the towns standing out, and the %d small-area centroids as circles sized by population. (b) Supply: the %d practices as orange circles sized by GP FTE. (c) Travel: minutes to %s as bands of 10, 20, 30 and 45 minutes from its travel-time layer, with the centroids as dots colored by the same bands from the travel matrix; the dots match the bands under them. (d) Observed use: the share of each small area's registered residents registered at that practice: at least half in %d areas around it, less in a ring beyond them and almost none in the rest of the county.", nrow(mainland_areas), sum(!gp$scilly), tools::toTitleCase(tolower(chosen_gp$name)), sum(half_there))}
+# Mainland Cornwall as terra vectors, in the grids' longitude and latitude
+mainland <- filter(cornwall_lsoa, !scilly)
+outline <- vect(st_union(mainland))
+area_polygons <- vect(mainland)
+centroids <- vect(st_drop_geometry(mainland), geom = c("cent_lon", "cent_lat"), crs = "EPSG:4326")
+practices <- vect(filter(cornwall_gp, !scilly))
+chosen_point <- practices[practices$practice == chosen]
+
+# Travel bands, in minutes, for the grid layer and the matrix column
+bands <- c(0, 10, 20, 30, 45, 180)
+band_colors <- hcl.colors(5, "YlOrRd")
+minutes <- cornwall_travel[centroids$lsoa, chosen]
+
+# Share of each area's registered residents registered at the practice
+at_chosen <- filter(cornwall_flows, practice == chosen)
+registered_there <- at_chosen$patients[match(area_polygons$lsoa, at_chosen$lsoa)]
+area_polygons$share <- ifelse(is.na(registered_there), 0, registered_there) /
+  area_polygons$registered
+
+# Shared settings: the mainland window, margins, title size, legend at top left
+window <- ext(outline)
+margins <- c(0.2, 0.2, 1.2, 0.2)
+title_size <- 0.85
+legend_at <- list(x = "topleft", cex = 0.75)
+
+op <- par(mfrow = c(2, 2))
+# (a) Demand: the grid, and each small area at its centroid
+plot(pop, ext = window, breaks = c(0, 10, 50, 100, 500, 1000, 5000),
+     col = hcl.colors(6, "YlGnBu", rev = TRUE), axes = FALSE, mar = margins,
+     cex.main = title_size, main = "(a) Demand: residents",
+     plg = c(legend_at, title = "Per cell"))
+lines(outline, lwd = 0.4)
+points(centroids, cex = sqrt(centroids$pop / 3500), col = adjustcolor("grey10", 0.75), lwd = 0.6)
+
+# (b) Supply: the practices
+plot(outline, ext = window, col = "grey95", border = "grey40", lwd = 0.4, axes = FALSE,
+     mar = margins, cex.main = title_size, main = "(b) Supply: GP FTE")
+points(practices, cex = sqrt(practices$gp_fte_extg) / 1.5, pch = 21, bg = "orange")
+legend("topleft", legend = c(2, 6, 12), title = "GP FTE", pch = 21, pt.bg = "orange",
+       pt.cex = sqrt(c(2, 6, 12)) / 1.5, bty = "n", cex = 0.6, xpd = NA)
+
+# (c) Travel: the practice's grid layer as bands, its matrix column as dots
+plot(travel_grid[[chosen]], ext = window, breaks = bands, col = band_colors,
+     axes = FALSE, mar = margins, cex.main = title_size,
+     main = "(c) Travel: minutes to one practice", plg = c(legend_at, title = "Minutes"))
+lines(outline, lwd = 0.4)
+points(centroids, pch = 21, cex = 0.6, lwd = 0.4,
+       bg = band_colors[findInterval(minutes, bands, left.open = TRUE)])
+points(chosen_point, pch = 4, cex = 1.2, lwd = 2)
+
+# (d) Observed use: the share registered at the practice
+plot(area_polygons, "share", type = "interval", breaks = c(0, 0.05, 0.25, 0.5, 0.75, 1),
+     col = hcl.colors(5, "Blues", rev = TRUE), border = NA, ext = window, axes = FALSE,
+     mar = margins, cex.main = title_size, main = "(d) Observed use: share registered there",
+     plg = c(legend_at, title = "Share"))
+lines(outline, lwd = 0.4)
+points(chosen_point, pch = 4, cex = 1.2, lwd = 2)
+par(op)
+```
+
+Panel (a) is demand in both shapes: the grid of residents per cell and, as
+circles, the small areas at their centroids. Panel (b) is supply, the same in
+both shapes. Panel (c) is travel to the practice, marked by the cross: the
+bands are its layer of the travel stack, and the dots are its column of the
+travel matrix, colored by the same bands. For each of the
+`r length(matrix_minutes)` mainland small areas, the matrix gives the minutes
+of the grid cell under the area's centroid, so each dot has the color of the
+band beneath it. Panel (d) is observed use: in `r sum(half_there)` small
+areas, all within `r max(matrix_minutes[half_there])` minutes of the practice,
+between half and `r round(100 * max(chosen_share))`% of the registered
+residents are registered there. Even next to it, some residents register
+elsewhere, and in most of the county almost none register there. The
+allocation model describes how such shares fall with travel time.
 
 ## Practices
 
 `cornwall_gp` is an `sf` point layer in longitude and latitude (WGS 84,
 EPSG:4326), one row per practice; `easting` and `northing` give the British
-National Grid coordinates in metres. `practice` is the NHS practice code, which
+National Grid coordinates in meters. `practice` is the NHS practice code, which
 links the practices to the registrations and to the travel times. The code
-drops the geometry and shows the first practices.
+shows the first practices of `gp`, the table without its geometry.
 
 ```{r practices}
-gp <- st_drop_geometry(cornwall_gp)
 gp |>
   select(practice, name, gp_fte_extg, gp_fte, list_size) |>
   head()
@@ -76,80 +234,43 @@ practice sits at its main site, so branch surgeries do not appear.
 
 `cornwall_lsoa` holds the `r nrow(cornwall_lsoa)` Lower layer Super Output
 Areas (LSOA 2021) as polygons in longitude and latitude (WGS 84, like the
-practices); each area's population-weighted centroid is given in both systems,
-`cent_lon` and `cent_lat` and the British National Grid `cent_x` and `cent_y`.
-The areas are small, of
+practices). Each area's population-weighted centroid is given twice: in
+longitude and latitude (`cent_lon`, `cent_lat`) and in British National Grid
+meters (`cent_x`, `cent_y`). The guides use longitude and latitude; the
+British National Grid columns are kept for distances in meters and for joining
+other UK data. The areas are small, of
 `r format(min(cornwall_lsoa$pop), big.mark = ",")` to
 `r format(max(cornwall_lsoa$pop), big.mark = ",")` residents. Each has an ONS
 mid-2024 population estimate (`pop`, also by age band) and the number of its
 residents registered at any GP practice in England (`registered`). That number
 splits into residents registered at a practice in Cornwall and the Isles of
 Scilly (`registered_in`) and those registered elsewhere (`registered_out`).
-The code adds up these columns and counts the areas in each broad rural-urban
-class.
+The code adds up these columns.
 
 ```{r small-areas}
-areas <- st_drop_geometry(cornwall_lsoa)
-
 c(
   population = sum(areas$pop),
   registered = sum(areas$registered),
   registered_in = sum(areas$registered_in),
   registered_out = sum(areas$registered_out)
 )
-
-# Rural-urban classification (2021), in three broad groups
-table(sub(":.*", "", areas$ruc21))
 ```
 
 `registered_in` and `registered_out` add up to `registered`. Registered
 residents outnumber the population estimate by about
 `r round(100 * (sum(areas$registered) / sum(areas$pop) - 1))`%, which reflects
 list inflation (patients who stay on a list after moving away) and the
-different reference dates. The map shows the small areas by broad rural-urban
-class, with the practices on top.
-
-```{r areas-map, fig.alt = sprintf("Map of the %d small areas of Cornwall and the Isles of Scilly colored by broad rural-urban class (urban, larger rural, smaller rural), with the %d GP practices as black points.", nrow(areas), nrow(gp))}
-# Small areas with a broad rural-urban class
-classed <- cornwall_lsoa |>
-  mutate(class = sub(":.*", "", ruc21))
-
-ggplot() +
-  geom_sf(
-    data = classed,
-    aes(fill = class),
-    color = "white",
-    linewidth = 0.1
-  ) +
-  geom_sf(data = st_union(cornwall_lsoa), fill = NA, color = "grey20", linewidth = 0.3) +
-  geom_sf(data = cornwall_gp, size = 1) +
-  scale_fill_manual(
-    name = "Rural-urban class",
-    values = c(
-      Urban = "#5b7fa6",
-      `Larger rural` = "#a9c48f",
-      `Smaller rural` = "#e3dca8"
-    )
-  ) +
-  labs(title = "Small areas (LSOA 2021) and GP practices") +
-  theme_void()
-```
-
-`r sum(grepl("^Urban", areas$ruc21))` of the `r nrow(areas)` areas are urban,
-but they cover little land: the towns show as tight blue clusters, and most of
-the county's land lies in smaller rural areas. The Isles of Scilly are the
-small group of islands off the western tip.
+different reference dates. `ruc21` gives each area's rural-urban
+classification (2021).
 
 ## Registrations
 
 `cornwall_flows` counts the residents of each small area registered at each of
 the `r nrow(cornwall_gp)` practices, one row per pair with at least one
-registration. The code shows the first rows, checks that each area's rows add
-up to its `registered_in`, and counts the pairs.
+registration; its first rows are printed above. The code checks that each
+area's rows add up to its `registered_in`, and counts the pairs.
 
 ```{r flows}
-head(cornwall_flows)
-
 # Each area's registrations add up to its registered_in
 by_area <- tapply(cornwall_flows$patients, cornwall_flows$lsoa, sum)
 all(by_area[areas$lsoa] == areas$registered_in)
@@ -170,27 +291,26 @@ date (July 2026), not a count of visits. Residents counted in
 `registered_out` are registered with a practice outside Cornwall and the Isles
 of Scilly, for example in Devon, so they are in `cornwall_lsoa` but not in
 these flows. The guides on the allocation model, a model of where each area's
-residents register, fit it to these counts. The guides on floating catchment
-area (FCA) indices, which measure supply per resident, do not use them.
+residents register, fit it to these counts. The guides on the accessibility
+scores of the two-step floating catchment area (2SFCA) family, which measure
+supply per resident, do not use them.
 
 ## Travel times
 
 `cornwall_travel` is a matrix of motorized travel minutes from each small
 area's population-weighted centroid (rows, `cornwall_lsoa$lsoa`) to each
-practice's main site (columns, `cornwall_gp$practice`). The code prints a
-corner of the matrix and summarizes the minutes from each area to its nearest
+practice's main site (columns, `cornwall_gp$practice`); a corner of it is
+printed above. The code summarizes the minutes from each area to its nearest
 practice.
 
 ```{r travel}
-cornwall_travel[1:3, 1:4]
-
 # Minutes from each small area to its nearest practice
 nearest <- apply(cornwall_travel, 1, min, na.rm = TRUE)
 summary(nearest)
 ```
 
 The times are least-cost paths over a 2019 global map of the time needed to
-cross each cell of about 1 km (a friction surface). They are rounded to whole
+cross each 30 arc-second cell (a friction surface). They are rounded to whole
 minutes, with a floor of one minute, so no time is 0.
 `r sum(nearest == 1)` of the `r length(nearest)` small areas have a practice
 at 1 minute. Traffic is not modeled. In towns several practices can share one
@@ -218,16 +338,28 @@ coast near Padstow.
 
 ## The grids
 
-Two GeoTIFF files cover the same 30 arc-second grid (about 1 km, in longitude
-and latitude). `cornwall_pop.tif` holds WorldPop 2020 estimated residents per
-cell: a **count**, not a density. `cornwall_gp_travel.tif` holds one layer of
-travel minutes per practice, named by practice code. `read_spax_example()`
-reads both, and the code counts their cells, layers and residents.
+```{r cell-size, include = FALSE}
+# Size of one cell at the middle of the grid: geodesic distances (WGS 84)
+# between the middle point and the points one cell north and one cell east
+cell_degrees <- res(pop)[1]
+middle <- c(mean(ext(pop)[1:2]), mean(ext(pop)[3:4]))
+corners <- vect(
+  rbind(middle, middle + c(0, cell_degrees), middle + c(cell_degrees, 0)),
+  crs = "EPSG:4326"
+)
+cell_km <- as.matrix(distance(corners))[2:3, 1] / 1000
+```
+
+Two GeoTIFF files, read above, cover the same grid in longitude and latitude.
+Its cells are `r round(3600 * cell_degrees)` arc-seconds (1/`r round(1 / cell_degrees)`
+degree) on each side; at Cornwall's latitude a cell is about
+`r round(cell_km[1], 2)` km north-south by `r round(cell_km[2], 2)` km
+east-west, or `r round(prod(cell_km), 2)` square km. `cornwall_pop.tif` holds
+WorldPop 2020 estimated residents per cell: a **count**, not a density.
+`cornwall_gp_travel.tif` holds one layer of travel minutes per practice, named
+by practice code. The code counts their cells, layers and residents.
 
 ```{r grids}
-pop <- read_spax_example("cornwall_pop.tif")
-travel_grid <- read_spax_example("cornwall_gp_travel.tif")
-
 c(
   cells = ncell(pop),
   populated_cells = sum(!is.na(values(pop))),
@@ -247,30 +379,11 @@ under_50 <- round(100 * mean(cell_residents[!is.na(cell_residents)] < 50))
 The grid holds about `r grid_gap`% fewer residents than the ONS mid-2024
 estimate in `cornwall_lsoa`. The two are different sources and dates: choose
 one for an analysis and say which. In the travel layers, `NA` marks cells with
-no residents, pairs with no road connection and journeys over 180 minutes. The
-map shows residents per cell in six classes.
-
-```{r pop-map, fig.alt = "Raster map of the WorldPop 2020 population grid for Cornwall and the Isles of Scilly in residents per cell, in six classes; most cells hold fewer than 50 residents and the towns stand out with several hundred or more."}
-# The outline of Cornwall and the Isles of Scilly: the small areas share the
-# grid's longitude and latitude (WGS 84)
-outline <- cornwall_lsoa |>
-  st_union() |>
-  vect()
-
-plot(
-  pop,
-  breaks = c(0, 10, 50, 100, 500, 1000, 5000),
-  col = hcl.colors(6, "YlGnBu", rev = TRUE),
-  axes = FALSE,
-  main = "WorldPop 2020: residents per cell (about 1 km)",
-  plg = list(title = "Residents")
-)
-lines(outline, lwd = 0.6)
-```
-
-Of the populated cells, `r under_50`% hold fewer than 50 residents, and the
-towns stand out with several hundred or more. The FCA guides use the grid, and
-the allocation guides use the registered residents of the small areas.
+no residents, pairs with no road connection and journeys over 180 minutes.
+Of the populated cells, `r under_50`% hold fewer than 50 residents; in panel
+(a) of the figure above, the towns stand out with several hundred or more. The
+guides on the 2SFCA family use the grid, and the allocation guides use the
+registered residents of the small areas.
 
 ## The Isles of Scilly and the mainland
 
@@ -296,7 +409,7 @@ only**: `r sum(!areas$scilly)` small areas and `r sum(!gp$scilly)` practices,
 selected with the `scilly` column. Mainland residents registered with the
 Scilly practice or outside Cornwall then count as registered outside mainland
 Cornwall. [Bringing your own data](data-prep.html) shows what the unknown
-times do to an FCA index when the islands are kept.
+times do to an accessibility score when the islands are kept.
 
 ## The inputs used in the guides
 
@@ -304,13 +417,15 @@ The guides start from one of two short recipes, so that all of them model the
 same mainland. Both prepare the data with `prep_data()`, which lines the
 inputs up by ID for `spax()`, the function that runs a model on them.
 
-### A grid, for the FCA indices
+[]{#a-grid-for-the-fca-indices}
 
-An FCA index measures supply per resident, counting nearby practices more than
-distant ones. The FCA guides compute it on
-the population grid and the travel stack. The recipe keeps the mainland
-practices, then only the cells with a travel time to every one of them, so
-that no populated cell has an unknown travel time.
+### A grid, for the accessibility scores
+
+A 2SFCA-family method gives each place an accessibility score: supply per
+resident, counting nearby practices more than distant ones. The guides on the
+2SFCA family compute it on the population grid and the travel stack. The
+recipe keeps the mainland practices, then only the cells with a travel time to
+every one of them, so that no populated cell has an unknown travel time.
 
 ```{r recipe-grid}
 gp <- cornwall_gp |>
@@ -378,8 +493,12 @@ outside_gap <- sum(areas$registered) - sum(cornwall_flows$patients[at_mainland])
 (facilities), all active, that is, with demand above zero. Their demand is
 larger than their registrations at mainland practices by
 `r format(outside_gap, big.mark = ",")` residents: those registered elsewhere,
-whom the outside option stands for. `flows` names its loss, Poisson, which is
-how a fit compares modeled with observed counts.
+whom the outside option stands for. The `policies` line records what `d` does
+with missing demand and unknown travel: here both are errors, and there are
+none. [Bringing your own
+data](data-prep.html#inputs-for-the-allocation-model) shows the other
+choices. `flows` names its loss, Poisson, which is how a fit compares modeled
+with observed counts.
 
 `obs_flows()` declares the observed registrations from the long table, which
 still includes the Isles of Scilly. When `spax()` fits a model, it matches the
@@ -395,7 +514,7 @@ explains that message.
 | GP workforce | `cornwall_gp` | NHS England, General Practice Workforce, 30 June 2026 | Open Government Licence v3.0 |
 | Practice locations | `cornwall_gp` | ONS Postcode Directory, November 2025 | Open Government Licence v3.0; contains OS and Royal Mail data |
 | Boundaries, centroids, population | `cornwall_lsoa` | ONS LSOA 2021 boundaries and rural-urban classification, population-weighted centroids, mid-2024 population estimates | Open Government Licence v3.0; contains OS data |
-| Population grid | `cornwall_pop.tif` | WorldPop, 2020 UN-adjusted 1 km estimates | Creative Commons Attribution 4.0 |
+| Population grid | `cornwall_pop.tif` | WorldPop, 2020 UN-adjusted estimates on a 30 arc-second grid | Creative Commons Attribution 4.0 |
 | Travel times | `cornwall_travel`, `cornwall_gp_travel.tif` | Derived by the package author from the Malaria Atlas Project 2019 motorized friction surface (Weiss et al. 2020) | Creative Commons Attribution (version 3.0 on the Malaria Atlas Project website, 4.0 in the Google Earth Engine catalogue; both permit sharing adapted data with attribution) |
 
 Each source keeps the license given in the table. The package's MIT license
@@ -411,11 +530,11 @@ file.show(system.file("COPYRIGHTS", package = "spax"))
 
 ## Next
 
-- [Getting started](spax.html): compute and map a first accessibility index
-  from the grid recipe.
+- [Getting started](spax.html): compute a first accessibility map from the
+  grid recipe.
 - [Bringing your own data](data-prep.html): line up IDs, unknown travel times
   and area totals in your own data.
 - [Where do residents register?](allocation-workflow.html): fit the allocation
   model to these registrations.
 - [Reading results](reading-results.html): what the registrations, the outside
-  option and the indices can and cannot tell you.
+  option and the accessibility scores can and cannot tell you.

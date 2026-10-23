@@ -28,8 +28,8 @@ change of up to 6e-8).}
 Invisibly returns the input object
 }
 \description{
-Saves the result of a floating catchment analysis (an object of class \code{spax})
-with its rasters. A result of \code{\link[=spax]{spax()}} (a \code{spax_allocation}) is saved with
+Saves the accessibility scores of a 2SFCA-family method (an object of class
+\code{spax}) with its rasters. A result of \code{\link[=spax]{spax()}} (a \code{spax_allocation}) is saved with
 \code{\link[=saveRDS]{saveRDS()}}.
 }
 \examples{

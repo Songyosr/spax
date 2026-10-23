@@ -26,7 +26,7 @@ of the 55 ICB practices, as observed flows for calibrating allocation models.
 }
 \details{
 Registration records where people are attached, not how often they
-use services. Residents registered outside the ICB are summarised in
+use services. Residents registered outside the ICB are summarized in
 \code{cornwall_lsoa$registered_out}.
 }
 \examples{

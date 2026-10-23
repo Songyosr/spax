@@ -42,8 +42,8 @@
 #'   [fit_allocation()], each with a selected fit. An element can instead be a
 #'   result of [spax()] that fitted a model; it supplies its fit and its model.
 #'   A result that was evaluated at given values has no fit and is refused, and so
-#'   is an FCA index (a result of [spax()] with an FCA specification, or of
-#'   [spax_e2sfca()] and the other one-shots): the message names the element.
+#'   are accessibility scores (a result of [spax()] with a 2SFCA-family specification,
+#'   or of [spax_e2sfca()] and the other one-shots): the message names the element.
 #' @param models Optional named list of the corresponding models from
 #'   [clm_allocation()], with the same names, used to verify that travel times
 #'   are identical before reporting loss differences. The elements of `fits`

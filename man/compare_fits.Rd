@@ -38,8 +38,8 @@ compare_allocations(
 \code{\link[=fit_allocation]{fit_allocation()}}, each with a selected fit. An element can instead be a
 result of \code{\link[=spax]{spax()}} that fitted a model; it supplies its fit and its model.
 A result that was evaluated at given values has no fit and is refused, and so
-is an FCA index (a result of \code{\link[=spax]{spax()}} with an FCA specification, or of
-\code{\link[=spax_e2sfca]{spax_e2sfca()}} and the other one-shots): the message names the element.}
+are accessibility scores (a result of \code{\link[=spax]{spax()}} with a 2SFCA-family specification,
+or of \code{\link[=spax_e2sfca]{spax_e2sfca()}} and the other one-shots): the message names the element.}
 
 \item{models}{Optional named list of the corresponding models from
 \code{\link[=clm_allocation]{clm_allocation()}}, with the same names, used to verify that travel times

@@ -66,7 +66,7 @@ targets leave them multimodal and weakly identified, so the fit is refused
 (\code{clm_allocation(fixed = )}, or numbers in the decay and outside slots of
 \code{\link[=spec_clm]{spec_clm()}}), or fit shared parameters to any target.
 \code{flow_outside}, \code{utilization_outside} and \code{utilization_outside_by_group} are
-the three count outputs above with the modelled outside count added as one
+the three count outputs above with the modeled outside count added as one
 more column, element or row named \code{"(outside)"} (see the section on outside
 counts); they need a model with an outside option. The group-specific
 parameters can also be fitted to \code{utilization_outside_by_group}.}
@@ -74,8 +74,8 @@ parameters can also be fitted to \code{utilization_outside_by_group}.}
 \item{loss}{\code{"weighted_sse"}, \code{"poisson"}, or a function accepting predicted
 and observed values. Weighted SSE divides squared residuals by observed+eta,
 with eta=1 by default. Poisson omits the data-only log-factorial constant.
-It floors modelled counts at \code{eps} (\code{loss_args}), 1e-250 by default, only
-to avoid the log of zero; cells with positive observed counts modelled
+It floors modeled counts at \code{eps} (\code{loss_args}), 1e-250 by default, only
+to avoid the log of zero; cells with positive observed counts modeled
 below the floor are reported with a warning, because the loss is capped
 there. Fits made before this default used 1e-9; pass
 \code{loss_args = list(eps = 1e-9)} to reproduce them. Joint fitting does not
@@ -127,7 +127,7 @@ for example over a grid of sigma and v0.
 
 \strong{Outside counts.} The outputs \code{flow_outside}, \code{utilization_outside} and
 \code{utilization_outside_by_group} are \code{flow}, \code{utilization} and
-\code{utilization_by_group} with the modelled outside count added: the demand of
+\code{utilization_by_group} with the modeled outside count added: the demand of
 the active origins that goes to the outside option, that is, to facilities
 that are not in the data or to none. For \code{flow_outside} the outside count of
 origin \code{i} is \code{D_i * outside_share_i}, one more column (each row then adds up
