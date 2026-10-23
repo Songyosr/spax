@@ -34,9 +34,9 @@ fitted; \code{kappa} and a fixed \code{beta} may be any positive values. It can 
 be a result of \code{\link[=spax]{spax()}} that fitted such a model to facility totals: the
 result supplies its bound model and its fit, so leave \code{fit} out and give
 \code{observation} by name. A Huff model, a fit to flows and an evaluated result
-are refused as for the model and fit given separately, and so is an FCA index
-(a result of \code{\link[=spax]{spax()}} with an FCA specification, or of \code{\link[=spax_e2sfca]{spax_e2sfca()}} and the
-other one-shots): an index is computed, not fitted.}
+are refused as for the model and fit given separately, and so are accessibility
+scores (a result of \code{\link[=spax]{spax()}} with a 2SFCA-family specification, or of
+\code{\link[=spax_e2sfca]{spax_e2sfca()}} and the other one-shots): they are computed, not fitted.}
 
 \item{fit}{A matching multistart fit of complete whole facility counts using
 the unweighted built-in Poisson objective. Fractional or partial observations,

@@ -619,9 +619,9 @@
 #'   be a result of [spax()] that fitted such a model to facility totals: the
 #'   result supplies its bound model and its fit, so leave `fit` out and give
 #'   `observation` by name. A Huff model, a fit to flows and an evaluated result
-#'   are refused as for the model and fit given separately, and so is an FCA index
-#'   (a result of [spax()] with an FCA specification, or of [spax_e2sfca()] and the
-#'   other one-shots): an index is computed, not fitted.
+#'   are refused as for the model and fit given separately, and so are accessibility
+#'   scores (a result of [spax()] with a 2SFCA-family specification, or of
+#'   [spax_e2sfca()] and the other one-shots): they are computed, not fitted.
 #' @param fit A matching multistart fit of complete whole facility counts using
 #'   the unweighted built-in Poisson objective. Fractional or partial observations,
 #'   flow targets, fits with observed outside counts (`flow_outside`,

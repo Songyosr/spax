@@ -8,18 +8,20 @@
 #' every parameter has a value, evaluates the model at those values.
 #' `spax_huff()` and `spax_clm()` do the same from raw inputs in one call.
 #'
-#' **FCA indices.** With raster data ([prep_data()] with a `SpatRaster` as demand)
-#' and an FCA specification ([spec_2sfca()], [spec_e2sfca()], [spec_m2sfca()],
-#' [spec_3sfca()], [spec_huff2sfca()]), `spax()` computes the index and returns
+#' **Accessibility scores.** With raster data ([prep_data()] with a `SpatRaster` as
+#' demand) and a 2SFCA-family specification ([spec_2sfca()], [spec_e2sfca()],
+#' [spec_m2sfca()], [spec_3sfca()], [spec_huff2sfca()]), `spax()` computes the
+#' accessibility scores and returns
 #' the same object as the matching one-shot ([spax_2sfca()], [spax_e2sfca()] and
 #' the others): the `type`, `parameters` and accessibility layers are identical,
-#' and `call` is the call of `spax()`. An index is computed, not fitted: `observed`,
+#' and `call` is the call of `spax()`. Scores are computed, not fitted: `observed`,
 #' `starts`, `lower`, `upper` and `...` are refused. Group lists of `decay` and
 #' `selection` and a `threshold` by group are matched to the demand groups of the data
 #' by name and put in their order.
 #'
-#' **FCA indices on numeric data.** With numeric data (demand, supply and a travel
-#' matrix) an FCA specification gives the index at the active origins, computed by the
+#' **Accessibility scores on numeric data.** With numeric data (demand, supply and a
+#' travel matrix) a 2SFCA-family specification gives the scores at the active origins,
+#' computed by the
 #' same engine and the same rules (the cells that reach no facility are `NA`, and the
 #' overall layer of demand groups is the same). The result is a `spax_access_values`, a
 #' list with `access`, a matrix with one row per active origin and one column per layer,
@@ -65,7 +67,7 @@
 #' counts need a model with an outside option (spec_clm())" before the fit. The
 #' loss arguments of the observation pass through unchanged. The printed result
 #' has a line `outside` that says for how many origins (or groups) the counts are used,
-#' or that the outside total is. `fitted()` returns the modelled counts
+#' or that the outside total is. `fitted()` returns the modeled counts
 #' for the full target, the `"(outside)"` entry included, and
 #' `as.data.frame(type = "origins")` adds `outside_observed` and
 #' `outside_modelled` for flows (see [spax_allocation-methods]).
@@ -93,8 +95,8 @@
 #' save a result.
 #'
 #' @param data Prepared inputs: the result of [prep_data()].
-#' @param model A model specification: [spec_huff()] or [spec_clm()], or an FCA
-#'   specification such as [spec_e2sfca()].
+#' @param model A model specification: [spec_huff()] or [spec_clm()], or a
+#'   2SFCA-family specification such as [spec_e2sfca()].
 #' @param observed Observed counts for a model with a parameter to fit: an
 #'   [obs_flows()] or [obs_totals()] object, or raw counts (see Details).
 #'   `NULL` (the default) for a model with a value for every parameter.
@@ -105,7 +107,7 @@
 #'   `control`, `lambda`, `tol`, `max_iter`, `norm`, `keep_fits`, ...); `output`,
 #'   `loss` and `loss_args` are refused. Evaluate mode: further arguments of
 #'   [evaluate_allocation()], for example `requested_outputs`.
-#' @return For an FCA specification on raster data, a `spax` object (class
+#' @return For a 2SFCA-family specification on raster data, a `spax` object (class
 #'   `c("spax", "spax_result")`), see [spax_e2sfca()]; on numeric data, a
 #'   `spax_access_values` (class `c("spax_access_values", "spax_result")`), see
 #'   [spax_access_values-methods]. For an allocation model, an object of class
@@ -491,11 +493,11 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 #'   returns only the decay `sigma` (or the `sigma` of each group), the
 #'   parameter the evaluation takes as free; the other numbers (`v0`, `beta`,
 #'   `kappa`) are listed as held in `as.data.frame(x, type = "parameters")`.
-#' * `fitted()` returns the modelled counts for the observations of a fit (as
-#'   [fitted.ae_multistart_fit()][allocation-fit-methods] does), and the modelled
+#' * `fitted()` returns the modeled counts for the observations of a fit (as
+#'   [fitted.ae_multistart_fit()][allocation-fit-methods] does), and the modeled
 #'   facility utilization, named by facility, for an evaluation. For a fit with
 #'   outside counts (see [obs_flows()]) this is the full target, including the
-#'   modelled outside count as the column, element or row `"(outside)"`.
+#'   modeled outside count as the column, element or row `"(outside)"`.
 #' * `as.data.frame()` returns one of the tables below.
 #' * `predict()` predicts requested origins from the saved fit or evaluation
 #'   with [predict_allocation()]. Models with demand groups are refused, as there.
@@ -507,7 +509,7 @@ spax_clm <- function(demand, supply, travel, observed = NULL, decay = decay_gaus
 #' | `"parameters"` | `parameter`, `value`, `status`: the free parameters (`"fitted"` or `"given"`), then the held values (`"held"`) |
 #' | `"facilities"` | the facilities of the data: `facility_id`, `supply`, `attractiveness`, `utilization`, and `observed` for a fit to facility totals (the sum over groups for totals by group, `NA` when a group is unobserved); the `"(outside)"` entry of a fit with outside counts is not a facility and is left out |
 #' | `"origins"` | the active origins: `origin_id`, `demand`, `access` (the share of demand that goes to a facility of the data), `outside_share` (pooled over the groups), and for a flow fit with outside counts `outside_observed` (`NA` where unknown) and `outside_modelled` (demand times the outside share) |
-#' | `"flows"` | the origin-facility cells with modelled flow or observed count above 0: `origin_id`, `facility_id`, `flow` (demand times allocation), and `observed` for a fit to flows (`NA` where unobserved) |
+#' | `"flows"` | the origin-facility cells with modeled flow or observed count above 0: `origin_id`, `facility_id`, `flow` (demand times allocation), and `observed` for a fit to flows (`NA` where unobserved) |
 #' | `"starts"` | the table of starts of the fit (`seconds` is the time each took) |
 #'
 #' @param object,x A `spax_allocation`, or for `print()` of the summary, a

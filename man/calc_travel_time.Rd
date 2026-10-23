@@ -18,13 +18,13 @@ calc_travel_time(
 }
 \arguments{
 \item{friction}{A one-layer \code{SpatRaster} of positive travel time per unit
-of map distance (for example minutes per metre). Missing cells are
+of map distance (for example minutes per meter). Missing cells are
 barriers; zero or negative values are refused.}
 
 \item{facilities}{An \code{sf} or \code{SpatVector} of facility points.}
 
 \item{template}{A one-layer \code{SpatRaster} with square cells in a projected
-coordinate reference system with map units of metres. Its non-missing cells
+coordinate reference system with map units of meters. Its non-missing cells
 are the origins.}
 
 \item{ids}{Name of the facility ID column. The IDs must be unique and
@@ -67,7 +67,7 @@ The friction surface is projected to the grid's lattice, extended by
 \code{buffer} so that routes can leave the analysis area, and cells outside
 \code{mask} are treated as barriers (for example, to keep routes within one
 country). Global motorized friction surfaces, such as those of the Malaria
-Atlas Project, give minutes per metre; the travel times are then in minutes.
+Atlas Project, give minutes per meter; the travel times are then in minutes.
 Inputs in another coordinate reference system are projected to the grid's
 with terra, which lets PROJ fetch files from the internet. When a projection
 changes datum, for example from WGS 84 to British National Grid, PROJ may
@@ -83,11 +83,11 @@ the straight-line time by up to about 8\%.
 \examples{
 library(terra)
 
-# Cornwall population grid in WGS 84 / UTM zone 30N (metres), on the same
+# Cornwall population grid in WGS 84 / UTM zone 30N (meters), on the same
 # datum as the bundled data
 pop <- project(read_spax_example("cornwall_pop.tif"), "EPSG:32630")
 
-# A uniform friction surface of 50 km/h, in minutes per metre
+# A uniform friction surface of 50 km/h, in minutes per meter
 friction <- init(pop, 60 / 50000)
 
 # Minutes from five practices to every populated cell; the practices are

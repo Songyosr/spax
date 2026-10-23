@@ -6,8 +6,8 @@
 \alias{allocation-compatibility}
 \title{Spatial accessibility and allocation modeling}
 \description{
-A modular engine for spatial access and allocation models. Floating
-catchment area (FCA) methods and an experimental static conditional logit
+A modular engine for spatial access and allocation models. Methods of the
+two-step floating catchment area (2SFCA) family and an experimental static conditional logit
 allocation model with an outside option share the same demand, facility
 supply and travel inputs, optionally split into demand groups, the same
 decay kernels and one numeric engine. The allocation model includes the Huff
@@ -19,7 +19,7 @@ remain model-specific.
 \section{Choose a workflow}{
 
 \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}} and
-\code{\link{spax_m2sfca}} compute FCA indices, and
+\code{\link{spax_m2sfca}} compute accessibility scores of the 2SFCA family, and
 \code{\link{compute_access}} computes them from given decay weights. The
 experimental \code{\link{spax_3sfca}} and \code{\link{spax_huff2sfca}} add
 selection weights that divide each origin's demand among the facilities.
@@ -55,7 +55,7 @@ general-purpose inference are not part of this experimental interface.
 \section{Inputs, observations and support}{
 
 Preserve facility and origin IDs on numeric inputs. Named axes align
-independently; unnamed inputs are positional. For FCA, travel layer names
+independently; unnamed inputs are positional. For the 2SFCA family, travel layer names
 identify facilities. In the allocation route, only included positive
 demand contributes to fitted facility loads. Known zero, unknown and excluded
 demand remain distinct. Requested predictions have their own support:
@@ -119,12 +119,12 @@ simultaneous spatial intervals are provided. See
 \code{\link{bootstrap_allocation}} for the full restrictions.
 }
 
-\section{FCA indices, saved results}{
+\section{Accessibility scores, saved results}{
 
-FCA indices and the allocation model answer different questions: the
-independent supply columns and accessibility scores of an FCA index are not
-choice probabilities. Normalization choices are part of the FCA model
-specification. One numeric engine computing several models does not make
+The accessibility scores of the 2SFCA family and the allocation model answer
+different questions: the independent supply columns and accessibility scores
+of a 2SFCA-family method are not choice probabilities. Normalization choices
+are part of the 2SFCA-family specification. One numeric engine computing several models does not make
 them nested.
 
 Named observation axes align to the input IDs. Custom loss arguments indexed
@@ -144,10 +144,10 @@ The \code{spax()} interface and the allocation model are experimental and
 may change in later versions. Package and function help are installed with
 the package; use \code{help(package = "spax")} to browse them. Installations
 with built articles also expose \code{browseVignettes("spax")}. Start with
-\code{vignette("spax", package = "spax")}, which computes one FCA index for
+\code{vignette("spax", package = "spax")}, which computes accessibility scores for
 Cornwall; \code{vignette("cornwall-data", package = "spax")} describes the
 bundled example data. \code{vignette("model-choice", package = "spax")}
-compares an FCA index with the allocation model,
+compares accessibility scores with the allocation model,
 \code{vignette("allocation-workflow", package = "spax")} fits the model to
 the Cornwall GP registrations, \code{vignette("scenario", package = "spax")}
 compares a practice closure at the fitted values, and

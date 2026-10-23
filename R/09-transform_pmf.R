@@ -29,13 +29,13 @@
 #' Transform input into a probability mass function (PMF)
 #'
 #' Converts raster or vector inputs into a probability mass function where all
-#' values sum to 1. Raster inputs are normalised directly, each layer of a
+#' values sum to 1. Raster inputs are normalized directly, each layer of a
 #' multi-layer raster separately, while vector inputs are first rasterised
 #' using a supplied template: points in the same cell add up (missing values
 #' are ignored, and each part of a multipoint carries the feature's full
 #' value), and a polygon's value is copied to every cell it covers.
 #'
-#' @param x A `SpatRaster` containing values to normalise, or a `SpatVector`
+#' @param x A `SpatRaster` containing values to normalize, or a `SpatVector`
 #'   whose attribute values will be rasterised.
 #' @param value_col Character name of the attribute column to use when `x` is a
 #'   `SpatVector`. Ignored for raster inputs.

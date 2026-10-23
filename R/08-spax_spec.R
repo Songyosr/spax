@@ -34,8 +34,9 @@
 #' Group-specific parameters can be fitted only to counts recorded by group;
 #' a held `sigma` cannot differ by group unless the decay is given by group.
 #'
-#' **FCA decays.** An allocation model refuses [decay_step()], [decay_inverse()]
-#' and a raster `sigma`, which are for the FCA specifications ([spec_e2sfca()]).
+#' **Decays of the 2SFCA family.** An allocation model refuses [decay_step()],
+#' [decay_inverse()] and a raster `sigma`, which are for the 2SFCA-family
+#' specifications ([spec_e2sfca()]).
 #'
 #' @param decay A decay: [decay_gaussian()], [decay_exponential()],
 #'   [decay_power()], [decay_custom()], a [decay_kernel()] or one of

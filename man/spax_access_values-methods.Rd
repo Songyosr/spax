@@ -7,7 +7,7 @@
 \alias{summary.spax_access_values}
 \alias{print.summary.spax_access_values}
 \alias{as.data.frame.spax_access_values}
-\title{Methods for FCA indices on numeric data}
+\title{Methods for accessibility scores on numeric data}
 \usage{
 \method{format}{spax_access_values}(x, ...)
 
@@ -34,7 +34,7 @@
 \code{summary.spax_access_values} and \code{as.data.frame()} a data frame.
 }
 \description{
-What to do with the result of \code{\link[=spax]{spax()}} for an FCA specification (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and the
+What to do with the result of \code{\link[=spax]{spax()}} for a 2SFCA-family specification (\code{\link[=spec_e2sfca]{spec_e2sfca()}} and the
 others) on numeric data (\code{\link[=prep_data]{prep_data()}} with demand, supply and a travel matrix): a list
 with \code{access}, a matrix with one row per active origin (named by the origin IDs) and one
 column per layer, \code{type}, \code{parameters}, \code{facilities} and \code{call}. With demand groups the

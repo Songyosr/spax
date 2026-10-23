@@ -1,14 +1,14 @@
 # FCA specifications: a floating catchment area index without data ----------------
 
-#' Specify a floating catchment area index without data
+#' Specify a 2SFCA-family method without data
 #'
 #' Experimental. `spec_2sfca()`, `spec_e2sfca()`, `spec_m2sfca()`,
-#' `spec_3sfca()` and `spec_huff2sfca()` declare a floating catchment area (FCA)
-#' index with its decay and its options, as the data-free counterparts of
-#' [spax_2sfca()], [spax_e2sfca()], [spax_m2sfca()], [spax_3sfca()] and
-#' [spax_huff2sfca()]. A specification holds no data and no fitted value: an FCA
-#' index is computed, not fitted, so every decay needs its `sigma` (or its
-#' threshold) here.
+#' `spec_3sfca()` and `spec_huff2sfca()` declare a method of the two-step floating
+#' catchment area (2SFCA) family with its decay and its options, as the data-free
+#' counterparts of [spax_2sfca()], [spax_e2sfca()], [spax_m2sfca()], [spax_3sfca()]
+#' and [spax_huff2sfca()]. A specification holds no data and no fitted value:
+#' accessibility scores are computed, not fitted, so every decay needs its `sigma`
+#' (or its threshold) here.
 #'
 #' **Decays.** A decay is [decay_gaussian()], [decay_exponential()] or
 #' [decay_power()] with a number for `sigma`, or with a `SpatRaster` of `sigma`
@@ -45,7 +45,7 @@
 #'   facility with finite values of 0 or more.
 #' @param alpha A single finite number of 0 or more: the exponent of the
 #'   attractiveness in the selection probability.
-#' @param x An FCA specification.
+#' @param x A 2SFCA-family specification.
 #' @param ... Unused.
 #' @return A `spax_fca_spec` (also a `spax_spec`): a list with `kind` (`"2sfca"`,
 #'   `"e2sfca"`, `"m2sfca"`, `"3sfca"` or `"huff2sfca"`), `decay`, `normalize`,

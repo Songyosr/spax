@@ -1139,7 +1139,7 @@ spax_e2sfca <- function(demand, supply, distance,
 #'
 #' Step 2 (modified): \eqn{A_i = \sum_j R_j \, W(d_{ij})^2}.
 #'
-#' M2SFCA is not a separate engine here: it is the shared FCA recipe with the
+#' M2SFCA is not a separate engine here: it is the shared 2SFCA recipe with the
 #' access-side kernel squared. It is exactly equivalent to
 #' `compute_access(demand, supply, W, W^2)`.
 #'
@@ -1492,8 +1492,8 @@ spax_2sfca <- function(demand, supply, distance, threshold,
 #' \code{\link{spax_m2sfca}}, \code{\link{compute_access}},
 #' \code{\link{calc_decay}}, \code{\link{calc_choice}} and
 #' \code{\link{decay_kernel}}.
-#' \code{vignette("fca-methods", package = "spax")} compares the FCA methods on
-#' the Cornwall data.
+#' \code{vignette("fca-methods", package = "spax")} compares the 2SFCA-family methods
+#' on the Cornwall data.
 #'
 #' @export
 spax_3sfca <- function(demand, supply, distance,
@@ -1524,7 +1524,7 @@ spax_3sfca <- function(demand, supply, distance,
 #' Calculate Huff-model Two-Step Floating Catchment Area (Huff-2SFCA) scores
 #'
 #' @description
-#' This experimental function implements a floating catchment area method in
+#' This experimental function implements a 2SFCA-family method in
 #' which the selection weights of \code{\link{spax_3sfca}} are replaced by a
 #' Huff selection probability, following Luo (2014). The probability that an
 #' origin selects a facility uses the attractiveness of the facilities and a
@@ -1645,8 +1645,8 @@ spax_3sfca <- function(demand, supply, distance,
 #' attractiveness, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
 #' \code{\link{compute_access}}, \code{\link{calc_decay}},
 #' \code{\link{calc_choice}} and \code{\link{decay_kernel}}.
-#' \code{vignette("fca-methods", package = "spax")} compares the FCA methods on
-#' the Cornwall data.
+#' \code{vignette("fca-methods", package = "spax")} compares the 2SFCA-family methods
+#' on the Cornwall data.
 #'
 #' @export
 spax_huff2sfca <- function(demand, supply, distance,

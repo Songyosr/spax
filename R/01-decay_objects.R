@@ -19,7 +19,7 @@
 #' at that value. A number must be positive and must lie within the bounds the
 #' kernel declares for `sigma` (the built-in kernels allow any positive number).
 #'
-#' A raster `sigma` is for FCA specifications only. `decay_custom()` refuses
+#' A raster `sigma` is for 2SFCA-family specifications only. `decay_custom()` refuses
 #' it for a declared kernel.
 #'
 #' A model specification also accepts an exact built-in name (`"gaussian"`,
@@ -27,7 +27,7 @@
 #' both mean `sigma = "fit"`. There is no partial matching.
 #'
 #' @param sigma `"fit"`, or a single finite number greater than 0 that holds
-#'   `sigma` at that value. For an FCA specification ([spec_e2sfca()] and its
+#'   `sigma` at that value. For a 2SFCA-family specification ([spec_e2sfca()] and its
 #'   relatives), `decay_gaussian()`, `decay_exponential()` and `decay_power()`
 #'   also accept a `SpatRaster` of `sigma` values (a variable catchment, with one
 #'   layer or one per facility); it is not checked here, and an allocation model
@@ -82,10 +82,10 @@ decay_custom <- function(kernel, sigma = "fit") {
   .decay_object(kernel, sigma)
 }
 
-#' Declare a step or inverse decay for an FCA specification
+#' Declare a step or inverse decay for a 2SFCA-family specification
 #'
 #' Experimental. `decay_step()` and `decay_inverse()` are decays for the
-#' specifications of floating catchment area indices ([spec_2sfca()],
+#' specifications of the two-step floating catchment area (2SFCA) family ([spec_2sfca()],
 #' [spec_e2sfca()] and the others). They are neither estimated nor available to
 #' an allocation model such as [spec_clm()], which refuses them.
 #'
@@ -94,7 +94,7 @@ decay_custom <- function(kernel, sigma = "fit") {
 #' `decay_inverse()` gives the weight `1 / (d + 1)` to a travel time `d`, as the
 #' `"inverse"` method of [calc_decay()] does. They are stored as
 #' `list(method = "binary", sigma = threshold)` and `list(method = "inverse")`,
-#' the form the FCA functions take in `decay_params`.
+#' the form the 2SFCA-family functions take in `decay_params`.
 #'
 #' @param threshold A single finite number greater than 0: the largest travel
 #'   time in the catchment.

@@ -12,7 +12,7 @@ Isles of Scilly practice and back, and off-island Scilly cells that cannot
 reach the St Mary's practice) and journeys over 180 minutes.
 }
 \source{
-Derived from the Malaria Atlas Project motorised friction surface
+Derived from the Malaria Atlas Project motorized friction surface
 (Weiss et al. 2020, Creative Commons Attribution) and \link{cornwall_gp}. See
 \code{system.file("COPYRIGHTS", package = "spax")}.
 }

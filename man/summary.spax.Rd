@@ -7,7 +7,7 @@
 \method{summary}{spax}(object, quantiles = c(0, 0.25, 0.5, 0.75, 1), ...)
 }
 \arguments{
-\item{object}{A spax object created by an FCA function, such as
+\item{object}{A spax object created by a 2SFCA-family function, such as
 \code{\link{spax_2sfca}}, \code{\link{spax_e2sfca}}, \code{\link{spax_m2sfca}},
 \code{\link{spax_3sfca}} or \code{\link{spax_huff2sfca}}}
 

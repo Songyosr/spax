@@ -5,7 +5,7 @@
 \alias{decay_inverse}
 \alias{format.spax_fca_decay}
 \alias{print.spax_fca_decay}
-\title{Declare a step or inverse decay for an FCA specification}
+\title{Declare a step or inverse decay for a 2SFCA-family specification}
 \usage{
 decay_step(threshold)
 
@@ -29,7 +29,7 @@ threshold as a double, or \code{"inverse"} with no \code{sigma}).
 }
 \description{
 Experimental. \code{decay_step()} and \code{decay_inverse()} are decays for the
-specifications of floating catchment area indices (\code{\link[=spec_2sfca]{spec_2sfca()}},
+specifications of the two-step floating catchment area (2SFCA) family (\code{\link[=spec_2sfca]{spec_2sfca()}},
 \code{\link[=spec_e2sfca]{spec_e2sfca()}} and the others). They are neither estimated nor available to
 an allocation model such as \code{\link[=spec_clm]{spec_clm()}}, which refuses them.
 }
@@ -39,7 +39,7 @@ and weight 0 beyond it (the catchment of the two-step method).
 \code{decay_inverse()} gives the weight \code{1 / (d + 1)} to a travel time \code{d}, as the
 \code{"inverse"} method of \code{\link[=calc_decay]{calc_decay()}} does. They are stored as
 \code{list(method = "binary", sigma = threshold)} and \code{list(method = "inverse")},
-the form the FCA functions take in \code{decay_params}.
+the form the 2SFCA-family functions take in \code{decay_params}.
 }
 \examples{
 decay_step(15)

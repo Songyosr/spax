@@ -125,14 +125,14 @@ prepare_allocation <- function(demand, supply, distance,
 #' and the policies for missing demand and travel.
 #'
 #' **Raster data** (`demand` is a `SpatRaster`, or a named list of single-layer
-#' `SpatRaster`s for demand groups) are the inputs of the floating catchment area
-#' indices ([spec_e2sfca()] and its relatives): `demand` is the demand grid,
+#' `SpatRaster`s for demand groups) are the inputs of the methods of the two-step
+#' floating catchment area (2SFCA) family ([spec_e2sfca()] and its relatives): `demand` is the demand grid,
 #' `travel` the travel stack, one layer per facility named by the facility ID, and
 #' `supply` a data frame with `id_col` and `supply_cols`, a matrix or a vector, as
 #' in [spax_e2sfca()]. With demand groups, `travel` can be one stack or a named
 #' list of stacks, one per group. `prep_data()` checks the structure (the demand
 #' groups, one geometry, one layer per facility, the supply table) and reads no
-#' value of a raster; the demand rule of the indices (finite and nonnegative,
+#' value of a raster; the demand rule of these methods (finite and nonnegative,
 #' `NA` for unknown) is applied when a model runs. The arguments `origin_ids`,
 #' `facility_ids`, `included`, `missing_demand`, `missing_travel` and `spatial`
 #' are for numeric data and are refused. `id_col` and `supply_cols` are for
@@ -146,7 +146,7 @@ prepare_allocation <- function(demand, supply, distance,
 #' positive demand (with demand groups, the cells where every group's demand is
 #' known and the total is positive), their IDs are the cell numbers of the grid
 #' as text (`"843"`), and the origin registry holds these cells only. The demand
-#' rule of the indices applies: negative or infinite demand is an error and `NA`
+#' rule of the 2SFCA-family methods applies: negative or infinite demand is an error and `NA`
 #' is unknown. [obs_totals()] works directly. [obs_flows()] is keyed by cell
 #' number, and counts at cells that are not origins (no demand, or unknown) are
 #' dropped with a message. A missing or infinite travel time is an absent pair, and a
@@ -167,8 +167,8 @@ prepare_allocation <- function(demand, supply, distance,
 #' minutes. That is the memory of the fit, the same as for numeric inputs of that size,
 #' so a much larger grid is better cropped or coarsened first.
 #'
-#' **FCA indices on numeric data.** An FCA specification ([spec_e2sfca()] and its
-#' relatives) also runs on numeric data with [spax()]. It gives the index at the active
+#' **Accessibility scores on numeric data.** A 2SFCA-family specification ([spec_e2sfca()]
+#' and its relatives) also runs on numeric data with [spax()]. It gives the scores at the active
 #' origins only: an origin with zero or unknown demand, or left out, has no row in the
 #' result. The result is a `spax_access_values` (see [spax_access_values-methods]), not
 #' rasters, and numeric data has one supply measure, `"supply"`. A raster `sigma` (a
@@ -182,7 +182,7 @@ prepare_allocation <- function(demand, supply, distance,
 #' @param supply Numeric data: a finite nonnegative facility vector (see
 #'   [prepare_allocation()]). Raster data: a data frame with `id_col` and
 #'   `supply_cols`, a matrix or a vector (see [spax_e2sfca()]); several supply
-#'   measures give independent layers in an FCA result.
+#'   measures give independent layers of accessibility scores.
 #' @param travel Numeric origin-by-facility travel matrix. It is the
 #'   `distance` argument of [prepare_allocation()]: the same alignment by IDs
 #'   applies, and with demand groups it can be one matrix shared by the groups
@@ -215,7 +215,7 @@ prepare_allocation <- function(demand, supply, distance,
 #'           metadata = list(demand_units = "registered residents",
 #'                           supply_units = "GP FTE", travel_units = "minutes"))
 #'
-#' # Raster data for a floating catchment area index
+#' # Raster data for a 2SFCA-family method
 #' pop <- read_spax_example("cornwall_pop.tif")
 #' travel_grid <- read_spax_example("cornwall_gp_travel.tif")
 #' grid_data <- prep_data(pop, sf::st_drop_geometry(cornwall_gp), travel_grid,
@@ -587,7 +587,7 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'
 #' **Outside counts.** The outputs `flow_outside`, `utilization_outside` and
 #' `utilization_outside_by_group` are `flow`, `utilization` and
-#' `utilization_by_group` with the modelled outside count added: the demand of
+#' `utilization_by_group` with the modeled outside count added: the demand of
 #' the active origins that goes to the outside option, that is, to facilities
 #' that are not in the data or to none. For `flow_outside` the outside count of
 #' origin `i` is `D_i * outside_share_i`, one more column (each row then adds up
@@ -719,15 +719,15 @@ huff_allocation <- function(inputs, family = "power", kappa = 1, beta = 1,
 #'   (`clm_allocation(fixed = )`, or numbers in the decay and outside slots of
 #'   [spec_clm()]), or fit shared parameters to any target.
 #'   `flow_outside`, `utilization_outside` and `utilization_outside_by_group` are
-#'   the three count outputs above with the modelled outside count added as one
+#'   the three count outputs above with the modeled outside count added as one
 #'   more column, element or row named `"(outside)"` (see the section on outside
 #'   counts); they need a model with an outside option. The group-specific
 #'   parameters can also be fitted to `utilization_outside_by_group`.
 #' @param loss `"weighted_sse"`, `"poisson"`, or a function accepting predicted
 #'   and observed values. Weighted SSE divides squared residuals by observed+eta,
 #'   with eta=1 by default. Poisson omits the data-only log-factorial constant.
-#'   It floors modelled counts at `eps` (`loss_args`), 1e-250 by default, only
-#'   to avoid the log of zero; cells with positive observed counts modelled
+#'   It floors modeled counts at `eps` (`loss_args`), 1e-250 by default, only
+#'   to avoid the log of zero; cells with positive observed counts modeled
 #'   below the floor are reported with a warning, because the loss is capped
 #'   there. Fits made before this default used 1e-9; pass
 #'   `loss_args = list(eps = 1e-9)` to reproduce them. Joint fitting does not

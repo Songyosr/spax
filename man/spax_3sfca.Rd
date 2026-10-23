@@ -195,6 +195,6 @@ facility attractiveness, \code{\link{spax_e2sfca}},
 \code{\link{spax_m2sfca}}, \code{\link{compute_access}},
 \code{\link{calc_decay}}, \code{\link{calc_choice}} and
 \code{\link{decay_kernel}}.
-\code{vignette("fca-methods", package = "spax")} compares the FCA methods on
-the Cornwall data.
+\code{vignette("fca-methods", package = "spax")} compares the 2SFCA-family methods
+on the Cornwall data.
 }

@@ -8,7 +8,7 @@
 #' Declare a distance decay kernel
 #'
 #' Declares the decay weights \eqn{w(d; \sigma)}{w(d; sigma)} that
-#' [calc_decay()] and the FCA functions apply to a travel time or distance
+#' [calc_decay()] and the 2SFCA-family functions apply to a travel time or distance
 #' \eqn{d}. A declaration is plain data: it names a built-in kernel, or it
 #' records your own function as the exact text of its code (comments and layout
 #' are not kept), together with what its parameter `sigma` means, the bounds
@@ -74,7 +74,7 @@
 #'   its grid, and a model from [clm_allocation()] refuses prepared inputs that
 #'   contain a finite zero travel time when it is evaluated or fitted.
 #' @param smooth `FALSE` declares a kernel that is not smooth in `sigma` (steps
-#'   or thresholds). It can be evaluated, predicted and used in FCA: a model built
+#'   or thresholds). It can be evaluated, predicted and used in a 2SFCA-family method: a model built
 #'   with [clm_allocation()] can be evaluated at fixed parameters with
 #'   [evaluate_allocation()] and used for requested-location prediction with
 #'   [predict_allocation()], but [fit_allocation()] refuses it, because model

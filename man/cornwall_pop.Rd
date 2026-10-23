@@ -5,7 +5,8 @@
 \title{Population grid for Cornwall and the Isles of Scilly}
 \format{
 A one-layer GeoTIFF (\code{pop}): 132 rows x 271 columns of 30
-arc-second cells (about 1 km; about 0.55 square km at this latitude),
+arc-second cells (about 0.93 km north-south by 0.59 km east-west, or 0.55
+square km, at this latitude),
 EPSG:4326. Values are estimated residents per cell. Cells crossing the
 boundary are weighted by the share of their area inside it; \code{NA} marks
 cells outside. The total (about 543,000) is about 7\% below the ONS mid-2024

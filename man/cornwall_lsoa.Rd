@@ -18,7 +18,7 @@ estimates, all ages and by age band.}
 practice (row totals of \code{cornwall_flows}).}
 \item{registered_out}{Residents registered at a practice elsewhere.}
 \item{cent_x, cent_y}{Population-weighted centroid in British National
-Grid coordinates (EPSG:27700), in metres.}
+Grid coordinates (EPSG:27700), in meters.}
 \item{cent_lon, cent_lat}{The same centroid in WGS 84 longitude and
 latitude, the origin used for \code{cornwall_travel}.}
 \item{scilly}{\code{TRUE} for the Isles of Scilly area.}
@@ -45,7 +45,7 @@ Registered counts exceed the population estimates by about 4\%,
 reflecting list inflation and the different reference dates. The
 polygons and \code{cent_lon}/\code{cent_lat} were converted from British National
 Grid with the OSGB36 to WGS 84 Helmert transformation (about 2 m); see
-\link{cornwall_gp} for working in metres.
+\link{cornwall_gp} for working in meters.
 }
 \examples{
 areas <- sf::st_drop_geometry(cornwall_lsoa)

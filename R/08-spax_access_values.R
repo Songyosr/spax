@@ -127,9 +127,9 @@
   })
 }
 
-#' Methods for FCA indices on numeric data
+#' Methods for accessibility scores on numeric data
 #'
-#' What to do with the result of [spax()] for an FCA specification ([spec_e2sfca()] and the
+#' What to do with the result of [spax()] for a 2SFCA-family specification ([spec_e2sfca()] and the
 #' others) on numeric data ([prep_data()] with demand, supply and a travel matrix): a list
 #' with `access`, a matrix with one row per active origin (named by the origin IDs) and one
 #' column per layer, `type`, `parameters`, `facilities` and `call`. With demand groups the

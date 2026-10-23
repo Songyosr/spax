@@ -97,8 +97,9 @@ decay (\code{"sigma"}) or one fitted outside weight (\code{"v0"}) differ by grou
 Group-specific parameters can be fitted only to counts recorded by group;
 a held \code{sigma} cannot differ by group unless the decay is given by group.
 
-\strong{FCA decays.} An allocation model refuses \code{\link[=decay_step]{decay_step()}}, \code{\link[=decay_inverse]{decay_inverse()}}
-and a raster \code{sigma}, which are for the FCA specifications (\code{\link[=spec_e2sfca]{spec_e2sfca()}}).
+\strong{Decays of the 2SFCA family.} An allocation model refuses \code{\link[=decay_step]{decay_step()}},
+\code{\link[=decay_inverse]{decay_inverse()}} and a raster \code{sigma}, which are for the 2SFCA-family
+specifications (\code{\link[=spec_e2sfca]{spec_e2sfca()}}).
 }
 \examples{
 # Huff: power decay and fitted exponent, no outside option
