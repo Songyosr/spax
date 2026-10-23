@@ -18,12 +18,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-The enhanced two-step floating catchment area (E2SFCA) index gives each place
-the GP supply per resident within reach, with weights that fall with travel
-time. This guide rebuilds the index of [Getting started](spax.html) one step
-at a time from the building blocks of spax, and compares the result with
-`spax()`. By the end you can say where each cell's number comes from, swap
-one set of weights to get another index, and see why the calculation has to
+The enhanced two-step floating catchment area (E2SFCA) method gives each place
+an accessibility score: the GP supply per resident within reach, with weights
+that fall with travel time. This guide rebuilds the scores of [Getting
+started](spax.html) one step at a time from the building blocks of spax, and
+compares the result with `spax()`. By the end you can say where each cell's
+number comes from, swap one set of weights to get another 2SFCA-family
+method, and see why the calculation has to
 cover the whole study area. The inputs are the mainland grids of [The Cornwall
 GP example data](cornwall-data.html). The `spax()` interface and the
 allocation model are experimental and may change in later versions.
@@ -37,9 +38,9 @@ library(dplyr)
 
 ## The formula
 
-A floating catchment area (FCA) index has two steps. First each facility
-gathers the demand around it and divides its supply by that demand. Then each
-place adds up the ratios of the facilities it can reach. Here demand is the
+A method of the 2SFCA family has two steps. First each facility gathers the
+demand around it and divides its supply by that demand. Then each place adds
+up the ratios of the facilities it can reach. Here demand is the
 residents of a grid cell and supply is a practice's GP full-time equivalents
 (FTE).
 
@@ -53,9 +54,11 @@ L_j=\sum_i D_iG_{ij},\qquad R_j=S_j/L_j,\qquad A_i=\sum_j H_{ij}R_j.
 \]
 
 $L_j$ is the demand practice $j$ gathers, $R_j$ its supply-to-demand ratio
-and $A_i$ the index at cell $i$. E2SFCA uses the same decay weights $W_{ij}$,
-which fall with the travel time from cell $i$ to practice $j$ (step 1), for
-both: $G = H = W$.
+and $A_i$ the accessibility score at cell $i$. E2SFCA uses the same decay
+weights $W_{ij}$, which fall with the travel time from cell $i$ to practice
+$j$, for both: $G = H = W$. The headings below follow the calculation: Steps
+1 and 2 build the weights, Steps 3 and 4 are the formula's first step ($L_j$
+and $R_j$), and Step 5 is its second ($A_i$).
 
 ## The inputs
 
@@ -79,7 +82,9 @@ grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = 
 # GP FTE named by practice code
 supply <- setNames(gp$gp_fte_extg, gp$practice)
 
-# Map helper: a layer within the Truro display window, with practices
+# Map helper: a layer within the Truro display window, with practices.
+# The window spans longitude -5.30 to -4.80 and latitude 50.12 to 50.42:
+# about 36 km by 33 km around Truro, with Redruth, Falmouth and Newquay inside
 truro_window <- ext(-5.30, -4.80, 50.12, 50.42)
 practices <- cornwall_gp |>
   filter(!scilly) |>
@@ -167,7 +172,7 @@ At the median cell the weights sum to `r sprintf("%.2f", identity_sums[[2]])`, a
 even at the 5th percentile they sum to `r sprintf("%.2f", identity_sums[[1]])`. So
 `"standard"` and `"semi"` give almost the same result here, and both differ
 from `"identity"`. The choice changes the demand each practice gathers and so
-the index: normalization is part of the model you choose.
+the scores: normalization is part of the model you choose.
 `spec_e2sfca(normalize = )` applies it to the demand side only. We keep
 `"identity"`, the default, so $G = H = W$.
 
@@ -226,7 +231,7 @@ those ratios to 0 when you calculate by hand.
 sums over practices: $A_i=\sum_j W_{ij}R_j$. It matches values to layers by
 position, so pass the ratios in layer order.
 
-```{r spread, fig.alt = "Raster map of the E2SFCA index around Truro in GP FTE per 1,000 residents, with practices as red crosses; values are highest in a band from Truro towards the south-west and lower in the east of the window."}
+```{r spread, fig.alt = "Raster map of the E2SFCA accessibility score around Truro in GP FTE per 1,000 residents, with practices as red crosses; values are highest in a band from Truro towards the south-west and lower in the east of the window."}
 # Ratios in layer order, without names: matching is by position
 access <- spread_weighted(
   values = unname(ratio[names(weights)]),
@@ -235,9 +240,9 @@ access <- spread_weighted(
 show(1000 * access, "Step 5: E2SFCA, GP FTE per 1,000 residents")
 ```
 
-The index is highest in a band west and south-west of Truro and falls towards
-the east of the window, where fewer practices are close. A cell's index is a sum
-of contributions from every practice. For the cell
+The score is highest in a band west and south-west of Truro and falls towards
+the east of the window, where fewer practices are close. A cell's score is a
+sum of contributions from every practice. For the cell
 that contains the central Truro practice, the largest contributions are, in GP
 FTE per 1,000 residents:
 
@@ -269,19 +274,19 @@ others_share <- round(100 * sum(contributions[-(1:5)]) / sum(contributions))
 
 The two practices at the central Truro site contribute most. The other
 `r length(contributions) - 5` practices beyond the top five still add
-`r others_share`% of the cell's index.
+`r others_share`% of the cell's score.
 
-## The same index from `spax()`
+## The same scores from `spax()`
 
-The surface built by hand, `access`, should match the index from `spax()`,
+The surface built by hand, `access`, should match the scores from `spax()`,
 the one-call function `spax_e2sfca()` and the more general
 `compute_access()`. `compute_access()` takes the two weight sets $G$ and $H$
 of the formula as `demand_weights` and `access_weights`, so it can build any
-index of this form. Each comparison below prints `TRUE` when the two surfaces
+score of this form. Each comparison below prints `TRUE` when the two surfaces
 agree, cell by cell and in which cells are empty.
 
 ```{r check}
-# The index from a specification
+# The scores from a specification
 by_spec <- spax(grid_data, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
 
 # The one-call function
@@ -343,13 +348,13 @@ all.equal(
 
 The two agree: M2SFCA differs from E2SFCA only in the weights of step 5.
 
-## Other indices from the same blocks
+## Other methods from the same blocks
 
-The three-step FCA (3SFCA) and Huff-2SFCA share each cell's demand among its
-practices before the two steps. `calc_choice()` turns the decay weights into **selection
+3SFCA (three-step floating catchment area) and Huff-2SFCA share each cell's
+demand among its practices before the two steps. `calc_choice()` turns the decay weights into **selection
 weights**: each practice's share of the cell's weights, which add up to 1 at
 every cell. With an attractiveness, here GP FTE, each weight is first
-multiplied by it, as in the Huff model. Both indices then use the decay weight
+multiplied by it, as in the Huff model. Both methods then use the decay weight
 times the selection weight in both steps, and `compute_access()` does the
 rest.
 
@@ -365,7 +370,7 @@ huff_selection <- calc_choice(weights, attractiveness = supply)
 huff_weights <- weights * huff_selection
 huff_by_blocks <- compute_access(pop, supply, huff_weights, huff_weights)
 
-# The same indices from spax()
+# The same methods from spax()
 sfca3 <- spax(grid_data, spec_3sfca(decay = decay_gaussian(sigma = 10)))
 huff2sfca <- spax(grid_data, spec_huff2sfca(decay = decay_gaussian(sigma = 10)))
 c(
@@ -381,10 +386,9 @@ c(
 ```
 
 The selection weights add up to 1 at every cell, as the range shows, and both
-rebuilds agree with `spax()`. The same blocks build an index of your own:
-any two weight stacks on the grid of the demand can go into
-`compute_access()`. [Which FCA index?](fca-methods.html)
-maps these indices side by side.
+rebuilds agree with `spax()`. The same blocks build a score of your own: any
+two weight stacks on the grid of the demand can go into `compute_access()`.
+[Which 2SFCA method?](fca-methods.html) maps these methods side by side.
 
 ## Why the calculation covers the whole mainland
 
@@ -417,7 +421,7 @@ smallest_rise <- round(100 * min(relative, na.rm = TRUE), 1)
 worst_ratio <- round(1 + max(relative, na.rm = TRUE))
 ```
 
-Every cell's index rises: by `r smallest_rise`% at the least affected cell
+Every cell's score rises: by `r smallest_rise`% at the least affected cell
 and `r median_rise`% at the median. The worst cell, on the window's edge,
 rises to about `r worst_ratio` times its full value. It picks up practices
 outside the window, whose small remaining demand gives them very high ratios.
@@ -425,10 +429,11 @@ Calculate on the full study area and crop only for display.
 
 ## Next
 
-- [Which FCA index?](fca-methods.html): the five indices mapped side by side,
-  and how much supply each hands back.
+- [Which 2SFCA method?](fca-methods.html): the five methods mapped side by
+  side, and how much supply each hands back.
 - [Grid resolution and computational cost](grid-resolution.html): what the
-  cell size does to the index and the run time.
-- [An FCA index or an allocation model?](model-choice.html): when the
-  question is where people go rather than supply per resident.
-- [Reading results](reading-results.html): what an FCA index measures.
+  cell size does to the score and the run time.
+- [A 2SFCA accessibility score or an allocation model?](model-choice.html): when
+  the question is where people go rather than supply per resident.
+- [Reading results](reading-results.html): what an accessibility score
+  measures.

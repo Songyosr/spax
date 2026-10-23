@@ -18,17 +18,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-Does a finer grid give a better accessibility index, and what does it cost? A
-raster gives every place explicit geometry and lines all inputs up cell by
-cell. Its cost grows with the number of cells times the number of facilities,
-while the result can be no better than the demand and travel data behind it.
-This guide runs the enhanced two-step floating catchment area (E2SFCA) index
-of [Getting started](spax.html), which gives each place the GP supply per
-resident within reach, with weights that fall with travel time. It runs the
-index at the native resolution of the bundled grids, at two coarser
-resolutions and at one finer resolution, and compares results, size and run
-time. By the end you can estimate the memory a grid needs and check whether a
-coarser grid would change your answer. The inputs are the mainland grids of
+Does a finer grid give a better accessibility score, and what does it cost?
+The cost of a raster grows with the number of cells times the number of
+facilities, while the result can be no better than the demand and travel data
+behind it. This guide runs the enhanced two-step floating catchment area
+(E2SFCA) method of [Getting started](spax.html) at the native resolution of
+the bundled grids, at two coarser resolutions and at one finer resolution, and
+compares results, size and run time. By the end you can estimate the memory a
+grid needs and check whether a coarser grid would change your answer. The inputs are the mainland grids of
 [The Cornwall GP example data](cornwall-data.html). The `spax()` interface and
 the allocation model are experimental and may change in later versions.
 
@@ -55,11 +52,10 @@ travel_grid <- read_spax_example("cornwall_gp_travel.tif")[[gp$practice]]
 # Keep cells with a travel time to every mainland practice
 pop <- trim(mask(pop, sum(travel_grid)))
 travel_grid <- crop(travel_grid, pop)
-grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 ```
 
-`grid_data` is the native-resolution input. Below, `index_at()` prepares each
-resolution the same way.
+The usual last line, `prep_data()`, is left out here: `score_at()`, below,
+prepares each resolution with it.
 
 ## What one cell-by-practice array costs
 
@@ -71,19 +67,23 @@ cells times practices times 8 bytes.
 cells <- c(grid = ncell(pop), populated = sum(!is.na(values(pop))))
 
 # 8 bytes per value, one value per cell and practice
-data.frame(
+storage <- data.frame(
   cells,
   practices = nrow(gp),
   MiB_per_array = round(cells * nrow(gp) * 8 / 1024^2, 1)
 )
+storage
 ```
 
 The rectangular grid has `r round(cells[["grid"]] / cells[["populated"]], 1)`
 times as many cells as its populated part, because it also covers sea and
-land outside Cornwall. That is small here. The same arithmetic at 100 meters,
-or with hundreds of facilities, reaches gigabytes. spax reads the rasters in
-blocks of rows when it computes an FCA index, so it needs less memory than
-holding these arrays whole. Measure memory and run time on the whole
+land outside Cornwall. One array takes
+`r format(storage["grid", "MiB_per_array"], nsmall = 1)` MiB over the whole
+rectangle and `r format(storage["populated", "MiB_per_array"], nsmall = 1)`
+MiB over the populated cells. The same arithmetic at 100 meters, or with hundreds
+of facilities, reaches gigabytes. spax reads the rasters in blocks of rows
+when it computes a 2SFCA-family score, so it needs less memory than holding
+these arrays whole. Measure memory and run time on the whole
 workflow: `object.size()` of a terra raster reports only a pointer, not the
 cell values.
 
@@ -131,14 +131,14 @@ grids <- lapply(factors, at_resolution)
 Now time the E2SFCA at each resolution, with the Gaussian decay of the other
 guides: a travel scale σ of 10 minutes, at which a practice 10 minutes away
 keeps `r round(100 * calc_decay(10, method = "gaussian", sigma = 10))`% of
-its weight. The timings are elapsed seconds on the machine that
-built this guide, the median of three runs. Read them as relative costs.
+its weight. The timings are elapsed seconds on the machine that built this
+guide, the median of three runs.
 
 ```{r fit}
 e2sfca_spec <- spec_e2sfca(decay = decay_gaussian(sigma = 10))
 
-# The E2SFCA index on one resolution's grids
-index_at <- function(grid) {
+# The E2SFCA scores on one resolution's grids
+score_at <- function(grid) {
   resolution_data <- prep_data(
     grid$demand,
     gp,
@@ -151,10 +151,10 @@ index_at <- function(grid) {
 
 # Median elapsed seconds of three runs at each resolution
 seconds <- sapply(grids, function(grid) {
-  median(replicate(3, system.time(index_at(grid))[["elapsed"]]))
+  median(replicate(3, system.time(score_at(grid))[["elapsed"]]))
 })
 
-results <- lapply(grids, index_at)
+results <- lapply(grids, score_at)
 ```
 
 To compare the results, take each surface back to the native grid: every
@@ -176,7 +176,7 @@ summary_row <- function(level) {
   demand <- values(grids[[level]]$demand, mat = FALSE)
   area <- values(cellSize(grids[[level]]$demand, unit = "km"), mat = FALSE)
 
-  # Index per 1,000 on its own grid, and the change from the native surface
+  # Score per 1,000 on its own grid, and the change from the native surface
   own <- 1000 * values(results[[level]]$accessibility, mat = FALSE)
   change <- abs(on_native / native - 1)
 
@@ -206,7 +206,6 @@ finer <- comparison[comparison$factor == 0.5, ]
 native_row <- comparison[comparison$factor == 1, ]
 coarsest <- comparison[comparison$factor == 4, ]
 finer_cells <- round(finer$cells / native_row$cells, 1)
-finer_time <- round(finer$seconds / native_row$seconds, 1)
 coarse_change <- range(comparison$mean_change_pct[comparison$factor > 1])
 
 # Total residents at each resolution (the prose says they are the same)
@@ -216,7 +215,6 @@ resident_totals <- sapply(grids, function(grid) {
 stopifnot(isTRUE(all.equal(resident_totals, rep(resident_totals[2], length(grids)))))
 total_residents <- format(round(resident_totals[2]), big.mark = ",")
 coarse_km2 <- sprintf("%.1f", range(comparison$cell_km2[comparison$factor > 1]))
-coarse_speed <- round(native_row$seconds / coarsest$seconds, 1)
 
 # Native cell size: arc-seconds, and kilometers at the middle of the grid
 arc_seconds <- round(res(pop)[1] * 3600)
@@ -229,30 +227,34 @@ east_west_km <- round(cell_km(cbind(res(pop)[1], 0)), 2)
 ```
 
 `cells` counts the populated cells, and `cell_km2` is their mean area in
-square kilometers. The native cells are `r arc_seconds` arc-seconds, often
-called 1 km: about `r north_south_km` km north to south but only about
-`r east_west_km` km east to west at this latitude. The two change columns give
+square kilometers. The native cells are `r arc_seconds` arc-seconds: about
+`r north_south_km` km north to south but only about `r east_west_km` km east
+to west at this latitude. The two change columns give
 the median and the resident-weighted mean of the absolute percentage change
 from the native surface, over native cells.
 
 Some things stay fixed. Every resolution keeps the same `r total_residents`
-residents, and the resident-weighted mean index (`mean_per_1000`) stays at
-total GP FTE per 1,000 residents, because both FCA steps use the same
+residents, and the resident-weighted mean score (`mean_per_1000`) stays at
+total GP FTE per 1,000 residents, because both steps of E2SFCA use the same
 weights. That identity says nothing about local accuracy.
 
 What changes:
 
 - **Finer cells (factor 0.5)** give `r finer_cells` times as many populated
-  cells and take `r finer_time` times as long, yet reproduce the native
-  surface exactly (a change of `r finer$mean_change_pct`%): no
-  information was added.
-- **Coarser cells** are cheaper: the 4 x 4 grid runs `r coarse_speed` times
-  as fast as the native one, though on a grid this small every run takes a
-  fraction of a second. The local pattern changes by `r coarse_change[1]`% to
-  `r coarse_change[2]`% for the average resident. A 10-minute decay is wide
+  cells, and so `r finer_cells` times the work, yet reproduce the native
+  surface exactly (a change of `r finer$mean_change_pct`%): no information
+  was added.
+- **Coarser cells** are cheaper: the 4 x 4 grid has
+  `r format(coarsest$cells, big.mark = ",")` populated cells against
+  `r format(native_row$cells, big.mark = ",")` on the native grid. The local pattern changes by
+  `r coarse_change[1]`% to `r coarse_change[2]`% for the average resident. A 10-minute decay is wide
   compared with cells of `r coarse_km2[1]` to `r coarse_km2[2]` square
   kilometers, which likely keeps the change small. Repeat the comparison for
   a shorter travel scale or a binary catchment.
+
+On a grid this small every run takes a fraction of a second, so the
+`seconds` column is mostly fixed overhead and timer noise: compare run times
+on grids of the size you plan to use.
 
 The maps put the native surface and the 4 x 4 surface on one color scale.
 
@@ -292,9 +294,10 @@ register?](allocation-workflow.html) estimates the share of each place's
 residents who register with each practice. On the small areas, its travel
 matrix of areas by practices is small. On raster data every populated cell
 becomes an origin, a place residents start from, so the matrix is the
-cell-by-practice array above. In the large example of `?prep_data`, a fit to
-practice totals from one start peaks at about 8 times that matrix, and the
-help page gives its run time too. Read only the tables you need:
+cell-by-practice array above. In the large example of `?prep_data`, the peak
+memory of a fit to practice totals from one start is about 8 times the size of
+that matrix (about 1.6 GB for a 200 MB matrix), and the help page gives its
+run time too. Read only the tables you need:
 `as.data.frame(result, type = "facilities")` (one row per practice) or
 `type = "origins"` (one row per origin) is far smaller than `type = "flows"`,
 which has a row for every origin and practice with a positive flow. The
@@ -310,5 +313,5 @@ run time grows with the number of draws.
   to cover the whole study area.
 - [Extending the model](extending.html): fitting the allocation model on
   raster data and mapping it on the grid.
-- [An FCA index or an allocation model?](model-choice.html): when to fit a
-  model to where people actually go instead.
+- [A 2SFCA accessibility score or an allocation model?](model-choice.html): when
+  to fit a model to where people actually go instead.
