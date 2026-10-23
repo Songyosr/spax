@@ -28,18 +28,19 @@ library(sf)
 library(dplyr)
 ```
 
-## What an FCA index measures
+## What an accessibility score measures
 
-A floating catchment area (FCA) index is the supply around a place per unit of
-the demand that competes for it, with nearer facilities counting for more. Each
-facility divides its supply (here GP full-time equivalents, FTE) by the demand
-around it (here residents), weighted by travel time, and each place adds up the
-ratios of the facilities around it. The result, for example GP FTE per 1,000
+A method of the two-step floating catchment area (2SFCA) family gives each
+place an accessibility score: the supply around it per unit of the demand that
+competes for it, with nearer facilities counting for more. Each facility
+divides its supply (here GP full-time equivalents, FTE) by the demand around it
+(here residents), weighted by travel time, and each place adds up the ratios
+of the facilities around it. The score, for example in GP FTE per 1,000
 residents, measures potential access: it does not say where anyone goes or how
-much care they receive. In the enhanced two-step FCA (E2SFCA), the two steps
-above with travel-time weights, residents times the index add up to the total
-supply of the practices that have at least one resident within reach. [Which
-FCA index?](fca-methods.html) shows how much supply each index hands back.
+much care they receive. In the enhanced 2SFCA (E2SFCA), the two steps above
+with travel-time weights, residents times the score add up to the total supply
+of the practices that have at least one resident within reach. [Which 2SFCA
+method?](fca-methods.html) shows how much supply each method hands back.
 
 ## What the allocation model says
 
@@ -91,29 +92,31 @@ about travel time. This is common with facility totals, which show how many
 people each facility serves but not where they live. The fit searches from
 several starting values, and when they reach the same estimate the search is
 stable. That does not prove the estimate is the best possible, or that the
-data pin it down (identify it). [Where do residents
-register?](allocation-workflow.html) runs these checks.
+data pin it down (identify it). The Cornwall registrations are a stock, not
+independent counts, so a difference in loss between two fits is a fitting
+criterion, not a formal test, and the fits come with no standard errors.
+[Where do residents register?](allocation-workflow.html) runs these checks.
 
 ## Decay: chosen or fitted
 
-In an FCA index you choose the decay curve, for example a Gaussian curve with
-travel scale σ = 10 minutes, under which a practice 10 minutes away counts
-about `r round(100 * exp(-1 / 2))`% as much as one next door. The index changes
-with that choice: report it and try other values. In the allocation model σ is
+In a 2SFCA-family method you choose the decay curve, for example a Gaussian
+curve with travel scale σ = 10 minutes, under which a practice 10 minutes away
+counts about `r round(100 * exp(-1 / 2))`% as much as one next door. The scores
+change with that choice: report it and try other values. In the allocation model σ is
 estimated from observed counts, so it describes how quickly registration falls
 off with travel time in those data. What σ means depends on the shape of the
 curve (the kernel): a scale in travel units for the Gaussian kernel, a rate for
 the exponential kernel and an exponent for the power kernel. Compare σ only
-between fits with the same kernel. [An FCA index
-or an allocation model?](model-choice.html) sets a chosen and a fitted scale
-side by side.
+between fits with the same kernel. [A 2SFCA accessibility score or an
+allocation model?](model-choice.html) sets a chosen and a fitted scale side by
+side.
 
 ## Units, sources and dates
 
 The units and dates you give `prep_data(metadata = )` are labels. spax keeps
 them with the data and its results, but it does not convert units or check
 that they fit together. A Gaussian σ is in the unit of travel, and the units
-of supply and demand set the unit of an index. The Cornwall inputs come from
+of supply and demand set the unit of an accessibility score. The Cornwall inputs come from
 different sources and dates, and their totals differ:
 
 ```{r sources}
@@ -131,10 +134,10 @@ The grid holds
 `r sprintf("%.1f", 100 * (1 - residents[["worldpop_2020"]] / residents[["ons_mid_2024"]]))`%
 fewer residents than the ONS estimate, and the practice registers
 `r sprintf("%.1f", 100 * (residents[["registered_july_2026"]] / residents[["ons_mid_2024"]] - 1))`%
-more. Choose one source of demand for an analysis and say which. The FCA maps
-in these guides use the grid. The allocation fits on small areas, and the
-comparison in [An FCA index or an allocation model?](model-choice.html), use
-the registered residents. [The Cornwall GP example data](cornwall-data.html)
+more. Choose one source of demand for an analysis and say which. The
+accessibility maps in these guides use the grid. The allocation fits on small
+areas, and the comparison in [A 2SFCA accessibility score or an allocation
+model?](model-choice.html), use the registered residents. [The Cornwall GP example data](cornwall-data.html)
 lists the sources.
 
 ## Scenarios
@@ -192,13 +195,13 @@ known positive demand and not left out, enter the model. The print counts the
 other three separately. In travel, `Inf` marks a pair known to have no link and
 `NA` an unknown time. On numeric data, `prep_data()` stops at unknown travel
 unless you set `missing_travel = "omit"`, which leaves those pairs out.
-An FCA index on a grid drops unknown times from its sums, so an unknown time
-counts as no access. Mask such cells first if they are not truly unreachable.
+A 2SFCA-family method on a grid drops unknown times from its sums, so an
+unknown time counts as no access. Mask such cells first if they are not truly unreachable.
 [Bringing your own data](data-prep.html) shows both.
 
 ## Which functions may change
 
-The one-call FCA functions `spax_2sfca()`, `spax_e2sfca()` and `spax_m2sfca()`,
+The one-call functions `spax_2sfca()`, `spax_e2sfca()` and `spax_m2sfca()`,
 the building blocks shown in [Inside the E2SFCA calculation](e2sfca-steps.html)
 and the grid helpers such as `transform_demand()` are stable. The others may
 change: `spax()` and `prep_data()`, the `spec_*()`, `decay_*()` and `obs_*()`
@@ -212,14 +215,15 @@ with `packageVersion("spax")`.
 
 Save an allocation result with `saveRDS()`, which keeps the model, its data,
 the observations and the fit together. A table from `as.data.frame()` keeps
-only the numbers. An FCA result on a grid holds rasters that `saveRDS()` cannot
-keep, so save it with `save_spax()` and read it back with `read_spax()`.
+only the numbers. An accessibility map holds rasters that `saveRDS()` cannot
+keep, so save it with `save_spax()`, which keeps double precision by default,
+and read it back with `read_spax()`.
 [Where do residents register?](allocation-workflow.html) saves a fit and its
 tables.
 
 ## Next
 
-- [Getting started](spax.html): compute and map an FCA index.
+- [Getting started](spax.html): compute and map accessibility scores.
 - [Where do residents register?](allocation-workflow.html): fit the allocation
   model and check what the data identify.
 - [Bringing your own data](data-prep.html): line up IDs, units and missing

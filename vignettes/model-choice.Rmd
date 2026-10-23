@@ -1,8 +1,8 @@
 ---
-title: "An FCA index or an allocation model?"
+title: "A 2SFCA accessibility score or an allocation model?"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{An FCA index or an allocation model?}
+  %\VignetteIndexEntry{A 2SFCA accessibility score or an allocation model?}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,8 +19,9 @@ knitr::opts_chunk$set(
 ```
 
 spax computes two kinds of result from the same demand, supply and travel
-times. A floating catchment area (FCA) index measures how much supply a place
-has relative to the demand that competes for it. An allocation model says
+times. A method of the two-step floating catchment area (2SFCA) family gives
+each place an accessibility score: how much supply it has relative to the
+demand that competes for it. An allocation model says
 where the residents of a place go: a probability for each facility and for an
 outside option, which stands for every choice outside the facilities in the
 data. Its parameters are fitted to the use you observed. This guide computes
@@ -32,7 +33,6 @@ later versions.
 
 ```{r packages, message = FALSE, warning = FALSE}
 library(spax)
-library(terra)
 library(sf)
 library(dplyr)
 library(ggplot2)
@@ -44,15 +44,15 @@ Start from the quantity you need and the observations you have.
 
 | Question | Call | What you get |
 |:--|:--|:--|
-| How much supply does each place have, relative to the demand that can reach it? | `spax(data, spec_e2sfca())`, or another FCA specification: `spec_2sfca()`, `spec_m2sfca()`, `spec_3sfca()`, `spec_huff2sfca()` | An index of supply per travel-weighted resident |
+| How much supply does each place have, relative to the demand that can reach it? | `spax(data, spec_e2sfca())`, or another 2SFCA-family specification: `spec_2sfca()`, `spec_m2sfca()`, `spec_3sfca()`, `spec_huff2sfca()` | An accessibility score: supply per resident within reach |
 | Where do residents go, among the facilities and an outside option? | `spax(data, spec_clm(decay_gaussian(sigma = 5), outside = 0.03))`, with a value for every parameter | A probability for each facility and the outside option, and the expected number of users of each facility |
 | Which parameters fit the use you observed? | `spax(data, spec_clm(), observed = obs_flows())`, or `obs_totals()` for facility totals | Fitted parameters, read with `coef()` and checked with `check_fit()` |
 | What changes when supply changes, at the same parameters? | `spax()` on the changed data, with the fitted values held | The difference between two modeled scenarios |
 | What does the model give at other places? | `predict()` on the fitted result | Probabilities and outside shares at those places |
 | How sure are the estimates? | `bootstrap_fit()` on an allocation model with a fitted outside weight, fitted to facility totals | Bootstrap intervals for the parameters and for a scenario |
 
-An FCA index needs no observations, and the analyst chooses how fast its
-weights fall with travel time. An allocation model can be fitted to observed
+An accessibility score needs no observations, and the analyst chooses how
+fast its weights fall with travel time. An allocation model can be fitted to observed
 counts, and its fitted counts can then be checked against them.
 
 ## One Cornwall system, two calculations
@@ -63,7 +63,10 @@ registered with a GP practice, and supply is each practice's GP full-time
 equivalents (FTE), excluding GPs in training. Travel is a matrix of minutes
 from each area to each practice. `prep_data()` lines the three up by their
 IDs, and `obs_flows()` declares the observed registrations by area and
-practice.
+practice. Demand counts every resident registered with any practice in
+England, so each area's count outside mainland Cornwall is known, and
+`outside = "known"` declares it, as in [When outside counts are
+known](allocation-workflow.html#when-outside-counts-are-known).
 
 ```{r inputs}
 areas <- cornwall_lsoa |>
@@ -79,7 +82,10 @@ d <- prep_data(demand, supply, travel, metadata = list(
   demand_units = "registered residents", demand_period = "July 2026",
   supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
   travel_units = "minutes"))
-flows <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")
+flows <- obs_flows(cornwall_flows,
+  origin = "lsoa", facility = "practice", count = "patients",
+  outside = "known"
+)
 d
 ```
 
@@ -88,36 +94,35 @@ areas, LSOAs) and `r nrow(gp)` practices. spax calls the small areas origins
 and the practices facilities, in the print and in its tables. The unit labels
 are kept with the data and every result, and spax does not convert units.
 
-### An FCA index
+### A 2SFCA accessibility score
 
-The enhanced two-step floating catchment area method (E2SFCA) works in two
-steps. Each practice divides its supply by the demand that can reach it,
-weighted by travel time. Each area then adds up the ratios of the practices
-it can reach, with the same weights. Here the weight of a practice $d$
+The enhanced 2SFCA method (E2SFCA) works in two steps. Each practice divides
+its supply by the demand that can reach it, weighted by travel time. Each area
+then adds up the ratios of the practices it can reach, with the same weights. Here the weight of a practice $d$
 minutes away is $w(d) = \exp(-d^2 / 2\sigma^2)$, a Gaussian curve with a
 travel scale σ of 10 minutes, so a practice 10 minutes away counts with weight
 `r round(exp(-1 / 2), 2)`. The 10 minutes is a choice for this guide. With
 small areas as the origins, `spax()` returns one value per area. On a
 population grid it returns a map. `as.data.frame()` gives one row per area,
-with the index in a column named after the supply layer, `supply`.
+with the score in a column named after the supply layer, `supply`.
 
-```{r fca}
-# The E2SFCA index at each area, with a 10-minute Gaussian decay
-fca <- spax(d, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
-fca
+```{r e2sfca}
+# The E2SFCA score at each area, with a 10-minute Gaussian decay
+e2sfca <- spax(d, spec_e2sfca(decay = decay_gaussian(sigma = 10)))
+e2sfca
 
-# One row per area. The index column is named after the supply layer;
-# times 1,000 it is in GP FTE per 1,000 travel-weighted registered residents
-fca_index <- as.data.frame(fca) |>
-  transmute(lsoa = origin_id, fca = 1000 * supply)
-summary(fca_index$fca)
+# One row per area. The score column is named after the supply layer;
+# times 1,000 it is in GP FTE per 1,000 residents
+scores <- as.data.frame(e2sfca) |>
+  transmute(lsoa = origin_id, e2sfca = 1000 * supply)
+summary(scores$e2sfca)
 ```
 
-The index ranges from `r round(min(fca_index$fca), 2)` to
-`r round(max(fca_index$fca), 2)` GP FTE per 1,000 travel-weighted registered
-residents across the areas. The print lists one layer, `supply`: with several
-supply measures, such as GP FTE with and without GPs in training, each gives a
-layer and an index of its own. `normalize identity` means that demand is used
+The scores range from `r round(min(scores$e2sfca), 2)` to
+`r round(max(scores$e2sfca), 2)` GP FTE per 1,000 residents across the areas.
+The print lists one layer, `supply`: with several supply measures, such as GP
+FTE with and without GPs in training, each gives a layer and a score of its
+own. `normalize identity` means that demand is used
 as it is.
 
 ### An allocation model fitted to registrations
@@ -137,10 +142,12 @@ mainland Cornwall, in Devon for example. `spec_clm()` declares the model
 with a Gaussian decay, and by default `spax()` fits both the travel scale σ and
 the outside weight v0. Fitting searches for the values whose expected
 registrations (demand times probability) come closest to the observed counts,
-as measured by a Poisson loss.
+as measured by a [Poisson loss](allocation-workflow.html#the-model-in-words).
+The fit uses each area's outside count too.
 
 ```{r clm}
-# Gaussian decay and outside weight, both fitted to the registrations
+# Gaussian decay and outside weight, both fitted to the registrations and the
+# outside counts
 clm <- spax(d, spec_clm(), observed = flows)
 clm
 ```
@@ -162,7 +169,7 @@ the search from `r nrow(clm_starts)` of them. Each of the
 `r nrow(clm_starts)` searches converged, and `spax()` kept the best fit.
 
 The fitted travel scale σ is about `r sigma_hat` minutes, much shorter than
-the 10 minutes chosen for the FCA index: registration is very local. The
+the 10 minutes chosen for the E2SFCA scores: registration is very local. The
 outside weight v0 is on the scale of an attraction: `r v0_hat` is the pull of
 a practice with that many GP FTE next door. So the outside option matters only
 where every practice is far away.
@@ -170,8 +177,8 @@ where every practice is far away.
 ## What one area sees
 
 The two calculations weight the same practices in different ways. Take the
-area with the largest total FCA weight, one with many practices within a short
-drive. `predict()` gives the CLM's probabilities for every area, and the
+area with the largest total E2SFCA weight, one with many practices within a
+short drive. `predict()` gives the CLM's probabilities for every area, and the
 fit's flow table gives the registrations by area and practice. The table
 lists the practices within 7 minutes of the area. `clm_prob` is the CLM
 probability and `obs_share` the observed share of the area's registered
@@ -188,11 +195,12 @@ flow_table <- as.data.frame(clm, type = "flows")
 observed <- xtabs(observed ~ origin_id + facility_id, flow_table)
 observed <- observed[rownames(travel), colnames(travel)]
 
-# The FCA's Gaussian weights, with the 10-minute travel scale
-fca_weight <- exp(-travel^2 / (2 * 10^2))
+# The E2SFCA's Gaussian weights, with the 10-minute travel scale
+e2sfca_weight <- exp(-travel^2 / (2 * 10^2))
 
-# The area with the largest total FCA weight, and the practices within 7 minutes
-area <- which.max(rowSums(fca_weight))
+# The area with the largest total E2SFCA weight, and the practices within 7
+# minutes
+area <- which.max(rowSums(e2sfca_weight))
 nearest <- order(travel[area, ])
 nearest <- nearest[travel[area, nearest] <= 7]
 
@@ -200,7 +208,7 @@ data.frame(
   practice = tools::toTitleCase(tolower(gp$name[nearest])),
   gp_fte = round(supply[nearest], 1),
   minutes = travel[area, nearest],
-  fca_weight = round(fca_weight[area, nearest], 2),
+  e2sfca_weight = round(e2sfca_weight[area, nearest], 2),
   clm_prob = round(probability[area, nearest], 3),
   obs_share = round(observed[area, nearest] / demand[area], 3),
   row.names = NULL
@@ -209,7 +217,7 @@ data.frame(
 # Totals over all practices for this area
 round(
   c(
-    fca_weights = sum(fca_weight[area, ]),
+    e2sfca_weights = sum(e2sfca_weight[area, ]),
     clm_practices = sum(probability[area, ]),
     clm_outside = prediction$outputs$outside_share[[area]]
   ),
@@ -222,23 +230,33 @@ round(
 lander <- "L82001"
 chacewater <- "L82015"
 stopifnot(
+  gp$name[match(c(lander, chacewater), gp$practice)] ==
+    c("LANDER MEDICAL PRACTICE", "CHACEWATER HEALTH CENTRE"),
   travel[area, lander] > travel[area, chacewater],
   probability[area, lander] > probability[area, chacewater],
+  # ... with more of the area's residents registered at Chacewater
+  observed[area, chacewater] > observed[area, lander],
+  # The area lies around Carnon Downs: its nearest practice is Carnon Downs Surgery
+  gp$name[nearest[1]] == "CARNON DOWNS SURGERY",
   # ... and quotes the observed and modeled shares at the single nearest practice
   travel[area, nearest[1]] < travel[area, nearest[2]]
 )
 ```
 
-The FCA weights are separate discounts, one per practice. They do not compete
-with each other, and for this area they add up to
-`r round(sum(fca_weight[area, ]), 1)`, as much weight as
-`r round(sum(fca_weight[area, ]))` practices next door. The CLM probabilities
+This area, `r areas$name[area]`, lies around Carnon Downs, between Truro and
+Falmouth. The E2SFCA weights are separate discounts, one per practice. They
+do not compete with each other, and for this area they add up to
+`r round(sum(e2sfca_weight[area, ]), 1)`, as much weight as
+`r round(sum(e2sfca_weight[area, ]))` practices next door. The CLM probabilities
 compete: a nearby practice with more GP FTE draws residents away from the
 others, and the probabilities over all practices and the outside option add up
 to 1. Lander Medical Practice, `r travel[area, lander]` minutes away with
 `r round(supply[[lander]], 1)` GP FTE, gets a higher probability than
 Chacewater Health Centre, `r travel[area, chacewater]` minutes away with
-`r round(supply[[chacewater]], 1)` GP FTE.
+`r round(supply[[chacewater]], 1)` GP FTE, although more of the area's
+residents are registered at Chacewater
+(`r round(100 * observed[area, chacewater] / demand[area])`%) than at Lander
+(`r round(100 * observed[area, lander] / demand[area])`%).
 
 Because they are probabilities, they can be set beside the observed shares. At
 this one area they differ markedly:
@@ -249,18 +267,18 @@ time and GP FTE, so the next section judges it across all areas.
 
 ## Side by side
 
-The FCA index gives one value per area. The CLM gives each area a
+The E2SFCA gives one score per area. The CLM gives each area a
 distribution over the practices, and other quantities follow from it:
 expected registrations (demand times probability), each practice's expected
 list (the residents registered with it: its expected registrations summed over
 areas) and the mean travel time to the practice an area's residents are
-modeled to register with. The maps show the FCA index and that
+modeled to register with. The maps show the E2SFCA score and that
 mean travel time.
 
-```{r maps, fig.show = "hold", out.width = "49%", fig.width = 4.5, fig.height = 4.5, fig.alt = c("Map of mainland Cornwall's small areas colored by the E2SFCA index with a 10-minute Gaussian decay, in GP FTE per 1,000 travel-weighted registered residents; it is lowest at the western tip, on the Lizard peninsula and on the north coast around Padstow, and highest in a few central and eastern areas.", "Map of mainland Cornwall's small areas colored by the CLM's mean travel time, in minutes, to the practice that residents are modeled to register with; the longest times are on the north coast around Padstow, in the rural north-east and at the western tip.")}
-# The FCA index and the CLM's probability-weighted mean minutes per area
+```{r maps, fig.show = "hold", out.width = "49%", fig.width = 4.5, fig.height = 4.5, fig.alt = c("Map of mainland Cornwall's small areas colored by the E2SFCA score with a 10-minute Gaussian decay, in GP FTE per 1,000 residents; it is lowest at the western tip, on the Lizard peninsula and on the north coast around Padstow, and highest around Truro and in the south-east near Saltash.", "Map of mainland Cornwall's small areas colored by the CLM's mean travel time, in minutes, to the practice that residents are modeled to register with; the longest times are on the north coast around Padstow, in the rural north-east and at the western tip.")}
+# The E2SFCA score and the CLM's probability-weighted mean minutes per area
 areas <- areas |>
-  left_join(fca_index, by = "lsoa") |>
+  left_join(scores, by = "lsoa") |>
   mutate(clm_minutes = rowSums(probability * travel) / rowSums(probability))
 
 # Join to the small-area polygons for mapping
@@ -269,18 +287,18 @@ mapped <- cornwall_lsoa |>
   inner_join(areas, by = "lsoa")
 
 ggplot(mapped) +
-  geom_sf(aes(fill = fca, color = fca), linewidth = 0.1) +
-  geom_sf(data = st_union(mapped), fill = NA, color = "grey20", linewidth = 0.3) +
+  geom_sf(aes(fill = e2sfca, color = e2sfca), linewidth = 0.1) +
+  geom_sf(data = st_union(mapped), fill = NA, color = "gray20", linewidth = 0.3) +
   scale_fill_viridis_c(
     name = "GP FTE\nper 1,000",
     aesthetics = c("fill", "color")
   ) +
-  labs(title = "E2SFCA index (sigma = 10 min)") +
+  labs(title = "E2SFCA score (sigma = 10 min)") +
   theme_void()
 
 ggplot(mapped) +
   geom_sf(aes(fill = clm_minutes, color = clm_minutes), linewidth = 0.1) +
-  geom_sf(data = st_union(mapped), fill = NA, color = "grey20", linewidth = 0.3) +
+  geom_sf(data = st_union(mapped), fill = NA, color = "gray20", linewidth = 0.3) +
   scale_fill_viridis_c(
     name = "Minutes",
     option = "magma",
@@ -294,70 +312,79 @@ ggplot(mapped) +
 ```{r map-values, include = FALSE}
 # Bude, in the far north-east: the small areas Cornwall 001A to 001F
 bude <- startsWith(areas$name, "Cornwall 001")
-r_maps <- sprintf("%.2f", cor(areas$fca, areas$clm_minutes))
+r_maps <- sprintf("%.2f", cor(areas$e2sfca, areas$clm_minutes))
+# The ten highest scores: around Truro, and in the south-east near Saltash
+top10 <- areas[order(-areas$e2sfca)[1:10], ]
 stopifnot(
   sum(bude) == 6,
-  all(areas$fca[bude] < quantile(areas$fca, 0.25))
+  all(areas$e2sfca[bude] < quantile(areas$e2sfca, 0.25)),
+  any(top10$cent_lon > -5.2 & top10$cent_lon < -5.0 & top10$cent_lat > 50.2),
+  any(top10$cent_lon > -4.4)
 )
 ```
 
-In both maps darker means less favorable: a lower index, or a longer modeled
+In both maps darker means less favorable: a lower score, or a longer modeled
 trip. Both are dark at the western tip, on the north coast around Padstow and
 inland in the north-east. Elsewhere they can part. In Bude, in the far
 north-east, the modeled trips are short, at most
-`r ceiling(max(areas$clm_minutes[bude]))` minutes, yet the index is in the
+`r ceiling(max(areas$clm_minutes[bude]))` minutes, yet the score is in the
 lowest quarter of areas: few GP FTE lie within reach of the residents who
-share them. Across areas, a higher index goes with shorter modeled trips only
+share them. Across areas, a higher score goes with shorter modeled trips only
 loosely: the two correlate at `r r_maps`.
 
-The CLM's fitted registrations can be compared with the observed ones. The FCA
-index has no observed counterpart in these data.
+The E2SFCA map is highest around Truro and in the south-east near Saltash.
+The grid map of [Getting started](spax.html), with the same decay, is highest
+between Redruth, Truro and Falmouth and lower in the south-east: there demand
+is WorldPop's grid of residents and travel starts at each cell, here it is
+the registered residents of each area, with travel from the area's
+population-weighted centroid.
+
+The CLM's fitted registrations can be compared with the observed ones. The
+E2SFCA score has no observed counterpart in these data.
 
 ```{r check}
 # Correlations of modeled with observed: area mean minutes, practice lists
 observed_minutes <- rowSums(observed * travel) / rowSums(observed)
 c(
   mean_minutes = cor(areas$clm_minutes, observed_minutes),
-  practice_lists = cor(colSums(fitted(clm)), colSums(observed))
+  practice_lists = cor(colSums(fitted(clm)[, colnames(observed)]), colSums(observed))
 )
 
 # Share of residents registered outside mainland Cornwall (%), observed and
 # modeled
+by_area <- as.data.frame(clm, type = "origins")
 outside <- c(
-  observed = 1 - sum(observed) / sum(demand),
-  modeled = 1 - sum(fitted(clm)) / sum(demand)
+  observed = sum(by_area$outside_observed) / sum(by_area$demand),
+  modeled = sum(by_area$demand * by_area$outside_share) / sum(by_area$demand)
 )
 round(100 * outside, 2)
 ```
 
 ```{r check-values, include = FALSE}
 r_minutes <- sprintf("%.2f", cor(areas$clm_minutes, observed_minutes))
-r_lists <- sprintf("%.2f", cor(colSums(fitted(clm)), colSums(observed)))
+r_lists <- sprintf("%.2f", cor(colSums(fitted(clm)[, colnames(observed)]), colSums(observed)))
 ```
 
 Modeled and observed mean travel times correlate at `r r_minutes` across
-areas, and modeled and observed practice lists at `r r_lists`. The model puts
-fewer residents outside mainland Cornwall than observed
+areas, and modeled and observed practice lists at `r r_lists`. With the
+outside counts declared as known, the modeled share of residents registered
+outside mainland Cornwall matches the observed one
 (`r round(100 * outside[["modeled"]], 2)`% against
-`r round(100 * outside[["observed"]], 2)`%). This fit uses only the counts at
-mainland practices, so nothing ties its outside total to the observed one.
-
-Declared as known, the outside counts make the two totals agree: see [When
-outside counts are known](allocation-workflow.html#when-outside-counts-are-known).
-Even then, one outside weight for every area cannot reproduce where
-registration outside mainland Cornwall happens: mostly in a few areas near the
+`r round(100 * outside[["observed"]], 2)`%). Even so, one outside weight for
+every area cannot reproduce where registration outside mainland Cornwall
+happens: mostly in a few areas near the
 Devon border, as the outside-option map in [Where do residents
 register?](allocation-workflow.html#the-outside-option) shows.
 
-Use an FCA index when you need supply relative to demand, have no counts of
+Use an accessibility score when you need supply relative to demand, have no counts of
 where people go, or want a decay you set yourself. Use the allocation model
 when you need to know where residents go, have counts to fit it to, and want
 to check it against them.
 
-| | E2SFCA index | CLM |
+| | E2SFCA score | CLM |
 |:--|:--|:--|
 | Per area | One supply-per-demand value for each supply measure | A probability for each practice and for the outside option |
-| Supply | Each supply measure gives its own index | One supply measure, which sets the attraction and does not cap the list |
+| Supply | Each supply measure gives its own score | One supply measure, which sets the attraction and does not cap the list |
 | Travel decay | Chosen by the analyst (10 minutes here) | Fitted to the registrations (about `r sigma_hat` minutes here) |
 | Outside option | None | A weight v0, fitted here |
 | Check against registrations | No observed counterpart | Fitted registrations, practice lists and outside share |
@@ -368,9 +395,10 @@ to check it against them.
 
 - [Where do residents register?](allocation-workflow.html): the allocation
   model in full, from the fit to the outside option.
-- [Which FCA index?](fca-methods.html): if an index answers your question,
-  choose among five variants and map them on the population grid.
+- [Which 2SFCA method?](fca-methods.html): if an accessibility score answers
+  your question, choose among five methods and map them on the population
+  grid.
 - [What if a practice closed?](scenario.html): hold the fitted values and
   change the supply.
-- [Reading results](reading-results.html): what an index, a probability and a
+- [Reading results](reading-results.html): what a score, a probability and a
   fit can and cannot tell you.

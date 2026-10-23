@@ -44,7 +44,10 @@ full-time equivalents (FTE), excluding GPs in training. Each practice attracts
 residents in proportion to its supply times a decay weight of the travel time,
 and an outside option, registration with a practice outside mainland
 Cornwall, takes the rest with a weight v0 of its own. The inputs are those of
-the other allocation guides.
+the other allocation guides, and each area's count outside mainland Cornwall
+is known, as in [When outside counts are
+known](allocation-workflow.html#when-outside-counts-are-known): the fit
+below is the one that guide reports.
 
 ```{r inputs}
 areas <- cornwall_lsoa |>
@@ -60,7 +63,11 @@ d <- prep_data(demand, supply, travel, metadata = list(
   demand_units = "registered residents", demand_period = "July 2026",
   supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
   travel_units = "minutes"))
-flows <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")
+# The registrations, with each area's outside count known
+flows <- obs_flows(cornwall_flows,
+  origin = "lsoa", facility = "practice", count = "patients",
+  outside = "known"
+)
 ```
 
 The default specification has a Gaussian decay whose travel scale σ, in
@@ -68,14 +75,15 @@ minutes, sets how fast the weight falls with travel time. σ is fitted together
 with the outside weight v0.
 
 ```{r gaussian}
-# Gaussian decay and outside weight, both fitted to the registrations
+# Gaussian decay and outside weight, both fitted to the registrations and the
+# outside counts
 clm <- spax(d, spec_clm(), observed = flows)
 coef(clm)
 ```
 
 The message about the Isles of Scilly is explained in [Where do residents
-register?](allocation-workflow.html#fit-the-model); the later fits on the same
-data print it too.
+register?](allocation-workflow.html#fit-the-model). The next fit on the same
+data gives the same message, which this guide hides.
 
 The fitted σ is `r round(coef(clm)[["sigma"]], 1)` minutes. The next section
 fits a kernel of your own to the same data and compares the two fits.
@@ -131,6 +139,8 @@ sigma_gaussian <- coef(clm)[["sigma"]]
 sigma_plateau <- coef(clm_plateau)[["sigma"]]
 gaussian_at_9 <- exp(-9^2 / (2 * sigma_gaussian^2))
 plateau_at_9 <- plateau_weight(9, sigma_plateau, plateau = 3)
+# The text says that the plateau sigma is the smaller one
+stopifnot(sigma_plateau < sigma_gaussian)
 ```
 
 The plateau kernel's σ is `r round(sigma_plateau, 2)` minutes, against
@@ -185,6 +195,8 @@ as.data.frame(comparison)[
 
 ```{r compare-values, include = FALSE}
 compared <- as.data.frame(comparison)
+# The text says that the Gaussian kernel fits better
+stopifnot(compared$loss_difference[2] > 0)
 ```
 
 The plateau fit's loss is higher by
@@ -216,8 +228,8 @@ travel_grid <- crop(travel_grid, pop)
 grid_data <- prep_data(pop, gp, travel_grid, id_col = "practice", supply_cols = "gp_fte_extg")
 ```
 
-The recipe ends with `grid_data`, the input of the floating catchment area
-(FCA) indices, whose demand is WorldPop's estimate of residents in 2020. A fit
+The recipe ends with `grid_data`, the input of the accessibility maps of the
+other guides, whose demand is WorldPop's estimate of residents in 2020. A fit
 needs demand that counts the same people as the observations, so the next
 chunk prepares the same grid again with its demand rescaled.
 
@@ -240,7 +252,12 @@ totals
 grid_residents <- global(pop, "sum", na.rm = TRUE)[[1]]
 registered_grid <- pop * sum(practice_totals$patients) / grid_residents
 registered_data <- prep_data(registered_grid, gp, travel_grid,
-  id_col = "practice", supply_cols = "gp_fte_extg")
+  id_col = "practice", supply_cols = "gp_fte_extg",
+  metadata = list(
+    demand_units = "registered residents", supply_units = "GP FTE excluding GPs in training",
+    travel_units = "minutes"
+  )
+)
 registered_data
 ```
 
@@ -273,7 +290,8 @@ The `r format(n_cells, big.mark = ",")` populated cells are the origins,
 named by their cell numbers. Of the `r nrow(huff_starts)` starting points,
 `r sum(huff_starts$eligible)` converged, and `spax()` keeps the best of them.
 `as.data.frame(huff_grid, type = "starts")` lists all
-`r nrow(huff_starts)`.
+`r nrow(huff_starts)`, with the optimizer's message for each. A start that
+does not converge stays in that table but is never selected.
 
 A σ of `r round(huff_sigma, 2)` means that a
 practice twice as far away gets `r round(2^-huff_sigma, 2)` of the weight. A
@@ -319,7 +337,7 @@ its outside share across the grid. `predict()` takes a travel matrix with one
 row per cell. `spatial` says which raster cell each row is, and
 `type = "raster"` returns a map on the grid.
 
-```{r grid-predict, fig.height = 4, fig.alt = "Raster map of mainland Cornwall on the grid of about 1 km cells, colored by the outside share that the small-area fit predicts at each populated cell, in percent; most cells are below 1%, and the share rises above 20% in cells far from every practice: around Bodmin Moor and inland in the north-east, at the western tip and on the north coast around Padstow."}
+```{r grid-predict, fig.height = 4, fig.alt = "Raster map of mainland Cornwall on the grid of 30 arc-second cells, colored by the outside share that the small-area fit predicts at each populated cell, in percent; over half of the cells are below 1%, and the share rises above 20% in cells far from every practice: around Bodmin Moor and inland in the north-east, at the western tip and on the north coast around Padstow."}
 # Travel from each populated cell to each practice, rows named by cell number
 populated <- which(values(pop)[, 1] > 0)
 grid_travel <- values(travel_grid)[populated, ]
@@ -342,7 +360,7 @@ plot(
   breaks = c(0, 1, 2, 5, 10, 20, 50, 100),
   col = hcl.colors(7, "Mako", rev = TRUE),
   axes = FALSE,
-  main = "Modeled outside share, grid of about 1 km",
+  main = "Modeled outside share, 30 arc-second grid",
   plg = list(title = "Outside\nshare (%)")
 )
 lines(outline, lwd = 0.6)
@@ -351,10 +369,12 @@ lines(outline, lwd = 0.6)
 ```{r grid-predict-values, include = FALSE}
 share_below_1 <- mean(values(grid_outside, mat = FALSE)[populated] < 0.01)
 area_share_max <- max(as.data.frame(clm, type = "origins")$outside_share)
+# The figure's description says that over half of the cells are below 1%
+stopifnot(share_below_1 > 0.5)
 ```
 
 In `r round(100 * share_below_1)`% of the cells the modeled outside
-share is below 1%. It rises only far from every practice: around Bodmin Moor
+share is below 1%. It is highest far from every practice: around Bodmin Moor
 and inland in the north-east, at the western tip and on the north coast around
 Padstow.
 
@@ -393,19 +413,20 @@ allocation model takes demand groups in three places:
   matrix of facilities by groups.
 
 A parameter that differs by group can be fitted only to counts recorded by
-group. The small areas have ONS population estimates by age band (`pop_0_15`,
-`pop_16_64` and `pop_65p` in `cornwall_lsoa`), but the registrations are not
-split by age, so this guide fits no groups. The FCA indices take demand groups
-on the grid, and [Which FCA index?](fca-methods.html#several-demand-groups)
-shows them.
+group. `predict()`, `check_fit()` and `bootstrap_fit()` do not accept models
+with groups yet. The small areas have ONS population estimates by age band
+(`pop_0_15`, `pop_16_64` and `pop_65p` in `cornwall_lsoa`), but the
+registrations are not split by age, so this guide fits no groups. The
+2SFCA-family methods take demand groups on the grid, and [Which 2SFCA
+method?](fca-methods.html#several-demand-groups) shows them.
 
 ## Next
 
 - [What if a practice closed?](scenario.html): hold the fitted values and
   change the supply.
 - [How sure are the estimates?](facility-bootstrap.html): bootstrap intervals
-  for a CLM fitted to facility totals (a declared kernel needs
-  `smooth = TRUE`; see `?bootstrap_fit`).
+  for a CLM fitted to facility totals (a declared kernel must be smooth in
+  sigma, the default of `decay_kernel()`; see `?bootstrap_fit`).
 - [Grid resolution and computational cost](grid-resolution.html): what a
   finer or coarser grid costs and changes.
 - [Function map](function-naming.html): the step functions that `spax()` runs,

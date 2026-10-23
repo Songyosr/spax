@@ -73,9 +73,8 @@ d <- prep_data(demand, supply, travel, metadata = list(
   demand_units = "registered residents", demand_period = "July 2026",
   supply_units = "GP FTE excluding GPs in training", supply_period = "June 2026",
   travel_units = "minutes"))
-flows <- obs_flows(cornwall_flows, origin = "lsoa", facility = "practice", count = "patients")
 
-# The same registrations, with each area's outside count known
+# The registrations, with each area's outside count known
 flows_known <- obs_flows(
   cornwall_flows,
   origin = "lsoa",
@@ -85,6 +84,17 @@ flows_known <- obs_flows(
 )
 clm_known <- spax(d, spec_clm(), observed = flows_known)
 coef(clm_known)
+```
+
+```{r practice-names, include = FALSE}
+# The text names these practices by their codes
+named <- c(
+  L82047 = "MARAZION SURGERY", L82036 = "BODRIGGY HEALTH CENTRE",
+  L82038 = "ATLANTIC MEDICAL GROUP", Y01050 = "ROSMELLYN SURGERY",
+  L82070 = "SUNNYSIDE SURGERY", L82018 = "HELSTON MEDICAL CENTRE",
+  L82030 = "LAUNCESTON MEDICAL CENTRE"
+)
+stopifnot(identical(gp$name[match(names(named), gp$practice)], unname(named)))
 ```
 
 The travel scale σ is about `r round(coef(clm_known)[["sigma"]], 2)` minutes and the
@@ -158,6 +168,14 @@ changes |>
 gain <- setNames(changes$change, changes$practice)
 lost <- -gain[["L82047"]]
 fmt <- function(x) format(round(x), big.mark = ",")
+# The text names the three largest gains, and Helston gains less
+stopifnot(
+  setequal(names(sort(gain, decreasing = TRUE))[1:3], c("L82036", "L82038", "Y01050")),
+  gain[["L82018"]] < min(gain[c("L82036", "L82038", "Y01050")])
+)
+# ... and that three Penzance practices share one site
+penzance <- filter(cornwall_gp, practice %in% c("L82038", "Y01050", "L82070"))
+stopifnot(nrow(unique(st_coordinates(penzance))) == 1)
 ```
 
 Marazion Surgery's `r fmt(lost)` modeled registrations move mostly to
@@ -234,7 +252,7 @@ ggplot() +
     color = "white",
     linewidth = 0.05
   ) +
-  geom_sf(data = st_union(moved_map), fill = NA, color = "grey20", linewidth = 0.3) +
+  geom_sf(data = st_union(moved_map), fill = NA, color = "gray20", linewidth = 0.3) +
   geom_sf(data = gained, aes(size = change), shape = 21, fill = "orange") +
   geom_sf(
     data = filter(cornwall_gp, practice == "L82047"),
@@ -306,7 +324,11 @@ modeled list goes to the outside option. With σ about
 only `r signif(100 * keep15, 1)`% of the pull it would have next door. For
 `r round(100 * far_share)`% of Launceston's modeled list, the nearest other
 mainland practice is at least that far, so the outside option, the same in
-every area, wins there.
+every area, wins there. That share rests on one outside weight for all of
+mainland Cornwall, and on the Devon border the outside option stands mostly
+for practices just across it in Devon, so read it as approximate, like [the
+modeled outside share of a single
+area](allocation-workflow.html#the-outside-option).
 
 ## A smaller change: 20% more GP FTE
 
