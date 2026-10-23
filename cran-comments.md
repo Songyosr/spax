@@ -7,6 +7,8 @@ This is a new submission.
 * local: macOS 26 (aarch64), R 4.5.2
 * GitHub Actions: Ubuntu (R-devel, R-release 4.6.1 and R 4.4.0, the minimum
   version), Windows (R-release 4.6.1), macOS (R-release 4.6.1)
+* win-builder: R-release 4.6.1 (1 NOTE: new submission, possibly misspelled
+  words; check time 539 s)
 
 ## R CMD check results
 
@@ -17,9 +19,9 @@ This is a new submission.
 ## Notes
 
 * Possibly misspelled words in DESCRIPTION: FCA and SFCA are the method
-  abbreviations used in the literature (floating catchment area), logit is the
-  statistical term (conditional logit), and Delamater, Luo, Qi, Sternberg and
-  Zou are authors of the cited methods.
+  abbreviations used in the literature (floating catchment area); Delamater,
+  Luo, Qi, Sternberg and Zou are authors of the cited methods, and "et al." is
+  part of a citation.
 * The Cornwall example data in `data/` and `inst/extdata/` are openly licensed
   third-party data (Open Government Licence v3.0 and Creative Commons
   Attribution); `inst/COPYRIGHTS` lists each source and its attribution, as
