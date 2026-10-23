@@ -29,6 +29,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.23538560
     description: spax version 0.6.0
+  - type: doi
+    value: 10.5281/zenodo.23585582
+    description: spax version 0.7.0
 repository-code: "https://github.com/Songyosr/spax"
 url: "https://songyosr.github.io/spax/"
 abstract: >-

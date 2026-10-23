@@ -1,3 +1,8 @@
+# spax (development version)
+
+* Version 0.7.0 is archived on Zenodo: cite it as doi:10.5281/zenodo.23585582.
+  doi:10.5281/zenodo.23438611 refers to all versions.
+
 # spax 0.7.0
 
 The first version prepared for CRAN. The Cornwall example data are now in WGS 84
